@@ -84,7 +84,7 @@ import {
   normalizeLargePasteThreshold,
   normalizeMode,
   normalizeNetworkProxy,
-  normalizeReadingFontSize,
+  resolveFontScale,
   validateNetworkProxy,
 } from "@pi-desktop/shared";
 
@@ -186,9 +186,7 @@ export function normalizeSettings(settings: AppSettings): AppSettings {
     largePasteThreshold: normalizeLargePasteThreshold(
       (settings as { largePasteThreshold?: unknown }).largePasteThreshold,
     ),
-    fontSize: normalizeReadingFontSize(
-      (settings as { fontSize?: unknown }).fontSize,
-    ),
+    fontScale: resolveFontScale(settings),
     networkProxy: normalizeNetworkProxy(
       (settings as { networkProxy?: unknown }).networkProxy,
     ),
@@ -199,7 +197,7 @@ export function validateSettingsWrite(settings: AppSettings): AppSettings {
   const value = settings as AppSettings & {
     defaultCommandShell?: unknown;
     largePasteThreshold?: unknown;
-    fontSize?: unknown;
+    fontScale?: unknown;
     networkProxy?: unknown;
   };
   if (
@@ -220,10 +218,10 @@ export function validateSettingsWrite(settings: AppSettings): AppSettings {
     });
   }
   if (
-    Object.prototype.hasOwnProperty.call(value, "fontSize") &&
-    normalizeReadingFontSize(value.fontSize) !== value.fontSize
+    Object.prototype.hasOwnProperty.call(value, "fontScale") &&
+    resolveFontScale({ fontScale: value.fontScale }) !== value.fontScale
   ) {
-    throw Object.assign(new Error("fontSize is invalid"), {
+    throw Object.assign(new Error("fontScale is invalid"), {
       errorCode: "INVALID_PARAMS",
     });
   }

@@ -33,26 +33,29 @@ test("Appearance card renders a font-size row after the font family picker", () 
   assert.ok(fontSize > fontFamily);
 });
 
-test("presets and custom px persist AppSettings.fontSize", () => {
-  assert.match(rowSource, /saveSettings\(\{ fontSize: size \}\)/);
-  assert.match(rowSource, /MIN_READING_FONT_SIZE/);
-  assert.match(rowSource, /MAX_READING_FONT_SIZE/);
+test("presets and the scale slider persist AppSettings.fontScale", () => {
+  assert.match(rowSource, /saveSettings\(\{ fontScale: scale \}\)/);
+  assert.match(rowSource, /FONT_SCALE_PRESETS/);
+  assert.match(rowSource, /type="range"/);
   assert.match(rowSource, /settings\.fontSizeSmall/);
   assert.match(rowSource, /settings\.fontSizeDefault/);
   assert.match(rowSource, /settings\.fontSizeLarge/);
   assert.match(rowSource, /settings\.fontSizeXl/);
+  assert.doesNotMatch(rowSource, /px/);
 });
 
-test("the renderer applies the reading size without a reload", () => {
-  assert.match(appSource, /normalizeReadingFontSize\(settings\?\.fontSize\)/);
-  assert.match(appSource, /"--reading-font-size"/);
-  assert.match(tokensSource, /--reading-font-size:\s*14px;/);
-  assert.match(tokensSource, /\.thread-wrap,\s*\n\.composer-dock \{/);
-  assert.match(tokensSource, /--text-base:\s*var\(--reading-font-size\);/);
+test("the renderer applies a global type scale without a reload", () => {
+  assert.match(appSource, /resolveFontScale\(settings/);
+  assert.match(appSource, /"--font-scale"/);
+  assert.match(tokensSource, /--font-scale:\s*1;/);
+  assert.match(tokensSource, /--text-base:\s*calc\(14px \* var\(--font-scale\)\);/);
+  assert.doesNotMatch(tokensSource, /--reading-font-size/);
+  assert.doesNotMatch(tokensSource, /\.thread-wrap,\s*\n\.composer-dock \{/);
 });
 
-test("font-size control keeps presets and the custom field stacked", () => {
+test("font-size control stacks presets and a percentage slider", () => {
   assert.match(styles, /\.settings-font-size\s*\{[^}]*flex-direction:\s*column;/s);
-  assert.match(styles, /\.settings-font-size-custom\s*\{/);
-  assert.match(styles, /\.settings-font-size-suffix\s*\{[^}]*font-size:\s*var\(--text-sm\);/s);
+  assert.match(styles, /\.settings-font-size-slider\s*\{/);
+  assert.match(styles, /\.settings-font-size-percent\s*\{[^}]*font-size:\s*var\(--text-sm\);/s);
+  assert.doesNotMatch(styles, /\.settings-font-size-custom\s*\{/);
 });

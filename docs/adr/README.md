@@ -192,5 +192,5 @@ Each ADR includes:
 | 0177 | User-configurable outbound proxy | Accepted |
 | 0178 | Per-provider custom HTTP headers | Accepted (amends 0176 / 0095 / 0156) |
 | 0179 | Import model configuration from local agent stores | Accepted |
-| 0180 | Custom reading font size for chat and composer | Accepted |
+| 0180 | Custom global UI type scale | Accepted |
 | 0181 | Main-owned picker capabilities | Accepted |

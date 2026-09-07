@@ -18,7 +18,7 @@ import {
   isActiveInProject,
   keybindingDisplayParts,
   keybindingMatchesEvent,
-  normalizeReadingFontSize,
+  resolveFontScale,
   resolveKeybinding,
   type AppMenuCommand,
   type KeyboardShortcutId,
@@ -476,14 +476,14 @@ function AppShell() {
     }
   }, [settings?.fontFamily]);
 
-  // Reading size: Settings persists px in `AppSettings.fontSize`; the
-  // transcript and composer remap `--text-*` from `--reading-font-size`.
+  // Global type scale: Settings persists a multiplier in
+  // `AppSettings.fontScale`; the `--text-*` ramp multiplies from `--font-scale`.
   useEffect(() => {
     document.documentElement.style.setProperty(
-      "--reading-font-size",
-      `${normalizeReadingFontSize(settings?.fontSize)}px`,
+      "--font-scale",
+      String(resolveFontScale(settings ?? {})),
     );
-  }, [settings?.fontSize]);
+  }, [settings?.fontScale, settings?.fontSize]);
 
   useEffect(() => {
     if (bootstrapStartedRef.current) return;

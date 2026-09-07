@@ -1102,9 +1102,13 @@ export type AppSettings = {
    */
   fontFamily?: string;
   /**
-   * Chat transcript and composer body size in px (D343). Absent means the
-   * product `--text-base` (14). Integers 12–24 inclusive; window zoom is
-   * independent.
+   * Global UI type scale (D343). `1` is the product `--text-*` ramp.
+   * Absent means 1. Range 0.8–1.5 in 0.025 steps. Window zoom is independent.
+   */
+  fontScale?: number;
+  /**
+   * @deprecated Unreleased D343 px field. Reads migrate into `fontScale`
+   * as `px / 14`; new writes persist `fontScale` instead.
    */
   fontSize?: number;
   enterToSend: boolean;

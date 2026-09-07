@@ -127,6 +127,8 @@
   --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  /* Global type scale (D343). 1 = product ramp; Appearance multiplies --text-*. */
+  --font-scale: 1;
 }
 
 :root[data-theme="light"] {
@@ -238,20 +240,20 @@
     monospace;
 
   /* Type ramp (Codex metrics; "-plus" = half-step between named sizes) */
-  --text-3xs: 10.5px;
-  --text-2xs: 11px; /* alias kept: --text-xs */
-  --text-xs: 11px;
-  --text-xs-plus: 11.5px;
-  --text-sm: 12px;
-  --text-sm-plus: 12.5px;
-  --text-md: 13px;
-  --text-md-plus: 13.5px;
-  --text-base: 14px;
-  --text-base-plus: 15px;
-  --text-lg: 16px;
-  --text-lg-plus: 18px;
-  --text-xl: 20px;
-  --text-2xl: 28px;
+  --text-3xs: calc(10.5px * var(--font-scale));
+  --text-2xs: calc(11px * var(--font-scale)); /* alias kept: --text-xs */
+  --text-xs: calc(11px * var(--font-scale));
+  --text-xs-plus: calc(11.5px * var(--font-scale));
+  --text-sm: calc(12px * var(--font-scale));
+  --text-sm-plus: calc(12.5px * var(--font-scale));
+  --text-md: calc(13px * var(--font-scale));
+  --text-md-plus: calc(13.5px * var(--font-scale));
+  --text-base: calc(14px * var(--font-scale));
+  --text-base-plus: calc(15px * var(--font-scale));
+  --text-lg: calc(16px * var(--font-scale));
+  --text-lg-plus: calc(18px * var(--font-scale));
+  --text-xl: calc(20px * var(--font-scale));
+  --text-2xl: calc(28px * var(--font-scale));
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
@@ -270,38 +272,10 @@
   --leading-relaxed: 1.5;
   --leading-chat: 1.55;
   --leading-prose: 1.6;
-  --leading-row: 18px; /* fixed-height rows (sidebar thread titles) */
+  --leading-row: calc(18px * var(--font-scale)); /* sidebar thread titles */
 
   --tracking-tighter: -0.03em;
   --tracking-tight: -0.02em;
   --tracking-normal: 0em;
   --tracking-wide: 0.02em;
-}
-
-/*
-  Reading type scale (D343 / ADR 0180). Chat transcript and composer remap
-  the `--text-*` ramp from `--reading-font-size` (default 14px, matching
-  `--text-base`). Window chrome, settings, and the sidebar stay on the
-  product ramp; Zoom In/Out still scales the whole window.
-*/
-:root {
-  --reading-font-size: 14px;
-}
-
-.thread-wrap,
-.composer-dock {
-  --text-3xs: calc(var(--reading-font-size) * 10.5 / 14);
-  --text-2xs: calc(var(--reading-font-size) * 11 / 14);
-  --text-xs: calc(var(--reading-font-size) * 11 / 14);
-  --text-xs-plus: calc(var(--reading-font-size) * 11.5 / 14);
-  --text-sm: calc(var(--reading-font-size) * 12 / 14);
-  --text-sm-plus: calc(var(--reading-font-size) * 12.5 / 14);
-  --text-md: calc(var(--reading-font-size) * 13 / 14);
-  --text-md-plus: calc(var(--reading-font-size) * 13.5 / 14);
-  --text-base: var(--reading-font-size);
-  --text-base-plus: calc(var(--reading-font-size) * 15 / 14);
-  --text-lg: calc(var(--reading-font-size) * 16 / 14);
-  --text-lg-plus: calc(var(--reading-font-size) * 18 / 14);
-  --text-xl: calc(var(--reading-font-size) * 20 / 14);
-  --text-2xl: calc(var(--reading-font-size) * 28 / 14);
 }

@@ -408,21 +408,24 @@
   width: 100%;
 }
 
-.settings-font-size-custom {
+.settings-font-size-slider {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
+  gap: 8px;
 }
 
-.settings-row-control .settings-font-size-custom .field-input {
-  width: 72px;
-  min-width: 72px;
+.settings-font-size-slider input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ds-accent);
 }
 
-.settings-font-size-suffix {
+.settings-font-size-percent {
   color: var(--ds-text-muted);
   font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  min-width: 3em;
+  text-align: right;
 }
 
 .shortcut-map {
