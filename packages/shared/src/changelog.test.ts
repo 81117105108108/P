@@ -13,7 +13,14 @@ describe("changelog catalog", () => {
   it("keeps shipped locale version sets and highlight counts aligned", () => {
     const en = CHANGELOG.en;
     const zh = CHANGELOG["zh-CN"];
-    for (const catalog of [zh, CHANGELOG["zh-TW"]]) {
+    for (const catalog of [
+      zh,
+      CHANGELOG["zh-TW"],
+      CHANGELOG.tr,
+      CHANGELOG.de,
+      CHANGELOG.es,
+      CHANGELOG.fr,
+    ]) {
       expect(catalog.map((e) => e.version)).toEqual(en.map((e) => e.version));
       for (let i = 0; i < en.length; i += 1) {
         expect(catalog[i]?.highlights.length).toBe(en[i]?.highlights.length);
@@ -104,7 +111,11 @@ describe("changelog catalog", () => {
     expect(resolveChangelogLocale("zh-CN")).toBe("zh-CN");
     expect(resolveChangelogLocale("zh-TW")).toBe("zh-TW");
     expect(resolveChangelogLocale("zh-Hant")).toBe("zh-TW");
-    expect(resolveChangelogLocale("zh_HK")).toBe("zh-TW");
+  expect(resolveChangelogLocale("zh_HK")).toBe("zh-TW");
+  expect(resolveChangelogLocale("tr-TR")).toBe("tr");
+  expect(resolveChangelogLocale("de-DE")).toBe("de");
+  expect(resolveChangelogLocale("es-MX")).toBe("es");
+  expect(resolveChangelogLocale("fr-CA")).toBe("fr");
     expect(resolveChangelogLocale("en-US")).toBe("en");
     expect(resolveChangelogLocale()).toBe("en");
   });

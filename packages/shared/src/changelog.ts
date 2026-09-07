@@ -1,3 +1,8 @@
+import { deEntries } from "./changelog-de.js";
+import { esEntries } from "./changelog-es.js";
+import { frEntries } from "./changelog-fr.js";
+import { trEntries } from "./changelog-tr.js";
+
 /**
  * Shipped-locale product changelog for PI-Desktop app releases.
  *
@@ -10,7 +15,7 @@
  * Stable product versions only — omit pre-releases.
  */
 
-export type ChangelogLocale = "en" | "zh-CN" | "zh-TW";
+export type ChangelogLocale = "en" | "zh-CN" | "zh-TW" | "tr" | "de" | "es" | "fr";
 
 export type ChangelogEntry = {
   /** Semver without a leading `v`, matching apps/desktop package version. */
@@ -1958,6 +1963,10 @@ export const CHANGELOG: Record<ChangelogLocale, readonly ChangelogEntry[]> = {
   en: enEntries,
   "zh-CN": zhCNEntries,
   "zh-TW": zhTWEntries,
+  tr: trEntries,
+  de: deEntries,
+  es: esEntries,
+  fr: frEntries,
 };
 
 /** Normalize `v0.2.7` / whitespace to the catalog key form. */
@@ -1986,6 +1995,10 @@ export function resolveChangelogLocale(
     return "zh-TW";
   }
   if (value.startsWith("zh")) return "zh-CN";
+  if (value === "tr" || value.startsWith("tr-")) return "tr";
+  if (value === "de" || value.startsWith("de-")) return "de";
+  if (value === "es" || value.startsWith("es-")) return "es";
+  if (value === "fr" || value.startsWith("fr-")) return "fr";
   return "en";
 }
 

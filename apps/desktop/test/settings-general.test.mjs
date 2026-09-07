@@ -118,7 +118,10 @@ test("Basics and AI tabs expose their respective app and AI controls", () => {
 });
 
 test("language persists as part of shared app settings", () => {
-  assert.match(sharedTypesSource, /language\?: "auto" \| "en" \| "zh-CN" \| "zh-TW" \| "tr"/);
+  assert.match(
+    sharedTypesSource,
+    /language\?: "auto" \| "en" \| "zh-CN" \| "zh-TW" \| "tr" \| "de" \| "es" \| "fr"/,
+  );
   assert.match(sharedTypesSource, /largePasteThreshold\?: number/);
   assert.match(sharedTypesSource, /fontScale\?: number/);
   assert.match(sharedTypesSource, /networkProxy\?: NetworkProxySettings/);

@@ -6,11 +6,20 @@ export { zhTW } from "./locales/zh-TW/index.js";
 export { default as zhTWDefault } from "./locales/zh-TW/index.js";
 export { tr } from "./locales/tr/index.js";
 export { default as trDefault } from "./locales/tr/index.js";
+export { es } from "./locales/es/index.js";
+export { default as esDefault } from "./locales/es/index.js";
+export { fr } from "./locales/fr/index.js";
+export { default as frDefault } from "./locales/fr/index.js";
+export { de } from "./locales/de/index.js";
+export { default as deDefault } from "./locales/de/index.js";
 
 import { en, type EnglishCatalog } from "./locales/en/index.js";
 import { zhCN } from "./locales/zh-CN/index.js";
 import { zhTW } from "./locales/zh-TW/index.js";
 import { tr } from "./locales/tr/index.js";
+import { es } from "./locales/es/index.js";
+import { fr } from "./locales/fr/index.js";
+import { de } from "./locales/de/index.js";
 
 export const defaultLocale = "en";
 
@@ -22,7 +31,10 @@ export const supportedLocales = [
   { id: "en", nativeName: "English", englishName: "English" },
   { id: "zh-CN", nativeName: "简体中文", englishName: "Chinese (Simplified)" },
   { id: "zh-TW", nativeName: "繁體中文", englishName: "Chinese (Traditional)" },
+  { id: "de", nativeName: "Deutsch", englishName: "German" },
+  { id: "es", nativeName: "Español", englishName: "Spanish" },
   { id: "tr", nativeName: "Türkçe", englishName: "Turkish" },
+  { id: "fr", nativeName: "Français", englishName: "French" },
 ] as const;
 
 export type AppLocale = (typeof supportedLocales)[number]["id"];
@@ -33,6 +45,9 @@ export const catalogs: Record<AppLocale, EnglishCatalog> = {
   "zh-CN": zhCN,
   "zh-TW": zhTW,
   tr,
+  de,
+  es,
+  fr,
 };
 
 export function isAppLocale(value: string | null | undefined): value is AppLocale {
@@ -77,6 +92,9 @@ export function resolveLocale(input?: string | null): AppLocale {
   }
   if (lower === "zh" || lower.startsWith("zh-")) return "zh-CN";
   if (lower === "tr" || lower.startsWith("tr-")) return "tr";
+  if (lower === "de" || lower.startsWith("de-")) return "de";
+  if (lower === "es" || lower.startsWith("es-")) return "es";
+  if (lower === "fr" || lower.startsWith("fr-")) return "fr";
   const exact = supportedLocales.find((locale) => locale.id.toLowerCase() === lower);
   if (exact) return exact.id;
   const prefix = supportedLocales.find(

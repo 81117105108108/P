@@ -12,8 +12,8 @@ import {
 } from "../src/index.ts";
 
 function placeholders(value) {
-  return [...value.matchAll(/{{\s*([^},\s]+)[^}]*}}/g)]
-    .map((match) => match[1])
+  return [...value.matchAll(/{{\s*([^},\s]+)[^}]*}}|{([A-Za-z_][A-Za-z0-9_]*)}/g)]
+    .map((match) => match[1] ?? match[2])
     .sort();
 }
 
@@ -119,19 +119,24 @@ test("locale resolution maps variants onto shipped catalogs and falls back to En
   assert.equal(resolveLocale("tr"), "tr");
   assert.equal(resolveLocale("tr-TR"), "tr");
   assert.equal(resolveLocale("tr_TR"), "tr");
+  assert.equal(resolveLocale("es-MX"), "es");
+  assert.equal(resolveLocale("fr-CA"), "fr");
+  assert.equal(resolveLocale("de-DE"), "de");
   assert.equal(resolveLocale(), "en");
-  assert.equal(resolveLocale("fr-FR"), "en");
 });
 
 test("the locale registry lists English first, then other locales by English name", () => {
   assert.deepEqual(
     supportedLocales.map((locale) => locale.id),
-    ["en", "zh-CN", "zh-TW", "tr"],
+    ["en", "zh-CN", "zh-TW", "de", "es", "tr", "fr"],
   );
   assert.deepEqual(
     listedLocales().map((locale) => locale.id),
-    ["en", "zh-CN", "zh-TW", "tr"],
+    ["en", "zh-CN", "zh-TW", "fr", "de", "es", "tr"],
   );
+  assert.equal(localeInfoNative("de"), "Deutsch");
+  assert.equal(localeInfoNative("es"), "Español");
+  assert.equal(localeInfoNative("fr"), "Français");
   assert.equal(localeInfoNative("tr"), "Türkçe");
   assert.equal(english["settings.languageSearchPlaceholder"], "Search languages…");
   assert.equal(english["settings.themeSearchPlaceholder"], "Search themes…");
@@ -147,6 +152,9 @@ test("the locale registry lists English first, then other locales by English nam
   assert.equal(traditional["nav.projects"], "專案");
   assert.equal(traditional["nav.temporarySessions"], "臨時對話");
   assert.match(traditional["app.tagline"], /程式設計/);
+  assert.equal(flattenCatalog(catalogs.es)["settings.language"], "Idioma");
+  assert.equal(flattenCatalog(catalogs.fr)["settings.language"], "Langue");
+  assert.equal(flattenCatalog(catalogs.de)["settings.language"], "Sprache");
 });
 
 function localeInfoNative(id) {

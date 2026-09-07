@@ -1272,7 +1272,8 @@ Each scenario is documented in this format:
 #### E2E-091: Appearance card selects searchable theme and language pickers
 
 - **Preconditions**: App running on macOS; the harness can exercise English,
-  Simplified Chinese, and Traditional Chinese system locales.
+  Simplified Chinese, Traditional Chinese, Turkish, German, Spanish, and
+  French system locales.
 - **Steps**:
   1) Open Settings → General.
   2) In the Appearance card, open the Theme picker. Confirm System, Light, and
@@ -1281,12 +1282,13 @@ Each scenario is documented in this format:
   3) Select Light and confirm the UI switches to light.
   4) In the Language row, open the searchable picker. Confirm Auto is pinned
      at the top with the detected native name and that English, 简体中文,
-     繁體中文, and Türkçe are listed by native name. With Simplified Chinese
+     繁體中文, Türkçe, Deutsch, Español, and Français are listed by native name. With Simplified Chinese
      selected as the OS locale, selecting Auto applies Simplified Chinese;
      with Traditional Chinese selected, Auto applies Traditional Chinese.
-  5) Select English, 简体中文, 繁體中文, and Türkçe in turn and confirm shell
-     chrome switches to each locale without a reload. Confirm `zh-Hant` and
-     `zh-HK` system tags also resolve to 繁體中文.
+  5) Select English, 简体中文, 繁體中文, Türkçe, Deutsch, Español, and Français
+     in turn and confirm shell chrome switches to each locale without a reload.
+     Confirm `zh-Hant` and `zh-HK` resolve to 繁體中文, `de-DE` to Deutsch,
+     `es-MX` to Español, and `fr-CA` to Français.
   6) Type a native name or English name into the language search and confirm
      unmatched locales disappear. Type a theme name into the theme search and
      confirm unmatched options disappear.
@@ -1296,8 +1298,9 @@ Each scenario is documented in this format:
   then any plugin themes after a divider. Auto resolves the OS locale through
   the main process (`app.getLocale()`), passes it safely through the sandboxed
   preload bridge, and reflects the detected native name inline in the menu;
-  zh-TW is a complete shell catalog, including release-note copy; switching
-  options updates the live UI without a reload.
+  zh-TW, Turkish, German, Spanish, and French are complete shell catalogs,
+  including release-note copy; switching options updates the live UI without a
+  reload.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/02-i18n-english-first.md`
 - **Acceptance**: A (core shell), H (localization)
 - **Milestone**: M4

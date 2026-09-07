@@ -195,3 +195,4 @@ Each ADR includes:
 | 0180 | Custom global UI type scale | Accepted |
 | 0181 | Main-owned picker capabilities | Accepted |
 | 0182 | Traditional Chinese shell locale | Accepted (amends 0160) |
+| 0183 | P0 international shell locales | Accepted (amends 0160 / 0182) |
