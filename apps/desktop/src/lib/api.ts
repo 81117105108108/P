@@ -88,6 +88,7 @@ import {
 } from "@pi-desktop/shared";
 
 export type ImportSource = "claude-code" | "opencode" | "codex" | "pi";
+export type ModelConfigImportSource = ImportSource | "cc-switch";
 
 export interface ImportCandidate {
   source: ImportSource;
@@ -107,7 +108,7 @@ export interface ImportRunResult {
 }
 
 export interface ModelConfigImportCandidate {
-  source: ImportSource;
+  source: ModelConfigImportSource;
   externalId: string;
   name: string;
   baseUrl: string | null;

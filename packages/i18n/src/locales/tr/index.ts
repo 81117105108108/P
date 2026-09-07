@@ -707,6 +707,7 @@ export const tr = {
     importSourceOpenCode: "OpenCode",
     importSourceCodex: "Codex",
     importSourcePi: "Pi",
+    importSourceCcSwitch: "CC Switch",
     importModelsTitle: "Model yapılandırması",
     importModelsScanDesc:
       "Yerel sağlayıcı ve model ayarlarını bulun. Saklanan API anahtarları kopyalanır; abonelik oturumları kopyalanmaz.",

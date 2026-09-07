@@ -334,7 +334,9 @@ system while preserving their different data ownership:
   `ModelConfigImportPanel`
   ([08-component-spec §18.5](08-component-spec.md#185-modelconfigimportpanel)).
   Stored API keys from those configs are copied into the host secret store;
-  subscription/OAuth logins are not copied. Re-importing an equivalent
+  subscription/OAuth logins are not copied. CC Switch (`~/.cc-switch`) is
+  scanned as its own source so saved profiles, not only the currently
+  applied live file, can be imported. Re-importing an equivalent
   endpoint (same normalized base URL and API style) is skipped. If the app
   has no default model yet, the first newly created provider becomes the
   default.

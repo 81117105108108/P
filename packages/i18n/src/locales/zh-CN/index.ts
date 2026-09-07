@@ -703,6 +703,7 @@ export const zhCN = {
     importSourceOpenCode: "OpenCode",
     importSourceCodex: "Codex",
     importSourcePi: "Pi",
+    importSourceCcSwitch: "CC Switch",
     importModelsTitle: "模型配置",
     importModelsScanDesc:
       "查找本机的提供商和模型设置。会复制已保存在配置中的 API 密钥，不会复制订阅登录。",

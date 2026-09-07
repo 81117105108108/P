@@ -19,6 +19,7 @@ export const MODEL_CONFIG_IMPORT_SOURCES = [
   "opencode",
   "codex",
   "pi",
+  "cc-switch",
 ] as const;
 
 export type ModelConfigImportSource = (typeof MODEL_CONFIG_IMPORT_SOURCES)[number];
@@ -47,6 +48,14 @@ export type ModelConfigImportRunResult = {
 };
 
 export type ModelConfigImportEnv = Record<string, string | undefined>;
+
+/** One provider row from CC Switch (`~/.cc-switch/cc-switch.db` or legacy JSON). */
+export type CcSwitchProviderRow = {
+  id: string;
+  appType: string;
+  name: string;
+  settingsConfig: unknown;
+};
 
 const MAX_MODELS_PER_PROVIDER = 64;
 const MAX_NAME_LENGTH = 80;
@@ -374,6 +383,183 @@ export function parsePiModelConfig(
   return drafts;
 }
 
+const CC_SWITCH_APP_TYPES = [
+  "claude",
+  "claude-desktop",
+  "codex",
+  "gemini",
+  "grokbuild",
+  "opencode",
+  "openclaw",
+  "hermes",
+  "pi",
+] as const;
+
+/**
+ * Parse CC Switch's legacy `~/.cc-switch/config.json` (`MultiAppConfig`).
+ * Each app key holds `{ providers: { [id]: { name, settingsConfig } } }`.
+ */
+export function parseCcSwitchConfigJson(document: unknown): CcSwitchProviderRow[] {
+  const root = asRecord(document);
+  if (!root) return [];
+  const rows: CcSwitchProviderRow[] = [];
+  for (const appType of CC_SWITCH_APP_TYPES) {
+    const app = asRecord(root[appType]);
+    const providers = asRecord(app?.providers);
+    if (!providers) continue;
+    for (const [id, raw] of Object.entries(providers)) {
+      const record = asRecord(raw);
+      if (!record) continue;
+      rows.push({
+        id: firstString(record.id) || id,
+        appType,
+        name: firstString(record.name) || id,
+        settingsConfig: record.settingsConfig ?? record.settings_config ?? record,
+      });
+    }
+  }
+  return rows;
+}
+
+export function parseCcSwitchProviders(
+  rows: CcSwitchProviderRow[],
+  env: ModelConfigImportEnv = {},
+): ModelConfigImportDraft[] {
+  const drafts: ModelConfigImportDraft[] = [];
+  for (const row of rows) {
+    drafts.push(...parseCcSwitchProvider(row, env));
+  }
+  return drafts;
+}
+
+function parseCcSwitchProvider(
+  row: CcSwitchProviderRow,
+  env: ModelConfigImportEnv,
+): ModelConfigImportDraft[] {
+  const appType = row.appType.trim().toLowerCase();
+  if (appType === "claude" || appType === "claude-desktop") {
+    const parsed = parseClaudeCodeModelConfig(row.settingsConfig);
+    if (parsed.length > 0) return retagCcSwitch(row, parsed);
+    const settings = asRecord(row.settingsConfig);
+    const envMap = stringMap(settings?.env);
+    const secret = firstSecret(envMap.ANTHROPIC_API_KEY, envMap.ANTHROPIC_AUTH_TOKEN);
+    const baseUrl = firstString(envMap.ANTHROPIC_BASE_URL, envMap.ANTHROPIC_API_URL);
+    if (!baseUrl && !secret) return [];
+    const draft = finishDraft({
+      source: "cc-switch",
+      externalId: `${row.appType}:${row.id}`,
+      name: row.name || row.id,
+      baseUrl: firstString(envMap.ANTHROPIC_BASE_URL, envMap.ANTHROPIC_API_URL),
+      apiStyle: "anthropic_messages",
+      vendorHint: firstString(envMap.ANTHROPIC_BASE_URL) ? "custom" : "anthropic",
+      modelIds: ["default"],
+      secretValue: secret,
+    });
+    return draft ? [draft] : [];
+  }
+  if (appType === "opencode" || appType === "hermes") {
+    return retagCcSwitch(
+      row,
+      parseOpenCodeModelConfig({ provider: { [row.id]: row.settingsConfig } }, undefined, env),
+    );
+  }
+  if (appType === "pi") {
+    return retagCcSwitch(
+      row,
+      parsePiModelConfig({ providers: { [row.id]: row.settingsConfig } }, env),
+    );
+  }
+  if (appType === "codex" || appType === "grokbuild") {
+    return parseCcSwitchTomlApp(row, env, appType === "codex" ? "responses" : "chat_completions");
+  }
+  if (appType === "gemini") {
+    return parseCcSwitchGemini(row, env);
+  }
+  return [];
+}
+
+function parseCcSwitchTomlApp(
+  row: CcSwitchProviderRow,
+  env: ModelConfigImportEnv,
+  fallbackStyle: CatalogApiStyle,
+): ModelConfigImportDraft[] {
+  const settings = asRecord(row.settingsConfig) ?? {};
+  const toml = typeof settings.config === "string" ? settings.config : "";
+  const auth = asRecord(settings.auth) ?? {};
+  const authSecret = firstSecret(firstString(auth.OPENAI_API_KEY, auth.api_key));
+  const parsed = parseCodexModelConfig(toml, env);
+  const withAuth = parsed.map((draft) => ({
+    ...draft,
+    secretValue: draft.secretValue ?? authSecret,
+    hasSecret: Boolean(draft.secretValue ?? authSecret),
+  }));
+  if (withAuth.length > 0) return retagCcSwitch(row, withAuth);
+  const baseUrl = toml.match(/base_url\s*=\s*"([^"]+)"/)?.[1];
+  const model = toml.match(/^\s*model\s*=\s*"([^"]+)"/m)?.[1];
+  const secret = authSecret;
+  if (!baseUrl && !secret) return [];
+  const draft = finishDraft({
+    source: "cc-switch",
+    externalId: `${row.appType}:${row.id}`,
+    name: row.name || row.id,
+    baseUrl,
+    apiStyle: fallbackStyle,
+    vendorHint: baseUrl ? "custom" : row.appType,
+    modelIds: model ? [model] : ["default"],
+    secretValue: secret,
+  });
+  return draft ? [draft] : [];
+}
+
+function parseCcSwitchGemini(
+  row: CcSwitchProviderRow,
+  env: ModelConfigImportEnv,
+): ModelConfigImportDraft[] {
+  const settings = asRecord(row.settingsConfig) ?? {};
+  const envMap = stringMap(settings.env);
+  const config = asRecord(settings.config) ?? {};
+  const baseUrl = firstString(
+    envMap.GOOGLE_GEMINI_BASE_URL,
+    envMap.GEMINI_BASE_URL,
+    envMap.GOOGLE_API_BASE,
+  );
+  const secret = firstSecret(
+    resolveSecret(envMap.GEMINI_API_KEY, env),
+    resolveSecret(envMap.GOOGLE_API_KEY, env),
+  );
+  const modelIds = uniqueModelIds([
+    firstString(config.model, settings.model, envMap.GEMINI_MODEL, envMap.GOOGLE_MODEL),
+  ]);
+  const named = matchNamedPreset({ baseUrl: baseUrl ?? undefined, vendorKey: "google" });
+  if (!baseUrl && !secret) return [];
+  const draft = finishDraft({
+    source: "cc-switch",
+    externalId: `${row.appType}:${row.id}`,
+    name: row.name || row.id,
+    baseUrl,
+    apiStyle: named?.apiStyle ?? (baseUrl ? "chat_completions" : "google_generative_ai"),
+    vendorHint: baseUrl && !named ? "custom" : "google",
+    modelIds: modelIds.length > 0 ? modelIds : ["default"],
+    secretValue: secret,
+  });
+  return draft ? [draft] : [];
+}
+
+function retagCcSwitch(
+  row: CcSwitchProviderRow,
+  drafts: ModelConfigImportDraft[],
+): ModelConfigImportDraft[] {
+  return drafts.map((draft) => ({
+    ...draft,
+    source: "cc-switch",
+    externalId:
+      drafts.length === 1
+        ? `${row.appType}:${row.id}`
+        : `${row.appType}:${row.id}:${draft.externalId}`,
+    name: clipName(row.name || draft.name),
+  }));
+}
+
 type DraftSeed = {
   source: ModelConfigImportSource;
   externalId: string;
@@ -444,6 +630,8 @@ function resolveSecret(raw: unknown, env: ModelConfigImportEnv): string | undefi
     const name = trimmed.slice(4).trim();
     return name ? sanitizeSecret(env[name]) : undefined;
   }
+  const braced = trimmed.match(/^\{env:([A-Za-z_][A-Za-z0-9_]*)\}$/);
+  if (braced) return sanitizeSecret(env[braced[1]]);
   return sanitizeSecret(trimmed);
 }
 

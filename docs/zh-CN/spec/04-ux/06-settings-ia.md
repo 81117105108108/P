@@ -159,7 +159,7 @@ Token 用量**不是设置目的地**（D335 / ADR 0173）。已完成回合历�
   [08-组件规范 §18](/zh-CN/spec/04-ux/08-component-spec#18-sessionimportpanel)
 - 模型配置：通过 `ModelConfigImportPanel` 审核提供商草稿
   （[08-组件规范 §18.5](/zh-CN/spec/04-ux/08-component-spec#185-modelconfigimportpanel)）。
-  配置里保存的 API 密钥写入宿主密钥库；订阅/OAuth 登录不复制。等价端点（规范化 base URL + API 风格）再次导入时跳过。若应用尚无默认模型，则将本次新建的第一个提供商设为默认。
+  配置里保存的 API 密钥写入宿主密钥库；订阅/OAuth 登录不复制。CC Switch（`~/.cc-switch`）作为独立来源扫描已保存的配置档案，不只是当前生效的 live 文件。等价端点（规范化 base URL + API 风格）再次导入时跳过。若应用尚无默认模型，则将本次新建的第一个提供商设为默认。
 
 ### 项目档案
 - 重用持久项目索引作为设置规模管理界面

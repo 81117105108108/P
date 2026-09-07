@@ -795,6 +795,7 @@ function ModelConfigImportPanel() {
       opencode: t("settings.importSourceOpenCode"),
       codex: t("settings.importSourceCodex"),
       pi: t("settings.importSourcePi"),
+      "cc-switch": t("settings.importSourceCcSwitch"),
     }),
     [t],
   );

@@ -55,6 +55,7 @@ import {
   ok,
   parseMcpImport,
   draftMatchesExisting,
+  isModelConfigImportSource,
   modelConfigImportKey,
   providerCreateInputFromDraft,
   publicModelConfigCandidate,
@@ -2049,6 +2050,20 @@ function importSelectionKey(value: unknown): string | null {
     return null;
   }
   return `${source}:${externalId}`;
+}
+
+function modelConfigSelectionKey(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const source = Reflect.get(value, "source");
+  const externalId = Reflect.get(value, "externalId");
+  if (
+    !isModelConfigImportSource(source) ||
+    typeof externalId !== "string" ||
+    !externalId
+  ) {
+    return null;
+  }
+  return modelConfigImportKey(source, externalId);
 }
 
 
@@ -6001,7 +6016,7 @@ function registerIpc() {
         | { id: string; defaultModelId?: string; models?: Array<{ id: string }> }
         | undefined;
       for (const selection of items) {
-        const key = importSelectionKey(selection);
+        const key = modelConfigSelectionKey(selection);
         const draft = key ? scannedModelConfigs.get(key) : undefined;
         if (!draft) {
           failed += 1;

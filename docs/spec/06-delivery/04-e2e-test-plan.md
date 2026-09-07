@@ -8007,9 +8007,9 @@ are withdrawn with ADR 0165.
 
 - **Preconditions**: At least one supported local config exists among
   `~/.claude/settings.json`, `~/.codex/config.toml` `[model_providers.*]`,
-  `~/.config/opencode/opencode.json`, or `~/.pi/agent/models.json`, including
-  one API-key provider and optionally one OAuth-only vendor. PI-Desktop may
-  already have an equivalent endpoint.
+  `~/.config/opencode/opencode.json`, `~/.pi/agent/models.json`, or
+  `~/.cc-switch/cc-switch.db`, including one API-key provider and optionally
+  one OAuth-only vendor. PI-Desktop may already have an equivalent endpoint.
 - **Steps**:
   1. Open Settings → Import. Confirm a Sessions card and a Model
      configuration card, each with its own Scan.

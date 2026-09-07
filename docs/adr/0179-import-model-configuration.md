@@ -37,6 +37,11 @@ credentials. Copying refresh tokens would be the wrong security boundary.
    - OpenCode: `~/.config/opencode/opencode.json` `provider` map plus
      `~/.local/share/opencode/auth.json` API keys
    - Pi: `~/.pi/agent/models.json` (fallback `~/.pi/models.json`)
+   - CC Switch: `~/.cc-switch/cc-switch.db` `providers` table (legacy
+     `config.json`). Each row's `settings_config` is converted by app type.
+     Empty official seeds and OAuth-only rows are omitted. A live Claude /
+     Codex / OpenCode / Pi file that matches a CC Switch endpoint is not
+     listed twice.
 
 3. **IPC** (Electron only, no host protocol bump):
    `pi-desktop/modelConfig/importScan` returns public drafts

@@ -2645,6 +2645,7 @@ candidates grouped by source, select them, and start an explicit import.
 ──────────────────────────────────────────────────────────────────
 [ ] [›] Claude Code                                      N providers
 [ ] [›] OpenCode                                         N providers
+[ ] [›] CC Switch                                        N providers
 ```
 
 - The card is independent of session import: its own Scan, selection, and
@@ -2656,6 +2657,8 @@ candidates grouped by source, select them, and start an explicit import.
 - Import creates one `providers.create` row per selected candidate. An
   existing provider with the same normalized base URL and API style is
   skipped. OAuth-only source accounts are omitted from the scan.
+  CC Switch is a fifth source (`~/.cc-switch/cc-switch.db`); a live tool
+  file that matches a CC Switch endpoint is not listed twice.
 - If `settings.defaultProviderId` is empty after a successful create, the
   first new provider becomes the global default.
 

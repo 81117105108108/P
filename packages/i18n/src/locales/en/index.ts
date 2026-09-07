@@ -705,6 +705,7 @@ export const en = {
     importSourceOpenCode: "OpenCode",
     importSourceCodex: "Codex",
     importSourcePi: "Pi",
+    importSourceCcSwitch: "CC Switch",
     importModelsTitle: "Model configuration",
     importModelsScanDesc:
       "Find local provider and model settings. Stored API keys are copied; subscription logins are not.",

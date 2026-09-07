@@ -105,3 +105,57 @@ test("settings import and protocol expose model-config import independently of s
   assert.match(mainSource, /providers\.create/);
   assert.match(mainSource, /publicModelConfigCandidate/);
 });
+
+test("scanModelConfigs reads CC Switch sqlite profiles and does not duplicate the live Claude file", async () => {
+  const home = await mkdtemp(join(tmpdir(), "pi-cc-switch-import-"));
+  await mkdir(join(home, ".claude"), { recursive: true });
+  await mkdir(join(home, ".cc-switch"), { recursive: true });
+  await writeFile(
+    join(home, ".claude", "settings.json"),
+    JSON.stringify({
+      env: {
+        ANTHROPIC_API_KEY: "sk-live",
+        ANTHROPIC_BASE_URL: "https://cc.example/v1",
+      },
+      model: "claude-sonnet",
+    }),
+  );
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(join(home, ".cc-switch", "cc-switch.db"));
+  db.exec(
+    "CREATE TABLE providers (id TEXT, app_type TEXT, name TEXT, settings_config TEXT)",
+  );
+  db.prepare("INSERT INTO providers VALUES (?, ?, ?, ?)").run(
+    "packy",
+    "claude",
+    "Packy",
+    JSON.stringify({
+      env: {
+        ANTHROPIC_API_KEY: "sk-cc",
+        ANTHROPIC_BASE_URL: "https://cc.example/v1",
+        ANTHROPIC_MODEL: "claude-sonnet",
+      },
+    }),
+  );
+  db.prepare("INSERT INTO providers VALUES (?, ?, ?, ?)").run(
+    "other",
+    "claude",
+    "Other",
+    JSON.stringify({
+      env: {
+        ANTHROPIC_API_KEY: "sk-other",
+        ANTHROPIC_BASE_URL: "https://other.example",
+        ANTHROPIC_MODEL: "claude-haiku",
+      },
+    }),
+  );
+  db.close();
+
+  const drafts = await scanModelConfigs({ homeDir: home, env: {} });
+  assert.deepEqual(
+    drafts.map((d) => `${d.source}:${d.externalId}`).sort(),
+    ["cc-switch:claude:other", "cc-switch:claude:packy"].sort(),
+  );
+  assert.equal(drafts.find((d) => d.externalId === "claude:packy")?.name, "Packy");
+  assert.equal(drafts.find((d) => d.externalId === "claude:packy")?.secretValue, "sk-cc");
+});

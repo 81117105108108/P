@@ -4,6 +4,8 @@ import {
   draftMatchesExisting,
   existingProviderMatchKey,
   isPlaceholderSecret,
+  parseCcSwitchConfigJson,
+  parseCcSwitchProviders,
   parseClaudeCodeModelConfig,
   parseCodexModelConfig,
   parseJsonDocument,
@@ -242,6 +244,87 @@ describe("matching and sanitizing", () => {
     });
     expect(JSON.stringify(publicModelConfigCandidate(draft))).not.toContain("sk-secret");
     expect(draft.models[0]).toEqual(bindingForCustomModel("claude-sonnet"));
+  });
+});
+
+describe("parseCcSwitchProviders", () => {
+  it("reads Claude, OpenCode, and Gemini rows and skips empty official seeds", () => {
+    const drafts = parseCcSwitchProviders([
+      {
+        id: "claude-official",
+        appType: "claude",
+        name: "Claude Official",
+        settingsConfig: { env: {} },
+      },
+      {
+        id: "packy",
+        appType: "claude",
+        name: "Packy",
+        settingsConfig: {
+          env: {
+            ANTHROPIC_API_KEY: "sk-cc",
+            ANTHROPIC_BASE_URL: "https://cc.example/v1",
+            ANTHROPIC_MODEL: "claude-sonnet",
+          },
+        },
+      },
+      {
+        id: "ink",
+        appType: "opencode",
+        name: "ink",
+        settingsConfig: {
+          npm: "@ai-sdk/openai-compatible",
+          options: { baseURL: "https://api.oj.ink/v1", apiKey: "{env:INK_KEY}" },
+          models: { "mimo-v2.5": { name: "mimo-v2.5" } },
+        },
+      },
+      {
+        id: "gemini-gw",
+        appType: "gemini",
+        name: "Gemini GW",
+        settingsConfig: {
+          env: {
+            GEMINI_API_KEY: "sk-gem",
+            GOOGLE_GEMINI_BASE_URL: "https://gem.example/v1",
+          },
+          config: { model: "gemini-2.5-pro" },
+        },
+      },
+    ], { INK_KEY: "sk-ink" });
+
+    expect(drafts.map((d) => d.externalId).sort()).toEqual(
+      ["claude:packy", "gemini:gemini-gw", "opencode:ink"].sort(),
+    );
+    expect(drafts.find((d) => d.externalId === "claude:packy")).toMatchObject({
+      source: "cc-switch",
+      name: "Packy",
+      baseUrl: "https://cc.example/v1",
+      apiStyle: "anthropic_messages",
+      secretValue: "sk-cc",
+    });
+    expect(drafts.find((d) => d.externalId === "opencode:ink")?.secretValue).toBe("sk-ink");
+    expect(drafts.find((d) => d.externalId === "gemini:gemini-gw")?.modelIds).toEqual([
+      "gemini-2.5-pro",
+    ]);
+  });
+
+  it("parses the legacy MultiAppConfig JSON", () => {
+    const rows = parseCcSwitchConfigJson({
+      version: 2,
+      claude: {
+        providers: {
+          a: {
+            name: "Relay",
+            settingsConfig: {
+              env: { ANTHROPIC_API_KEY: "sk", ANTHROPIC_BASE_URL: "https://r.example" },
+              model: "claude-sonnet",
+            },
+          },
+        },
+      },
+    });
+    expect(rows).toHaveLength(1);
+    expect(parseCcSwitchProviders(rows)[0]?.source).toBe("cc-switch");
   });
 });
 

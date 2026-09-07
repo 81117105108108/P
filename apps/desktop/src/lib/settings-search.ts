@@ -191,6 +191,7 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "settings.importSourceOpenCode",
       "settings.importSourceCodex",
       "settings.importSourcePi",
+      "settings.importSourceCcSwitch",
     ],
   },
   {

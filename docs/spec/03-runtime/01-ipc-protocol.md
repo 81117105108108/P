@@ -701,8 +701,8 @@ Minimal interface:
 Import candidates carry `projectPath: string | null`. A successful import
 refreshes both sessions and the durable Projects index.
 
-`modelConfig/importScan` reads Claude Code, Codex, OpenCode, and Pi config
-files from the user home directory and returns public provider drafts
+`modelConfig/importScan` reads Claude Code, Codex, OpenCode, Pi, and CC
+Switch config files from the user home directory and returns public provider drafts
 (`source`, `externalId`, `name`, `baseUrl`, `apiStyle`, `modelIds`,
 `hasSecret`). Secrets stay in the main-process scan cache and are written
 through `providers.create` on `modelConfig/importRun`. Re-importing a
