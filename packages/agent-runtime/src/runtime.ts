@@ -130,7 +130,7 @@ import {
   openCodeEndpointFromProvider,
   withOpenCodeSessionHeaders,
 } from "./opencode-session-headers.js";
-import { withProviderUserAgent } from "./provider-user-agent.js";
+import { providerHeadersEqual, withProviderHeaders } from "./provider-headers.js";
 import {
   captureProviderResponse,
   classifyProviderError,
@@ -1399,7 +1399,7 @@ Delegation rules:
         this.setAgentActivity({ phase: "waiting-model", since: Date.now() });
         this.providerResponseStatus = undefined;
         this.providerRetryHeaders = undefined;
-        const requestOptions: SimpleStreamOptions = withProviderUserAgent(
+        const requestOptions: SimpleStreamOptions = withProviderHeaders(
           withOpenCodeSessionHeaders(
             {
               ...options,
@@ -1427,7 +1427,7 @@ Delegation rules:
               sessionId: this.sessionId,
             },
           ),
-          this.provider.userAgent,
+          this.provider.headers,
         );
         return createProviderRetryStream(
           m,
@@ -1634,7 +1634,7 @@ Delegation rules:
       this.provider.apiKey === config.provider.apiKey &&
       this.provider.authKind === config.provider.authKind &&
       (this.provider.apiStyle ?? "") === (config.provider.apiStyle ?? "") &&
-      (this.provider.userAgent ?? "") === (config.provider.userAgent ?? "") &&
+      providerHeadersEqual(this.provider.headers, config.provider.headers) &&
       this.provider.supportsReasoning === config.provider.supportsReasoning &&
       currentThinkingLevels === nextThinkingLevels &&
       safeJson(this.provider.modelConfig ?? null) ===

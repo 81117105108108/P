@@ -50,7 +50,7 @@ function canDiscover(baseUrl: string): boolean {
  */
 export function useProviderModels(
   active: boolean,
-  form: { baseUrl: string; apiKey: string; apiStyle: string; userAgent?: string },
+  form: { baseUrl: string; apiKey: string; apiStyle: string; headers?: Record<string, string> },
   editingProvider?: ProviderPublic | null,
 ): ProviderModelsState {
   const [state, setState] = useState<ProviderModelsState>(IDLE);
@@ -59,7 +59,8 @@ export function useProviderModels(
   const requestSeq = useRef(0);
   const endpointRef = useRef<string | null>(null);
 
-  const { baseUrl, apiKey, apiStyle, userAgent } = form;
+  const { baseUrl, apiKey, apiStyle, headers } = form;
+  const headersKey = JSON.stringify(headers ?? {});
   const providerId = editingProvider?.id;
 
   useEffect(() => {
@@ -111,7 +112,7 @@ export function useProviderModels(
           baseUrl: baseUrl.trim(),
           ...(apiKey ? { apiKey } : {}),
           apiStyle,
-          ...(userAgent?.trim() ? { userAgent } : {}),
+          ...(Object.keys(headers ?? {}).length > 0 ? { headers } : {}),
         });
         if (requestSeq.current !== requestId) return;
         if (result.models.length > 0) {
@@ -145,7 +146,7 @@ export function useProviderModels(
     const immediate = !!providerId && !apiKey && !endpointChanged;
     const timer = setTimeout(() => void run(), immediate ? 0 : FETCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [active, baseUrl, apiKey, apiStyle, userAgent, providerId]);
+  }, [active, baseUrl, apiKey, apiStyle, headersKey, providerId]);
 
   return state;
 }

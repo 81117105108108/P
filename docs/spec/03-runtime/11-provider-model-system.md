@@ -72,11 +72,11 @@ request (session turns, subagents, prompt enhancement, and plugin
 one-shots): `x-opencode-session` is the durable conversation id (or a
 per-call UUID when the caller has no session), `x-opencode-client` is
 `pi-desktop`, and `User-Agent` is `pi-desktop/<APP_VERSION>` unless the row
-sets `userAgent`. A custom OpenAI-compatible row whose base URL host is
-`opencode.ai` receives the same headers. pi-ai is not relied on to emit
-`x-opencode-session`. Each provider row (AI service or OAuth account) may
-set an optional `userAgent`; empty keeps the adapter default. A fetch
-wrapper is the last writer so Codex and Anthropic cannot overwrite it.
+sets `headers["User-Agent"]`. A custom OpenAI-compatible row whose base URL
+host is `opencode.ai` receives the same headers. pi-ai is not relied on to
+emit `x-opencode-session`. Each provider row (AI service or OAuth account)
+may set optional `headers`; empty keeps adapter defaults. A fetch wrapper is
+the last writer so Codex and Anthropic cannot overwrite them.
 
 Zhipu / GLM and Z.AI are named OpenAI-compatible endpoint presets among a
 short models.dev-backed Service list of first-party vendors (including
@@ -248,8 +248,7 @@ type ProviderConfig = {
   baseUrl?: string
   authKind: ProviderAuthKind
   secretRef?: string            // pointer into secret store
-  userAgent?: string            // optional User-Agent; empty keeps adapter default
-  headers?: Record<string, string> // unused; userAgent is the supported override
+  headers?: Record<string, string> // optional outbound headers; empty keeps adapter defaults
   apiStyle?:
     | "chat_completions"
     | "opencode_go"
@@ -423,9 +422,9 @@ type ModelDescriptor = {
 - add custom provider
 - edit base URL/headers
 - set/replace/delete key
-- set an optional User-Agent in Advanced (empty keeps the adapter default)
+- set optional custom headers in Advanced (empty keeps adapter defaults)
 - sign in to / out of a vendor account, and see which account a row uses
-- edit a vendor account's non-secret label, User-Agent, and default model
+- edit a vendor account's non-secret label, custom headers, and default model
 - enable/disable provider
 - test connection
 - select multiple models and edit each binding's context window, output limit,
@@ -562,8 +561,7 @@ Required fields:
 Optional:
 - `apiStyle` (`chat_completions` | `opencode_go` | `responses` | `auto`)
 - compatibility flags
-- `userAgent` (optional outbound User-Agent; empty keeps the adapter default)
-- custom headers (non-secret; not implemented — use `userAgent`)
+- `headers` (optional outbound HTTP headers; empty keeps adapter defaults)
 
 For the OpenAI Chat Completions adapter, system instructions use the
 standard `system` role by default. This keeps arbitrary compatible gateways

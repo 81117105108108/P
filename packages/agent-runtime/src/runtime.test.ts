@@ -276,7 +276,7 @@ describe("DesktopAgentRuntime configuration matching", () => {
     ).toBe(false);
     expect(
       runtimeMatches(runtime, {
-        provider: { ...oauthProvider, userAgent: "Custom/1" },
+        provider: { ...oauthProvider, headers: { "User-Agent": "Custom/1" } },
       }),
     ).toBe(false);
 

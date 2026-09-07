@@ -733,9 +733,10 @@ URL host is `opencode.ai` send:
 
 Caller-supplied headers override the client and User-Agent defaults. An empty
 session header is restored from the conversation id so OpenCode Go cannot
-return `MissingSessionID`. A provider-row `userAgent` is applied after this
-merge (headers plus a fetch wrapper) so it wins over the OpenCode default
-and over adapter last-writes. This is an agent-runtime concern, matching the
+return `MissingSessionID`. A provider-row `headers` map is applied after this
+merge (headers plus a fetch wrapper) so custom values win over the OpenCode
+default and over adapter last-writes. Reserved keys cannot smash
+`x-opencode-session`. This is an agent-runtime concern, matching the
 official Pi coding-agent attribution layer; pi-ai's `sessionId` stream option
 does not emit `x-opencode-session`.
 

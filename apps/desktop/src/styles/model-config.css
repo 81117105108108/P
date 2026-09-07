@@ -349,10 +349,30 @@
 }
 
 .provider-setup-advanced {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.provider-setup-headers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.provider-setup-headers-label {
+  color: var(--ds-text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+
+.provider-setup-headers-hint {
+  margin: 0;
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-tight);
 }
 
 /* Pick on the left, review on the right; both stretch to the same height. */
@@ -1337,8 +1357,7 @@
 
 @media (max-width: 940px) {
   /* Two panes stop being readable before the dialog itself gets narrow. */
-  .provider-setup-fields,
-  .provider-setup-advanced {
+  .provider-setup-fields {
     grid-template-columns: minmax(0, 1fr);
   }
 

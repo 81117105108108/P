@@ -43,9 +43,14 @@ Tables (canonical DDL in [04-data-storage](04-data-storage.md) §4.3–4.4, §4.
     "secretRef": { "type": "string" },
     "headers": {
       "type": "object",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": { "type": "string" },
+      "maxProperties": 32
     },
-    "userAgent": { "type": "string", "maxLength": 256 },
+    "userAgent": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "legacy; migrates into headers.User-Agent"
+    },
     "apiStyle": {
       "enum": [
         "chat_completions",
@@ -189,19 +194,27 @@ on session turns, subagent turns, prompt enhancement, and plugin one-shots.
 Caller-supplied headers override the client and User-Agent values; a missing
 or empty session header is always restored from the conversation id.
 
-`userAgent` is an optional per-row override stored in `config_json.userAgent`.
-Empty or omitted keeps the adapter default (pi-ai's `pi (…)` string, Anthropic
-OAuth's `claude-cli/<version>`, or OpenCode's `pi-desktop/<APP_VERSION>`). A
-non-empty trimmed value is sent as `User-Agent` on that row's outbound HTTP —
-session turns, subagents, prompt enhancement, plugin one-shots, `/models`
-discovery, connection tests, and OAuth token refresh. A fetch wrapper is the
-last writer so Codex and the Anthropic SDK cannot overwrite it. Updating with
-`""` clears the override. CR/LF are rejected (header injection). Max 256
-bytes. This is not a secret. The unused `headers` map is not implemented; if
-it is added later, `userAgent` remains the UI alias and wins over
-`headers["User-Agent"]`. Overriding Anthropic OAuth's `claude-cli/…` User-Agent
-can make Claude Pro/Max reject the request. First OAuth login does not collect
-a User-Agent; it is edited on the account after it exists.
+`headers` is an optional per-row map stored in `config_json.headers`. Empty,
+omitted, or update `{}` keeps the adapter default (pi-ai's `pi (…)` string,
+Anthropic OAuth's `claude-cli/<version>`, or OpenCode's
+`pi-desktop/<APP_VERSION>`). A non-empty map is last-writer on that row's
+outbound HTTP — session turns, subagents, prompt enhancement, plugin one-shots,
+`/models` discovery (including unsaved form values), connection tests, and
+OAuth token refresh. A fetch wrapper is the last writer so Codex and the
+Anthropic SDK cannot overwrite it. The same values are also placed on stream-
+option headers so OpenCode's caller-wins rule stays true. Keys are
+case-insensitive unique, at most 32 entries, name ≤ 256 bytes, value ≤ 4096
+bytes, no CR/LF, names alphanumeric plus hyphen. Reserved keys
+(`authorization`, `proxy-authorization`, `host`, `content-type`,
+`content-length`, `cookie`, `set-cookie`, `connection`, `transfer-encoding`,
+`te`, `trailer`, `upgrade`, `keep-alive`, `x-api-key`, `api-key`,
+`chatgpt-account-id`, `x-opencode-session`) are rejected so this cannot smash
+signing or app routing. This is not a secret. Leftover `config_json.userAgent`
+migrates into `headers["User-Agent"]` on read; writing `headers` drops it.
+Overriding Anthropic OAuth's `claude-cli/…` User-Agent can make Claude Pro/Max
+reject the request. First OAuth login does not collect headers; they are
+edited on the account after it exists. Advanced UI is a compact key/value
+editor, not a dedicated User-Agent field.
 
 ## 3. Built-in vendor presets
 
@@ -353,13 +366,13 @@ The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary
 - out: `{ providers: ProviderPublic[] }`
 - `ProviderPublic` excludes raw secrets; includes `hasSecret: boolean` (true
   for **either** credential), `hasOauth: boolean`, the non-secret
-  `oauthAccountLabel?: string`, and optional `userAgent?: string`
+  `oauthAccountLabel?: string`, and optional `headers?: Record<string, string>`
 
 ### `providers.create` / `providers.update`
 - in: provider fields + optional `secretValue` + optional `oauthAccountLabel`
   (merged into `config_json.oauth`, cleared with an empty string) + optional
-  `userAgent` (merged into `config_json.userAgent`, cleared with an empty
-  string); legacy
+  `headers` (merged into `config_json.headers`, cleared with `{}`); leftover
+  `config_json.userAgent` migrates into `headers["User-Agent"]` on read; legacy
   clients may still send `supportsReasoning` / `supportedThinkingLevels`; new
   clients send `models: ModelBinding[]`
 - behavior: persist config; if secretValue present, write secret store and set
@@ -421,8 +434,10 @@ The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary
 2. `openai_compatible` / local gateways require absolute `baseUrl` unless preset says optional
 3. `apiStyle=opencode_go` requires the fixed OpenCode Go name and endpoint; clients must not accept overrides
 4. `authKind=none` forbidden for cloud presets that require keys
-5. headers keys are case-insensitive unique
-6. `userAgent` is trimmed, at most 256 bytes, and must not contain CR or LF
+5. headers keys are case-insensitive unique, at most 32 entries; names
+   alphanumeric plus hyphen; values trimmed, at most 4096 bytes, no CR/LF
+6. reserved header names (`authorization`, `host`, `content-type`,
+   `x-api-key`, `x-opencode-session`, and the rest listed above) are rejected
 7. secretValue max length enforced (e.g. 8KB)
 8. modelId must be non-empty trimmed string; allow `/`, `.`, `:`, `-`
 9. unknown protocol on older clients => provider shown disabled with warning, not crash

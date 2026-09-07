@@ -238,8 +238,9 @@ a usage tab.
     and trims pasted operation paths such as `/models`, `/messages`,
     `/chat/completions`, or `/responses` when the field loses focus. Invalid
     URLs show an inline error and block discovery and save. Named display names
-    and the optional User-Agent stay behind Advanced. Empty User-Agent keeps
-    the adapter default.
+    and optional custom headers stay behind Advanced. Empty headers keep
+    adapter defaults. The Advanced block is a single column: named display
+    name, then a compact key/value header editor.
     Service is a searchable anchored menu of vendors (filter by localized
     name, vendor key, alias, or host), not a native select, region grouping,
     stepper, or vendor-card grid. Saved named rows store the models.dev `vendorKey` and

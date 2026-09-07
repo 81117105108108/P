@@ -320,29 +320,32 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Unit-covered; rendered UI scenario pending
 
-#### E2E-005G: Per-provider custom User-Agent
+#### E2E-005G: Per-provider custom HTTP headers
 
 - **Preconditions**: One API-key AI service (including an OpenCode Go row) and
   one signed-in vendor (OAuth) account; a capture proxy records outbound HTTP
   headers, including Codex and Anthropic adapters.
-- **Steps**: 1) Open the AI service, expand Advanced, set User-Agent to
-  `CustomAgent/1.0`, and save. 2) Start an Agent turn, a follow-up, prompt
-  enhancement, and a plugin one-shot. 3) Refresh `/models` from the form
-  before saving a second change and confirm the unsaved value is sent. 4)
-  Clear the field and save; confirm adapter defaults return. 5) Edit the
-  OAuth account Advanced User-Agent, save, then run a turn that refreshes
-  the access token. 6) Repeat against OpenCode Go and confirm
-  `x-opencode-session` is still present. 7) Repeat against Codex/Anthropic
-  OAuth inference.
-- **Expected**: A non-empty User-Agent is the last writer on that row's
+- **Steps**: 1) Open the AI service, expand Advanced, add `User-Agent:
+  CustomAgent/1.0` and `X-Gateway: alpha`, and save. 2) Start an Agent turn,
+  a follow-up, prompt enhancement, and a plugin one-shot. 3) Refresh
+  `/models` from the form before saving a second change and confirm the
+  unsaved headers are sent. 4) Clear the rows and save; confirm adapter
+  defaults return. 5) Edit the OAuth account Advanced headers, save, then
+  run a turn that refreshes the access token. 6) Repeat against OpenCode Go
+  and confirm `x-opencode-session` is still present. 7) Repeat against
+  Codex/Anthropic OAuth inference. 8) Attempt `Authorization` and CR/LF
+  values; save is rejected.
+- **Expected**: Non-empty custom headers are the last writer on that row's
   outbound HTTP (turns, subagents, one-shots, discovery, connection test,
   OAuth refresh). Empty restores pi-ai / `claude-cli` / OpenCode defaults.
   OpenCode still sends `x-opencode-session` and `x-opencode-client`. Codex
-  and Anthropic still send the custom value despite adapter last-writes.
-  First OAuth login does not collect a User-Agent. CR/LF is rejected.
+  and Anthropic still send the custom User-Agent despite adapter last-writes.
+  First OAuth login does not collect headers. Reserved keys and CR/LF are
+  rejected. Advanced is a compact key/value editor, not a lone User-Agent
+  field.
 - **Specs linked**: `03-runtime/12-provider-config-schema.md`,
   `03-runtime/11-provider-model-system.md`, `03-runtime/02-agent-runtime.md`,
-  ADR 0176
+  ADR 0178
 - **Acceptance**: B (model configuration), F (runtime provider requests)
 - **Milestone**: M2
 - **Status**: Unit-covered (host persistence, fetch wrapper, discovery,

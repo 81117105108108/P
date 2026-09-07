@@ -23,7 +23,7 @@ import {
   openCodeEndpointFromProvider,
   withOpenCodeSessionHeaders,
 } from "./opencode-session-headers.js";
-import { withProviderUserAgent } from "./provider-user-agent.js";
+import { withProviderHeaders } from "./provider-headers.js";
 import {
   captureProviderResponse,
   createProviderRetryStream,
@@ -85,7 +85,7 @@ export async function completeOneShot(
   let transientRetryAttempt = 0;
   let rateLimitRetryAttempt = 0;
 
-  const requestOptions: SimpleStreamOptions = withProviderUserAgent(
+  const requestOptions: SimpleStreamOptions = withProviderHeaders(
     withOpenCodeSessionHeaders(
       {
         ...(options.signal ? { signal: options.signal } : {}),
@@ -101,7 +101,7 @@ export async function completeOneShot(
         sessionId: options.sessionId,
       },
     ),
-    provider.userAgent,
+    provider.headers,
   );
   const stream = createProviderRetryStream(
     model,

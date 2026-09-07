@@ -223,11 +223,14 @@ test("the panes stack again before the dialog gets too narrow to read", () => {
   );
 });
 
-test("Advanced holds an optional User-Agent on named, custom, and vendor editors", () => {
-  assert.match(setupSource, /settings\.userAgent/);
-  assert.match(setupSource, /settings\.userAgentHint/);
-  assert.match(vendorDialogSource, /settings\.userAgent/);
+test("Advanced holds a compact header editor on named, custom, and vendor editors", () => {
+  assert.match(setupSource, /ProviderHeadersEditor/);
+  assert.match(vendorDialogSource, /ProviderHeadersEditor/);
   assert.match(vendorDialogSource, /provider-setup-advanced-toggle/);
+  const advanced = block(".provider-setup-advanced");
+  assert.match(advanced, /flex-direction: column/);
+  assert.doesNotMatch(advanced, /grid-template-columns: repeat\(2/);
+  assert.match(block(".provider-setup-headers"), /flex-direction: column/);
   // Named and custom both expose Advanced; API format stays beside the key.
   const fieldsBlock = setupSource.slice(
     setupSource.indexOf("provider-setup-fields"),

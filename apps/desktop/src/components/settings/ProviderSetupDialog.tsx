@@ -16,7 +16,9 @@ import {
   type ProviderPublic,
 } from "@pi-desktop/shared";
 import { api } from "../../lib/api";
+import { pairsToRecord, recordToPairs } from "../extensions/KeyValueRows";
 import { Button, Field, Input, Select } from "../ui";
+import { ProviderHeadersEditor } from "./ProviderHeadersEditor";
 import { useProviderModels } from "./useProviderModels";
 import { ModelSelectionPanes, useModelSelection } from "./ModelSelectionPanes";
 import { CUSTOM_SERVICE, ServicePicker } from "./ServicePicker";
@@ -171,8 +173,8 @@ export function ProviderSetupDialog({
   const [apiStyle, setApiStyle] = useState<CatalogApiStyle>(
     (provider?.apiStyle as CatalogApiStyle) ?? "chat_completions",
   );
-  const [advanced, setAdvanced] = useState(() => Boolean(provider?.userAgent));
-  const [userAgent, setUserAgent] = useState(provider?.userAgent ?? "");
+  const [headerPairs, setHeaderPairs] = useState(() => recordToPairs(provider?.headers));
+  const [advanced, setAdvanced] = useState(() => headerPairs.length > 0);
   const [models, setModels] = useState<ModelBinding[]>(provider?.models ?? []);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -196,13 +198,14 @@ export function ProviderSetupDialog({
     Boolean(service) &&
     !baseUrlIssue &&
     (custom || Boolean(apiKey.trim()) || Boolean(provider));
+  const headers = pairsToRecord(headerPairs);
   const discovery = useProviderModels(
     discoveryActive,
     {
       baseUrl: requestBaseUrl,
       apiKey,
       apiStyle: resolvedApiStyle,
-      userAgent,
+      headers,
     },
     provider,
   );
@@ -300,7 +303,7 @@ export function ProviderSetupDialog({
           defaultModelId: persisted[0]?.id,
           models: persisted,
           apiStyle: resolvedApiStyle,
-          userAgent,
+          headers,
           ...(apiKey ? { secretValue: apiKey } : {}),
         });
         onSaved(result.provider ?? provider, persisted);
@@ -316,7 +319,7 @@ export function ProviderSetupDialog({
           models: persisted,
           secretValue: apiKey || undefined,
           apiStyle: resolvedApiStyle,
-          userAgent,
+          headers,
         });
         onSaved(result.provider, persisted);
       }
@@ -527,17 +530,7 @@ export function ProviderSetupDialog({
                         />
                       </Field>
                     ) : null}
-                    <Field
-                      label={t("settings.userAgent")}
-                      hint={t("settings.userAgentHint")}
-                    >
-                      <Input
-                        value={userAgent}
-                        className="font-mono text-sm-plus"
-                        autoComplete="off"
-                        onChange={(event) => setUserAgent(event.target.value)}
-                      />
-                    </Field>
+                    <ProviderHeadersEditor pairs={headerPairs} onChange={setHeaderPairs} />
                   </div>
                 ) : null}
               </>

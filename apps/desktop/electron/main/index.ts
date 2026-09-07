@@ -110,7 +110,8 @@ import {
   loadInstructionChain,
   loadSubagentDefinitions,
   resolveSubagentProviders,
-  withUserAgentHeaders,
+  mergeProviderHeaders,
+  optionalProviderHeaders,
   type ComposerTemplate,
   type ThinkingCapabilities,
   type RuntimeProviderConfig,
@@ -882,7 +883,7 @@ type RuntimeProvider = {
   hasSecret?: boolean;
   hasOauth?: boolean;
   oauthAccountLabel?: string;
-  userAgent?: string;
+  headers?: Record<string, string>;
   enabled?: boolean;
   supportsVision?: boolean;
 };
@@ -1533,7 +1534,7 @@ async function resolveAgentRuntimeLaunch(
         apiKey,
         ...(row.authKind ? { authKind: row.authKind } : {}),
         ...(row.apiStyle ? { apiStyle: row.apiStyle } : {}),
-        ...(row.userAgent ? { userAgent: row.userAgent } : {}),
+        ...optionalProviderHeaders(row.headers),
         supportsReasoning: caps.supportsReasoning,
         supportedThinkingLevels: [...caps.supportedThinkingLevels],
         ...(mc ? { modelConfig: mc } : {}),
@@ -1593,7 +1594,7 @@ async function resolveAgentRuntimeLaunch(
         apiKey: secret.value || "",
         authKind: provider.authKind,
         apiStyle,
-        ...(provider.userAgent ? { userAgent: provider.userAgent } : {}),
+        ...optionalProviderHeaders(provider.headers),
         supportsReasoning: thinkingCapabilities.supportsReasoning,
         supportsVision: visionFromModelConfig(modelConfig),
         supportedThinkingLevels: [...thinkingCapabilities.supportedThinkingLevels],
@@ -6051,7 +6052,7 @@ function registerIpc() {
     );
     if (!local.ok) return { ...local, network: "skipped" };
     const detail = await host.call<{
-      provider?: { baseUrl?: string; authKind?: string; userAgent?: string };
+      provider?: { baseUrl?: string; authKind?: string; headers?: Record<string, string> };
     }>("providers.get", { id });
     // A vendor account proves itself by resolving auth — refreshing the token
     // if it has expired — not by probing /models with a key it does not have.
@@ -6075,9 +6076,9 @@ function registerIpc() {
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/models`, {
-        headers: withUserAgentHeaders(
+        headers: mergeProviderHeaders(
           secret.value ? { Authorization: `Bearer ${secret.value}` } : {},
-          detail.provider?.userAgent,
+          detail.provider?.headers,
         ),
         signal: controller.signal,
       });
@@ -6147,7 +6148,7 @@ function registerIpc() {
             baseUrl?: string;
             apiKey?: string;
             apiStyle?: string;
-            userAgent?: string;
+            headers?: Record<string, string>;
             source?: "cache" | "refresh";
           },
     ) => {
@@ -6379,7 +6380,7 @@ function registerIpc() {
             baseUrl,
             apiKey,
             apiStyle,
-            userAgent: req.userAgent ?? provider?.userAgent,
+            headers: req.headers ?? provider?.headers,
           });
           if (discovered.length > 0) {
             const models = discovered.map((model) => decorate(model));

@@ -15,7 +15,9 @@ import {
   type ProviderPublic,
 } from "@pi-desktop/shared";
 import { useTranslation } from "react-i18next";
+import { pairsToRecord, recordToPairs } from "../extensions/KeyValueRows";
 import { Button, Field, Input } from "../ui";
+import { ProviderHeadersEditor } from "./ProviderHeadersEditor";
 import { useProviderModels } from "./useProviderModels";
 import { ModelSelectionPanes, useModelSelection } from "./ModelSelectionPanes";
 
@@ -24,7 +26,7 @@ export type VendorAccountForm = {
   /** The account's default model; always `models[0]`. */
   modelId: string;
   models: ModelBinding[];
-  userAgent: string;
+  headers: Record<string, string>;
 };
 
 export function VendorAccountDialog({
@@ -42,8 +44,8 @@ export function VendorAccountDialog({
 }) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialName);
-  const [advanced, setAdvanced] = useState(() => Boolean(provider.userAgent));
-  const [userAgent, setUserAgent] = useState(provider.userAgent ?? "");
+  const [headerPairs, setHeaderPairs] = useState(() => recordToPairs(provider.headers));
+  const [advanced, setAdvanced] = useState(() => headerPairs.length > 0);
   const [models, setModels] = useState<ModelBinding[]>(
     provider.models.length > 0
       ? provider.models
@@ -53,13 +55,14 @@ export function VendorAccountDialog({
   );
 
   // A vendor account has no typed key: the host resolves the stored login.
+  const headers = pairsToRecord(headerPairs);
   const discovery = useProviderModels(
     true,
     {
       baseUrl: provider.baseUrl ?? "",
       apiKey: "",
       apiStyle: provider.apiStyle ?? "",
-      userAgent,
+      headers,
     },
     provider,
   );
@@ -86,7 +89,7 @@ export function VendorAccountDialog({
       name: name.trim(),
       modelId: persisted[0].id,
       models: persisted,
-      userAgent,
+      headers,
     });
   };
 
@@ -131,17 +134,7 @@ export function VendorAccountDialog({
           </button>
           {advanced ? (
             <div className="provider-setup-advanced">
-              <Field
-                label={t("settings.userAgent")}
-                hint={t("settings.userAgentHint")}
-              >
-                <Input
-                  value={userAgent}
-                  className="font-mono text-sm-plus"
-                  autoComplete="off"
-                  onChange={(event) => setUserAgent(event.target.value)}
-                />
-              </Field>
+              <ProviderHeadersEditor pairs={headerPairs} onChange={setHeaderPairs} />
             </div>
           ) : null}
 
