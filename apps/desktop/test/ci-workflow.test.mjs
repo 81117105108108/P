@@ -12,6 +12,7 @@ const [
   pluginSdkPackageSource,
   sharedPackageSource,
   releaseMacScriptSource,
+  releaseAsarScriptSource,
 ] = await Promise.all([
   read("../../../.github/workflows/ci.yml"),
   read("../../../.github/workflows/release.yml"),
@@ -20,6 +21,7 @@ const [
   read("../../../packages/plugin-sdk/package.json"),
   read("../../../packages/shared/package.json"),
   read("../../../scripts/release-macos.sh"),
+  read("../../../scripts/export-linux-asar.mjs"),
 ]);
 
 test("CI skips documentation-only pushes and pull requests", () => {
@@ -83,6 +85,22 @@ test("release artifacts bypass redundant Actions compression", () => {
   assert.match(
     releaseWorkflowSource,
     /uses: actions\/upload-artifact@v4[\s\S]*?compression-level: 0/,
+  );
+});
+
+test("release workflow publishes the Linux ASAR beside installers", () => {
+  assert.match(
+    releaseWorkflowSource,
+    /if: matrix\.platform == 'linux'[\s\S]*?node scripts\/export-linux-asar\.mjs/,
+  );
+  assert.match(releaseWorkflowSource, /apps\/desktop\/release\/\*\.asar/);
+  assert.match(
+    releaseAsarScriptSource,
+    /linux-unpacked\/resources\/app\.asar/,
+  );
+  assert.match(
+    releaseAsarScriptSource,
+    /PI-Desktop-\$\{releaseVersion\}-linux-x64\.asar/,
   );
 });
 

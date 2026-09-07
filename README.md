@@ -289,9 +289,9 @@ Download the latest build from **[GitHub Releases](https://github.com/vastsa/PI-
 | macOS    | Apple Silicon | `.dmg` / `.zip`      |
 | macOS    | Intel         | `.dmg` / `.zip`      |
 | Windows  | x64           | NSIS installer       |
-| Linux    | x64           | `.AppImage` / `.deb` |
+| Linux    | x64           | `.AppImage` / `.deb` / `.asar` |
 
-Packaged builds can check GitHub Releases for updates and surface new versions inside the application.
+Packaged builds can check GitHub Releases for updates and surface new versions inside the application. The Linux `.asar` asset is available for repackaging with a system Electron; launch it with `electron PI-Desktop-<version>-linux-x64.asar` after adding the native host and packaged resources required by the target distribution.
 
 ### macOS
 

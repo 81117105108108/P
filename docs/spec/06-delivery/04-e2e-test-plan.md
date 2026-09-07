@@ -119,6 +119,28 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Documented; automation pending
 
+### Release & Packaging
+
+#### E2E-192: Linux release publishes a system-Electron ASAR asset
+
+- **Preconditions**: A `vX.Y.Z` tag matches `apps/desktop/package.json`; the
+  Linux x64 release runner can complete `dist:linux` and has a system Electron
+  available for repackaging validation.
+- **Steps**: 1) Run the tag release workflow. 2) Inspect the published GitHub
+  Release assets. 3) Confirm the versioned
+  `PI-Desktop-X.Y.Z-linux-x64.asar` asset is present. 4) Place that archive in
+  the target Electron resources layout with the target package's native host
+  and other resources, then launch it with `electron <archive>.asar`.
+- **Expected**: The ASAR is copied byte-for-byte from
+  `linux-unpacked/resources/app.asar`, is uploaded alongside the Linux
+  AppImage and deb, and the system Electron opens the PI-Desktop application
+  archive without requiring the bundled Electron executable.
+- **Specs linked**: `06-delivery/06-release-runbook.md`, `03-runtime/07-process-model.md`
+- **Acceptance**: Quality (release artifact and packaging compatibility)
+- **Milestone**: M6+
+- **Status**: Documented; artifact export is unit-covered, native system-Electron
+  repackaging remains runner validation
+
 ### Boot & Healthcheck
 
 #### E2E-001: App launches and shows main window
@@ -5536,6 +5558,8 @@ Each scenario is documented in this format:
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
 rather than the A–H criteria; their gold source is the capture suite.
+
+The release artifact path is covered by E2E-192 (Quality, M6+).
 
 ---
 

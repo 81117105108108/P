@@ -1,7 +1,7 @@
 # 06. Desktop Release Runbook
 
 > Scope: D126/D285 tag artifacts for macOS arm64 and Intel x64, Windows x64,
-> and Linux x64;
+> and Linux x64, including the Linux system-Electron ASAR asset;
 > macOS signing/notarization remains the detailed qualification lane below.
 > Cross-references: [milestones](01-mvp-milestones.md) · [process model](../03-runtime/07-process-model.md) · [security](../05-security/01-security.md)
 
@@ -180,7 +180,11 @@ the publish job merges them into one feed after downloading both artifacts.
 DMG, ZIP, NSIS, AppImage, deb, blockmap, and updater feed outputs are already
 compressed or compression-insensitive. The workflow therefore uploads their
 temporary Actions artifacts with compression level zero before the publish job
-assembles the GitHub Release.
+assembles the GitHub Release. The Linux runner also copies
+`linux-unpacked/resources/app.asar` to the versioned
+`PI-Desktop-<version>-linux-x64.asar` asset before upload. This preserves the
+exact archive used by the Linux installers for downstream repackaging with a
+system Electron.
 
 ## 5. Verification gates
 
@@ -322,6 +326,16 @@ Native-runner output matrix:
 - macOS Intel x64: DMG and ZIP
 - Windows x64: NSIS installer
 - Linux x64: AppImage and deb
+- Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`
+
+The ASAR asset contains the Electron application archive, not a complete Linux
+distribution. To repackage it, place it as the application archive in the
+target Electron resources layout together with the native host and other
+resources from the target package, then launch it with:
+
+```bash
+electron PI-Desktop-<version>-linux-x64.asar
+```
 
 Shell smoke on each native runner:
 

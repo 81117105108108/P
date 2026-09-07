@@ -8,8 +8,10 @@
 #
 # Builds installers for every platform defined in the electron-builder config
 # (macOS dmg/zip arm64 and x64, Windows NSIS x64, Linux AppImage/deb x64), each
-# with its native pi-desktop-host-core Rust sidecar, and publishes all of them —
-# with their electron-updater latest*.yml feeds — to the GitHub Release (D126/D285).
+# with its native pi-desktop-host-core Rust sidecar. The Linux app.asar is also
+# exported as a system-Electron repackaging asset, and all outputs — with their
+# electron-updater latest*.yml feeds — are published to the GitHub Release
+# (D126/D285).
 
 name: Release
 
@@ -137,6 +139,10 @@ jobs:
         # aligned with the runner selected by this matrix entry.
         run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --${{ matrix.arch }}
 
+      - name: Export Linux ASAR release asset
+        if: matrix.platform == 'linux'
+        run: node scripts/export-linux-asar.mjs
+
       - name: Disambiguate macOS update metadata
         if: matrix.platform == 'macos'
         run: mv apps/desktop/release/latest-mac.yml apps/desktop/release/latest-mac-${{ matrix.arch }}.yml
@@ -153,6 +159,7 @@ jobs:
             apps/desktop/release/*.exe
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.deb
+            apps/desktop/release/*.asar
             apps/desktop/release/*.blockmap
             apps/desktop/release/latest*.yml
 
@@ -207,8 +214,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           # D126/D285: all desktop platforms and both native macOS
-          # architectures ship from tag builds —
-          # installers, blockmaps, and the latest*.yml feeds that drive
+          # architectures ship from tag builds — installers, the Linux ASAR,
+          # blockmaps, and the latest*.yml feeds that drive
           # electron-updater on each platform (in-app for Windows NSIS and
           # Linux AppImage; macOS notifies until a signed channel lands).
           files: dist/*

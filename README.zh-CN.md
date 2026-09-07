@@ -289,9 +289,9 @@ PI-Desktop 是 **本地优先**，不是“永远不碰网络”。
 | macOS | Apple Silicon | `.dmg` / `.zip` |
 | macOS | Intel | `.dmg` / `.zip` |
 | Windows | x64 | NSIS 安装程序 |
-| Linux | x64 | `.AppImage` / `.deb` |
+| Linux | x64 | `.AppImage` / `.deb` / `.asar` |
 
-打包版本会检查 GitHub Releases 上的更新，并在应用内提示新版本。
+打包版本会检查 GitHub Releases 上的更新，并在应用内提示新版本。Linux `.asar` 文件用于配合系统 Electron 重新打包；补齐目标发行版所需的原生 host 和资源后，可运行 `electron PI-Desktop-<version>-linux-x64.asar` 启动。
 
 ### macOS
 
