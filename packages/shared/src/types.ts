@@ -521,7 +521,24 @@ export type AgentStatus = {
   pendingToolConfirmations: number;
   planningState?: PlanningState;
   pendingPlanId?: string;
+  activity?: AgentActivity;
 };
+
+/** The runtime phase that explains a quiet interval in an active turn. */
+export type AgentActivity =
+  | { phase: "starting"; since: number }
+  | { phase: "waiting-model"; since: number }
+  | {
+      phase: "retrying";
+      since: number;
+      attempt: number;
+      retryDelayMs?: number;
+    }
+  | {
+      phase: "waiting-subagents";
+      since: number;
+      subagentCount: number;
+    };
 
 export type AgentPromptRequest = {
   sessionId: string;
@@ -1831,4 +1848,3 @@ export type TokenUsageHistoryResult = {
     turnCount: number;
   };
 };
-

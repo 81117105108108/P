@@ -376,7 +376,9 @@ Each scenario is documented in this format:
 - **Steps**: 1) Create new session. 2) Type a message. 3) Send.
 - **Expected**: The transcript immediately shows a compact localized `Working…`
   status after send, before the first assistant or tool event. It yields to
-  concrete thinking/tool/answer feedback, and disappears when the turn ends.
+  concrete thinking/tool/answer feedback, or identifies a runtime-reported
+  model wait/retry when no transcript row can explain the delay. It disappears
+  when the turn ends.
   The conversation topbar keeps only the task title and window actions; it does
   not add a separate running-state indicator.
 - **Specs linked**: `03-runtime/02-agent-runtime.md`, `03-runtime/10-session-state-machine.md`
@@ -437,6 +439,27 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`bundled-plugins`, `browser-cdp`,
   `browser-preview-tool`); full Electron journey pending
+
+#### E2E-008c: Quiet intervals explain active work
+
+- **Preconditions**: A deterministic provider fixture can delay the first
+  response, return one retryable failure with a bounded backoff, and a session
+  can start one delegated task whose completion is controlled by the fixture.
+- **Steps**: 1) Send a prompt and hold the provider before its first assistant
+  event. 2) Observe the transcript status row. 3) Release a retryable failure
+  and inspect the row during backoff. 4) Start a delegated task and wait for
+  the parent to converge on it. 5) Release the fixture and let the turn end.
+- **Expected**: The status row says `Waiting for model`, `Retrying model
+  request`, or `Waiting for subagents` with a monotonic elapsed time matching
+  the active phase. It uses the same compact inline treatment as `Working…`,
+  never adds a duplicate progress card, and clears when assistant output or a
+  terminal event arrives. The Stop action remains available throughout.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/02-agent-runtime.md`, `04-ux/09-interaction-patterns.md`,
+  ADR 0175
+- **Acceptance**: C (chat stream), Quality (feedback and accessibility)
+- **Milestone**: M5
+- **Status**: Draft (deterministic fixture pending)
 
 #### E2E-009: Streamed tokens visible in UI
 
@@ -2507,9 +2530,11 @@ Each scenario is documented in this format:
   completion.
 - **Expected**: No generic Understanding, Working, Checking, or completion
   card appears below the transcript while the turn is active. Assistant and
-  tool rows remain inline; only an actual permission request renders an
-  actionable card. Background activity never changes the visible session,
-  transcript, composer focus, or project.
+  tool rows remain inline; a compact runtime status row may appear only when it
+  explains a provider wait/retry or delegated-work wait with no transcript row
+  of its own. Only an actual permission request renders an actionable card.
+  Background activity never changes the visible session, transcript, composer
+  focus, or project.
 - **Specs linked**: `04-ux/08-component-spec.md`,
   `04-ux/09-interaction-patterns.md`, `03-runtime/10-session-state-machine.md`
 - **Acceptance**: C (chat stream), Quality (interaction and accessibility)

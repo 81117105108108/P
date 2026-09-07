@@ -94,6 +94,15 @@ separate cancellation path.
     visible assistant error message
 12. finalize and persist successful answer/thinking blocks independently
 
+While an active turn has no new transcript row, the runtime emits a normalized
+`status` event with one of the following explanations: `waiting-model` while a
+provider request is waiting for its first assistant event, `retrying` during a
+bounded provider backoff, and `waiting-subagents` while the parent is waiting
+for delegated work. The renderer keeps the phase scoped to the session and
+clears it when assistant or tool activity starts, or when the turn terminates.
+This is observability only; it does not add a second agent loop or a
+completion percentage.
+
 The runtime constructs exactly one pi `Agent` per durable session. Plan does
 not select a second model, planner service, permission implementation, or
 runtime. The same Agent changes its planning state and tool registry after a
@@ -115,12 +124,14 @@ the provider message in both phases, so a generic 429 body still enters the
 429 budget while known non-retryable classifications remain terminal. The main
 session and builtin subagents use the same controller and policy.
 
-429 retries are silent: no intermediate assistant error, lifecycle `error`,
-`turn_end`, `agent_end`, or duplicate assistant bubble reaches the UI. The
-visible assistant message id is reused when a retry starts, replacing any
-partial content in one bubble. End events are emitted once by the final
-successful or exhausted attempt. An abort during the wait cancels the timer
-and prevents the next provider request.
+429 retries are silent at the transcript lifecycle: no intermediate assistant
+error, lifecycle `error`, `turn_end`, `agent_end`, or duplicate assistant
+bubble reaches the UI. A normalized `status` event identifies the retry
+backoff so the user can tell that the turn is still active. The visible
+assistant message id is reused when a retry starts, replacing any partial
+content in one bubble. End events are emitted once by the final successful or
+exhausted attempt. An abort during the wait cancels the timer and prevents the
+next provider request.
 
 The delay follows the OpenCode-style order `retry-after-ms`, `retry-after`
 seconds, `retry-after` HTTP-date, then exponential backoff. The fallback starts
@@ -162,8 +173,9 @@ Only the failed request is replayed. The session, its transcript, and its tool
 state are untouched: the failed assistant is removed from the next model context
 and the same visible message id is reused, so a retry never restarts the turn or
 re-runs a completed tool call.
-Each retry is silent and abortable. The main session, builtin subagents, and
-one-shot composer enhancement use the same codes, budget size, and precedence.
+Each retry is abortable and reports its current backoff through the normalized
+status event. The main session, builtin subagents, and one-shot composer
+enhancement use the same codes, budget size, and precedence.
 
 When the 429 budget is exhausted, the final assistant error and lifecycle
 `error` are emitted once. Provider failures carry bounded diagnostics in

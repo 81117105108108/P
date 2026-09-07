@@ -3728,3 +3728,18 @@ D193, and D194.
   and any `opencode.ai` host, using the durable conversation id.
 - See `03-runtime/02-agent-runtime.md` §6.2, `03-runtime/11-provider-model-system.md`,
   `03-runtime/12-provider-config-schema.md`, ADR 0116, and E2E-005D.
+
+## 2026-09-07 — Explain quiet active turns with live agent activity status (D338)
+
+- The transcript showed a generic running timer before the first event, but a
+  provider wait, retry backoff, or parent-side delegated-work wait could still
+  leave no row that explained the delay. Users could only infer activity from
+  the Stop button.
+- The existing normalized `status` event now carries an optional runtime-owned
+  `AgentActivity` phase: `starting`, `waiting-model`, `retrying`, or
+  `waiting-subagents`. The renderer stores it per session and renders one
+  compact localized status row with elapsed time; it does not add a percentage,
+  duplicate progress card, or alter abort semantics.
+- Decision D338 is recorded as ADR 0175. See `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/02-agent-runtime.md`, `04-ux/09-interaction-patterns.md`, and
+  E2E-008c / E2E-094.

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import i18n from "i18next";
 import type {
   AgentEventEnvelope,
+  AgentStatus,
   AgentPromptAttachment,
   AskToolResolution,
   AppError,
@@ -716,6 +717,8 @@ export type AppState = {
   isRunning: boolean;
   /** Run state per session id — sessions run independent agents. */
   runningSessions: Record<string, boolean>;
+  /** Runtime-owned phase for explaining quiet intervals in active turns. */
+  agentStatuses: Record<string, AgentStatus>;
   /** Latest in-memory result for each session, used by the active transcript. */
   latestTurnResults: Record<string, AgentTurnResult>;
   /** Latest terminal outcome per session for compact sidebar feedback. */
@@ -1174,6 +1177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   draftConfiguration: null,
   isRunning: false,
   runningSessions: {},
+  agentStatuses: {},
   latestTurnResults: {},
   sessionOutcomes: {},
   sessionCompactions: {},
@@ -2888,6 +2892,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       const sessions = state.sessions.filter((session) => session.id !== id);
       const runningSessions = { ...state.runningSessions };
       delete runningSessions[id];
+      const agentStatuses = { ...state.agentStatuses };
+      delete agentStatuses[id];
       const sessionOutcomes = { ...state.sessionOutcomes };
       delete sessionOutcomes[id];
       const queuedPrompts = withoutRecordKey(state.queuedPrompts, id);
@@ -2913,6 +2919,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         sessionMeta,
         sessions,
         runningSessions,
+        agentStatuses,
         sessionOutcomes,
         queuedPrompts,
         workPanelContexts,
@@ -3396,6 +3403,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       // after agent_end (D324). Keep live provenance until that page covers them.
       liveSessionTranscripts.add(envelope.sessionId);
     }
+    if (event.type === "status") {
+      set((state) => ({
+        agentStatuses: {
+          ...state.agentStatuses,
+          [envelope.sessionId]: event.status,
+        },
+      }));
+    }
     // Per-session run state: agents run independently per session, so track
     // running/finished for every envelope, visible session or not.
     if (
@@ -3426,6 +3441,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       // never creates its own unread completion marker.
       set((s) => ({
         runningSessions: { ...s.runningSessions, [envelope.sessionId]: false },
+        agentStatuses: withoutRecordKey(s.agentStatuses, envelope.sessionId),
         pendingPermissions: clearSessionPermissions(
           s.pendingPermissions,
           envelope.sessionId,

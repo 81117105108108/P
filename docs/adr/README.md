@@ -187,3 +187,4 @@ Each ADR includes:
 | 0172 | Contained in-chat image display | Accepted (amends fs/read workspace-only clause) |
 | 0173 | Plugin-owned token usage dashboard | Accepted (amends 0171) |
 | 0174 | Host-owned plugin completions and session context | Accepted (amends D019) |
+| 0175 | Explain quiet active turns with live agent activity status | Accepted |
