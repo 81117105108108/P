@@ -92,6 +92,22 @@ test("paste IPC is a typed renderer-to-main bridge", () => {
   assert.match(main, /importComposerFiles\(\s*dataDir,\s*sessionId,\s*input\.paths/);
 });
 
+test("picker attachments materialize a session before importing paths", () => {
+  assert.match(
+    composer,
+    /const sessionId = sourceSessionId \?\? \(await materializeDraftSession\(\)\)/,
+  );
+  assert.match(composer, /api\.importFiles\(\s*sessionId,\s*result\.paths\s*\)/);
+  assert.match(
+    composer,
+    /createFileReference\(file\.path, file\.name, sessionId, \{[\s\S]*kind: file\.kind/,
+  );
+  assert.doesNotMatch(
+    composer,
+    /createFileReference\(path, undefined, referenceSessionId/,
+  );
+});
+
 test("pasted bytes stay in the session scratch directory", () => {
   assert.match(saver, /join\(dataDir, "scratch", sessionId, "pasted"\)/);
   assert.match(saver, /basename\(normalized\)/);
