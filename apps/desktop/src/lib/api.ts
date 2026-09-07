@@ -442,6 +442,11 @@ export const api = {
     invoke<{ paths: string[]; canceled?: boolean }>(IPC.invoke.composerPickFiles),
   pickPhotos: () =>
     invoke<{ paths: string[]; canceled?: boolean }>(IPC.invoke.composerPickPhotos),
+  importFiles: (sessionId: string, paths: string[]) =>
+    invoke<{ files: ComposerPastedFile[] }>(IPC.invoke.composerImportFiles, {
+      sessionId,
+      paths,
+    }),
   pasteFiles: (sessionId: string, files: ComposerPasteFile[]) =>
     invoke<{ files: ComposerPastedFile[] }>(IPC.invoke.composerPasteFiles, {
       sessionId,

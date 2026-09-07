@@ -195,6 +195,15 @@ export const NAMED_ENDPOINT_PRESETS: readonly NamedEndpointPreset[] = [
     aliases: ["minimax"],
   },
   {
+    id: "minimax-cn-openai",
+    vendorKey: "minimax-cn",
+    name: "MiniMax (OpenAI)",
+    baseUrl: "https://api.minimaxi.com/v1",
+    apiStyle: "chat_completions",
+    labelKey: "settings.presetMinimaxCnOpenai",
+    aliases: ["minimax-openai", "minimax-compatible"],
+  },
+  {
     id: "xiaomi",
     vendorKey: "xiaomi",
     name: "Xiaomi",

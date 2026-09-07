@@ -29,6 +29,7 @@ import { applyNodeNetworkProxy } from "./node-proxy.js";
 import {
   formatFileInsert,
   isCommandShellOption,
+  MAX_INLINE_IMAGE_BYTES,
   normalizeMode,
   normalizeNetworkProxy,
   OAUTH_AUTH_KIND,
@@ -52,8 +53,6 @@ type RuntimeMap = Map<string, DesktopAgentRuntime>;
 const runtimes: RuntimeMap = new Map();
 const hostProxy = new ParentHostProxy();
 const testRuntimeIds = new WeakMap<DesktopAgentRuntime, string>();
-const MAX_INLINE_IMAGE_BYTES = 20 * 1024 * 1024;
-
 function testRuntimeIdentity(sessionId: string) {
   if (process.env.PI_DESKTOP_PLAN_UI_PROBE !== "1") {
     throw Object.assign(new Error("test runtime identity RPC is unavailable"), {

@@ -430,6 +430,47 @@ test("matches Zhipu and Z.AI endpoints by catalog URL and vendor aliases", async
   }
 });
 
+test("maps MiniMax OpenAI-compatible endpoints to multimodal catalog metadata", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "pi-models-dev-minimax-openai-"));
+  const catalogPath = join(dir, "api.json");
+  await writeFile(
+    catalogPath,
+    JSON.stringify({
+      "minimax-cn": {
+        name: "MiniMax (China)",
+        api: "https://api.minimaxi.com/anthropic/v1",
+        models: {
+          "MiniMax-M3": {
+            id: "MiniMax-M3",
+            name: "MiniMax-M3",
+            attachment: true,
+            reasoning: true,
+            modalities: { input: ["text", "image", "video"], output: ["text"] },
+            limit: { context: 1_048_576, output: 524_288 },
+          },
+        },
+      },
+    }),
+    "utf8",
+  );
+  try {
+    const catalog = new ModelsDevCatalog({ catalogPath });
+    assert.equal(await catalog.ensureLoaded(), true);
+    const input = {
+      vendorKey: "custom",
+      baseUrl: "https://api.minimaxi.com/v1",
+      providerId: "custom-row",
+    };
+    const match = catalog.findModel({ ...input, modelId: "MiniMax-M3" });
+    assert.equal(match?.providerKey, "minimax-cn");
+    assert.deepEqual(match?.modalities.input, ["text", "image", "video"]);
+    assert.equal(match?.attachment, true);
+    assert.equal(catalog.modelsForProvider(input)[0]?.modelId, "MiniMax-M3");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("models.dev reasoning options map to canonical levels", () => {
   assert.deepEqual(
     thinkingLevelsFromModelsDev(true, [{

@@ -1340,11 +1340,11 @@ reservation, and background artifacts cannot change visible window geometry.
 
 ## 13c. Composer input APIs (D123/D124/D197, ADR 0024/0059)
 
-Electron-only channels backing composer autocomplete and clipboard file
-references. `composer/commands` and `fs/index` are read-only and fail soft;
-`composer/pasteFiles` writes only to the originating session's Electron-owned
-scratch directory. None adds a host RPC method or changes the host protocol
-version.
+Electron-only channels backing composer autocomplete and file references.
+`composer/commands` and `fs/index` are read-only and fail soft;
+`composer/importFiles` and `composer/pasteFiles` write only to the originating
+session's Electron-owned scratch directory. None adds a host RPC method or
+changes the host protocol version.
 
 ### composer/commands
 
@@ -1381,6 +1381,25 @@ Workspace-rooted relative paths for the `@` menu: `git ls-files -co
 directories derived from file paths, 8000-entry cap with `truncated: true`,
 short TTL cache per root. Fails closed to an empty list without a
 workspace. Fuzzy filtering happens renderer-side.
+
+### composer/importFiles
+
+```ts
+composer/importFiles({ sessionId, paths }) -> {
+  files: ComposerPastedFile[];
+}
+```
+
+The native file picker returns absolute paths to the renderer only as a
+short-lived handoff. The renderer immediately sends those paths with the
+durable `sessionId`; Electron main resolves each path through `realpath`,
+requires an existing regular file, applies the same 20-file / 64 MiB per file /
+128 MiB total limits as clipboard transfer, and copies the bytes into
+`<data_dir>/scratch/<sessionId>/pasted/` under a UUID-backed sanitized name.
+Directories, relative paths, missing files, and oversized selections fail with
+an IPC error. The returned `ComposerPastedFile` records are the only paths the
+renderer stores or dispatches, so a picker selection cannot leave an external
+absolute path in the prompt or bypass the attachment-root boundary.
 
 ### composer/pasteFiles
 

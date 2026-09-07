@@ -843,6 +843,7 @@ export const zhCN = {
     presetSiliconflowCn: "硅基流动",
     presetVolcengine: "火山方舟",
     presetMinimaxCn: "MiniMax",
+    presetMinimaxCnOpenai: "MiniMax（OpenAI）",
     presetKimiCoding: "Kimi 编程",
     presetXiaomi: "小米",
     apiStyleResponses: "OpenAI Responses",

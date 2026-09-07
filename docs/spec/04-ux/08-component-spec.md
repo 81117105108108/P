@@ -2201,6 +2201,11 @@ reasoning-level control.
   above it is saved as UTF-8 in the session's scratch `pasted/` directory and
   inserts an inline temporary-file token at the paste position (D197, D209,
   D262, ADR 0059, ADR 0070, ADR 0131)
+- The Composer `+` menu offers native file and image pickers. Selected regular
+  files are copied into the active session's scratch `pasted/` directory before
+  their compact chips are added; the original absolute picker paths never enter
+  the prompt. Directory selections are rejected with the normal error toast in
+  the current MVP.
 - The compact chips retain structured kind/name/MIME metadata while keeping
   the textarea free of binary data. The selected model's models.dev
   capability controls dispatch when its exact models.dev record matches;
@@ -2295,6 +2300,11 @@ Anatomy:
   startup-only home draft into a durable session before saving when no active
   session is available. The scratch lifecycle removes pasted files with the
   session and never dirties the workspace git tree.
+- A `+` picker selection follows the same session ownership and chip flow: the
+  renderer materializes a home draft when needed, sends native paths through
+  `composer/importFiles`, and keeps only the returned scratch references. The
+  main process rejects directories and applies the same size limits before
+  copying.
 - Reference chips wrap within the prompt area, expose the canonical path in
   their tooltip and accessible name, and provide a focus-visible localized
   remove button that restores textarea focus. Duplicate leaf labels remain

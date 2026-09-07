@@ -21,9 +21,12 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import {
   ErrorCodes,
   formatFileInsert,
+  MAX_INLINE_IMAGE_BYTES,
   type AgentPromptAttachment,
   type MessageAttachment,
 } from "@pi-desktop/shared";
+
+export { MAX_INLINE_IMAGE_BYTES } from "@pi-desktop/shared";
 
 const IMAGE_EXTENSIONS = new Set([
   "avif",
@@ -59,8 +62,6 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   tiff: "image/tiff",
   webp: "image/webp",
 };
-export const MAX_INLINE_IMAGE_BYTES = 20 * 1024 * 1024;
-
 type PromptPath = {
   absolute: string;
   root: "project" | "scratch" | "attachment";

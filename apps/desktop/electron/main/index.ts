@@ -185,7 +185,10 @@ import {
   resolveRealOpenablePath,
 } from "./fs-panel";
 import { getWorkspaceFileIndex } from "./fs-index";
-import { saveComposerPasteFiles } from "./composer-paste";
+import {
+  importComposerFiles,
+  saveComposerPasteFiles,
+} from "./composer-paste";
 import { builtinComposerCommands, builtinPaletteItems } from "./builtin-commands";
 import {
   convertSession,
@@ -6653,6 +6656,40 @@ function registerIpc() {
     if (result.canceled) return { paths: [] as string[], canceled: true };
     return { paths: result.filePaths, canceled: false };
   });
+
+  handle(
+    IPC.invoke.composerImportFiles,
+    async (input: { sessionId?: unknown; paths?: unknown } = {}) => {
+      if (!host) throw new Error("host unavailable");
+      const sessionId =
+        typeof input.sessionId === "string" ? input.sessionId.trim() : "";
+      if (!sessionId) {
+        throw Object.assign(new Error("session required"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      const session = (await host.call("session.get", { id: sessionId })) as {
+        session?: unknown;
+      };
+      if (!session.session) {
+        throw Object.assign(new Error("session not found"), {
+          errorCode: ErrorCodes.NOT_FOUND,
+        });
+      }
+      if (!Array.isArray(input.paths)) {
+        throw Object.assign(new Error("paths must be an array"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      return {
+        files: await importComposerFiles(
+          dataDir,
+          sessionId,
+          input.paths as string[],
+        ),
+      };
+    },
+  );
 
   handle(
     IPC.invoke.composerPasteFiles,

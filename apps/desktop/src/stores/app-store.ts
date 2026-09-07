@@ -165,18 +165,25 @@ export type { WorkPanelTab } from "../lib/work-panel-tabs";
 function promptAttachmentsFromDraft(
   references: ComposerDraftSnapshot["fileReferences"],
 ): AgentPromptAttachment[] {
-  return references
-    .filter((reference) => !reference.token)
-    .map((reference) => ({
-      path: reference.path,
-      name: reference.name,
-      kind:
-        reference.kind ??
-        (/\.(avif|bmp|gif|heic|jpe?g|png|tiff?|webp)$/i.test(reference.path)
-          ? "image"
-          : "file"),
-      ...(reference.mimeType ? { mimeType: reference.mimeType } : {}),
-    }));
+  return references.flatMap((reference) => {
+    const kind =
+      reference.kind ??
+      (/\.(avif|bmp|gif|heic|jpe?g|png|tiff?|webp)$/i.test(reference.path)
+        ? "image"
+        : "file");
+    // Inline chips use tokens for both files and images. Ordinary file chips
+    // already serialize to @path text (the model can Read them); only image
+    // chips need the structured transport for vision/fallback handling.
+    if (reference.token && kind !== "image") return [];
+    return [
+      {
+        path: reference.path,
+        name: reference.name,
+        kind,
+        ...(reference.mimeType ? { mimeType: reference.mimeType } : {}),
+      },
+    ];
+  });
 }
 
 function promptAttachmentsFromMessage(
