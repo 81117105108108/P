@@ -222,7 +222,9 @@ to later refresh and inference; the vendor picker does not collect it.
 
 ### Settings
 - `settings.get`
-- `settings.set`
+- `settings.set` — optional `networkProxy` (`system` / `direct` / `custom`).
+  Custom requires an `http`/`https`/`socks5` URL. host-core uses the stored
+  value for marketplace `curl --proxy` and does not put it on process env.
 
 ### Sessions
 - `session.list` — returns summaries with host-authoritative `messageCount`

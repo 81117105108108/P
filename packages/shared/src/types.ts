@@ -2,6 +2,7 @@ import type { ActivationScope } from "./activation.js";
 import type { AppError } from "./errors.js";
 import type { KeybindingOverrides } from "./keyboard-shortcuts.js";
 import type { CommandShellId } from "./command-shells.js";
+import type { NetworkProxySettings } from "./network-proxy.js";
 
 export type Mode = "plan" | "goal" | "agent";
 
@@ -1120,6 +1121,12 @@ export type AppSettings = {
   pluginMarketSource?: PluginMarketSource;
   /** Catalog URL used when `pluginMarketSource` is `custom`. */
   pluginMarketCustomUrl?: string;
+  /**
+   * Outbound proxy for app-owned HTTP (D340). Absent means System: Chromium
+   * follows the OS proxy; Node sidecar traffic stays direct unless Custom
+   * is set. See `network-proxy.ts`.
+   */
+  networkProxy?: NetworkProxySettings;
   onboardingDismissed: boolean;
 };
 

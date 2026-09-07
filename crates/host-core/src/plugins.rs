@@ -3151,6 +3151,7 @@ fn download_url_guarded(url: &str, package_guard: Option<&str>) -> Result<Vec<u8
         "--user-agent".into(),
         "pi-desktop-host-core".into(),
     ];
+    args.extend(crate::network_proxy::curl_proxy_args());
     if package_guard.is_some() && url.starts_with("https://") {
         // Downgrading to plain HTTP mid-redirect would take the request off
         // the host the allowlist approved.

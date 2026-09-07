@@ -204,7 +204,7 @@ CREATE TABLE kv (
 
 | ns | contents |
 |---|---|
-| `app` | the settings blob (`settings.get/set`), `currentProjectId` |
+| `app` | the settings blob (`settings.get/set`), `currentProjectId`. Optional `networkProxy` (`mode`/`url`/`bypass`) is a JSON field in that blob; no schema version bump (D340) |
 | `ui` | non-critical UI state the renderer asks the host to keep |
 | `cache` | model-refresh stamps, recent model refs (spec 13 §3) |
 | `plugin:<id>` | per-plugin settings; uninstall = `DELETE WHERE ns = ?` |

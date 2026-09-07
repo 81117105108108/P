@@ -24,6 +24,11 @@ import {
 import { readFile } from "node:fs/promises";
 import { listInstalledFonts } from "./system-fonts";
 import {
+  applyNetworkProxyFromAppSettings,
+  currentNetworkProxy,
+  testNetworkProxy,
+} from "./network-proxy";
+import {
   APP_ID,
   APP_NAME,
   APP_VERSION,
@@ -89,6 +94,7 @@ import {
   type UserSkillRecord,
   type UserSubagentRecord,
   type WindowControlAction,
+  validateNetworkProxy,
 } from "@pi-desktop/shared";
 import {
   capabilitiesFromModelConfig,
@@ -984,6 +990,7 @@ function validateSettingsWrite<T>(settings: T): T {
   }
   const value = settings as T & {
     defaultCommandShell?: unknown;
+    networkProxy?: unknown;
   };
   if (
     Object.prototype.hasOwnProperty.call(value, "defaultCommandShell") &&
@@ -992,6 +999,17 @@ function validateSettingsWrite<T>(settings: T): T {
     throw Object.assign(new Error("defaultCommandShell is invalid"), {
       errorCode: ErrorCodes.COMMAND_SHELL_INVALID,
     });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "networkProxy")) {
+    const proxy = validateNetworkProxy(
+      (value as { networkProxy?: unknown }).networkProxy,
+    );
+    if (!proxy.ok) {
+      throw Object.assign(new Error(proxy.error), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    value.networkProxy = proxy.value;
   }
   return settings;
 }
@@ -4684,6 +4702,7 @@ async function startSidecar(): Promise<void> {
   await s.call("sidecar.configure", {
     hostBinary: host?.binaryPath,
     dataDir,
+    networkProxy: currentNetworkProxy(),
   });
   logger.app("runtime", "info", "agent sidecar configured");
 }
@@ -5327,6 +5346,12 @@ async function bootBackends() {
     data: { protocolVersion: PROTOCOL_VERSION },
   });
   await startHost();
+  try {
+    const stored = await host!.call("settings.get");
+    await applyNetworkProxyFromAppSettings(stored);
+  } catch {
+    await applyNetworkProxyFromAppSettings({ mode: "system" });
+  }
   await startSidecar();
 
   // Keep plugin host services wired to live workspace / app metadata.
@@ -5946,10 +5971,25 @@ function registerIpc() {
     const settings = await host.call("settings.get");
     return normalizeSettings(settings);
   });
+  handle(IPC.invoke.networkProxyTest, async (settings: unknown) => {
+    return testNetworkProxy(settings);
+  });
   handle(IPC.invoke.settingsSet, async (settings: unknown) => {
     if (!host) throw new Error("host unavailable");
     const validatedSettings = validateSettingsWrite(settings);
     const result = await host.call("settings.set", validatedSettings);
+    await applyNetworkProxyFromAppSettings(validatedSettings);
+    if (sidecar) {
+      try {
+        await sidecar.call("sidecar.configure", {
+          hostBinary: host.binaryPath,
+          dataDir,
+          networkProxy: currentNetworkProxy(),
+        });
+      } catch {
+        // Sidecar will pick up PI_DESKTOP_PROXY_JSON on the next spawn.
+      }
+    }
     applyApplicationMenuSettings(
       validatedSettings as {
         language?: unknown;
@@ -8397,6 +8437,7 @@ app.whenReady().then(async () => {
       } | null;
       applyApplicationMenuSettings(stored);
       applyDeveloperMode(stored);
+      await applyNetworkProxyFromAppSettings(stored);
     } catch {
       // Keep the OS-locale menu until settings can be read again, while
       // retaining the historical default launcher fallback for this failure.

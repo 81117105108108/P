@@ -189,3 +189,4 @@ Each ADR includes:
 | 0174 | Host-owned plugin completions and session context | Accepted (amends D019) |
 | 0175 | Explain quiet active turns with live agent activity status | Accepted |
 | 0176 | Per-provider User-Agent override | Accepted (amends 0095 / 0156) |
+| 0177 | User-configurable outbound proxy | Accepted |

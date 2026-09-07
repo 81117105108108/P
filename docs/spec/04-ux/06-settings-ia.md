@@ -71,6 +71,21 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
   - native select triggers and their opened option lists use the active theme's
     readable foreground/background pairing on macOS, Windows, and Linux; the
     shared native-select contract applies to every app surface
+- **Network** card:
+  - **Proxy**: a segmented control — System, Direct, Custom. System is the
+    default and lets Chromium follow the OS proxy; Direct disables the proxy;
+    Custom applies one HTTP, HTTPS, or SOCKS5 URL to app-owned outbound
+    traffic (model calls, marketplace, updates, model catalog, plugin
+    `net.fetch`, and the in-app browser). Workspace Bash and the system
+    browser used for OAuth are not rewritten.
+  - Custom shows a Proxy URL field (`socks5://127.0.0.1:1080` /
+    `http://127.0.0.1:7890`), a Bypass list defaulting to
+    `localhost,127.0.0.1,::1,<local>` so loopback MCP and local models stay
+    direct, and a Test action that issues one Chromium fetch through the
+    draft proxy. The URL is validated on blur; invalid schemes are rejected.
+  - The selection persists as optional `AppSettings.networkProxy`
+    (`mode` / `url` / `bypass`). Absent means System. No host protocol or
+    storage schema version bump (D340 / ADR 0177).
 - Platform-specific **Close behavior** remains in General because it changes
   application-window behavior rather than agent behavior.
 - File-open target, menu-bar behavior, and bottom-panel behavior are not

@@ -58,6 +58,12 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "settings.closeBehaviorTitle",
       "settings.closeBehaviorTray",
       "settings.closeBehaviorQuit",
+      "settings.network",
+      "settings.proxy",
+      "settings.proxySystem",
+      "settings.proxyDirect",
+      "settings.proxyCustom",
+      "settings.proxyUrl",
     ],
   },
   {

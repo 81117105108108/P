@@ -2716,3 +2716,9 @@ D193 和 D194。
 - `pi.models.list`、`pi.session.getLlmContext`、`pi.agent.complete` 是公开宿主 API。凭据和线路调用留在 Electron main。会话上下文绑定到进行中的工具会话（修订 D019）。
 - 随应用打包的 `pi.advisor` 证明这条通道：默认关闭，用户启用后用 `/advisor` 选择评审模型；执行模型调用 `plugin_pi_advisor_advisor` 获取第二意见。
 - 决策 D336 记录为 ADR 0174。见 `07-plugins/03-plugin-api.md`、`07-plugins/13-plugin-permissions-matrix.md` 与 E2E-188 / E2E-189。
+
+## 2026-09-08 —— 用户可配置的出站代理（D340）
+
+- 模型请求、市场下载、更新和内置浏览器各自走不同 HTTP 栈，都没有产品设置。sidecar 里的 Node `fetch` 不使用系统代理。
+- 设置 → 常规 → 网络增加系统 / 直连 / 自定义。自定义是一个 HTTP 或 SOCKS5 URL 加上回环绕过。Chromium 会话、main `net.fetch`、sidecar undici 与 host-core 市场 curl 共用它。工作区 Bash 不继承代理凭据。
+- 决策 D340 记录为 ADR 0177。见 `04-ux/06-settings-ia.md`、`03-runtime/07-process-model.md` 与 E2E-190。

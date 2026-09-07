@@ -92,6 +92,7 @@ test("Basics and AI tabs expose their respective app and AI controls", () => {
   assert.match(generalSource, /<ThemeRow /);
   assert.match(generalSource, /<LanguageRow /);
   assert.match(generalSource, /<FontFamilyRow /);
+  assert.match(generalSource, /<NetworkProxySection /);
   assert.doesNotMatch(generalSource, /\(\["auto", "zh-CN", "en"\] as const\)/);
   assert.doesNotMatch(generalSource, /defaultMode: value/);
   assert.doesNotMatch(generalSource, /enterToSend: !settings\.enterToSend/);
@@ -114,6 +115,20 @@ test("Basics and AI tabs expose their respective app and AI controls", () => {
 test("language persists as part of shared app settings", () => {
   assert.match(sharedTypesSource, /language\?: "auto" \| "en" \| "zh-CN" \| "tr"/);
   assert.match(sharedTypesSource, /largePasteThreshold\?: number/);
+  assert.match(sharedTypesSource, /networkProxy\?: NetworkProxySettings/);
+});
+
+test("General Network card persists a custom HTTP or SOCKS5 proxy", () => {
+  assert.match(settingsPageSource, /<NetworkProxySection /);
+  assert.match(settingsSearchSource, /settings\.proxy/);
+  assert.match(settingsSearchSource, /settings\.proxyCustom/);
+  assert.match(electronMainSource, /applyNetworkProxyFromAppSettings/);
+  assert.match(electronMainSource, /IPC\.invoke\.networkProxyTest/);
+  assert.match(protocolSource, /networkProxyTest: "pi-desktop\/network\/testProxy"/);
+  for (const source of [enLocaleSource, zhLocaleSource, trLocaleSource]) {
+    assert.match(source, /proxyCustom:/);
+    assert.match(source, /proxyUrlPlaceholder:/);
+  }
 });
 
 test("basics gates developer tools behind a persisted developer mode", () => {

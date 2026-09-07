@@ -441,6 +441,9 @@ fn validate_settings_value(value: &Value) -> Result<(), JsonRpcError> {
             ));
         }
     }
+    if let Err(message) = crate::network_proxy::validate_network_proxy(value) {
+        return Err(rpc_err(1002, message, "INVALID_PARAMS"));
+    }
     let Some(shell_value) = object.get("defaultCommandShell") else {
         return Ok(());
     };
@@ -1111,6 +1114,7 @@ async fn handle_request(
             // `market.refresh` after switching sources.
             let market_source = crate::plugins::market_source_from_settings(Some(&settings));
             st.plugins.set_market_source(market_source);
+            crate::network_proxy::apply_from_settings(Some(&settings));
             Ok(json!({ "ok": true }))
         }
 
