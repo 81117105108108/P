@@ -56,6 +56,9 @@ After host-core is up, Electron main reads `AppSettings.networkProxy` and
 applies it before spawning the agent sidecar (D340). Chromium sessions use
 `session.setProxy`; main-process `fetch` is `net.fetch`; the sidecar receives
 the same config through `sidecar.configure` and `PI_DESKTOP_PROXY_JSON`.
+HTTP(S) provider requests use undici's proxy dispatcher; SOCKS5 provider
+requests use a buffered CONNECT tunnel so a proxy may coalesce the SOCKS
+handshake response without stalling the request.
 host-core marketplace `curl` gets `--proxy` from the stored settings and does
 **not** inherit proxy env, so workspace Bash cannot see proxy credentials.
 
