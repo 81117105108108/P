@@ -348,8 +348,10 @@ Each scenario is documented in this format:
   one signed-in vendor (OAuth) account; a capture proxy records outbound HTTP
   headers, including Codex and Anthropic adapters.
 - **Steps**: 1) Open the AI service, expand Advanced, add `User-Agent:
-  CustomAgent/1.0` and `X-Gateway: alpha`, and save. 2) Start an Agent turn,
-  a follow-up, prompt enhancement, and a plugin one-shot. 3) Refresh
+  CustomAgent/1.0` and `X-Gateway: alpha`, then add enough rows to exceed the
+  editor's visible height. Confirm the header list scrolls inside Advanced
+  while the model panes keep their working area, and save. 2) Start an Agent
+  turn, a follow-up, prompt enhancement, and a plugin one-shot. 3) Refresh
   `/models` from the form before saving a second change and confirm the
   unsaved headers are sent. 4) Clear the rows and save; confirm adapter
   defaults return. 5) Edit the OAuth account Advanced headers, save, then
@@ -360,7 +362,9 @@ Each scenario is documented in this format:
 - **Expected**: Non-empty custom headers are the last writer on that row's
   outbound HTTP (turns, subagents, one-shots, discovery, connection test,
   OAuth refresh). Empty restores pi-ai / `claude-cli` / OpenCode defaults.
-  OpenCode still sends `x-opencode-session` and `x-opencode-client`. Codex
+  Advanced keeps the header list in its own bounded scroll area, so additional
+  rows do not compress or hide the model panes. OpenCode still sends
+  `x-opencode-session` and `x-opencode-client`. Codex
   and Anthropic still send the custom User-Agent despite adapter last-writes.
   First OAuth login does not collect headers. Reserved keys and CR/LF are
   rejected. Advanced is a compact key/value editor, not a lone User-Agent

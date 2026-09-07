@@ -378,19 +378,23 @@ export function ProviderSetupDialog({
                     : "provider-setup-fields is-empty"
               }
             >
-              <div className="provider-setup-service">
-                <Field label={t("settings.service")}>
-                  <ServicePicker
-                    value={service}
-                    autoFocus={!named && !custom}
-                    disabled={saving}
-                    onChange={onServiceChange}
-                  />
-                </Field>
-              </div>
+              <div
+                className={`provider-setup-field-row provider-setup-service-row ${
+                  named ? "is-named" : "is-single"
+                }`}
+              >
+                <div className="provider-setup-service">
+                  <Field label={t("settings.service")}>
+                    <ServicePicker
+                      value={service}
+                      autoFocus={!named && !custom}
+                      disabled={saving}
+                      onChange={onServiceChange}
+                    />
+                  </Field>
+                </div>
 
-              {named ? (
-                <>
+                {named ? (
                   <Field
                     label={t("settings.apiKey")}
                     hint={editing ? t("settings.apiKeyKeepHint") : undefined}
@@ -406,83 +410,88 @@ export function ProviderSetupDialog({
                       onChange={(event) => setApiKey(event.target.value)}
                     />
                   </Field>
-                  {resolvedBaseUrl ? (
-                    <div className="provider-setup-host" title={resolvedBaseUrl}>
-                      {endpointHost(resolvedBaseUrl)}
-                    </div>
-                  ) : null}
-                </>
+                ) : null}
+              </div>
+
+              {named && resolvedBaseUrl ? (
+                <div className="provider-setup-host" title={resolvedBaseUrl}>
+                  {endpointHost(resolvedBaseUrl)}
+                </div>
               ) : null}
 
               {custom ? (
                 <>
-                  <Field label={t("settings.name")}>
-                    <Input
-                      ref={nameRef}
-                      value={name}
-                      autoFocus
-                      onChange={(event) => setName(event.target.value)}
-                    />
-                  </Field>
-                  <div className="provider-setup-base-url">
-                    <Field label={t("settings.baseUrl")}>
+                  <div className="provider-setup-field-row provider-setup-custom-identity-row">
+                    <Field label={t("settings.name")}>
                       <Input
-                        value={baseUrl}
-                        type="url"
-                        inputMode="url"
-                        autoComplete="url"
-                        className="font-mono text-sm-plus"
-                        placeholder="https://api.example.com/v1"
-                        aria-invalid={Boolean(baseUrlError)}
-                        aria-describedby={baseUrlError ? "provider-base-url-error" : undefined}
-                        onChange={(event) => {
-                          setBaseUrl(event.target.value);
-                          setError("");
-                        }}
-                        onBlur={commitBaseUrl}
+                        ref={nameRef}
+                        value={name}
+                        autoFocus
+                        onChange={(event) => setName(event.target.value)}
                       />
-                      {baseUrlError ? (
-                        <div
-                          id="provider-base-url-error"
-                          className="provider-setup-field-error"
-                          role="alert"
-                        >
-                          {baseUrlError}
-                        </div>
-                      ) : null}
+                    </Field>
+                    <div className="provider-setup-base-url">
+                      <Field label={t("settings.baseUrl")}>
+                        <Input
+                          value={baseUrl}
+                          type="url"
+                          inputMode="url"
+                          autoComplete="url"
+                          className="font-mono text-sm-plus"
+                          placeholder="https://api.example.com/v1"
+                          aria-invalid={Boolean(baseUrlError)}
+                          aria-describedby={baseUrlError ? "provider-base-url-error" : undefined}
+                          onChange={(event) => {
+                            setBaseUrl(event.target.value);
+                            setError("");
+                          }}
+                          onBlur={commitBaseUrl}
+                        />
+                        {baseUrlError ? (
+                          <div
+                            id="provider-base-url-error"
+                            className="provider-setup-field-error"
+                            role="alert"
+                          >
+                            {baseUrlError}
+                          </div>
+                        ) : null}
+                      </Field>
+                    </div>
+                  </div>
+                  <div className="provider-setup-field-row provider-setup-custom-auth-row">
+                    <Field
+                      label={t("settings.apiKey")}
+                      hint={editing ? t("settings.apiKeyKeepHint") : undefined}
+                    >
+                      <Input
+                        ref={apiKeyRef}
+                        type="password"
+                        value={apiKey}
+                        placeholder="sk-…"
+                        className="font-mono text-sm-plus"
+                        autoComplete="off"
+                        onChange={(event) => setApiKey(event.target.value)}
+                      />
+                    </Field>
+                    <Field label={t("settings.apiStyle")}>
+                      <Select
+                        value={apiStyle}
+                        disabled={saving}
+                        onChange={(event) =>
+                          setApiStyle(event.target.value as CatalogApiStyle)
+                        }
+                      >
+                        {API_STYLES.filter((style) => style !== OPENCODE_GO_API_STYLE).map(
+                          (style) => (
+                            <option key={style} value={style}>
+                              {t(API_STYLE_LABEL_KEYS[style])}
+                            </option>
+                          ),
+                        )}
+                      </Select>
                     </Field>
                   </div>
-                  <Field
-                    label={t("settings.apiKey")}
-                    hint={editing ? t("settings.apiKeyKeepHint") : undefined}
-                  >
-                    <Input
-                      ref={apiKeyRef}
-                      type="password"
-                      value={apiKey}
-                      placeholder="sk-…"
-                      className="font-mono text-sm-plus"
-                      autoComplete="off"
-                      onChange={(event) => setApiKey(event.target.value)}
-                    />
-                  </Field>
-                  <Field label={t("settings.apiStyle")}>
-                    <Select
-                      value={apiStyle}
-                      disabled={saving}
-                      onChange={(event) =>
-                        setApiStyle(event.target.value as CatalogApiStyle)
-                      }
-                    >
-                      {API_STYLES.filter((style) => style !== OPENCODE_GO_API_STYLE).map(
-                        (style) => (
-                          <option key={style} value={style}>
-                            {t(API_STYLE_LABEL_KEYS[style])}
-                          </option>
-                        ),
-                      )}
-                    </Select>
-                  </Field>
                 </>
               ) : null}
             </div>

@@ -47,12 +47,18 @@ test("the scrolling body keeps the credential focus ring inside the dialog", () 
   assert.match(vendorBody, /padding: 2px/);
 });
 
-test("credentials are a 2x2 grid of four peer fields", () => {
+test("credentials use explicit rows for predictable field alignment", () => {
   assert.match(setupSource, /className="provider-setup-credentials"/);
   assert.match(setupSource, /provider-setup-fields/);
+  assert.match(setupSource, /provider-setup-service-row/);
+  assert.match(setupSource, /provider-setup-custom-identity-row/);
+  assert.match(setupSource, /provider-setup-custom-auth-row/);
   const fields = block(".provider-setup-fields");
-  assert.match(fields, /display: grid/);
-  assert.match(fields, /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.ok(fields.includes("display: flex"));
+  assert.ok(fields.includes("flex-direction: column"));
+  const row = block(".provider-setup-field-row");
+  assert.ok(row.includes("display: grid"));
+  assert.ok(row.includes("grid-template-columns: repeat(2, minmax(0, 1fr))"));
   // The old single-column wrapper is gone.
   assert.doesNotMatch(setupSource, /className="provider-setup-form"/);
   assert.doesNotMatch(styles, /\.provider-setup-form\s*\{/);
@@ -85,8 +91,10 @@ test("custom Name and Base URL sit on one row without helper copy", () => {
   assert.match(setupSource, /aria-invalid={Boolean\(baseUrlError\)}/);
   assert.match(setupSource, /provider-base-url-error/);
 
-  const customFields = block(".provider-setup-fields.is-custom");
-  assert.match(customFields, /grid-template-columns:\s*minmax\(140px, 0\.55fr\)/);
+  const customIdentity = block(".provider-setup-custom-identity-row");
+  assert.ok(customIdentity.includes("grid-template-columns: minmax(180px, 0.8fr)"));
+  const customAuth = block(".provider-setup-custom-auth-row");
+  assert.ok(customAuth.includes("grid-template-columns: minmax(0, 1.25fr)"));
   const baseUrl = block(".provider-setup-base-url");
   assert.doesNotMatch(baseUrl, /grid-column/);
   assert.match(baseUrl, /min-width: 0/);
@@ -234,11 +242,11 @@ test("the panes stack again before the dialog gets too narrow to read", () => {
   const at = styles.indexOf("@media (max-width: 940px)");
   assert.notEqual(at, -1, "missing the two-pane fallback breakpoint");
   const query = styles.slice(at, styles.indexOf("@media", at + 10));
-  assert.match(query, /\.provider-setup-panes\s*\{\s*grid-template-columns: minmax\(0, 1fr\)/);
-  assert.match(query, /\.provider-setup-fields[\s\S]*?\{\s*grid-template-columns: minmax\(0, 1fr\)/);
-  // `.is-custom` is more specific than `.provider-setup-fields`, so it must
-  // also collapse or Name | URL stay side-by-side on a stacked dialog.
-  assert.match(query, /\.provider-setup-fields\.is-custom/);
+  assert.match(query, /\.provider-setup-field-row[\s\S]*?\{\s*grid-template-columns: minmax\(0, 1fr\)/);
+  // The explicit custom rows must also collapse or Name | URL and Key | Format
+  // stay side-by-side on a stacked dialog.
+  assert.match(query, /\.provider-setup-custom-identity-row/);
+  assert.match(query, /\.provider-setup-custom-auth-row/);
   // A stacked dialog must be allowed to size to its content again, and both
   // dialogs host the same panes, so both need that release.
   assert.match(
@@ -253,8 +261,13 @@ test("Advanced holds a compact header editor on named, custom, and vendor editor
   assert.match(vendorDialogSource, /provider-setup-advanced-toggle/);
   const advanced = block(".provider-setup-advanced");
   assert.match(advanced, /flex-direction: column/);
+  assert.match(advanced, /min-height: 0/);
   assert.doesNotMatch(advanced, /grid-template-columns: repeat\(2/);
   assert.match(block(".provider-setup-headers"), /flex-direction: column/);
+  const headersViewport = block(".provider-setup-advanced > .provider-setup-headers");
+  assert.match(headersViewport, /max-height: min\(220px, 30vh\)/);
+  assert.match(headersViewport, /overflow-y: auto/);
+  assert.match(headersViewport, /overscroll-behavior: contain/);
   // Named and custom both expose Advanced; API format stays beside the key.
   const fieldsBlock = setupSource.slice(
     setupSource.indexOf("provider-setup-fields"),

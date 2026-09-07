@@ -232,10 +232,10 @@ a usage tab.
     Mistral, Together, Fireworks, OpenCode Go, Z.AI, DeepSeek, Qwen/DashScope,
     Moonshot/Kimi, Zhipu, SiliconFlow, Volcengine Ark, MiniMax, Xiaomi, Kimi
     For Coding) then show Service + API key, with the published host as a
-    one-line summary. Custom endpoint then shows Service, then Name beside Base
-    URL, then API key beside API format. The custom Base URL field shares a row
-    with Name (wider column) rather than spanning the dialog; it accepts only
-    http(s) service base URLs and trims pasted operation paths such as `/models`,
+    one-line summary. Custom endpoint then shows Service, Name beside Base URL,
+    and API key beside API format in three explicit rows so each input keeps a
+    stable alignment as the form changes. The custom Base URL field accepts
+    only http(s) service base URLs and trims pasted operation paths such as `/models`,
     `/messages`, `/chat/completions`, or `/responses` when the field loses
     focus. The placeholder is enough — no helper paragraph under the URL.
     Invalid URLs show an inline error and block discovery and save. A failed
@@ -243,7 +243,9 @@ a usage tab.
     one-line banner above a cached list; raw HTTP/JSON dumps are not shown.
     Named display names and optional custom headers stay behind Advanced. Empty headers keep
     adapter defaults. The Advanced block is a single column: named display
-    name, then a compact key/value header editor.
+    name, then a compact key/value header editor. The header editor has a bounded
+    viewport and scrolls internally after it reaches the available height, so
+    adding rows never progressively compresses the model panes below it.
     Service is a searchable anchored menu of vendors (filter by localized
     name, vendor key, alias, or host), not a native select, region grouping,
     stepper, or vendor-card grid. Saved named rows store the models.dev `vendorKey` and
