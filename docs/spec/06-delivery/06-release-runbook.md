@@ -119,7 +119,9 @@ Blocking steps:
    now describe incorrectly. Both locales stay structurally in sync; English is
    the source of truth and the zh-CN file links the `docs/zh-CN/` mirrors.
 5. Run the preflight and fix every reported surface:
-   `pnpm check:release-docs [version]` (`node scripts/check-release-docs.mjs`).
+   `pnpm check:release-docs [version]` (`node scripts/check-release-docs.mjs`). The
+   preflight compiles the TypeScript changelog in a temporary directory, so it does
+   not require a prior workspace build.
    `scripts/release.mjs` runs
    the same check after bumping and refuses to commit or tag while it fails;
    `--skip-docs-check` exists only for a deliberate non-release bump.

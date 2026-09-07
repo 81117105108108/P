@@ -113,7 +113,8 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
    状态或参与开发章节的描述不再准确时同样要更新。两个语言版本保持结构一致，
    英文是事实来源，中文版链接 `docs/zh-CN/` 镜像。
 5. 运行预检并修复所有报告的位置：
-   `pnpm check:release-docs [version]`（即 `node scripts/check-release-docs.mjs`）。
+   `pnpm check:release-docs [version]`（即 `node scripts/check-release-docs.mjs`）。预检会
+   在临时目录编译 TypeScript 更新日志，因此不要求先构建整个工作区。
    `scripts/release.mjs` 在升
    版本后运行同一检查，未通过时拒绝提交或打标签；`--skip-docs-check` 仅用于
    明确的非发布性升版本。

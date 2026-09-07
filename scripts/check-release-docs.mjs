@@ -17,8 +17,16 @@
  *   4. README.md and README.zh-CN.md declare the current release line
  *      (`<major>.<minor>.x`) in their status section.
  */
-import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import {
+  readdirSync,
+  readFileSync,
+  existsSync,
+  mkdtempSync,
+  writeFileSync,
+  rmSync,
+} from "node:fs";
+import { createRequire } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -75,14 +83,45 @@ try {
   fail(modelsDevCatalogPath, `could not parse bundled catalog: ${error.message}`);
 }
 
-// 3. Dual-locale in-app changelog. Import the real catalog rather than parsing
-// it: Node strips the TypeScript types, so wrapped or concatenated highlight
-// strings are counted as the app sees them.
+// 3. Dual-locale in-app changelog. Compile the source catalog in a temporary
+// directory so this preflight does not depend on a prior workspace build or on
+// Node's experimental TypeScript module resolution.
+async function loadChangelogCatalog() {
+  const require = createRequire(path.join(root, "packages/shared/package.json"));
+  const typescript = require("typescript");
+  const tempDir = mkdtempSync(path.join(root, ".release-changelog-"));
+  writeFileSync(path.join(tempDir, "package.json"), '{"type":"module"}\n', "utf8");
+  const sources = [
+    "packages/shared/src/changelog.ts",
+    "packages/shared/src/changelog-de.ts",
+    "packages/shared/src/changelog-es.ts",
+    "packages/shared/src/changelog-fr.ts",
+    "packages/shared/src/changelog-tr.ts",
+  ];
+  try {
+    for (const relPath of sources) {
+      const output = typescript.transpileModule(read(relPath), {
+        compilerOptions: {
+          module: typescript.ModuleKind.ESNext,
+          target: typescript.ScriptTarget.ES2022,
+        },
+        fileName: relPath,
+      }).outputText;
+      writeFileSync(
+        path.join(tempDir, path.basename(relPath, ".ts") + ".js"),
+        output,
+        "utf8",
+      );
+    }
+    return await import(pathToFileURL(path.join(tempDir, "changelog.js")).href);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 let catalogs = null;
 try {
-  ({ CHANGELOG: catalogs } = await import(
-    new URL("../packages/shared/src/changelog.ts", import.meta.url)
-  ));
+  ({ CHANGELOG: catalogs } = await loadChangelogCatalog());
 } catch (error) {
   fail("packages/shared/src/changelog.ts", `could not be imported: ${error.message}`);
 }
