@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const trEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.0",
+    "date": "2026-09-08",
+    "highlights": [
+      "Doğrulama ve desteklenmeyen SOCKS4 kimlik bilgilerinin açıkça ele alınmasıyla, sağlayıcı başına giden HTTP proxy’lerini yapılandırın.",
+      "CC Switch ve yerel aracı depolarından sağlayıcı profillerini ve model yapılandırmalarını içe aktarın.",
+      "Özel sağlayıcı üst bilgileri ve User-Agent ayarları ekleyin; ayrıca MiniMax ön ayarı ve daha anlaşılır model getirme hataları kullanın.",
+      "Birleşik seçiciden dosya ekleyin; oturum taslağı kopyalarını ve satır içi görüntü desteğini kullanın.",
+      "Geleneksel Çince, Almanca, İspanyolca ve Fransızca arayüzlerin yanı sıra aranabilir görünüm ve sağlayıcı ayarları ekleyin.",
+      "Okuma yazı boyutlarını, tipografiyi ve simgeleri tutarlı biçimde ayarlayın; yetkilendirme kartlarında seçili alt aracının modelini gösterin.",
+    ]
+  },
+  {
     "version": "0.13.11",
     "date": "2026-09-07",
     "highlights": [

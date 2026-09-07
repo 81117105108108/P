@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const deEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.0",
+    "date": "2026-09-08",
+    "highlights": [
+      "Konfigurieren Sie ausgehende HTTP-Proxys pro Anbieter, einschließlich Validierung und klarer Behandlung nicht unterstützter SOCKS4-Anmeldedaten.",
+      "Importieren Sie Anbieterprofile und Modellkonfigurationen aus CC Switch und lokalen Agentenspeichern.",
+      "Fügen Sie benutzerdefinierte Anbieter-Header und User-Agent-Einstellungen sowie ein MiniMax-Voreinstellung hinzu, mit klareren Fehlern beim Abruf von Modellen.",
+      "Hängen Sie Dateien über den einheitlichen Dateiauswahldialog an, mit Kopien im Sitzungsspeicher und Unterstützung für Inline-Bilder.",
+      "Fügen Sie die Benutzeroberflächen für traditionelles Chinesisch, Deutsch, Spanisch und Französisch sowie durchsuchbare Erscheinungsbild- und Anbietereinstellungen hinzu.",
+      "Passen Sie Leseschriftgrößen, Typografie und Symbole einheitlich an und zeigen Sie das ausgewählte Subagent-Modell in Delegationskarten an.",
+    ]
+  },
+  {
     "version": "0.13.11",
     "date": "2026-09-07",
     "highlights": [

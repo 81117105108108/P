@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const esEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.0",
+    "date": "2026-09-08",
+    "highlights": [
+      "Configure proxies HTTP salientes por proveedor, con validación y gestión clara de credenciales SOCKS4 no compatibles.",
+      "Importe perfiles de proveedores y configuraciones de modelos desde CC Switch y almacenes locales de agentes.",
+      "Añada encabezados HTTP personalizados y User-Agent por proveedor, además de un preset de MiniMax y errores de obtención de modelos más claros.",
+      "Adjunte archivos desde el selector unificado, con copias en el espacio temporal de la sesión y compatibilidad con imágenes integradas.",
+      "Añada las interfaces en chino tradicional, alemán, español y francés, junto con ajustes de apariencia y proveedores que se pueden buscar.",
+      "Ajuste de forma coherente los tamaños de lectura, la tipografía y los iconos, y muestre el modelo del subagente seleccionado en las tarjetas de delegación.",
+    ]
+  },
+  {
     "version": "0.13.11",
     "date": "2026-09-07",
     "highlights": [

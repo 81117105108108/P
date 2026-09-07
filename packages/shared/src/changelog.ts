@@ -28,6 +28,18 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "0.14.0",
+    date: "2026-09-08",
+    highlights: [
+      "Configure outbound HTTP proxies per provider, with validation and clear handling for unsupported SOCKS4 credentials.",
+      "Import provider profiles and model configurations from CC Switch and local agent stores.",
+      "Add custom provider headers, User-Agent settings, and a MiniMax preset with clearer model-fetch errors.",
+      "Attach files from the unified picker with session-scratch copies and inline image support.",
+      "Add Traditional Chinese, German, Spanish, and French shell locales, plus searchable appearance and provider settings.",
+      "Adjust reading font sizes, typography, and icons consistently, and show the selected subagent model in delegation cards.",
+    ],
+  },
+  {
     version: "0.13.11",
     date: "2026-09-07",
     highlights: [
@@ -672,6 +684,18 @@ const enEntries: ChangelogEntry[] = [
 
 const zhCNEntries: ChangelogEntry[] = [
   {
+    version: "0.14.0",
+    date: "2026-09-08",
+    highlights: [
+      "支持按服务商配置出站 HTTP 代理，校验代理设置，并明确处理不支持的 SOCKS4 凭据。",
+      "可从 CC Switch 和本地智能体存储导入服务商配置与模型配置。",
+      "支持自定义服务商请求头和 User-Agent，新增 MiniMax 预设，并改进模型获取错误提示。",
+      "通过统一文件选择器添加附件，复制到会话临时目录，并支持行内图片。",
+      "新增繁体中文、德语、西班牙语和法语界面，并支持搜索外观与服务商设置。",
+      "统一调整阅读字号、文字和图标大小，并在委派卡片中显示所选子智能体模型。",
+    ],
+  },
+  {
     version: "0.13.11",
     date: "2026-09-07",
     highlights: [
@@ -1315,6 +1339,18 @@ const zhCNEntries: ChangelogEntry[] = [
 ];
 
 const zhTWEntries: ChangelogEntry[] = [
+  {
+    version: "0.14.0",
+    date: "2026-09-08",
+    highlights: [
+      "支援按服務商設定對外 HTTP 代理，驗證代理設定，並明確處理不支援的 SOCKS4 憑據。",
+      "可從 CC Switch 和本機智慧體儲存匯入服務商設定與模型設定。",
+      "支援自訂服務商請求標頭和 User-Agent，新增 MiniMax 預設，並改進模型擷取錯誤提示。",
+      "透過統一檔案選擇器新增附件，複製到會話暫存目錄，並支援行內圖片。",
+      "新增繁體中文、德語、西班牙語和法語介面，並支援搜尋外觀與服務商設定。",
+      "統一調整閱讀字號、文字和圖示大小，並在委派卡片中顯示所選子智慧體模型。",
+    ],
+  },
   {
     version: "0.13.11",
     date: "2026-09-07",
