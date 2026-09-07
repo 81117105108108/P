@@ -64,8 +64,9 @@ when macOS `iconutil` is available, without overwriting the canonical source.
 - `Resources/app.asar` — Electron Main, preload, renderer output, and only the
   runtime-resolved production modules. Renderer libraries are already present
   in Vite output and are not copied again as raw package trees.
-- Chromium locale packs for English and Simplified Chinese only. Product
-  `en`/`zh-CN` catalogs remain bundled independently of Chromium locales.
+- Chromium locale packs for English, Simplified Chinese, Traditional Chinese,
+  and Turkish. Product catalogs remain bundled independently of Chromium
+  locales.
 - App icon `build/icon.icns` (derived from canonical `build/icon_1024.png` by
   `scripts/make-icon.py`).
 - macOS menu bar template `build/tray-icon-mac.png`, derived from the dark PI
@@ -77,7 +78,7 @@ when macOS `iconutil` is available, without overwriting the canonical source.
 ### 4.1 Mandatory release version-surface gate (D164 + D260)
 
 **Every product release that bumps a stable app version and cuts a tag MUST
-first update every version-bearing surface: the dual-locale in-app product
+first update every version-bearing surface: the shipped-locale in-app product
 changelog and the version numbers stated in project documentation.** Tagging a
 stable version while any surface still describes an older version is a
 **release process failure**: packaged builds cannot show "what's new" without a
@@ -89,7 +90,7 @@ Surfaces in scope:
 
 | Surface | Requirement |
 |---|---|
-| `packages/shared/src/changelog.ts` | Newest-first EN + zh-CN entries for the version, matching highlight counts |
+| `packages/shared/src/changelog.ts` | Newest-first entries for every shipped product locale, matching highlight counts |
 | `packages/shared/src/changelog.test.ts` | Version added at the top of the newest-first list |
 | `package.json`, `apps/*/package.json`, `packages/*/package.json`, `docs/package.json` | Same version (`docs` is a third workspace root, not under `apps`/`packages`) |
 | `Cargo.toml` `[workspace.package]`, `Cargo.lock` `host-core` | Same version |
@@ -100,7 +101,7 @@ Blocking steps:
 
 1. Edit `packages/shared/src/changelog.ts` **before**
    `node scripts/release.mjs <version>` / `git tag`:
-   - Add a **newest-first** entry under both `en` and `zh-CN`.
+   - Add a **newest-first** entry under `en` and every shipped product locale.
    - Same `version` string (semver **without** a leading `v`, matching
      `apps/desktop` / `APP_VERSION`).
    - Optional ISO `date` (`YYYY-MM-DD`).
@@ -129,7 +130,8 @@ Blocking steps:
 
 Pre-tag checklist:
 
-- [ ] `packages/shared/src/changelog.ts` has EN + zh-CN entries for the version
+- [ ] `packages/shared/src/changelog.ts` has entries for every shipped product
+      locale for the version
       about to be tagged
 - [ ] Highlight counts match across locales
 - [ ] Shared changelog tests pass
@@ -217,7 +219,8 @@ The package inventory must confirm:
   tree in ASAR
 - required third-party license and notice files remain in ASAR or
   `Resources/licenses` when their non-runtime package trees are pruned
-- only the configured English and Simplified Chinese Chromium locale packs
+- only the configured English, Simplified Chinese, Traditional Chinese, and
+  Turkish Chromium locale packs
 
 The first audited optimized package establishes the platform baseline. Keep
 per-platform measurements rather than applying one budget to different
@@ -235,7 +238,7 @@ applicable to this directory-only validation build.
 | `Contents/Resources` | 33,102,807 | 31.6 |
 | `Resources/app.asar` | 20,944,962 | 20.0 |
 | `Resources/app.asar.unpacked` native payload | 137,336 | 0.1 |
-| English and Simplified Chinese Chromium locale packs | 1,033,673 | 1.0 |
+| Historical English and Simplified Chinese Chromium locale packs baseline | 1,033,673 | 1.0 |
 | Agent sidecar | 3,258,983 | 3.1 |
 | Rust host | 7,160,000 | 6.8 |
 

@@ -36,7 +36,7 @@ export type UpdaterOptions = {
   send: (channel: string, payload: unknown) => void;
   currentVersion: string;
   /**
-   * Active product UI locale for dual-locale release notes (en / zh-CN).
+   * Active product UI locale for shipped-locale release notes.
    * Called when attaching notes to update state; defaults to English.
    */
   getLocale?: () => string | null | undefined;

@@ -143,7 +143,8 @@ Required for every stable app version bump / tag (D164). Skip only for
 documentation-only work or non-release chores.
 
 - [ ] `packages/shared/src/changelog.ts` has a newest-first entry for the
-      release version under **both** `en` and `zh-CN` (no leading `v`).
+      release version under `en` and every shipped product locale (no leading
+      `v`).
 - [ ] Highlight counts match across locales; English is the source of truth.
 - [ ] Bullets are short user-facing product notes (not raw PR/commit lists).
 - [ ] Pre-release-only versions are omitted from the product catalog unless
@@ -154,7 +155,7 @@ documentation-only work or non-release chores.
       `<major>.<minor>.x` release line and contain no toolchain, command,
       Highlights, or roadmap claim the release invalidates.
 - [ ] `node scripts/check-release-docs.mjs` passes (version surfaces,
-      dual-locale catalog, README release line).
+      shipped-locale catalog, README release line).
 - [ ] Documentation commit is on the release branch **before**
       `node scripts/release.mjs <version> --tag` / `git tag v<version>`.
 - [ ] GitHub auto-generated release body is treated as web-only, not the

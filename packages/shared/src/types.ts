@@ -1094,7 +1094,7 @@ export type AppSettings = {
   defaultPermissionMode?: GlobalPermissionMode;
   theme: ThemePreference;
   /** UI language; `auto` (and absent) follows the OS locale. */
-  language?: "auto" | "en" | "zh-CN" | "tr";
+  language?: "auto" | "en" | "zh-CN" | "zh-TW" | "tr";
   /**
    * Global UI font stack (CSS `font-family` value). Absent means the built-in
    * token stack; bundled open-source families and installed system families
@@ -1675,7 +1675,7 @@ export type UpdateState = {
   currentVersion: string;
   availableVersion?: string;
   /**
-   * Localized product highlights for `availableVersion` from the dual-locale
+   * Localized product highlights for `availableVersion` from the shipped-locale
    * in-app changelog. Plain text (bullet lines); absent when the version has
    * no catalog entry. Main selects the locale — the renderer never supplies
    * a feed or remote notes URL (ADR 0022 / D164).

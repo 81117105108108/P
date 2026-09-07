@@ -59,7 +59,7 @@ test("update IPC channels are declared and whitelisted for the preload bridge", 
   assert.match(
     typesSource,
     /releaseNotes\?: string/,
-    "UpdateState carries dual-locale product notes from Main",
+    "UpdateState carries localized product notes from Main",
   );
 });
 
@@ -105,7 +105,7 @@ test("updater gates delivery mode by platform, packaging and signature reality",
   assert.match(
     updaterSource,
     /formatChangelogNotes/,
-    "in-app dual-locale notes attach from the shared changelog catalog",
+    "in-app localized notes attach from the shared changelog catalog",
   );
   assert.match(
     updaterSource,
@@ -206,10 +206,11 @@ test("packaging publishes an electron-updater feed for GitHub Releases", () => {
   assert.match(releaseWorkflowSource, /files: dist\/\*/);
 });
 
-test("shared dual-locale changelog is the in-app notes source of truth", () => {
+test("shared shipped-locale changelog is the in-app notes source of truth", () => {
   assert.match(changelogSource, /export const CHANGELOG/);
   assert.match(changelogSource, /formatChangelogNotes/);
   assert.match(changelogSource, /"zh-CN"/);
+  assert.match(changelogSource, /"zh-TW"/);
   assert.match(changelogSource, /version: "0\.2\.7"/);
   assert.match(
     mainSource,

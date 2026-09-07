@@ -218,7 +218,7 @@ Which change types require which doc updates.
 | UX change | Related `04-ux/` spec | — | — | New UI scenario | — |
 | Spec-only update | The spec itself | — | — | — | — |
 | Chore (deps, tooling) | — | — | If tooling decision | — | — |
-| **App version release / stable tag** | `06-delivery/06-release-runbook.md` (mandatory version-surface gate before tag: dual-locale `packages/shared/src/changelog.ts`, its test list, all workspace/Cargo/`APP_VERSION` versions, and the release line in `README.md` + `README.zh-CN.md`) | — | If release policy changes | Confirm E2E-067B still accurate | If milestone ship |
+| **App version release / stable tag** | `06-delivery/06-release-runbook.md` (mandatory version-surface gate before tag: shipped-locale `packages/shared/src/changelog.ts`, its test list, all workspace/Cargo/`APP_VERSION` versions, and the release line in `README.md` + `README.zh-CN.md`) | — | If release policy changes | Confirm E2E-067B still accurate | If milestone ship |
 
 ---
 
@@ -374,9 +374,9 @@ A change is **Done** when all of the following are true:
 
 When the change is a **stable app version release** (version bump + tag),
 Definition of Done also requires, **before** the tag, that every
-version-bearing surface describes the new version: the dual-locale in-app
-changelog entry in `packages/shared/src/changelog.ts` (EN + zh-CN, aligned
-highlight counts) with its `changelog.test.ts` list, every workspace
+version-bearing surface describes the new version: the shipped-locale in-app
+changelog entries in `packages/shared/src/changelog.ts` (English and every
+shipped product locale, with aligned highlight counts) with its `changelog.test.ts` list, every workspace
 `package.json` (including `docs/package.json`), the Cargo workspace version and
 `host-core` lockfile entry, `APP_VERSION`, and the release line stated in
 `README.md` + `README.zh-CN.md`. `node scripts/check-release-docs.mjs` must
@@ -406,7 +406,7 @@ D164, and D260. GitHub release notes are not a substitute.
 | Mixing multiple logical changes in one commit without clear message | Loss of history granularity |
 | Implementing a linked GitHub issue without verifying the problem exists | Violates R5; wastes work on invalid or already-fixed claims |
 | Closing a linked GitHub issue without a comment in the issue language | Violates R5; leaves no public record of the outcome |
-| Tagging a stable app release without updating `packages/shared/src/changelog.ts` (EN + zh-CN) | Violates D164 / release runbook; in-app What's new is empty for that version |
+| Tagging a stable app release without updating `packages/shared/src/changelog.ts` for every shipped locale | Violates D164 / D345 / release runbook; in-app What's new is empty for that locale and version |
 | Tagging a stable app release while `README.md` / `README.zh-CN.md` still state an older release line, or bypassing `scripts/check-release-docs.mjs` with `--skip-docs-check` | Violates D260 / release runbook; published documentation advertises a version the release no longer matches |
 
 ---

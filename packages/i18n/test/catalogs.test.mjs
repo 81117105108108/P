@@ -8,6 +8,7 @@ import {
   resolveLocale,
   supportedLocales,
   zhCN,
+  zhTW,
 } from "../src/index.ts";
 
 function placeholders(value) {
@@ -109,7 +110,10 @@ test("import, project, and temporary-session copy is catalog-backed", () => {
 
 test("locale resolution maps variants onto shipped catalogs and falls back to English", () => {
   assert.equal(resolveLocale("zh-CN"), "zh-CN");
-  assert.equal(resolveLocale("zh-TW"), "zh-CN");
+  assert.equal(resolveLocale("zh-TW"), "zh-TW");
+  assert.equal(resolveLocale("zh-Hant"), "zh-TW");
+  assert.equal(resolveLocale("zh_Hant_TW"), "zh-TW");
+  assert.equal(resolveLocale("zh-HK"), "zh-TW");
   assert.equal(resolveLocale("zh"), "zh-CN");
   assert.equal(resolveLocale("en-US"), "en");
   assert.equal(resolveLocale("tr"), "tr");
@@ -122,21 +126,27 @@ test("locale resolution maps variants onto shipped catalogs and falls back to En
 test("the locale registry lists English first, then other locales by English name", () => {
   assert.deepEqual(
     supportedLocales.map((locale) => locale.id),
-    ["en", "zh-CN", "tr"],
+    ["en", "zh-CN", "zh-TW", "tr"],
   );
   assert.deepEqual(
     listedLocales().map((locale) => locale.id),
-    ["en", "zh-CN", "tr"],
+    ["en", "zh-CN", "zh-TW", "tr"],
   );
   assert.equal(localeInfoNative("tr"), "Türkçe");
   assert.equal(english["settings.languageSearchPlaceholder"], "Search languages…");
   assert.equal(english["settings.themeSearchPlaceholder"], "Search themes…");
   assert.equal(english["settings.languageAutoDesc"], "Currently {{state}}");
   const turkish = flattenCatalog(catalogs.tr);
+  const traditional = flattenCatalog(zhTW);
   assert.equal(turkish["settings.language"], "Dil");
   assert.equal(turkish["settings.languageAuto"], "Sistem dilini kullan");
   assert.equal(turkish["settings.languageSearchPlaceholder"], "Dil ara…");
   assert.notEqual(turkish["app.tagline"], english["app.tagline"]);
+  assert.equal(traditional["settings.language"], "語言");
+  assert.equal(traditional["settings.languageAuto"], "跟隨系統");
+  assert.equal(traditional["nav.projects"], "專案");
+  assert.equal(traditional["nav.temporarySessions"], "臨時對話");
+  assert.match(traditional["app.tagline"], /程式設計/);
 });
 
 function localeInfoNative(id) {

@@ -281,7 +281,27 @@ function installPaintThroughDragMap(dragRegion: HTMLElement): void {
 }
 
 function chromeLabels(): ChromeLabels {
-  if (panelLocale().toLowerCase().startsWith("zh")) {
+  const locale = panelLocale().replaceAll("_", "-").toLowerCase();
+  const traditionalChinese =
+    locale === "zh-tw" ||
+    locale.startsWith("zh-tw-") ||
+    locale === "zh-hant" ||
+    locale.startsWith("zh-hant-") ||
+    locale === "zh-hk" ||
+    locale.startsWith("zh-hk-") ||
+    locale === "zh-mo" ||
+    locale.startsWith("zh-mo-");
+  if (traditionalChinese) {
+    return {
+      toolbar: "外掛面板視窗控制項",
+      minimize: "最小化",
+      maximize: "最大化",
+      restore: "還原",
+      close: "關閉",
+      safeArea: "開發提示 · 頂部 46px 為拖曳區",
+    };
+  }
+  if (locale.startsWith("zh")) {
     return {
       toolbar: "插件面板窗口控制",
       minimize: "最小化",

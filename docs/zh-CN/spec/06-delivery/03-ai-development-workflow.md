@@ -334,7 +334,7 @@ git worktree prune
 
 当更改是**稳定应用程序版本发布**（版本提升 + 标签）时，完成的定义还要求在
 打标签**之前**，所有带版本号的位置都描述新版本：`packages/shared/src/changelog.ts`
-中的双语应用内变更日志条目（EN + zh-CN，亮点条数一致）及其
+中的已发货语言应用内变更日志条目（英语和每个已发货产品语言，亮点条数一致）及其
 `changelog.test.ts` 清单、每个工作区 `package.json`（含 `docs/package.json`）、
 Cargo 工作区版本与 `host-core` 锁文件条目、`APP_VERSION`，以及 `README.md` +
 `README.zh-CN.md` 中声明的版本线。`node scripts/check-release-docs.mjs` 必须
@@ -364,7 +364,7 @@ D164 与 D260。 GitHub 发行说明并不能替代。
 | 在一次提交中混合多个逻辑更改而没有明确的消息 | 历史粒度的损失 |
 | 未核实问题是否存在就开始实现链接的 GitHub issue | 违反 R5；把工作浪费在无效或已修复的主张上 |
 | 关闭链接的 GitHub issue 时没有以其原文语言撰写的评论 | 违反 R5；没有公开记录处理结果 |
-| 在不更新 `packages/shared/src/changelog.ts` 的情况下标记稳定的应用程序版本（EN + zh-CN） | 违反 D164/发布操作手册；该版本的应用内新增功能为空 |
+| 在不为每个已发货语言更新 `packages/shared/src/changelog.ts` 的情况下标记稳定的应用程序版本 | 违反 D164/D345/发布操作手册；该语言版本的应用内新增功能为空 |
 | 在 `README.md` / `README.zh-CN.md` 仍声明旧版本线时标记稳定版本，或用 `--skip-docs-check` 绕过 `scripts/check-release-docs.mjs` | 违反 D260/发布操作手册；已发布文档宣传的版本与实际发布不符 |
 
 ---

@@ -2,11 +2,14 @@ export { en, type EnglishCatalog } from "./locales/en/index.js";
 export { default as enDefault } from "./locales/en/index.js";
 export { zhCN } from "./locales/zh-CN/index.js";
 export { default as zhCNDefault } from "./locales/zh-CN/index.js";
+export { zhTW } from "./locales/zh-TW/index.js";
+export { default as zhTWDefault } from "./locales/zh-TW/index.js";
 export { tr } from "./locales/tr/index.js";
 export { default as trDefault } from "./locales/tr/index.js";
 
 import { en, type EnglishCatalog } from "./locales/en/index.js";
 import { zhCN } from "./locales/zh-CN/index.js";
+import { zhTW } from "./locales/zh-TW/index.js";
 import { tr } from "./locales/tr/index.js";
 
 export const defaultLocale = "en";
@@ -18,6 +21,7 @@ export const defaultLocale = "en";
 export const supportedLocales = [
   { id: "en", nativeName: "English", englishName: "English" },
   { id: "zh-CN", nativeName: "简体中文", englishName: "Chinese (Simplified)" },
+  { id: "zh-TW", nativeName: "繁體中文", englishName: "Chinese (Traditional)" },
   { id: "tr", nativeName: "Türkçe", englishName: "Turkish" },
 ] as const;
 
@@ -27,6 +31,7 @@ export type AppLanguageSetting = "auto" | AppLocale;
 export const catalogs: Record<AppLocale, EnglishCatalog> = {
   en,
   "zh-CN": zhCN,
+  "zh-TW": zhTW,
   tr,
 };
 
@@ -58,6 +63,18 @@ export function resolveLocale(input?: string | null): AppLocale {
   const raw = (input || "").trim();
   if (!raw) return "en";
   const lower = raw.replaceAll("_", "-").toLowerCase();
+  if (
+    lower === "zh-tw" ||
+    lower.startsWith("zh-tw-") ||
+    lower === "zh-hant" ||
+    lower.startsWith("zh-hant-") ||
+    lower === "zh-hk" ||
+    lower.startsWith("zh-hk-") ||
+    lower === "zh-mo" ||
+    lower.startsWith("zh-mo-")
+  ) {
+    return "zh-TW";
+  }
   if (lower === "zh" || lower.startsWith("zh-")) return "zh-CN";
   if (lower === "tr" || lower.startsWith("tr-")) return "tr";
   const exact = supportedLocales.find((locale) => locale.id.toLowerCase() === lower);

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { en, flattenCatalog, zhCN } from "../src/index.ts";
+import { en, flattenCatalog, zhCN, zhTW } from "../src/index.ts";
 
 const english = flattenCatalog(en);
 const chinese = flattenCatalog(zhCN);
+const traditional = flattenCatalog(zhTW);
 
 test("shell status and crash copy stay user-facing", () => {
   assert.equal(english["app.tagline"], "Local AI coding partner");
@@ -52,6 +53,10 @@ test("common setup and marketplace copy avoid developer jargon", () => {
   assert.equal(chinese["settings.providers"], "AI 服务");
   assert.equal(chinese["menu.refreshMarket"], "刷新插件市场");
   assert.equal(chinese["chat.emptyHint"], "添加服务并打开项目即可开始。");
+  assert.equal(traditional["nav.temporarySessions"], "臨時對話");
+  assert.equal(traditional["settings.providers"], "AI 服務");
+  assert.equal(traditional["menu.refreshMarket"], "重新整理外掛市場");
+  assert.equal(traditional["chat.emptyHint"], "新增服務並開啟專案即可開始。");
 });
 
 test("Plan mode and Auto permission copy stay explicit in both locales", () => {

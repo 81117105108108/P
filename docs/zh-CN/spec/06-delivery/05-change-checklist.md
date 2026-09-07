@@ -151,7 +151,7 @@
 - [ ] `pnpm --filter @pi-desktop/shared test` 通过目录对齐。
 - [ ] `README.md` 与 `README.zh-CN.md` 声明当前 `<major>.<minor>.x` 版本线，
       且不含被本次发布推翻的工具链、命令、亮点或路线图描述。
-- [ ] `node scripts/check-release-docs.mjs` 通过（版本面、双语目录、
+- [ ] `node scripts/check-release-docs.mjs` 通过（版本面、已发货语言目录、
       README 版本线）。
 - [ ] 文档提交位于发布分支**之前**
       `node scripts/release.mjs <version> --tag` / `git tag v<version>`。

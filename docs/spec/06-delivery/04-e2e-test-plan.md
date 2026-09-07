@@ -1271,7 +1271,8 @@ Each scenario is documented in this format:
 
 #### E2E-091: Appearance card selects searchable theme and language pickers
 
-- **Preconditions**: App running on macOS with a Simplified Chinese system locale.
+- **Preconditions**: App running on macOS; the harness can exercise English,
+  Simplified Chinese, and Traditional Chinese system locales.
 - **Steps**:
   1) Open Settings → General.
   2) In the Appearance card, open the Theme picker. Confirm System, Light, and
@@ -1279,12 +1280,13 @@ Each scenario is documented in this format:
      and the UI switches to dark.
   3) Select Light and confirm the UI switches to light.
   4) In the Language row, open the searchable picker. Confirm Auto is pinned
-     at the top with the detected native name (简体中文) and that English,
-     简体中文, and Türkçe are listed by native name; with the OS locale set to
-     Chinese, selecting Auto applies Simplified Chinese.
-  5) Select English and confirm the UI switches to English; select 简体中文 and
-     confirm it switches back; select Türkçe and confirm shell chrome is
-     Turkish without a reload.
+     at the top with the detected native name and that English, 简体中文,
+     繁體中文, and Türkçe are listed by native name. With Simplified Chinese
+     selected as the OS locale, selecting Auto applies Simplified Chinese;
+     with Traditional Chinese selected, Auto applies Traditional Chinese.
+  5) Select English, 简体中文, 繁體中文, and Türkçe in turn and confirm shell
+     chrome switches to each locale without a reload. Confirm `zh-Hant` and
+     `zh-HK` system tags also resolve to 繁體中文.
   6) Type a native name or English name into the language search and confirm
      unmatched locales disappear. Type a theme name into the theme search and
      confirm unmatched options disappear.
@@ -1294,7 +1296,8 @@ Each scenario is documented in this format:
   then any plugin themes after a divider. Auto resolves the OS locale through
   the main process (`app.getLocale()`), passes it safely through the sandboxed
   preload bridge, and reflects the detected native name inline in the menu;
-  switching options updates the live UI without a reload.
+  zh-TW is a complete shell catalog, including release-note copy; switching
+  options updates the live UI without a reload.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/02-i18n-english-first.md`
 - **Acceptance**: A (core shell), H (localization)
 - **Milestone**: M4
@@ -2905,22 +2908,22 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (`auto-update.test.mjs` asserts
   `allowPrerelease = false`); packaged discovery scenario Draft
 
-#### E2E-067B: Dual-locale update notes and full changelog dialog (D164)
+#### E2E-067B: Shipped-locale update notes and full changelog dialog (D164/D345)
 
 - **Preconditions**: The shipped `packages/shared` CHANGELOG contains aligned
-  `en` and `zh-CN` stable history; product language can be switched. For the
-  compact update path, use a packaged or fixture updater state with a
+  `en`, `zh-CN`, and `zh-TW` stable history; product language can be switched.
+  For the compact update path, use a packaged or fixture updater state with a
   catalogued `availableVersion`.
 - **Steps**: 1) With no available update, open Settings → Info and open Release
   notes. 2) Inspect the complete history, current-version marker, scrolling,
   and close behavior by close control, Escape, and backdrop. 3) Force or wait
   for update discovery so status is manual `available`, in-app `downloading`,
   or `downloaded`; inspect the ambient banner and Settings Updates row, then
-  reopen Release notes. 4) Switch UI language to zh-CN and re-inspect without
-  invoking a new check. 5) Repeat the compact update path with a version absent
-  from the catalog.
+  reopen Release notes. 4) Switch UI language to zh-CN and then zh-TW and
+  re-inspect without invoking a new check. 5) Repeat the compact update path
+  with a version absent from the catalog.
 - **Expected**: `UpdateState.releaseNotes` is plain multi-line product
-  highlights selected by Main from the dual-locale catalog — never a
+  highlights selected by Main from the shipped-locale catalog — never a
   renderer-supplied URL. Both surfaces show a localized "What's new" block
   when notes exist and hide it when they do not. Locale change refreshes notes
   for the same version. The Release notes action remains available in every

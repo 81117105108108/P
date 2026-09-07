@@ -30,6 +30,7 @@ Rules:
 packages/i18n/src/locales/
 ├── en/index.ts
 ├── zh-CN/index.ts
+├── zh-TW/index.ts
 └── tr/index.ts
 ```
 

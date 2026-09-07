@@ -25,6 +25,13 @@ describe("validateManifest", () => {
     expect(resolvePluginLocalizedString(result.manifest?.ui?.title, "zh-CN")).toBe("你好");
   });
 
+  it("falls back to English for shell locales without a plugin translation", () => {
+    const value = { en: "History", "zh-CN": "历史" };
+    expect(resolvePluginLocalizedString(value, "zh-TW")).toBe("History");
+    expect(resolvePluginLocalizedString(value, "zh-Hant")).toBe("History");
+    expect(resolvePluginLocalizedString(value, "zh-CN")).toBe("历史");
+  });
+
   it("requires both supported locales for localized panel titles", () => {
     expect(
       validateManifest({ ...base, ui: { title: { en: "Hello" } } }).error,

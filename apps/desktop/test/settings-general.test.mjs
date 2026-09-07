@@ -62,6 +62,10 @@ const trLocaleSource = await readFile(
   new URL("../../../packages/i18n/src/locales/tr/index.ts", import.meta.url),
   "utf8",
 );
+const zhTWLocaleSource = await readFile(
+  new URL("../../../packages/i18n/src/locales/zh-TW/index.ts", import.meta.url),
+  "utf8",
+);
 const mainSource = await readFile(
   new URL("../src/main.tsx", import.meta.url),
   "utf8",
@@ -114,7 +118,7 @@ test("Basics and AI tabs expose their respective app and AI controls", () => {
 });
 
 test("language persists as part of shared app settings", () => {
-  assert.match(sharedTypesSource, /language\?: "auto" \| "en" \| "zh-CN" \| "tr"/);
+  assert.match(sharedTypesSource, /language\?: "auto" \| "en" \| "zh-CN" \| "zh-TW" \| "tr"/);
   assert.match(sharedTypesSource, /largePasteThreshold\?: number/);
   assert.match(sharedTypesSource, /fontScale\?: number/);
   assert.match(sharedTypesSource, /networkProxy\?: NetworkProxySettings/);
@@ -127,7 +131,7 @@ test("General Network card persists a custom HTTP or SOCKS5 proxy", () => {
   assert.match(electronMainSource, /applyNetworkProxyFromAppSettings/);
   assert.match(electronMainSource, /IPC\.invoke\.networkProxyTest/);
   assert.match(protocolSource, /networkProxyTest: "pi-desktop\/network\/testProxy"/);
-  for (const source of [enLocaleSource, zhLocaleSource, trLocaleSource]) {
+  for (const source of [enLocaleSource, zhLocaleSource, zhTWLocaleSource, trLocaleSource]) {
     assert.match(source, /proxyCustom:/);
     assert.match(source, /proxyUrlPlaceholder:/);
   }
@@ -279,6 +283,7 @@ test("settings nav keeps a flat searchable index with titled visual groups", () 
     assert.match(settingsSearchSource, new RegExp(key.replace(".", "\\.")));
     assert.match(enLocaleSource, new RegExp(`${key.split(".")[1]}:`));
     assert.match(zhLocaleSource, new RegExp(`${key.split(".")[1]}:`));
+    assert.match(zhTWLocaleSource, new RegExp(`${key.split(".")[1]}:`));
     assert.match(trLocaleSource, new RegExp(`${key.split(".")[1]}:`));
   }
   assert.doesNotMatch(settingsSearchSource, /id: "extensions"/);
@@ -334,6 +339,7 @@ test("settings rail uses short parallel labels and descriptive page titles", () 
     assert.match(settingsSearchSource, new RegExp(key.replaceAll(".", "\\.")));
     assert.match(enLocaleSource, new RegExp(`${key.split(".").at(-1)}:`));
     assert.match(zhLocaleSource, new RegExp(`${key.split(".").at(-1)}:`));
+    assert.match(zhTWLocaleSource, new RegExp(`${key.split(".").at(-1)}:`));
     assert.match(trLocaleSource, new RegExp(`${key.split(".").at(-1)}:`));
   }
   assert.match(settingsSearchSource, /titleKey: "settings\.configuration"/);

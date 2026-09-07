@@ -831,7 +831,7 @@ const inflightCheckpointer = new InflightCheckpointer(async (checkpoint) => {
   );
 });
 
-/** Product UI locale for dual-locale update notes (mirrored from settings). */
+/** Product UI locale for shipped-locale update notes (mirrored from settings). */
 let updaterLocale = "en";
 type PluginPanelTheme = "light" | "dark";
 let pluginPanelTheme: PluginPanelTheme = nativeTheme.shouldUseDarkColors

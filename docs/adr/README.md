@@ -172,7 +172,7 @@ Each ADR includes:
 | 0157 | Main-owned GitHub issue feedback | Accepted |
 | 0158 | Keep approval cards focused and remember the selected mode | Accepted |
 | 0159 | Generated plugin settings and plugin-local shortcuts | Accepted |
-| 0160 | Shipped locale registry and searchable language picker | Accepted |
+| 0160 | Shipped locale registry and searchable language picker | Accepted (amended by 0182) |
 | 0161 | Searchable theme picker matching language | Accepted |
 | 0162 | Cross-session A2A addressing | Superseded by 0165 |
 | 0163 | Transcript file references render as previewable chips | Accepted |
@@ -194,3 +194,4 @@ Each ADR includes:
 | 0179 | Import model configuration from local agent stores | Accepted |
 | 0180 | Custom global UI type scale | Accepted |
 | 0181 | Main-owned picker capabilities | Accepted |
+| 0182 | Traditional Chinese shell locale | Accepted (amends 0160) |

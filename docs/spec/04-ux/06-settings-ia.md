@@ -421,7 +421,7 @@ system while preserving their different data ownership:
   localized to the product language and marking the current and available
   versions when present
 - When an update is available, downloading, or downloaded and Main attached
-  dual-locale product notes, the Updates row shows a compact "What's new"
+  localized product notes, the Updates row shows a compact "What's new"
   list under the status text (same notes as the ambient banner; D164). The
   full-history modal remains available when the app is up to date or update
   checks are disabled in development

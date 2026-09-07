@@ -33,6 +33,7 @@ UI 必须使用 **i18next + React-i18next** (D012)。
 packages/i18n/src/locales/
 ├── en/index.ts
 ├── zh-CN/index.ts
+├── zh-TW/index.ts
 └── tr/index.ts
 ```
 

@@ -10,13 +10,15 @@ import {
 const STABLE_FROM = "0.1.1";
 
 describe("changelog catalog", () => {
-  it("keeps English and zh-CN version sets and highlight counts aligned", () => {
+  it("keeps shipped locale version sets and highlight counts aligned", () => {
     const en = CHANGELOG.en;
     const zh = CHANGELOG["zh-CN"];
-    expect(zh.map((e) => e.version)).toEqual(en.map((e) => e.version));
-    for (let i = 0; i < en.length; i += 1) {
-      expect(zh[i]?.highlights.length).toBe(en[i]?.highlights.length);
-      expect(en[i]?.highlights.length).toBeGreaterThan(0);
+    for (const catalog of [zh, CHANGELOG["zh-TW"]]) {
+      expect(catalog.map((e) => e.version)).toEqual(en.map((e) => e.version));
+      for (let i = 0; i < en.length; i += 1) {
+        expect(catalog[i]?.highlights.length).toBe(en[i]?.highlights.length);
+        expect(en[i]?.highlights.length).toBeGreaterThan(0);
+      }
     }
   });
 
@@ -100,7 +102,9 @@ describe("changelog catalog", () => {
   it("normalizes versions and resolves locales", () => {
     expect(normalizeChangelogVersion(" v0.2.7 ")).toBe("0.2.7");
     expect(resolveChangelogLocale("zh-CN")).toBe("zh-CN");
-    expect(resolveChangelogLocale("zh-TW")).toBe("zh-CN");
+    expect(resolveChangelogLocale("zh-TW")).toBe("zh-TW");
+    expect(resolveChangelogLocale("zh-Hant")).toBe("zh-TW");
+    expect(resolveChangelogLocale("zh_HK")).toBe("zh-TW");
     expect(resolveChangelogLocale("en-US")).toBe("en");
     expect(resolveChangelogLocale()).toBe("en");
   });

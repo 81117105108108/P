@@ -66,8 +66,8 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 - `Resources/app.asar` — Electron Main、preload、渲染器输出以及仅
   运行时解析的生产模块。 Renderer 库已存在
   在 Vite 输出中，并且不会再次复制为原始包树。
-- Chromium 语言环境包仅适用于英语和简体中文。产品展示
-  `en`/`zh-CN` 目录保持捆绑状态，独立于 Chromium 区域设置。
+- Chromium 语言环境包适用于英语、简体中文、繁体中文和土耳其语。产品目录
+  保持捆绑状态，独立于 Chromium 区域设置。
 - 应用程序图标 `build/icon.icns`（源自规范 `build/icon_1024.png`，作者：
   `scripts/make-icon.py`）。
 
@@ -85,7 +85,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 
 | 位置 | 要求 |
 |---|---|
-| `packages/shared/src/changelog.ts` | 该版本的 EN + zh-CN 条目按最新优先排列，亮点条数一致 |
+| `packages/shared/src/changelog.ts` | 每个已发货产品语言的该版本条目按最新优先排列，亮点条数一致 |
 | `packages/shared/src/changelog.test.ts` | 该版本加入最新优先清单的首位 |
 | `package.json`、`apps/*/package.json`、`packages/*/package.json`、`docs/package.json` | 版本号一致（`docs` 是第三个工作区根，不在 `apps`/`packages` 之下） |
 | `Cargo.toml` 的 `[workspace.package]`、`Cargo.lock` 的 `host-core` | 版本号一致 |
@@ -96,7 +96,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 
 1. 在 `node scripts/release.mjs <version>` / `git tag` **之前**编辑
    `packages/shared/src/changelog.ts`：
-   - 在 `en` 和 `zh-CN` 下各添加**最新优先**的条目。
+   - 在 `en` 和每个已发货产品语言下各添加**最新优先**的条目。
    - 使用相同的 `version` 字符串（semver，**不带**前导 `v`，与
      `apps/desktop` / `APP_VERSION` 一致）。
    - 可选的 ISO `date`（`YYYY-MM-DD`）。
@@ -124,7 +124,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 
 打标签前清单：
 
-- [ ] `packages/shared/src/changelog.ts` 含有即将打标签版本的 EN + zh-CN 条目
+- [ ] `packages/shared/src/changelog.ts` 含有即将打标签版本的每个已发货产品语言条目
 - [ ] 各语言的亮点条数一致
 - [ ] 共享更新日志测试通过
 - [ ] `README.md` 与 `README.zh-CN.md` 声明当前版本线，且没有被本次发布
@@ -206,7 +206,7 @@ framework/runtime、区域设置和未打包的本机大小。将它们与
 ASAR 中的树
 - 所需的第三方许可和通知文件保留在 ASAR 中或
   `Resources/licenses` 当其非运行时包树被修剪时
-- 仅配置的英语和简体中文 Chromium 语言环境包
+- 仅配置的英语、简体中文、繁体中文和土耳其语 Chromium 语言环境包
 
 第一个经过审核的优化包建立了平台基线。保留
 针对每个平台进行测量，而不是将一项预算应用于不同的平台
@@ -224,7 +224,7 @@ Electron 目标布局。
 | `Contents/Resources` | 33,102,807 | 31.6 |
 | `Resources/app.asar` | 20,944,962 | 20.0 |
 | `Resources/app.asar.unpacked` 本机负载 | 137,336 | 0.1 |
-| 英语和简体中文 Chromium 语言环境包 | 1,033,673 | 1.0 |
+| 历史英语和简体中文 Chromium 语言环境包基线 | 1,033,673 | 1.0 |
 | Agent sidecar | 3,258,983 | 3.1 |
 | Rust 主机 | 7,160,000 | 6.8 |
 
