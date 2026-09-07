@@ -54,6 +54,11 @@ import {
   modelIdsMatch,
   ok,
   parseMcpImport,
+  draftMatchesExisting,
+  modelConfigImportKey,
+  providerCreateInputFromDraft,
+  publicModelConfigCandidate,
+  type ModelConfigImportDraft,
   type ActivationScope,
   type AgentCapabilityQuery,
   type ComposerPasteFile,
@@ -184,6 +189,7 @@ import { builtinComposerCommands, builtinPaletteItems } from "./builtin-commands
 import {
   convertSession,
   scanAllSources,
+  scanModelConfigs,
   type ExternalSessionSummary,
   type ExternalSource,
 } from "./importers";
@@ -780,6 +786,7 @@ plugins.setServices({
   },
 });
 let scannedImportSessions = new Map<string, ExternalSessionSummary>();
+let scannedModelConfigs = new Map<string, ModelConfigImportDraft>();
 
 const IMPORT_SOURCES = new Set<ExternalSource>([
   "claude-code",
@@ -5961,6 +5968,89 @@ function registerIpc() {
         }
       }
       logger.app("session", "info", "session import finished", {
+        data: { imported, skipped, failed },
+      });
+      return { imported, skipped, failed };
+    },
+  );
+
+  handle(IPC.invoke.modelConfigImportScan, async () => {
+    const drafts = await scanModelConfigs();
+    scannedModelConfigs = new Map(
+      drafts.map((draft) => [modelConfigImportKey(draft.source, draft.externalId), draft]),
+    );
+    return { providers: drafts.map(publicModelConfigCandidate) };
+  });
+  handle(
+    IPC.invoke.modelConfigImportRun,
+    async (selections: unknown) => {
+      if (!host) throw new Error("host unavailable");
+      let imported = 0;
+      let skipped = 0;
+      let failed = 0;
+      const items = Array.isArray(selections) ? selections : [];
+      const existing = await host.call<{
+        providers: Array<{
+          baseUrl?: string | null;
+          apiStyle?: string | null;
+          vendorKey?: string | null;
+        }>;
+      }>("providers.list", { includeDisabled: true });
+      const known = [...(existing.providers ?? [])];
+      let firstImported:
+        | { id: string; defaultModelId?: string; models?: Array<{ id: string }> }
+        | undefined;
+      for (const selection of items) {
+        const key = importSelectionKey(selection);
+        const draft = key ? scannedModelConfigs.get(key) : undefined;
+        if (!draft) {
+          failed += 1;
+          logger.app("provider", "warn", "model config import selection rejected", {
+            data: { reason: "candidate was not returned by the latest scan" },
+          });
+          continue;
+        }
+        if (draftMatchesExisting(draft, known)) {
+          skipped += 1;
+          continue;
+        }
+        try {
+          const created = await host.call<{
+            provider: { id: string; defaultModelId?: string; models?: Array<{ id: string }> };
+          }>("providers.create", providerCreateInputFromDraft(draft));
+          imported += 1;
+          known.push(draft);
+          firstImported ??= created.provider;
+        } catch (e) {
+          failed += 1;
+          logger.app("provider", "warn", "model config import failed", {
+            data: {
+              source: draft.source,
+              externalId: draft.externalId,
+              name: draft.name,
+              hasSecret: draft.hasSecret,
+              error: String(e),
+            },
+          });
+        }
+      }
+      if (firstImported) {
+        try {
+          const settings = await host.call<{ defaultProviderId?: string }>("settings.get");
+          if (!settings?.defaultProviderId) {
+            await host.call("settings.set", {
+              defaultProviderId: firstImported.id,
+              defaultModelId:
+                firstImported.models?.[0]?.id ?? firstImported.defaultModelId,
+            });
+          }
+        } catch (e) {
+          logger.app("provider", "warn", "model config import default not set", {
+            data: { error: String(e) },
+          });
+        }
+      }
+      logger.app("provider", "info", "model config import finished", {
         data: { imported, skipped, failed },
       });
       return { imported, skipped, failed };

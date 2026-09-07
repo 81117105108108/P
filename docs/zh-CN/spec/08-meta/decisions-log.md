@@ -2722,3 +2722,9 @@ D193 和 D194。
 - 模型请求、市场下载、更新和内置浏览器各自走不同 HTTP 栈，都没有产品设置。sidecar 里的 Node `fetch` 不使用系统代理。
 - 设置 → 常规 → 网络增加系统 / 直连 / 自定义。自定义是一个 HTTP 或 SOCKS5 URL 加上回环绕过。Chromium 会话、main `net.fetch`、sidecar undici 与 host-core 市场 curl 共用它。工作区 Bash 不继承代理凭据。
 - 决策 D340 记录为 ADR 0177。见 `04-ux/06-settings-ia.md`、`03-runtime/07-process-model.md` 与 E2E-190。
+
+## 2026-09-08 —— 从本地智能体存储导入模型配置（D342）
+
+- 设置 → 导入已经能扫描会话。同一批工具还把提供商地址、模型 id 和 API 密钥写在本机配置里，用户否则要在模型页重填。
+- 增加独立的模型配置卡片：显式扫描，密钥留在主进程扫描缓存，通过 `providers.create` 写入。OAuth/订阅令牌不复制。等价端点跳过。D007 的禁止自动导入仍然有效。
+- 决策 D342 记录为 ADR 0179。见 `04-ux/06-settings-ia.md`、`04-ux/08-component-spec.md` §18.5 与 E2E-192。

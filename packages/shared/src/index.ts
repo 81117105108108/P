@@ -8,6 +8,7 @@ export * from "./changelog.js";
 export * from "./composer-trigger.js";
 export * from "./fuzzy.js";
 export * from "./mcp-import.js";
+export * from "./model-config-import.js";
 export * from "./thinking-levels.js";
 export * from "./command-shells.js";
 export * from "./context-compaction.js";

@@ -22,7 +22,7 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
   6. **Skills / 技能** — Lucide `BookOpen` (reusable agent instructions)
   7. **MCP** — Lucide `Server` (agent connections)
   8. **Subagents / 子智能体** — Lucide `Bot` (personal parallel agents)
-  9. **Import / 导入** — Lucide `Download` (bring sessions in from other tools)
+  9. **Import / 导入** — Lucide `Download` (bring sessions and model configuration in from other tools)
   10. **Projects / 项目** — Lucide `Archive` (durable project index)
   11. **Info / 信息** — Lucide `Info` (versions, logs, updates, developer)
   Icons are decorative (`aria-hidden` via the SVG default) and stay monochrome
@@ -324,10 +324,20 @@ system while preserving their different data ownership:
   menu and are resolved after the global layer.
 
 ### Import
-- Scan supported local agent stores and review candidates through
-  `SessionImportPanel`
-- Source and project-path grouping behavior follows
+- Scan supported local agent stores for **sessions** and **model configuration**
+  through two independent cards on the same destination. Neither scan runs
+  automatically (D007 / D342).
+- Sessions: review candidates through `SessionImportPanel`. Source and
+  project-path grouping behavior follows
   [08-component-spec §18](08-component-spec.md#18-sessionimportpanel)
+- Model configuration: review provider drafts through
+  `ModelConfigImportPanel`
+  ([08-component-spec §18.5](08-component-spec.md#185-modelconfigimportpanel)).
+  Stored API keys from those configs are copied into the host secret store;
+  subscription/OAuth logins are not copied. Re-importing an equivalent
+  endpoint (same normalized base URL and API style) is skipped. If the app
+  has no default model yet, the first newly created provider becomes the
+  default.
 
 ### Project archive
 - Reuses the durable Projects index as a settings-scale management surface

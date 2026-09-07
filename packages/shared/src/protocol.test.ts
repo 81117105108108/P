@@ -55,6 +55,10 @@ describe("Plan protocol contracts", () => {
     expect(IPC_WHITELIST.has(IPC.invoke.fsReadImageDataUrl)).toBe(true);
     expect(IPC.invoke.networkProxyTest).toBe("pi-desktop/network/testProxy");
     expect(IPC_WHITELIST.has(IPC.invoke.networkProxyTest)).toBe(true);
+    expect(IPC.invoke.modelConfigImportScan).toBe("pi-desktop/modelConfig/importScan");
+    expect(IPC.invoke.modelConfigImportRun).toBe("pi-desktop/modelConfig/importRun");
+    expect(IPC_WHITELIST.has(IPC.invoke.modelConfigImportScan)).toBe(true);
+    expect(IPC_WHITELIST.has(IPC.invoke.modelConfigImportRun)).toBe(true);
   });
 
   it("exposes the vendor-account OAuth channels through the preload whitelist", () => {

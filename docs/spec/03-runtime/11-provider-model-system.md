@@ -437,6 +437,11 @@ type ModelDescriptor = {
 - keep model cards compact by default, expand metadata/configuration on demand,
   and keep dialog actions outside the independently scrollable content
 - do not expose raw catalog compatibility internals or provider secrets
+- Settings → Import can copy provider/model rows from Claude Code, Codex,
+  OpenCode, and Pi config files. The scan is explicit. Stored API keys are
+  copied into the host secret store; OAuth/subscription grants are not.
+  An equivalent endpoint (normalized URL + API style) is skipped on
+  re-import. No protocol or schema version bump (D342 / ADR 0179).
 
 ### Model selector
 - search all models across enabled providers

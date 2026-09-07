@@ -8002,3 +8002,35 @@ are withdrawn with ADR 0165.
 - **Milestone**: M5
 - **Status**: Unit-covered (`packages/shared/src/errors.test.ts`); full UI
   journey not applicable
+
+#### E2E-192: Import copies model configuration from local agent stores
+
+- **Preconditions**: At least one supported local config exists among
+  `~/.claude/settings.json`, `~/.codex/config.toml` `[model_providers.*]`,
+  `~/.config/opencode/opencode.json`, or `~/.pi/agent/models.json`, including
+  one API-key provider and optionally one OAuth-only vendor. PI-Desktop may
+  already have an equivalent endpoint.
+- **Steps**:
+  1. Open Settings → Import. Confirm a Sessions card and a Model
+     configuration card, each with its own Scan.
+  2. Scan model configuration. Confirm groups start collapsed, rows show
+     name, model count, host, and an API key / No API key badge, and that
+     no secret value appears in the UI or in the scan IPC payload.
+  3. Import the selected providers. Confirm new rows appear under Settings
+     → Models. Re-import the same selection and confirm they are skipped.
+  4. If the app had no default model, confirm the first imported provider
+     becomes the default. If a default already existed, confirm it is
+     unchanged.
+  5. Confirm an OAuth-only source account is absent from the candidate
+     list and that session import still works independently.
+- **Expected**: Explicit scan only (D007). Stored API keys land in the host
+  secret store. Equivalent endpoints (normalized URL + API style) skip.
+  No protocol or schema version bump.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §18.5, `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/11-provider-model-system.md`, ADR 0179, D342
+- **Acceptance**: B (model configuration), F (session import)
+- **Milestone**: M4
+- **Status**: Unit-covered (`packages/shared/src/model-config-import.test.ts`,
+  `apps/desktop/test/model-config-import.test.mjs`); full UI journey Draft
+  (do not run E2E locally unless explicitly requested)

@@ -186,9 +186,11 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
     group: "workspace",
     keywordKeys: [
       "settings.importTitle",
+      "settings.importModelsTitle",
       "settings.importSourceClaudeCode",
       "settings.importSourceOpenCode",
       "settings.importSourceCodex",
+      "settings.importSourcePi",
     ],
   },
   {

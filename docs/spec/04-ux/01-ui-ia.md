@@ -219,10 +219,12 @@ changes the page destination rather than a tab inside a shared capability panel.
 Appearance lives inside General; global AI behavior (permissions and context
 management) lives inside 全局 AI; keyboard shortcuts and global/project
 instructions have their own destinations; provider management lives inside
-Model configuration. Import scans supported local agent stores and presents
-candidates in collapsible groups. Project path is an alternate grouping
+Model configuration. Import scans supported local agent stores for sessions
+and, independently, for model configuration, and presents candidates in
+collapsible groups. Project path is an alternate grouping for sessions
 alongside the default source grouping, and every scan or grouping change starts
-with all groups collapsed. Project archive owns the durable D086 Projects index
+with all groups collapsed. Model-configuration import copies stored API keys
+and skips subscription logins. Project archive owns the durable D086 Projects index
 (search, add, expand, pin, archive/restore, close, and reopen) and always includes
 archived records. Opening or switching a project retains a sidebar tab, selects
 that project as the active workspace, and returns to chat. Other retained tabs

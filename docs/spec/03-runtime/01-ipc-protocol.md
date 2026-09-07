@@ -695,9 +695,19 @@ Minimal interface:
   not alter transcript content, message count, or activity timestamps.
 - `session/importScan`
 - `session/importRun(candidates) -> { imported, skipped, failed }`
+- `modelConfig/importScan -> { providers }`
+- `modelConfig/importRun(candidates) -> { imported, skipped, failed }`
 
 Import candidates carry `projectPath: string | null`. A successful import
 refreshes both sessions and the durable Projects index.
+
+`modelConfig/importScan` reads Claude Code, Codex, OpenCode, and Pi config
+files from the user home directory and returns public provider drafts
+(`source`, `externalId`, `name`, `baseUrl`, `apiStyle`, `modelIds`,
+`hasSecret`). Secrets stay in the main-process scan cache and are written
+through `providers.create` on `modelConfig/importRun`. Re-importing a
+matching endpoint is skipped. OAuth tokens from those tools are never
+copied. No host protocol or storage schema version bump.
 
 A regenerate or edit-resend truncates the durable transcript before appending
 its new user turn. `agent/prompt` accepts `truncateFromMessageId` — the identity

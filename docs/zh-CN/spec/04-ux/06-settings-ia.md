@@ -20,7 +20,7 @@
   6. **技能** — Lucide `BookOpen`（可复用的智能体指令）
   7. **MCP** — Lucide `Server`（智能体连接）
   8. **子智能体** — Lucide `Bot`（用于并行工作的个人智能体）
-  9. **导入** — Lucide `Download`（从其他工具引入会话）
+  9. **导入** — Lucide `Download`（从其他工具引入会话和模型配置）
   10. **项目** — Lucide `Archive`（持久项目索引）
   11. **信息** — Lucide `Info`（版本、日志、更新、开发人员）
   图标具有装饰性（通过 SVG 默认设置为 `aria-hidden`）并保持单色
@@ -154,10 +154,12 @@ Token 用量**不是设置目的地**（D335 / ADR 0173）。已完成回合历�
   菜单并在全局层之后解决。
 
 ### 导入
-- 扫描支持的当地代理店并通过以下方式审核候选人
-  `SessionImportPanel`
-- 源和项目路径分组行为如下
+- 扫描支持的本地智能体存储中的**会话**和**模型配置**，同一目的地两个独立卡片。扫描都不会自动运行（D007 / D342）。
+- 会话：通过 `SessionImportPanel` 审核候选人。来源与项目路径分组见
   [08-组件规范 §18](/zh-CN/spec/04-ux/08-component-spec#18-sessionimportpanel)
+- 模型配置：通过 `ModelConfigImportPanel` 审核提供商草稿
+  （[08-组件规范 §18.5](/zh-CN/spec/04-ux/08-component-spec#185-modelconfigimportpanel)）。
+  配置里保存的 API 密钥写入宿主密钥库；订阅/OAuth 登录不复制。等价端点（规范化 base URL + API 风格）再次导入时跳过。若应用尚无默认模型，则将本次新建的第一个提供商设为默认。
 
 ### 项目档案
 - 重用持久项目索引作为设置规模管理界面

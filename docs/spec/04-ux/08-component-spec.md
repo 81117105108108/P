@@ -2635,6 +2635,30 @@ groups, select candidates, and start an explicit import.
 - Projects-row disclosure and action-menu buttons expose localized,
   project-specific accessible names.
 
+### 18.5 ModelConfigImportPanel
+
+Scan the same local agent stores for provider and model settings, review
+candidates grouped by source, select them, and start an explicit import.
+
+```text
+[Found N providers]                         [Import selected (N)]
+──────────────────────────────────────────────────────────────────
+[ ] [›] Claude Code                                      N providers
+[ ] [›] OpenCode                                         N providers
+```
+
+- The card is independent of session import: its own Scan, selection, and
+  Import selected action. A session scan never starts a model-config scan.
+- Source grouping is the only grouping. A successful scan replaces the prior
+  candidate set, clears selection, and leaves every group collapsed.
+- Each row shows the provider name, model count, host, an API key / No API
+  key badge, and the source. The raw secret never reaches the renderer.
+- Import creates one `providers.create` row per selected candidate. An
+  existing provider with the same normalized base URL and API style is
+  skipped. OAuth-only source accounts are omitted from the scan.
+- If `settings.defaultProviderId` is empty after a successful create, the
+  first new provider becomes the global default.
+
 ---
 
 ## 19. ProviderStudio (Settings → Agent)
@@ -2855,6 +2879,7 @@ Sidebar footer                                        Popover (360px max)
 13. Toasts stack top-center with variant icon + dismiss, auto-dismiss 4s/8s, pause on hover, and announce via `role="status"`/`role="alert"` per §17
 14. Session import defaults to source grouping, offers project-path grouping, collapses all groups after scan/group changes, and exposes accessible group disclosure state per §18
 15. Imported project paths materialize exactly once in the durable Projects index; path-less imports remain Temporary sessions and no filesystem directory is created
+15a. Model-configuration import scans the same local stores independently, never sends secrets to the renderer, skips equivalent endpoints, and does not copy OAuth/subscription logins per §18.5
 16. ProviderStudio shows compact defaults, vendor-account rows with edit/test/delete actions, add/edit dialogs, and AI service cards; secrets never render raw; every action remains keyboard reachable
 17. NotificationInbox exposes All/Unread views, exact unread badge semantics,
     row activation, mark-all-read and clear actions; it is keyboard-operable

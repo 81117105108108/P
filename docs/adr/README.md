@@ -191,3 +191,4 @@ Each ADR includes:
 | 0176 | Per-provider User-Agent override | Accepted (amends 0095 / 0156; header map superseded by 0178) |
 | 0177 | User-configurable outbound proxy | Accepted |
 | 0178 | Per-provider custom HTTP headers | Accepted (amends 0176 / 0095 / 0156) |
+| 0179 | Import model configuration from local agent stores | Accepted |

@@ -106,6 +106,16 @@ export interface ImportRunResult {
   failed: number;
 }
 
+export interface ModelConfigImportCandidate {
+  source: ImportSource;
+  externalId: string;
+  name: string;
+  baseUrl: string | null;
+  apiStyle: string;
+  modelIds: string[];
+  hasSecret: boolean;
+}
+
 declare global {
   interface Window {
     piDesktop?: {
@@ -330,6 +340,12 @@ export const api = {
     invoke<{ sessions: ImportCandidate[] }>(IPC.invoke.sessionImportScan),
   runImportSessions: (items: ImportCandidate[]) =>
     invoke<ImportRunResult>(IPC.invoke.sessionImportRun, items),
+  scanImportModelConfigs: () =>
+    invoke<{ providers: ModelConfigImportCandidate[] }>(
+      IPC.invoke.modelConfigImportScan,
+    ),
+  runImportModelConfigs: (items: ModelConfigImportCandidate[]) =>
+    invoke<ImportRunResult>(IPC.invoke.modelConfigImportRun, items),
   getSettings: () => invoke<AppSettings>(IPC.invoke.settingsGet).then(normalizeSettings),
   setSettings: (settings: AppSettings) =>
     invoke(IPC.invoke.settingsSet, validateSettingsWrite(settings)),
