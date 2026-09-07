@@ -8140,3 +8140,26 @@ are withdrawn with ADR 0165.
 - **Status**: Unit-covered (`packages/shared/src/model-config-import.test.ts`,
   `apps/desktop/test/model-config-import.test.mjs`); full UI journey Draft
   (do not run E2E locally unless explicitly requested)
+
+#### E2E-193: Documentation screenshots resolve from GitHub and VitePress
+
+- **Preconditions**: The repository contains the gallery assets under
+  `docs/public/screenshots/app/`; documentation dependencies are installed.
+- **Steps**:
+  1. Open `docs/guide/screenshots.md` and
+     `docs/zh-CN/guide/screenshots.md` from the GitHub file view. Confirm the
+     gallery images resolve to files under `docs/public/screenshots/`.
+  2. Open the English and Chinese screenshot pages in the VitePress preview.
+     Confirm representative images from the home, panel, and settings sections
+     render.
+  3. Run `pnpm docs:build` and inspect the generated pages for image load
+     failures.
+- **Expected**: GitHub renders every gallery image instead of requesting a
+  repository-root `/screenshots/` path; both VitePress locale pages continue to
+  render the gallery from the same checked-in assets; the docs build succeeds.
+- **Specs linked**: ADR 0079, `docs/README.md`,
+  `docs/guide/screenshots.md`, `docs/zh-CN/guide/screenshots.md`
+- **Acceptance**: Quality
+- **Milestone**: M5
+- **Status**: Static/documentation check covered (`pnpm docs:build` and path
+  audit); remote GitHub and browser journey pending

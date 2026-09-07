@@ -5753,3 +5753,19 @@ IPC 请求无法关闭。
 - **验收**：B（设置）、F（供应商）、安全
 - **里程碑**：M5
 - **状态**：单元已覆盖（`network-proxy.test.ts`、`settings-general.test.mjs`、host-core `network_proxy`）；完整 UI 旅程仍为草稿
+
+#### E2E-193：文档截图在 GitHub 与 VitePress 中都能解析
+
+- **前提条件**：仓库在 `docs/public/screenshots/app/` 下包含截图集；文档依赖已安装。
+- **步骤**：
+  1. 从 GitHub 文件页打开 `docs/guide/screenshots.md` 和
+     `docs/zh-CN/guide/screenshots.md`。确认截图都解析到
+     `docs/public/screenshots/` 下的文件。
+  2. 在 VitePress 预览中打开中英文截图页。确认主页、面板和设置章节的代表性图片正常显示。
+  3. 运行 `pnpm docs:build`，检查生成页面没有图片加载失败。
+- **预期**：GitHub 不再请求仓库根目录的 `/screenshots/` 路径，而是显示全部截图；两个 VitePress 语言页面继续使用同一批已提交资源；文档构建成功。
+- **链接规格**：ADR 0079、`docs/README.md`、`docs/guide/screenshots.md`、
+  `docs/zh-CN/guide/screenshots.md`
+- **验收**：质量
+- **里程碑**：M5
+- **状态**：静态/文档检查已覆盖（`pnpm docs:build` 与路径审计）；远程 GitHub 和浏览器旅程待验证
