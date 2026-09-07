@@ -7983,3 +7983,19 @@ are withdrawn with ADR 0165.
 - **Status**: Unit-covered (`network-proxy.test.ts`,
   `settings-general.test.mjs`, host-core `network_proxy` tests); full UI
   journey Draft (do not run E2E locally unless explicitly requested)
+
+#### E2E-191: Newly emitted AppError codes stay registered
+
+- **Preconditions**: The shared package test suite is available.
+- **Steps**:
+  1. Run the shared error helper tests.
+  2. Inspect the newly emitted runtime and Edit code list used by the test.
+- **Expected**: Every code introduced by this update, including
+  context-compaction, empty-response, and Edit recovery failures, exists in
+  `packages/shared/src/errors.ts` with an identical key and value. Reserved
+  codes remain excluded until they are emitted.
+- **Specs linked**: `03-runtime/08-error-codes.md`
+- **Acceptance**: Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`packages/shared/src/errors.test.ts`); full UI
+  journey not applicable
