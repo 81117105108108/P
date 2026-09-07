@@ -6993,6 +6993,23 @@ function registerIpc() {
     },
   );
 
+  handle(IPC.invoke.windowSetBackgroundColor, async (input: unknown = {}) => {
+    const theme = (input as { theme?: unknown })?.theme;
+    if (theme !== "light" && theme !== "dark") {
+      throw Object.assign(new Error("invalid window background theme"), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    // macOS uses a transparent under-window with native vibrancy. Do not make
+    // this renderer-driven fallback opaque on that platform.
+    if (process.platform === "darwin") return { applied: false, theme };
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      throw new Error("main window unavailable");
+    }
+    mainWindow.setBackgroundColor(theme === "light" ? "#ffffff" : "#181818");
+    return { applied: true, theme };
+  });
+
   // Custom window-chrome buttons on Windows/Linux (renderer-drawn).
   handle(
     IPC.invoke.windowControl,

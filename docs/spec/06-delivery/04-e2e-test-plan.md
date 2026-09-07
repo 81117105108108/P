@@ -1300,6 +1300,16 @@ Each scenario is documented in this format:
 - **Milestone**: M4
 - **Status**: Documented
 
+#### E2E-091a: Theme changes keep the Windows frameless background aligned
+
+- **Preconditions**: App running windowed on Windows with the OS in light mode.
+- **Steps**: 1) Select Dark in Settings → General → Appearance. 2) Inspect the lower-left, lower-right, and resize edges while the shell settles and while collapsing/expanding the sidebar. 3) Select Light and repeat. 4) Switch the OS color preference and select System; repeat after the app resolves the system theme.
+- **Expected**: The native BrowserWindow background follows the resolved application theme (`#181818` for dark and `#ffffff` for light), so no white strip appears around the frameless renderer during theme changes or shell animations. macOS keeps its transparent vibrancy behavior unchanged.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `02-architecture/01-architecture.md`
+- **Acceptance**: A (core shell)
+- **Milestone**: M5
+- **Status**: Documented; native Windows validation pending
+
 #### E2E-039: Settings titlebar drag moves the window
 
 - **Preconditions**: App running windowed on macOS with Settings open.
