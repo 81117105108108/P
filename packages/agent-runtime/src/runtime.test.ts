@@ -4811,6 +4811,7 @@ describe("DesktopAgentRuntime subagents", () => {
     expect(result.details).toMatchObject({
       agent: "reviewer",
       status: "running",
+      modelId: "remote-model",
     });
     const delegationId = (result.details as any).delegationId as string;
     expect(delegationId.length).toBeGreaterThan(0);

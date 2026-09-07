@@ -633,7 +633,8 @@ function resultBlocks(
       const counters = details
         ? Object.fromEntries(
             Object.entries(details).filter(
-              ([key]) => key !== "agent" && key !== "error",
+              ([key]) =>
+                key !== "agent" && key !== "error" && key !== "modelId",
             ),
           )
         : {};

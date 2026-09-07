@@ -1580,7 +1580,9 @@ twice.
 A `Task` call is presented as a node of a delegation card, not as a compact tool
 row — one delegation reads the same as a fan-out (D265). The node names the
 delegate it ran, taken from the rows it produced or, before any arrived, from
-the call's own `agent` argument, and carries the call's short `description`.
+the call's own `agent` argument, and carries the call's short `description`. The
+resolved model id is shown immediately after the delegate name, from the
+structured `Task` result details.
 
 The lifecycle rows (`TaskWait`/`TaskList`/`TaskStop`) stay compact tool rows —
 they are not topology nodes and must not inflate the subagent counts — but they
@@ -1617,7 +1619,7 @@ never summarizes from its own arguments:
 ```text
 [flow] Subagent completed   1 subagent · 1/1 finished · 40s        [›]
   ┌────────────────┐    ┌───────────────────────────────────────────┐
-  │ (◎) Main agent │────│ [bot] code-reviewer      Completed · 32s  │
+  │ (◎) Main agent │────│ [bot] code-reviewer  claude-sonnet-4-5 · Completed · 32s │
   │ Coordinating 1 │    │ check the store diff                      │
   │ delegated task │    │ 3 steps                             [›]   │
   └────────────────┘    └───────────────────────────────────────────┘
@@ -1642,8 +1644,8 @@ Opening a node reveals the blocks the call carries, then the delegate's own rows
 - Block order is brief in, report out, counters last: the `task` argument as an
   `input` block, the report as the output block, then a `Details` block holding
   the counters pi handed back — `status`, `turns`, `toolCalls`, and `usage` when
-  present. `agent` is omitted because the node title already shows it, and an
-  `error` is rendered as the leading error block, not as a counter. The
+  present. `agent` and `modelId` are omitted because the node title already shows them,
+  and an `error` is rendered as the leading error block, not as a counter. The
   delegate's own rows follow the whole body, so the summary reads before the
   detail.
 - A failed delegation shows its error instead of an empty report.
@@ -1719,8 +1721,9 @@ Opening a node reveals the blocks the call carries, then the delegate's own rows
   connected to the `Task` nodes in parent-row order. The runtime exposes no
   delegate dependencies and forbids nested `Task`, so the renderer must not
   invent delegate-to-delegate edges or a downstream summary node.
-- Each node shows the definition name, short description, explicit outcome,
-  runtime duration and step count. The duration uses the delegation registry's
+- Each node shows the definition name, effective model id, short description,
+  explicit outcome, runtime duration and step count. The duration uses the
+  delegation registry's
   `startedAt`/`completedAt` timestamps (and ticks live while the node is
   running), not the immediate `Task` tool-call duration. Outcome prefers the
   structured `Task` result

@@ -2980,6 +2980,7 @@ Delegation rules:
             agent: definition.name,
             status: "running",
             startedAt,
+            modelId: provider.modelId,
           },
         };
       },

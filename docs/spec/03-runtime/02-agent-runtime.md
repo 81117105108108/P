@@ -562,7 +562,8 @@ core set rather than the on-demand catalog of §7.1:
   session model. The parent agent sees a model summary in the system prompt
   listing all models marked `availableForSubagents` in provider settings.
   When a model key is not pre-resolved, the runtime asks Electron main to
-  resolve it on-demand via the `provider.resolveSubagentModel` RPC.
+  resolve it on-demand via the `provider.resolveSubagentModel` RPC. The started
+  `Task` result details record the effective `modelId` used for that run.
 - `TaskWait(delegationIds?, mode?, minCompleted?, timeoutSeconds?)` — converges
   on running delegations (defaults to all of them) and returns their reports;
   `mode: "any"` with `minCompleted` converges as soon as the first N settle.
@@ -595,8 +596,8 @@ running until the duration limit. The built-in `explorer` declares `Read`,
 the terminal ones surface through `TaskWait`, whose text is
 the report (bounded to `MAX_SUBAGENT_REPORT_CHARS`, 12k) and whose details
 carry `delegationId`, `agent`, `status`, `startedAt`, `completedAt` when
-settled, `turns`, `toolCalls` and, on failure or timeout, `error`. `startedAt` and
-`completedAt` are runtime timestamps in milliseconds and are the source of
+settled, `turns`, `toolCalls` and, on failure or timeout, `error`.
+`startedAt` and `completedAt` are runtime timestamps in milliseconds and are the source of
 truth for renderer delegation duration; the immediate `Task` tool-call
 duration only covers starting the background work.
 

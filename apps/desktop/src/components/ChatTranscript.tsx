@@ -894,6 +894,16 @@ function delegateAgentName(
   return "";
 }
 
+/** Effective model resolved for this delegation, recorded by the Task result. */
+function delegateModelId(message: UiMessage): string {
+  const payload = toolResultPayload(message);
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return "";
+  }
+  const modelId = (payload as { modelId?: unknown }).modelId;
+  return typeof modelId === "string" ? modelId.trim() : "";
+}
+
 /**
  * Copies a run row's command from its head. The expanded body holds only the
  * output, so this is the one place the command can be taken from (D226).
@@ -1014,6 +1024,7 @@ const ToolRow = memo(function ToolRow({
     action === "delegate" && !lifecycle
       ? delegateAgentName(message, delegate)
       : "";
+  const modelId = variant === "topology" ? delegateModelId(message) : "";
   // The delegate's last answer row is its report, so the body must not print
   // the same text a second time.
   const nestedReport = delegate?.items.some((item) => item.kind === "answer");
@@ -1111,7 +1122,7 @@ const ToolRow = memo(function ToolRow({
         open ? "open" : ""
       } status-${run === "failed" ? "error" : status || "success"}${outcome ? ` outcome-${outcome.replaceAll("_", "-")}` : ""}`}
       role={variant === "topology" ? "listitem" : "region"}
-      aria-label={`${t("chat.toolCall")}: ${rawName}${statusLabel ? `, ${statusLabel}` : ""}`}
+      aria-label={`${t("chat.toolCall")}: ${rawName}${agentName ? `, ${agentName}` : ""}${modelId ? `, ${modelId}` : ""}${statusLabel ? `, ${statusLabel}` : ""}`}
     >
       {variant === "topology" ? (
         <button
@@ -1141,6 +1152,11 @@ const ToolRow = memo(function ToolRow({
               <span className="subagent-topology-node-title">
                 {agentName || t("chat.subagentUnnamed")}
               </span>
+              {modelId ? (
+                <span className="subagent-topology-node-model" title={modelId}>
+                  {modelId}
+                </span>
+              ) : null}
               <span className="subagent-topology-node-status">
                 {statusLabel}
                 {duration ? ` · ${duration}` : ""}

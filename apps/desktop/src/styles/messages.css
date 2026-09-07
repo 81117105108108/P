@@ -1943,6 +1943,17 @@
   white-space: nowrap;
 }
 
+.subagent-topology-node-model {
+  min-width: 0;
+  max-width: 38%;
+  overflow: hidden;
+  color: var(--ds-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .subagent-topology-node-status {
   flex: none;
   color: var(--ds-text-muted);

@@ -7578,7 +7578,8 @@ are withdrawn with ADR 0165.
   2. The delegation model summary appears in the parent's system prompt listing
      every model marked `availableForSubagents`.
   3. The Task tool accepts the `model` parameter and the delegate runs on the
-     specified model, not the session model.
+     specified model, not the session model; its delegation node shows the
+     effective model id immediately after the subagent name.
   4. If the model is not configured or not enabled for delegation, the Task
      returns a tool error listing available models.
   5. Resolution priority is Task.model parameter → definition frontmatter pin →
