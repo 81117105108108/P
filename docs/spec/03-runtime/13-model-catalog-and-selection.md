@@ -65,6 +65,13 @@ entitled to it.
 
 An OAuth vendor account skips step 2 — it has no key to probe with, and pi-ai
 already knows which models the subscription allows.
+
+The picker never dumps the raw host error into the model list. A failed probe
+with no rows shows a classified one-line summary (auth, missing list, rate
+limit, timeout, network, invalid response, or HTTP status) plus a short hint
+to add an ID manually. A failed probe that still has cached rows keeps those
+rows and shows the same summary as a compact banner.
+
 ### Advanced
 - “Use custom model ID”
 - “Refresh catalog”

@@ -24,6 +24,7 @@ import {
 } from "@pi-desktop/shared";
 import { Button, Field, Input, cx } from "../ui";
 import { IconClose, IconHelp, IconPlus, IconSearch } from "../icons";
+import { describeModelsFetchError } from "./model-fetch-error";
 import type { ProviderModelsState } from "./useProviderModels";
 
 /** One row of the model list: what the service returned, plus its binding. */
@@ -223,9 +224,14 @@ export function ModelSelectionPanes({
     setCustomModelError("");
   };
 
+  const fetchFailed = discovery.status === "error";
+  const emptyFetchError = fetchFailed && rows.length === 0;
+
   const modelListBody =
     discovery.status === "idle" ? (
       <div className="provider-models-placeholder">{t("settings.modelsEmptyHint")}</div>
+    ) : emptyFetchError ? (
+      <ModelsFetchErrorMessage error={discovery.error} variant="placeholder" />
     ) : rows.length === 0 ? (
       <div className="provider-models-placeholder">
         {discovery.status === "loading"
@@ -294,10 +300,8 @@ export function ModelSelectionPanes({
         {discovery.source === "fallback" ? (
           <div className="provider-models-note">{t("settings.modelsFallbackNote")}</div>
         ) : null}
-        {discovery.status === "error" ? (
-          <div className="provider-models-note is-error">
-            {discovery.error || t("settings.modelsFetchHint")}
-          </div>
+        {fetchFailed && !emptyFetchError ? (
+          <ModelsFetchErrorMessage error={discovery.error} variant="banner" />
         ) : null}
 
         {modelListBody}
@@ -540,6 +544,58 @@ export function ModelSelectionPanes({
           </Field>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ModelsFetchErrorMessage({
+  error,
+  variant,
+}: {
+  error?: string;
+  variant: "banner" | "placeholder";
+}) {
+  const { t } = useTranslation();
+  const view = describeModelsFetchError(error);
+  let summary = t("settings.modelsFetchFailed");
+  switch (view.kind) {
+    case "unauthorized":
+      summary = t("errors.PROVIDER_UNAUTHORIZED");
+      break;
+    case "notFound":
+      summary = t("settings.modelsFetchNotFound");
+      break;
+    case "rateLimited":
+      summary = t("errors.PROVIDER_RATE_LIMITED");
+      break;
+    case "timeout":
+      summary = t("errors.TIMEOUT");
+      break;
+    case "network":
+      summary = t("errors.NETWORK_ERROR");
+      break;
+    case "invalidResponse":
+      summary = t("settings.modelsFetchInvalidResponse");
+      break;
+    case "http":
+      summary = t("settings.modelsFetchFailedStatus", {
+        status: view.summaryParams?.status ?? 0,
+      });
+      break;
+  }
+  const className =
+    variant === "placeholder"
+      ? "provider-models-placeholder is-error"
+      : "provider-models-note is-error";
+  return (
+    <div className={className} role="alert">
+      <span className="provider-models-error-summary">{summary}</span>
+      {view.detail ? (
+        <span className="provider-models-error-detail">{view.detail}</span>
+      ) : null}
+      {variant === "placeholder" ? (
+        <span className="provider-models-error-hint">{t("settings.modelsFetchHint")}</span>
+      ) : null}
     </div>
   );
 }

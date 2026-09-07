@@ -249,7 +249,7 @@ Presets only prefill form defaults; they are not a closed world.
 These rows are created from the add-provider **Service** select, not from a
 new protocol. They remain `type: "openai_compatible"`. The common path is
 Service + API key; the published host is a summary, and the display name is
-editable in Advanced. Custom endpoint shows Name, Base URL, then API key
+editable in Advanced. Custom endpoint shows Name beside Base URL, then API key
 beside API format. `vendorKey` is the models.dev provider key.
 
 International: OpenAI (`responses`), Anthropic (`anthropic_messages`), Google

@@ -73,11 +73,12 @@ test("custom API format sits beside the key, not in a disclosure", () => {
   assert.match(pickerSource, /provider-chosen-advanced-toggle/);
 });
 
-test("custom base URL input is wide, validated, and safe to paste", () => {
+test("custom Name and Base URL sit on one row without helper copy", () => {
   assert.match(setupSource, /type="url"/);
   assert.match(setupSource, /inputMode="url"/);
   assert.match(setupSource, /autoComplete="url"/);
-  assert.match(setupSource, /settings\.baseUrlHint/);
+  // Placeholder is enough; a hint under the URL would un-align the name field.
+  assert.doesNotMatch(setupSource, /settings\.baseUrlHint/);
   assert.match(setupSource, /onBlur={commitBaseUrl}/);
   assert.match(setupSource, /normalizeBaseUrlInput\(resolvedBaseUrl, resolvedApiStyle\)/);
   assert.match(setupSource, /!baseUrlIssue/);
@@ -85,12 +86,32 @@ test("custom base URL input is wide, validated, and safe to paste", () => {
   assert.match(setupSource, /provider-base-url-error/);
 
   const customFields = block(".provider-setup-fields.is-custom");
-  assert.match(customFields, /grid-template-columns:\s*minmax\(160px, 0\.7fr\)/);
+  assert.match(customFields, /grid-template-columns:\s*minmax\(140px, 0\.55fr\)/);
   const baseUrl = block(".provider-setup-base-url");
-  assert.match(baseUrl, /grid-column: 1 \/ -1/);
+  assert.doesNotMatch(baseUrl, /grid-column/);
   assert.match(baseUrl, /min-width: 0/);
   assert.match(styles, /\.provider-setup-base-url \.field-input\[aria-invalid="true"\]/);
   assert.match(styles, /\.provider-setup-field-error\s*\{[\s\S]*overflow-wrap: anywhere/);
+
+  const customBlock = setupSource.slice(
+    setupSource.indexOf("{custom ? ("),
+    setupSource.indexOf("<ModelSelectionPanes"),
+  );
+  assert.ok(
+    customBlock.indexOf("settings.name") < customBlock.indexOf("provider-setup-base-url"),
+    "Name must precede Base URL so they occupy the same 2-column row",
+  );
+});
+
+test("a failed model list uses a classified error, not a raw dump plus empty copy", () => {
+  assert.match(pickerSource, /describeModelsFetchError/);
+  assert.match(pickerSource, /ModelsFetchErrorMessage/);
+  assert.match(pickerSource, /variant="placeholder"/);
+  assert.match(pickerSource, /variant="banner"/);
+  assert.match(pickerSource, /emptyFetchError/);
+  assert.match(styles, /\.provider-models-placeholder\.is-error\s*\{/);
+  assert.match(styles, /\.provider-models-error-summary\s*\{/);
+  assert.match(styles, /\.provider-models-note\.is-error\s*\{[\s\S]*overflow-wrap: anywhere/);
 });
 
 test("list rows carry no box of their own inside the inset pane", () => {
@@ -215,6 +236,9 @@ test("the panes stack again before the dialog gets too narrow to read", () => {
   const query = styles.slice(at, styles.indexOf("@media", at + 10));
   assert.match(query, /\.provider-setup-panes\s*\{\s*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(query, /\.provider-setup-fields[\s\S]*?\{\s*grid-template-columns: minmax\(0, 1fr\)/);
+  // `.is-custom` is more specific than `.provider-setup-fields`, so it must
+  // also collapse or Name | URL stay side-by-side on a stacked dialog.
+  assert.match(query, /\.provider-setup-fields\.is-custom/);
   // A stacked dialog must be allowed to size to its content again, and both
   // dialogs host the same panes, so both need that release.
   assert.match(

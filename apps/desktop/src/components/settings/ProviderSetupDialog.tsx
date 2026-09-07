@@ -35,24 +35,6 @@ const API_STYLE_LABEL_KEYS: Record<CatalogApiStyle, string> = {
 
 type BaseUrlIssue = "invalid";
 
-function requestPathForApiStyle(apiStyle: CatalogApiStyle): string {
-  switch (apiStyle) {
-    case "anthropic_messages":
-      return "/v1/messages";
-    case "chat_completions":
-      return "/chat/completions";
-    case "responses":
-    case "openai_codex_responses":
-      return "/responses";
-    case "google_generative_ai":
-      return "/models";
-    case "pi_messages":
-      return "/messages";
-    case "opencode_go":
-      return "/responses";
-  }
-}
-
 function endpointPathSuffixes(apiStyle: CatalogApiStyle): string[] {
   switch (apiStyle) {
     case "anthropic_messages":
@@ -443,12 +425,7 @@ export function ProviderSetupDialog({
                     />
                   </Field>
                   <div className="provider-setup-base-url">
-                    <Field
-                      label={t("settings.baseUrl")}
-                      hint={t("settings.baseUrlHint", {
-                        route: requestPathForApiStyle(resolvedApiStyle),
-                      })}
-                    >
+                    <Field label={t("settings.baseUrl")}>
                       <Input
                         value={baseUrl}
                         type="url"
