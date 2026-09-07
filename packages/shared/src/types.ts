@@ -2,6 +2,7 @@ import type { ActivationScope } from "./activation.js";
 import type { AppError } from "./errors.js";
 import type { KeybindingOverrides } from "./keyboard-shortcuts.js";
 import type { CommandShellId } from "./command-shells.js";
+import type { NetworkProxySettings } from "./network-proxy.js";
 
 export type Mode = "plan" | "goal" | "agent";
 
@@ -521,7 +522,24 @@ export type AgentStatus = {
   pendingToolConfirmations: number;
   planningState?: PlanningState;
   pendingPlanId?: string;
+  activity?: AgentActivity;
 };
+
+/** The runtime phase that explains a quiet interval in an active turn. */
+export type AgentActivity =
+  | { phase: "starting"; since: number }
+  | { phase: "waiting-model"; since: number }
+  | {
+      phase: "retrying";
+      since: number;
+      attempt: number;
+      retryDelayMs?: number;
+    }
+  | {
+      phase: "waiting-subagents";
+      since: number;
+      subagentCount: number;
+    };
 
 export type AgentPromptRequest = {
   sessionId: string;
@@ -801,6 +819,11 @@ export type ProviderPublic = {
   hasOauth?: boolean;
   /** Non-secret label for the signed-in account; never carries a token. */
   oauthAccountLabel?: string;
+  /**
+   * Optional outbound User-Agent. Empty/absent keeps the adapter default
+   * (pi-ai / `claude-cli` / OpenCode).
+   */
+  userAgent?: string;
   /** Per-model settings selected in the provider dialog. */
   models: ModelBinding[];
   /** @deprecated Use `models[0]?.id`; retained for older runtime consumers. */
@@ -838,6 +861,11 @@ export type ProviderCreateInput = {
    * the owning provider row instead of clearing only this label.
    */
   oauthAccountLabel?: string;
+  /**
+   * Optional outbound User-Agent. On update, an empty string clears the stored
+   * override; omit the field to leave it unchanged.
+   */
+  userAgent?: string;
   /** Explicit override for custom model catalogs. */
   supportsReasoning?: boolean;
   /**
@@ -1093,6 +1121,12 @@ export type AppSettings = {
   pluginMarketSource?: PluginMarketSource;
   /** Catalog URL used when `pluginMarketSource` is `custom`. */
   pluginMarketCustomUrl?: string;
+  /**
+   * Outbound proxy for app-owned HTTP (D340). Absent means System: Chromium
+   * follows the OS proxy; Node sidecar traffic stays direct unless Custom
+   * is set. See `network-proxy.ts`.
+   */
+  networkProxy?: NetworkProxySettings;
   onboardingDismissed: boolean;
 };
 
@@ -1831,4 +1865,3 @@ export type TokenUsageHistoryResult = {
     turnCount: number;
   };
 };
-

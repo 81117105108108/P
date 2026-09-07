@@ -40,6 +40,7 @@ import {
 } from "@earendil-works/pi-ai";
 import { DEFAULT_COMMAND_TIMEOUT_MS, OAUTH_AUTH_KIND } from "@pi-desktop/shared";
 import type {
+  AgentActivity,
   AgentEventEnvelope,
   AgentStatus,
   AgentPromptAttachment,
@@ -125,6 +126,11 @@ import {
 } from "./plugin-skills-prompt.js";
 import { pluginSkillsDigest } from "./plugin-skills.js";
 import { logTiming } from "./timing.js";
+import {
+  openCodeEndpointFromProvider,
+  withOpenCodeSessionHeaders,
+} from "./opencode-session-headers.js";
+import { withProviderUserAgent } from "./provider-user-agent.js";
 import {
   captureProviderResponse,
   classifyProviderError,
@@ -1215,6 +1221,7 @@ export class DesktopAgentRuntime {
    * which is the correct anchor: the request goes out once all have resolved. */
   private requestStartedAt?: number;
   private streamStartedAt?: number;
+  private agentActivity?: AgentActivity;
   private providerResponseStatus?: number;
   private providerRetryHeaders?: Record<string, string>;
   private pendingProviderRetry?: ReturnType<typeof classifyAgentError>;
@@ -1389,29 +1396,39 @@ Delegation rules:
     this.baseSystemPrompt = opts.systemPrompt ?? defaultSystemPrompt;
     this.agent = new Agent({
       streamFn: (m, context, options) => {
+        this.setAgentActivity({ phase: "waiting-model", since: Date.now() });
         this.providerResponseStatus = undefined;
         this.providerRetryHeaders = undefined;
-        const requestOptions: SimpleStreamOptions = {
-          ...options,
-          maxRetries: PROVIDER_REQUEST_MAX_RETRIES,
-          sessionId: this.sessionId,
-          // pi-ai only exposes onResponse after a request succeeds. Capture the
-          // failed response separately so a 429 can honor Retry-After headers.
-          fetch: captureProviderResponse(options?.fetch, (response) => {
-            this.providerResponseStatus = response?.status;
-            // A gateway 502/503 can also state Retry-After, so keep headers for
-            // every status whose delay is usable instead of only for 429.
-            this.providerRetryHeaders = carriesRetryDelayHeaders(
-              response?.status,
-            )
-              ? response?.headers
-              : undefined;
-          }),
-          onResponse: async (response, responseModel) => {
-            this.providerResponseStatus = response.status;
-            await options?.onResponse?.(response, responseModel);
-          },
-        };
+        const requestOptions: SimpleStreamOptions = withProviderUserAgent(
+          withOpenCodeSessionHeaders(
+            {
+              ...options,
+              maxRetries: PROVIDER_REQUEST_MAX_RETRIES,
+              sessionId: this.sessionId,
+              // pi-ai only exposes onResponse after a request succeeds. Capture the
+              // failed response separately so a 429 can honor Retry-After headers.
+              fetch: captureProviderResponse(options?.fetch, (response) => {
+                this.providerResponseStatus = response?.status;
+                // A gateway 502/503 can also state Retry-After, so keep headers for
+                // every status whose delay is usable instead of only for 429.
+                this.providerRetryHeaders = carriesRetryDelayHeaders(
+                  response?.status,
+                )
+                  ? response?.headers
+                  : undefined;
+              }),
+              onResponse: async (response, responseModel) => {
+                this.providerResponseStatus = response.status;
+                await options?.onResponse?.(response, responseModel);
+              },
+            },
+            {
+              ...openCodeEndpointFromProvider(this.provider, m),
+              sessionId: this.sessionId,
+            },
+          ),
+          this.provider.userAgent,
+        );
         return createProviderRetryStream(
           m,
           context,
@@ -1422,6 +1439,12 @@ Delegation rules:
             headers: () => this.providerRetryHeaders,
             status: () => this.providerResponseStatus,
             onRetry: ({ error, phase, attempt, delayMs }) => {
+              this.setAgentActivity({
+                phase: "retrying",
+                since: Date.now(),
+                attempt,
+                retryDelayMs: delayMs,
+              });
               logTiming("model", {
                 model: this.provider.modelId,
                 providerId: this.provider.id,
@@ -1611,6 +1634,7 @@ Delegation rules:
       this.provider.apiKey === config.provider.apiKey &&
       this.provider.authKind === config.provider.authKind &&
       (this.provider.apiStyle ?? "") === (config.provider.apiStyle ?? "") &&
+      (this.provider.userAgent ?? "") === (config.provider.userAgent ?? "") &&
       this.provider.supportsReasoning === config.provider.supportsReasoning &&
       currentThinkingLevels === nextThinkingLevels &&
       safeJson(this.provider.modelConfig ?? null) ===
@@ -3067,6 +3091,11 @@ Delegation rules:
       this.runningDelegations().length > 0
     ) {
       const targets = this.runningDelegations();
+      this.setAgentActivity({
+        phase: "waiting-subagents",
+        since: Date.now(),
+        subagentCount: targets.length,
+      });
       await this.waitForDelegations(targets, targets.length, null);
       if (this.disposed || this.runCancelled) return;
       const settled = targets.filter((record) => record.status !== "running");
@@ -3169,12 +3198,18 @@ Delegation rules:
             ? targets.length
             : Math.min(Math.max(minCompleted, 1), targets.length);
         const deadline = Date.now() + timeoutSeconds * 1000;
+        this.setAgentActivity({
+          phase: "waiting-subagents",
+          since: Date.now(),
+          subagentCount: targets.length,
+        });
         const timedOut = await this.waitForDelegations(
           targets,
           targetCompleted,
           deadline,
           signal,
         );
+        this.clearAgentActivity();
         const results = targets.map((record) => ({
           delegationId: record.delegationId,
           agent: record.agentName,
@@ -3677,6 +3712,17 @@ Delegation rules:
     });
   }
 
+  private setAgentActivity(activity: AgentActivity): void {
+    this.agentActivity = activity;
+    this.emit({ type: "status", status: this.getStatus() });
+  }
+
+  private clearAgentActivity(): void {
+    if (!this.agentActivity) return;
+    this.agentActivity = undefined;
+    this.emit({ type: "status", status: this.getStatus() });
+  }
+
   /**
    * Claim a retry without exposing an intermediate error to the user. Rate
    * limits use one shared five-attempt budget across request setup and stream
@@ -3892,6 +3938,7 @@ Delegation rules:
         "active_turn",
       );
       if (!compacted) {
+        this.clearAgentActivity();
         this.emit({
           type: "error",
           error: {
@@ -4770,6 +4817,7 @@ Delegation rules:
         break;
       case "message_start": {
         if (event.message.role === "assistant") {
+          this.clearAgentActivity();
           this.streamStartedAt = Date.now();
           const content = assistantContent((event.message as any).content);
           const retryingAssistant =
@@ -5098,12 +5146,14 @@ Delegation rules:
             this.pendingOverflow = true;
             this.suppressOverflowRunEnd = true;
           } else if (diagnosticError) {
+            this.clearAgentActivity();
             this.emit({ type: "error", error: diagnosticError });
           }
         }
         break;
       }
       case "tool_execution_start":
+        this.clearAgentActivity();
         this.activeToolCalls.set(event.toolCallId, {
           toolName: event.toolName,
           args: event.args,
@@ -5173,6 +5223,7 @@ Delegation rules:
           (this.runningDelegations().length > 0 && !this.runCancelled)
         )
           break;
+        this.clearAgentActivity();
         this.reportMutationTermination();
         this.emit({
           type: "agent_end",
@@ -5212,6 +5263,7 @@ Delegation rules:
     };
     this.turnHadError = true;
     this.finalizeCurrentAssistant("error", error);
+    this.clearAgentActivity();
     this.emit({ type: "error", error });
   }
 
@@ -5364,6 +5416,7 @@ Delegation rules:
     this.agent.state.messages = buildSessionContext(
       this.entriesWithCompaction(),
     ).messages;
+    this.setAgentActivity({ phase: "starting", since: Date.now() });
     await this.agent.continue();
     await this.agent.waitForIdle();
     // Same recovery contract as a user prompt: a plan execution that overflows,
@@ -5392,10 +5445,7 @@ Delegation rules:
     this.pendingUserMessageId = userMessageId;
     this.resetRunRecoveryState();
     this.requestStartedAt = Date.now();
-    this.emit({
-      type: "status",
-      status: this.getStatus(),
-    });
+    this.setAgentActivity({ phase: "starting", since: Date.now() });
     try {
       const content = promptContent(input);
       const incomingUserMessage: AgentMessage = {
@@ -5480,12 +5530,14 @@ Delegation rules:
       isRunning:
         this.agent.state.isStreaming ||
         this.compactionInProgress ||
-        this.runningDelegations().length > 0,
+        this.runningDelegations().length > 0 ||
+        this.agentActivity !== undefined,
       currentTurnId: this.turnId,
       modelId: this.provider.modelId,
       pendingToolConfirmations: 0,
       planningState: this.planningState,
       ...(this.pendingPlanId ? { pendingPlanId: this.pendingPlanId } : {}),
+      ...(this.agentActivity ? { activity: this.agentActivity } : {}),
     };
   }
 

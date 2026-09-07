@@ -49,6 +49,7 @@ import { KeyboardShortcutsSection } from "../components/settings/KeyboardShortcu
 import { FontFamilyRow } from "../components/settings/FontFamilyRow";
 import { LanguageRow } from "../components/settings/LanguageRow";
 import { ThemeRow } from "../components/settings/ThemeRow";
+import { NetworkProxySection } from "../components/settings/NetworkProxySection";
 import { ReleaseNotesDialog } from "../components/ReleaseNotesDialog";
 import { ProjectsPage } from "./ProjectsPage";
 import { AgentSkillsPage } from "../components/settings/AgentSkillsPage";
@@ -1039,6 +1040,8 @@ export function SettingsPage() {
                 <LanguageRow settings={settings} saveSettings={saveSettings} />
                 <FontFamilyRow settings={settings} saveSettings={saveSettings} />
               </SettingsCard>
+
+              <NetworkProxySection settings={settings} saveSettings={saveSettings} />
 
               {platform !== "darwin" && <CloseBehaviorSection />}
             </div>

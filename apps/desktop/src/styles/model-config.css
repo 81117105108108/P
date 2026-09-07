@@ -116,6 +116,31 @@
   grid-column: 1 / -1;
 }
 
+/* Long gateway URLs get the whole row; the key and API format stay paired. */
+.provider-setup-fields.is-custom {
+  grid-template-columns: minmax(160px, 0.7fr) minmax(0, 1.3fr);
+}
+
+.provider-setup-base-url {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.provider-setup-base-url .field-input {
+  min-width: 0;
+}
+
+.provider-setup-base-url .field-input[aria-invalid="true"] {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ds-warning) 30%, transparent);
+}
+
+.provider-setup-field-error {
+  color: var(--ds-warning);
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+  overflow-wrap: anywhere;
+}
+
 .provider-setup-host {
   grid-column: 1 / -1;
   min-width: 0;

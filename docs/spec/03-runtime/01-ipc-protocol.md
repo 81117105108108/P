@@ -383,12 +383,19 @@ request-changes action.
 ### 5.5 getStatus
 
 ```ts
+type AgentActivity =
+ | { phase: "starting"; since: number }
+ | { phase: "waiting-model"; since: number }
+ | { phase: "retrying"; since: number; attempt: number; retryDelayMs?: number }
+ | { phase: "waiting-subagents"; since: number; subagentCount: number };
+
 type AgentStatus = {
  sessionId: string;
  isRunning: boolean;
  currentTurnId?: string;
  modelId?: string;
  pendingToolConfirmations: number;
+ activity?: AgentActivity;
 };
 ```
 
@@ -439,6 +446,16 @@ type AgentEvent =
 
 > These are **UI-normalized events**, not a pass-through of raw pi events.
 > `packages/agent-runtime` is responsible for mapping pi events to this model.
+
+`status` events include an optional runtime-owned `activity` phase while a turn
+is active. `waiting-model` marks the interval after the runtime has started a
+provider request and before the first assistant event arrives; `retrying` marks
+an abortable provider backoff and includes the retry attempt; and
+`waiting-subagents` marks a parent turn waiting for delegated work. The
+renderer keeps this status per session and renders it as a compact inline row.
+The phase is cleared when assistant or tool activity starts, or when the turn
+reaches a terminal event. These phases explain quiet intervals; they do not
+replace message/tool lifecycle events or imply a percentage of completion.
 
 `planning_state` is the agent-runtime's local planning projection. Its optional
 proposal and execution fields mirror the shared `PlanningStateEvent` shape
@@ -766,6 +783,13 @@ Non-sensitive config that can be returned to the UI:
   explicit disabled/Unbound state
 - optional `AppSettings.developerMode`; absent and `false` both keep developer
   tools disabled
+- optional `AppSettings.networkProxy` (`system` / `direct` / `custom` plus a
+  proxy URL and bypass list). Absent means System. Custom accepts `http`,
+  `https`, `socks5`, and `socks5h` URLs. Main applies Chromium
+  `session.setProxy` and Node env immediately; the agent sidecar is
+  reconfigured without a process restart. `pi-desktop/network/testProxy`
+  runs one bounded Chromium fetch through the supplied config and does not
+  persist it.
 
 `settings.set` accepts a partial settings object. Host-core merges supplied
 fields into the stored app settings, so omitted fields, including

@@ -30,4 +30,27 @@ describe("result helpers", () => {
     expect(ErrorCodes.SHELL_NOT_FOUND).toBe("SHELL_NOT_FOUND");
     expect(ErrorCodes.COMMAND_SHELL_INVALID).toBe("COMMAND_SHELL_INVALID");
   });
+
+  it("registers newly emitted runtime and Edit error codes", () => {
+    const newlyLiveCodes = [
+      "CONTEXT_COMPACTION_FAILED",
+      "EMPTY_MODEL_RESPONSE",
+      "EDIT_TAG_REQUIRED",
+      "EDIT_TAG_MISMATCH",
+      "EDIT_TAG_UNKNOWN",
+      "EDIT_LINES_UNSEEN",
+      "EDIT_PARSE_FAILED",
+      "EDIT_RANGE_INVALID",
+      "EDIT_BLOCK_UNRESOLVED",
+      "EDIT_REGISTER_EMPTY",
+      "EDIT_REGISTER_AMBIGUOUS",
+      "EDIT_REPAIR_AMBIGUOUS",
+      "EDIT_NO_CHANGE",
+      "EDIT_AMPLIFICATION_LIMIT",
+    ] as const;
+
+    for (const code of newlyLiveCodes) {
+      expect(ErrorCodes[code]).toBe(code);
+    }
+  });
 });

@@ -237,6 +237,29 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Unit-covered (form and discovery contracts); rendered UI scenario Draft
 
+#### E2E-005D: OpenCode Go requests carry a stable session header
+
+- **Preconditions**: An OpenCode Go provider is configured; a deterministic
+  fixture or capture proxy records outbound HTTP headers. A second generic
+  OpenAI-compatible provider is also configured.
+- **Steps**: 1) Start an Agent turn in a session against OpenCode Go. 2)
+  Capture the provider request headers. 3) Send a follow-up in the same
+  session. 4) Run prompt enhancement and a plugin `agent.complete` one-shot
+  against the same provider. 5) Repeat a turn against the generic
+  OpenAI-compatible provider.
+- **Expected**: Every OpenCode Go LLM request includes `x-opencode-session`
+  equal to the conversation id (or a stable per-call id when no session
+  exists), `x-opencode-client: pi-desktop`, and a `User-Agent` identifying
+  PI-Desktop. Follow-up turns reuse the same session header. The generic
+  OpenAI-compatible provider does not receive these headers. The gateway does
+  not return `MissingSessionID`.
+- **Specs linked**: `03-runtime/02-agent-runtime.md`,
+  `03-runtime/11-provider-model-system.md`,
+  `03-runtime/12-provider-config-schema.md`, ADR 0116
+- **Acceptance**: B (model configuration), F (runtime provider requests)
+- **Milestone**: M2
+- **Status**: Unit-covered (header merge and one-shot stream options)
+
 #### E2E-005C: OpenAI-compatible system role fallback
 
 - **Preconditions**: A deterministic OpenAI-compatible Chat Completions
@@ -255,6 +278,75 @@ Each scenario is documented in this format:
 - **Acceptance**: B (OpenAI-compatible provider interoperability)
 - **Milestone**: M2
 - **Status**: Unit-covered (including the #30 GLM gateway regression); deterministic provider fixture pending
+
+#### E2E-005E: Anthropic Messages endpoint with a `/v1` base URL
+
+- **Preconditions**: A deterministic Anthropic Messages fixture exposes
+  `GET /v1/models` and `POST /v1/messages`; the configured custom endpoint ends
+  in `/v1` and returns one model such as `glm-5.3`.
+- **Steps**: 1) Open Settings → Model configuration and add a Custom endpoint.
+  2) Enter the fixture URL ending in `/v1`, choose Anthropic Messages, and
+  wait for model discovery. 3) Select the discovered model and save. 4) Start
+  an Agent turn and capture the fixture request path.
+- **Expected**: Discovery succeeds against `/v1/models`, and the Agent turn
+  succeeds against `/v1/messages`. The runtime does not send the request to a
+  doubled `/v1/v1/messages` path; a configured Anthropic root without `/v1`
+  remains equivalent.
+- **Specs linked**: `03-runtime/11-provider-model-system.md`,
+  `03-runtime/12-provider-config-schema.md`
+- **Acceptance**: B (custom provider interoperability), C (chat and stream)
+- **Milestone**: M2
+- **Status**: Unit-covered; deterministic provider fixture pending
+
+#### E2E-005F: Custom endpoint input guardrails
+
+- **Preconditions**: App running; the add-provider dialog is open with Custom
+  endpoint selected.
+- **Steps**: 1) Enter a valid gateway URL ending in `/v1/messages`, then leave
+  the Base URL field. 2) Confirm the field keeps the service base URL ending in
+  `/v1`, and that its helper identifies the API path that will be targeted. 3)
+  Replace the value with `ftp://gateway.example.com`, then leave the field.
+  4) Enter a valid URL again and confirm model discovery can run; paste a full
+  `/models` path and leave the field.
+- **Expected**: Full operation paths are normalized to the service root on
+  blur, without changing the selected API style. A non-http(s) URL shows an
+  inline, accessible error, does not start discovery, and keeps Save disabled.
+  A valid URL restores discovery; the `/models` suffix is also removed before
+  the request is made. The long URL field uses a full row on wide dialogs and
+  stacks cleanly with the other credentials at the responsive breakpoint.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `03-runtime/12-provider-config-schema.md`
+- **Acceptance**: B (custom provider configuration)
+- **Milestone**: M2
+- **Status**: Unit-covered; rendered UI scenario pending
+
+#### E2E-005G: Per-provider custom User-Agent
+
+- **Preconditions**: One API-key AI service (including an OpenCode Go row) and
+  one signed-in vendor (OAuth) account; a capture proxy records outbound HTTP
+  headers, including Codex and Anthropic adapters.
+- **Steps**: 1) Open the AI service, expand Advanced, set User-Agent to
+  `CustomAgent/1.0`, and save. 2) Start an Agent turn, a follow-up, prompt
+  enhancement, and a plugin one-shot. 3) Refresh `/models` from the form
+  before saving a second change and confirm the unsaved value is sent. 4)
+  Clear the field and save; confirm adapter defaults return. 5) Edit the
+  OAuth account Advanced User-Agent, save, then run a turn that refreshes
+  the access token. 6) Repeat against OpenCode Go and confirm
+  `x-opencode-session` is still present. 7) Repeat against Codex/Anthropic
+  OAuth inference.
+- **Expected**: A non-empty User-Agent is the last writer on that row's
+  outbound HTTP (turns, subagents, one-shots, discovery, connection test,
+  OAuth refresh). Empty restores pi-ai / `claude-cli` / OpenCode defaults.
+  OpenCode still sends `x-opencode-session` and `x-opencode-client`. Codex
+  and Anthropic still send the custom value despite adapter last-writes.
+  First OAuth login does not collect a User-Agent. CR/LF is rejected.
+- **Specs linked**: `03-runtime/12-provider-config-schema.md`,
+  `03-runtime/11-provider-model-system.md`, `03-runtime/02-agent-runtime.md`,
+  ADR 0176
+- **Acceptance**: B (model configuration), F (runtime provider requests)
+- **Milestone**: M2
+- **Status**: Unit-covered (host persistence, fetch wrapper, discovery,
+  form Advanced); rendered UI scenario pending
 
 #### E2E-005D: Configure a Zhipu / Z.AI named endpoint preset
 
@@ -312,7 +404,9 @@ Each scenario is documented in this format:
 - **Steps**: 1) Create new session. 2) Type a message. 3) Send.
 - **Expected**: The transcript immediately shows a compact localized `Working…`
   status after send, before the first assistant or tool event. It yields to
-  concrete thinking/tool/answer feedback, and disappears when the turn ends.
+  concrete thinking/tool/answer feedback, or identifies a runtime-reported
+  model wait/retry when no transcript row can explain the delay. It disappears
+  when the turn ends.
   The conversation topbar keeps only the task title and window actions; it does
   not add a separate running-state indicator.
 - **Specs linked**: `03-runtime/02-agent-runtime.md`, `03-runtime/10-session-state-machine.md`
@@ -373,6 +467,27 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`bundled-plugins`, `browser-cdp`,
   `browser-preview-tool`); full Electron journey pending
+
+#### E2E-008c: Quiet intervals explain active work
+
+- **Preconditions**: A deterministic provider fixture can delay the first
+  response, return one retryable failure with a bounded backoff, and a session
+  can start one delegated task whose completion is controlled by the fixture.
+- **Steps**: 1) Send a prompt and hold the provider before its first assistant
+  event. 2) Observe the transcript status row. 3) Release a retryable failure
+  and inspect the row during backoff. 4) Start a delegated task and wait for
+  the parent to converge on it. 5) Release the fixture and let the turn end.
+- **Expected**: The status row says `Waiting for model`, `Retrying model
+  request`, or `Waiting for subagents` with a monotonic elapsed time matching
+  the active phase. It uses the same compact inline treatment as `Working…`,
+  never adds a duplicate progress card, and clears when assistant output or a
+  terminal event arrives. The Stop action remains available throughout.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/02-agent-runtime.md`, `04-ux/09-interaction-patterns.md`,
+  ADR 0175
+- **Acceptance**: C (chat stream), Quality (feedback and accessibility)
+- **Milestone**: M5
+- **Status**: Draft (deterministic fixture pending)
 
 #### E2E-009: Streamed tokens visible in UI
 
@@ -2443,9 +2558,11 @@ Each scenario is documented in this format:
   completion.
 - **Expected**: No generic Understanding, Working, Checking, or completion
   card appears below the transcript while the turn is active. Assistant and
-  tool rows remain inline; only an actual permission request renders an
-  actionable card. Background activity never changes the visible session,
-  transcript, composer focus, or project.
+  tool rows remain inline; a compact runtime status row may appear only when it
+  explains a provider wait/retry or delegated-work wait with no transcript row
+  of its own. Only an actual permission request renders an actionable card.
+  Background activity never changes the visible session, transcript, composer
+  focus, or project.
 - **Specs linked**: `04-ux/08-component-spec.md`,
   `04-ux/09-interaction-patterns.md`, `03-runtime/10-session-state-machine.md`
 - **Acceptance**: C (chat stream), Quality (interaction and accessibility)
@@ -3820,7 +3937,10 @@ Each scenario is documented in this format:
   succeeds on the next request; a second fixture run can terminate five times; a
   third fixture returns `OpenAI API error (502)` before headers on one attempt
   and mid-stream on the next; a fourth fixture returns six consecutive 502s; a
-  fifth fixture returns a 503 with `Retry-After`; timing logs are enabled.
+  fifth fixture returns a 503 with `Retry-After`; a sixth fixture returns a
+  pre-stream opaque 400/422 once and succeeds when the output-limit fields are
+  omitted; the fixture supports both Chat Completions and Responses payloads and
+  aborting after the opaque failure; timing logs are enabled.
 - **Steps**:
   1. Start an Agent turn with the one-termination fixture and observe the
      partial assistant response.
@@ -3832,7 +3952,11 @@ Each scenario is documented in this format:
      log for both the pre-header and the mid-stream 502.
   5. Run the persistent six-502 fixture and inspect the terminal error.
   6. Run the 503 `Retry-After` fixture and inspect the observed wait.
-  7. Reload the session and verify that only the completed response or the
+  7. Run the opaque 400/422 fixture with both API styles and inspect the two
+     request payloads, request count, and timing log.
+  8. Abort immediately after the first opaque 400/422 failure and inspect that
+     no repair request starts.
+  9. Reload the session and verify that only the completed response or the
      single terminal failed assistant remains durable.
 - **Expected**:
   - `terminated` is classified as `STREAM_FAILED`, and an upstream gateway
@@ -3858,11 +3982,20 @@ Each scenario is documented in this format:
     unrestricted provider body.
   - The 503 fixture waits for the server's `Retry-After` instead of the client
     backoff. Non-429 server and fallback waits are capped at 8 seconds.
+  - A pre-stream 400/422 with the `(no body)` marker gets one silent repair
+    request with `max_tokens`, `max_completion_tokens`, and `max_output_tokens`
+    removed. The caller's payload rewrite remains active, the repair consumes no
+    transient retry budget or backoff, and both Chat Completions and Responses
+    fixtures complete on their second request. A second opaque failure remains
+    terminal.
+  - If the turn is aborted after the first opaque failure, the repair request is
+    not started and the result is `aborted`.
   - A mid-stream HTTP 429 is covered by E2E-149's separate five-retry path; the
     two budgets do not draw from each other.
-  - Authentication, model-selection, context, and malformed-request failures
-    do not enter either provider replay path, including a non-retryable
-    `PROVIDER_ERROR` from a malformed 400/422 request.
+  - Authentication, model-selection, context, and descriptive
+    malformed-request failures do not enter either provider replay path. The
+    opaque empty-body 400/422 case is the bounded repair exception described
+    above.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `03-runtime/02-agent-runtime.md`, `03-runtime/08-error-codes.md`,
   `08-meta/decisions-log.md` (D186, D259), ADR 0050, ADR 0128
@@ -5403,7 +5536,7 @@ Each scenario is documented in this format:
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004, E2E-067, E2E-076, E2E-079, E2E-092, E2E-097, E2E-143, E2E-150, E2E-168 |
-| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174 |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-005G |
 | C — Conversation & stream | E2E-008, E2E-008a, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-031, E2E-040, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-059a, E2E-060c, E2E-060d, E2E-061, E2E-061a, E2E-062, E2E-064, E2E-065, E2E-068, E2E-071, E2E-073, E2E-074, E2E-075, E2E-081, E2E-083, E2E-084, E2E-086, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-106, E2E-109, E2E-111, E2E-114, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-121, E2E-AGENTS-001, E2E-142, E2E-144, E2E-145, E2E-146, E2E-147, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-161, E2E-162, E2E-166, E2E-172, E2E-173, E2E-174, E2E-177, E2E-178, E2E-179, E2E-180, E2E-182, E2E-183, E2E-187 |
 | D — Workspace | E2E-012, E2E-013, E2E-022B, E2E-024I, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060, E2E-068, E2E-075, E2E-078, E2E-153, E2E-158, E2E-182, E2E-187 |
 | E — Tools & permissions | E2E-008a, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-024I, E2E-024K, E2E-040, E2E-049, E2E-074, E2E-093, E2E-097, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102d, E2E-102e, E2E-102g, E2E-103, E2E-105, E2E-106, E2E-107, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-119, E2E-121, E2E-122, E2E-142, E2E-145, E2E-147, E2E-155, E2E-158, E2E-166, E2E-181 |
@@ -7838,3 +7971,58 @@ are withdrawn with ADR 0165.
 - **Status**: Unit-covered (`bundled-plugins.test.mjs`,
   `plugin-complete.test.mjs`); full UI journey Draft (do not run E2E locally
   unless explicitly requested)
+
+#### E2E-190: Settings Network proxy applies to app-owned HTTP
+
+- **Preconditions**: A reachable local HTTP or SOCKS5 proxy, or a known-bad
+  port for the failure path. At least one configured provider is optional for
+  the settings-only steps.
+- **Steps**:
+  1. Open Settings → General. Confirm a Network card with Proxy modes
+     System, Direct, and Custom. System is selected on a profile that never
+     set a proxy.
+  2. Choose Custom. Confirm a Proxy URL field, Bypass defaulting to
+     localhost / 127.0.0.1 / ::1 / `<local>`, and Test. Enter
+     `not-a-proxy` and blur. Confirm an inline invalid-URL error and that
+     settings are not saved.
+  3. Enter `socks5://127.0.0.1:1080` or `http://127.0.0.1:7890` and blur.
+     Confirm `AppSettings.networkProxy.mode` is `custom` after
+     `settings.get`.
+  4. Click Test against a listening proxy. Confirm a Connected status. Click
+     Test against a closed port. Confirm a failure status without changing
+     the saved URL.
+  5. With Custom saved, confirm a subsequent marketplace refresh and a
+     models.dev catalog refresh use the proxy (host-core curl `--proxy`,
+     Electron `net.fetch`). Confirm a loopback URL in Bypass is not
+     proxied.
+  6. Switch to Direct, then System. Confirm Chromium returns to
+     `mode: "direct"` then `mode: "system"`, and the sidecar is reconfigured
+     without an app restart.
+- **Expected**: Custom covers model calls, marketplace, updates, plugin
+  `net.fetch`, and the in-app browser. Workspace Bash `env` does not show
+  `HTTP_PROXY` / `ALL_PROXY` from the setting. OAuth still opens the system
+  browser. Invalid schemes (`file:`, `ftp:`) are rejected. No protocol or
+  schema version bump.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `03-runtime/07-process-model.md`, ADR 0177, D340
+- **Acceptance**: B (settings), F (providers), Security
+- **Milestone**: M5
+- **Status**: Unit-covered (`network-proxy.test.ts`,
+  `settings-general.test.mjs`, host-core `network_proxy` tests); full UI
+  journey Draft (do not run E2E locally unless explicitly requested)
+
+#### E2E-191: Newly emitted AppError codes stay registered
+
+- **Preconditions**: The shared package test suite is available.
+- **Steps**:
+  1. Run the shared error helper tests.
+  2. Inspect the newly emitted runtime and Edit code list used by the test.
+- **Expected**: Every code introduced by this update, including
+  context-compaction, empty-response, and Edit recovery failures, exists in
+  `packages/shared/src/errors.ts` with an identical key and value. Reserved
+  codes remain excluded until they are emitted.
+- **Specs linked**: `03-runtime/08-error-codes.md`
+- **Acceptance**: Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`packages/shared/src/errors.test.ts`); full UI
+  journey not applicable

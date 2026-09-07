@@ -64,6 +64,59 @@ export function carriesRetryDelayHeaders(status: number | undefined): boolean {
   return status === 429 || status === 408 || status === 409 || status >= 500;
 }
 
+/** OpenAI-style SDK clients summarize an unreadable failure as "<status> status code (no body)". */
+const OPAQUE_ERROR_BODY_PATTERN = /\(\s*no\s+body\s*\)\s*$/i;
+
+/**
+ * A pre-stream 400/422 whose body is empty gives the caller nothing to act on.
+ * The classifier marks those statuses terminal precisely because re-sending
+ * the same request cannot help — but the request itself was assembled from
+ * catalog-derived values (the auto-filled output limit above all) that an
+ * OpenAI-compatible gateway is free to reject without a word. Detecting the
+ * opaque shape here lets the retry loop attempt one informed repair instead of
+ * surfacing a dead end like "400 status code (no body)".
+ */
+export function isOpaqueBadRequest(error: ClassifiedAgentError): boolean {
+  const providerStatus = error.details?.providerStatus;
+  return (
+    error.code === "PROVIDER_ERROR" &&
+    !error.retriable &&
+    (providerStatus === 400 || providerStatus === 422) &&
+    OPAQUE_ERROR_BODY_PATTERN.test(error.message)
+  );
+}
+
+const OUTPUT_LIMIT_FIELDS = [
+  "max_tokens",
+  "max_completion_tokens",
+  "max_output_tokens",
+] as const;
+
+/** Drop the auto-derived output-limit fields, leaving the provider's own default in effect. */
+export function stripOutputLimitFields(payload: unknown): unknown {
+  if (typeof payload !== "object" || payload === null) return payload;
+  const rest = { ...(payload as Record<string, unknown>) };
+  for (const field of OUTPUT_LIMIT_FIELDS) delete rest[field];
+  return rest;
+}
+
+/**
+ * Request options for the one repair attempt: the outgoing payload keeps every
+ * caller- and catalog-derived field except the output limit, and any caller
+ * `onPayload` hook still runs (its result is what gets stripped).
+ */
+export function withoutDerivedOutputLimit(
+  options: SimpleStreamOptions,
+): SimpleStreamOptions {
+  return {
+    ...options,
+    onPayload: async (payload, model) => {
+      const rewritten = await options.onPayload?.(payload, model);
+      return stripOutputLimitFields(rewritten ?? payload);
+    },
+  };
+}
+
 export type ProviderResponseSnapshot = {
   status: number;
   headers: Record<string, string>;
@@ -224,13 +277,17 @@ export function providerSetupRetryDelayMs(
   return Math.min(PROVIDER_SETUP_MAX_RETRY_DELAY_MS, base);
 }
 
+function requestAbortedError(): Error {
+  return Object.assign(new Error("Request aborted"), { name: "AbortError" });
+}
+
 export function delayWithAbort(
   ms: number,
   signal?: AbortSignal,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-      reject(Object.assign(new Error("Request aborted"), { name: "AbortError" }));
+      reject(requestAbortedError());
       return;
     }
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -326,12 +383,21 @@ export function createProviderRetryStream(
   const sleep = controller.sleep ?? delayWithAbort;
 
   void (async () => {
+    // One repair per logical turn: after an opaque 400/422 the next attempt
+    // drops the derived output limit. Repairing never consumes the shared
+    // transient budget, and a second opaque failure surfaces untouched.
+    let limitRepairTried = false;
     for (;;) {
-      const inner = createStream({ ...options, maxRetries: 0 });
+      if (options.signal?.aborted) throw requestAbortedError();
+      const inner = createStream({
+        ...(limitRepairTried ? withoutDerivedOutputLimit(options) : options),
+        maxRetries: 0,
+      });
       let sawStart = false;
       let retry:
         | { error: ClassifiedAgentError; attempt: number }
         | undefined;
+      let opaqueLimitRejection: ClassifiedAgentError | undefined;
 
       for await (const event of inner) {
         if (event.type === "start") sawStart = true;
@@ -348,6 +414,10 @@ export function createProviderRetryStream(
             errorMessage,
             controller.status?.(),
           );
+          if (!limitRepairTried && isOpaqueBadRequest(error)) {
+            opaqueLimitRejection = error;
+            break;
+          }
           const attempt = controller.claim(error, "request");
           if (attempt !== undefined) {
             retry = { error, attempt };
@@ -361,6 +431,15 @@ export function createProviderRetryStream(
             ? { ...event, error: normalizeRateLimitMessage(event.error) }
             : event;
         outer.push(forwardedEvent);
+      }
+
+      if (opaqueLimitRejection) {
+        // Drain the ended stream so providers with deferred cleanup do not
+        // overlap the repair request, mirroring the retry path below.
+        await inner.result();
+        if (options.signal?.aborted) throw requestAbortedError();
+        limitRepairTried = true;
+        continue;
       }
 
       if (!retry) {

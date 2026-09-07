@@ -21,10 +21,12 @@ test("prompt enhancement uses the typed main-process bridge", () => {
   assert.match(api, /IPC\.invoke\.promptEnhance/);
   assert.match(main, /handle\(IPC\.invoke\.promptEnhance/);
   assert.match(main, /enhancePromptDraft\(/);
+  assert.match(main, /sessionId: launchSessionId/);
   assert.match(main, /resolveAuth: \(\) => vendorOAuth\.resolveAuth/);
   assert.match(runtime, /completeOneShot\(/);
   assert.match(oneShot, /createProviderRetryStream/);
   assert.match(oneShot, /models\.streamSimple/);
+  assert.match(oneShot, /withOpenCodeSessionHeaders/);
 });
 
 test("Composer gates enhancement, preserves file references, and guards stale results", () => {

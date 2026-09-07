@@ -274,6 +274,11 @@ describe("DesktopAgentRuntime configuration matching", () => {
         provider: { ...oauthProvider, modelId: "another-model" },
       }),
     ).toBe(false);
+    expect(
+      runtimeMatches(runtime, {
+        provider: { ...oauthProvider, userAgent: "Custom/1" },
+      }),
+    ).toBe(false);
 
     await runtime.dispose();
   });
@@ -1229,6 +1234,46 @@ describe("DesktopAgentRuntime configuration matching", () => {
     controller.abort();
     finishExecution({ ok: false, content: { code: "TOOL_ABORTED" } });
       await expect(pending).rejects.toThrow("tools.abort protocol failure");
+    await runtime.dispose();
+  });
+});
+
+describe("DesktopAgentRuntime live activity", () => {
+  it("emits status phases for quiet provider and delegation intervals", async () => {
+    const onEvent = vi.fn();
+    const runtime = createRuntime({ onEvent });
+    const setActivity = (runtime as any).setAgentActivity.bind(runtime);
+
+    setActivity({ phase: "waiting-model", since: 100 });
+    setActivity({
+      phase: "retrying",
+      since: 200,
+      attempt: 2,
+      retryDelayMs: 4000,
+    });
+    setActivity({
+      phase: "waiting-subagents",
+      since: 300,
+      subagentCount: 2,
+    });
+
+    const statuses = onEvent.mock.calls
+      .map(([envelope]) => (envelope as any).event)
+      .filter((event) => event.type === "status")
+      .map((event) => event.status.activity);
+    expect(statuses).toEqual([
+      { phase: "waiting-model", since: 100 },
+      { phase: "retrying", since: 200, attempt: 2, retryDelayMs: 4000 },
+      { phase: "waiting-subagents", since: 300, subagentCount: 2 },
+    ]);
+    expect(runtime.getStatus().activity).toEqual({
+      phase: "waiting-subagents",
+      since: 300,
+      subagentCount: 2,
+    });
+
+    (runtime as any).clearAgentActivity();
+    expect(runtime.getStatus().activity).toBeUndefined();
     await runtime.dispose();
   });
 });

@@ -29,6 +29,10 @@ pub struct ProviderPublic {
     /// name). Never carries a token.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub oauth_account_label: Option<String>,
+    /// Optional outbound `User-Agent` override. Empty/absent keeps the adapter
+    /// default (pi-ai / `claude-cli` / OpenCode).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_agent: Option<String>,
     pub models: Vec<ModelBinding>,
     /// Legacy default retained so older renderer/runtime clients can continue
     /// reading a provider while they migrate to `models`.
@@ -71,6 +75,8 @@ pub struct ProviderCreateInput {
     pub secret_value: Option<String>,
     pub api_style: Option<String>,
     pub oauth_account_label: Option<String>,
+    #[serde(default)]
+    pub user_agent: Option<String>,
     pub supports_reasoning: Option<bool>,
     pub supported_thinking_levels: Option<Vec<String>>,
     /// Zero (or negative temperature) clears a stored override.
@@ -99,6 +105,8 @@ pub struct ProviderUpdateInput {
     pub secret_value: Option<String>,
     pub api_style: Option<String>,
     pub oauth_account_label: Option<String>,
+    #[serde(default)]
+    pub user_agent: Option<String>,
     pub supports_reasoning: Option<bool>,
     pub supported_thinking_levels: Option<Vec<String>>,
     /// Zero (or negative temperature) clears a stored override.
@@ -180,6 +188,52 @@ fn config_oauth_account_label(raw: &str) -> Option<String> {
         .filter(|label| !label.is_empty())
 }
 
+const MAX_USER_AGENT_BYTES: usize = 256;
+
+fn normalize_user_agent_input(value: &str) -> Result<Option<String>> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if trimmed.len() > MAX_USER_AGENT_BYTES {
+        return Err(anyhow::anyhow!(
+            "USER_AGENT_INVALID: at most {MAX_USER_AGENT_BYTES} characters"
+        ));
+    }
+    if trimmed.contains('\r') || trimmed.contains('\n') {
+        return Err(anyhow::anyhow!(
+            "USER_AGENT_INVALID: must not contain CR or LF"
+        ));
+    }
+    Ok(Some(trimmed.to_string()))
+}
+
+fn config_user_agent(raw: &str) -> Option<String> {
+    let value = config_value(raw)?
+        .get("userAgent")?
+        .as_str()?
+        .trim()
+        .to_string();
+    normalize_user_agent_input(&value).ok().flatten()
+}
+
+/// Set or clear the optional User-Agent override. An empty string clears it.
+fn config_with_user_agent(raw: &str, value: &str) -> Result<String> {
+    let mut config = ensure_config_object(raw)?;
+    let object = config
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("provider config_json must be a JSON object"))?;
+    match normalize_user_agent_input(value)? {
+        Some(user_agent) => {
+            object.insert("userAgent".into(), serde_json::json!(user_agent));
+        }
+        None => {
+            object.remove("userAgent");
+        }
+    }
+    Ok(config.to_string())
+}
+
 fn normalize_thinking_levels(levels: &[String]) -> Vec<String> {
     let mut out = Vec::new();
     for level in levels {
@@ -251,8 +305,7 @@ fn legacy_model_binding(model_id: Option<String>) -> Vec<ModelBinding> {
 
 fn config_model_bindings(raw: &str, legacy_model_id: Option<String>) -> Vec<ModelBinding> {
     let legacy_model_id = legacy_model_id.or_else(|| {
-        config_value(raw)
-            .and_then(|value| value.get("modelId")?.as_str().map(str::to_string))
+        config_value(raw).and_then(|value| value.get("modelId")?.as_str().map(str::to_string))
     });
     let parsed = config_value(raw)
         .and_then(|value| value.get("models").cloned())
@@ -524,6 +577,10 @@ fn provider_from_row(
             .get::<_, String>(11)
             .ok()
             .and_then(|raw| config_oauth_account_label(&raw)),
+        user_agent: row
+            .get::<_, String>(11)
+            .ok()
+            .and_then(|raw| config_user_agent(&raw)),
         default_model_id: models
             .first()
             .map(|binding| binding.id.clone())
@@ -713,6 +770,10 @@ pub fn create_provider(
         Some(label) => config_with_oauth_account_label(&config_json, label)?,
         None => config_json,
     };
+    let config_json = match input.user_agent.as_deref() {
+        Some(value) => config_with_user_agent(&config_json, value)?,
+        None => config_json,
+    };
 
     db.conn()
         .prepare_cached(
@@ -796,6 +857,14 @@ pub fn update_provider(
         Some(label) => Some(config_with_oauth_account_label(
             config_json.as_deref().unwrap_or(&raw_config),
             label,
+        )?),
+        None => config_json,
+    };
+    // An empty string clears a stored User-Agent so the adapter default returns.
+    let config_json = match input.user_agent.as_deref() {
+        Some(value) => Some(config_with_user_agent(
+            config_json.as_deref().unwrap_or(&raw_config),
+            value,
         )?),
         None => config_json,
     };
@@ -921,6 +990,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -968,6 +1038,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1019,6 +1090,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1075,6 +1147,7 @@ mod tests {
                 secret_value: None,
                 api_style: Some("chat_completions".into()),
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1083,9 +1156,15 @@ mod tests {
             },
         )
         .unwrap();
-        assert_eq!(provider.default_model_id.as_deref(), Some("reasoning-model"));
+        assert_eq!(
+            provider.default_model_id.as_deref(),
+            Some("reasoning-model")
+        );
         assert_eq!(provider.models[0].context_window, 256_000);
-        assert_eq!(provider.models[0].default_thinking_level.as_deref(), Some("medium"));
+        assert_eq!(
+            provider.models[0].default_thinking_level.as_deref(),
+            Some("medium")
+        );
         assert_eq!(provider.models[1].default_thinking_level, None);
         assert_eq!(provider.models[0].available_for_subagents, Some(true));
         assert_eq!(provider.models[1].available_for_subagents, None);
@@ -1127,6 +1206,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1165,6 +1245,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: Some(200_000),
                 max_output_tokens: Some(32_000),
                 temperature: Some(0.7),
@@ -1194,6 +1275,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: Some(131_072),
                 max_output_tokens: None,
                 temperature: Some(0.0),
@@ -1227,6 +1309,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1260,6 +1343,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1295,6 +1379,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1339,6 +1424,7 @@ mod tests {
                 secret_value: None,
                 api_style: Some("chat_completions".into()),
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1435,6 +1521,7 @@ mod tests {
                 secret_value: None,
                 api_style: Some("anthropic_messages".into()),
                 oauth_account_label: Some("dev@example.com".into()),
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1477,6 +1564,7 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 oauth_account_label: Some(String::new()),
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1533,6 +1621,7 @@ mod tests {
                 secret_value: Some("sk-ant-api".into()),
                 api_style: None,
                 oauth_account_label: None,
+                user_agent: None,
                 context_window: None,
                 max_output_tokens: None,
                 temperature: None,
@@ -1554,5 +1643,106 @@ mod tests {
             get_secret_for_provider(&db, &secrets, &provider.id).unwrap(),
             Some("sk-ant-api".to_string())
         );
+    }
+
+    #[test]
+    fn user_agent_roundtrips_clears_and_rejects_header_injection() {
+        let (_dir, db, secrets) = test_context();
+        let provider = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "UA".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: Some("https://example.test/v1".into()),
+                auth_kind: Some("none".into()),
+                models: None,
+                default_model_id: Some("model-1".into()),
+                secret_value: None,
+                api_style: None,
+                oauth_account_label: None,
+                user_agent: Some("  CustomAgent/1.0  ".into()),
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(provider.user_agent.as_deref(), Some("CustomAgent/1.0"));
+
+        let raw: String = db
+            .conn()
+            .query_row(
+                "SELECT config_json FROM providers WHERE id = ?1",
+                params![provider.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(config["userAgent"], "CustomAgent/1.0");
+
+        let cleared = update_provider(
+            &db,
+            &secrets,
+            ProviderUpdateInput {
+                id: provider.id.clone(),
+                name: None,
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: None,
+                models: None,
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                oauth_account_label: None,
+                user_agent: Some(String::new()),
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+                enabled: None,
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(cleared.user_agent, None);
+
+        let injected = update_provider(
+            &db,
+            &secrets,
+            ProviderUpdateInput {
+                id: provider.id.clone(),
+                name: None,
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: None,
+                models: None,
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                oauth_account_label: None,
+                user_agent: Some("bad\r\nX-Injected: 1".into()),
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+                enabled: None,
+            },
+        );
+        assert!(injected.is_err());
+        assert!(injected
+            .unwrap_err()
+            .to_string()
+            .contains("USER_AGENT_INVALID"));
     }
 }

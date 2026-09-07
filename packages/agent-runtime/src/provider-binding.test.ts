@@ -5,6 +5,7 @@ import {
   apiBindingForStyle,
   buildProviderModel,
   createProviderModels,
+  runtimeBaseUrlForApi,
   type RuntimeProviderConfig,
 } from "./provider-binding.js";
 
@@ -39,6 +40,55 @@ describe("apiBindingForStyle", () => {
   it("keeps unknown styles on chat completions", () => {
     expect(apiBindingForStyle("not-a-style").api).toBe("openai-completions");
     expect(apiBindingForStyle(undefined).api).toBe("openai-completions");
+  });
+});
+
+describe("Anthropic runtime endpoint", () => {
+  it("removes a trailing /v1 before pi-ai appends its version path", () => {
+    expect(runtimeBaseUrlForApi("anthropic-messages", "https://gw.example/v1/")).toBe(
+      "https://gw.example",
+    );
+    expect(runtimeBaseUrlForApi("anthropic-messages", "https://gw.example/anthropic/v1")).toBe(
+      "https://gw.example/anthropic",
+    );
+    expect(runtimeBaseUrlForApi("anthropic-messages", "https://api.anthropic.com")).toBe(
+      "https://api.anthropic.com",
+    );
+    expect(runtimeBaseUrlForApi("openai-completions", "https://gw.example/v1/")).toBe(
+      "https://gw.example/v1/",
+    );
+  });
+
+  it("sends a /v1 endpoint to Anthropic gateways without doubling the path", async () => {
+    const provider: RuntimeProviderConfig = {
+      ...keyedProvider,
+      id: "anthropic-gateway",
+      name: "Anthropic gateway",
+      baseUrl: "https://gw.example/anthropic/v1",
+      modelId: "glm-5.3",
+      apiStyle: "anthropic_messages",
+    };
+    const model = buildProviderModel(provider);
+    const urls: string[] = [];
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      urls.push(input instanceof Request ? input.url : String(input));
+      return new Response("bad gateway", { status: 502 });
+    });
+
+    const result = await createProviderModels(provider, model)
+      .streamSimple(
+        model,
+        {
+          systemPrompt: "system",
+          messages: [{ role: "user", content: "hello", timestamp: Date.now() }],
+          tools: [],
+        },
+        { fetch },
+      )
+      .result();
+
+    expect(result.stopReason).toBe("error");
+    expect(urls).toEqual(["https://gw.example/anthropic/v1/messages?beta=true"]);
   });
 });
 

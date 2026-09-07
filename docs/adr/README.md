@@ -130,7 +130,7 @@ Each ADR includes:
 | 0111 | Reveal Files in the OS file manager | Accepted |
 | 0113 | Persist the New Task empty slot immediately and deduplicate it by message count | Accepted |
 | 0114 | Persist provider model bindings and thinking configuration | Accepted |
-| 0116 | Add OpenCode Go as a fixed provider preset | Accepted |
+| 0116 | Add OpenCode Go as a fixed provider preset | Accepted (amended: session routing headers) |
 | 0117 | Preserve the Windows taskbar entry for native minimize | Accepted |
 | 0118 | Keep queued prompts renderer-owned and stop runs at turn boundaries | Accepted |
 | 0119 | Event-driven subagent timeouts | Accepted for implementation |
@@ -187,3 +187,6 @@ Each ADR includes:
 | 0172 | Contained in-chat image display | Accepted (amends fs/read workspace-only clause) |
 | 0173 | Plugin-owned token usage dashboard | Accepted (amends 0171) |
 | 0174 | Host-owned plugin completions and session context | Accepted (amends D019) |
+| 0175 | Explain quiet active turns with live agent activity status | Accepted |
+| 0176 | Per-provider User-Agent override | Accepted (amends 0095 / 0156) |
+| 0177 | User-configurable outbound proxy | Accepted |

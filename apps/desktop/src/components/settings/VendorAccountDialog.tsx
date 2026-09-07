@@ -24,6 +24,7 @@ export type VendorAccountForm = {
   /** The account's default model; always `models[0]`. */
   modelId: string;
   models: ModelBinding[];
+  userAgent: string;
 };
 
 export function VendorAccountDialog({
@@ -41,6 +42,8 @@ export function VendorAccountDialog({
 }) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialName);
+  const [advanced, setAdvanced] = useState(() => Boolean(provider.userAgent));
+  const [userAgent, setUserAgent] = useState(provider.userAgent ?? "");
   const [models, setModels] = useState<ModelBinding[]>(
     provider.models.length > 0
       ? provider.models
@@ -52,7 +55,12 @@ export function VendorAccountDialog({
   // A vendor account has no typed key: the host resolves the stored login.
   const discovery = useProviderModels(
     true,
-    { baseUrl: provider.baseUrl ?? "", apiKey: "", apiStyle: provider.apiStyle ?? "" },
+    {
+      baseUrl: provider.baseUrl ?? "",
+      apiKey: "",
+      apiStyle: provider.apiStyle ?? "",
+      userAgent,
+    },
     provider,
   );
   const selection = useModelSelection(discovery, models, setModels);
@@ -74,7 +82,12 @@ export function VendorAccountDialog({
     // always the first binding, so reordering or removing the head is the only
     // way to change it.
     const persisted = selection.bindingsToPersist;
-    onSave({ name: name.trim(), modelId: persisted[0].id, models: persisted });
+    onSave({
+      name: name.trim(),
+      modelId: persisted[0].id,
+      models: persisted,
+      userAgent,
+    });
   };
 
   return (
@@ -107,6 +120,30 @@ export function VendorAccountDialog({
               onChange={(event) => setName(event.target.value)}
             />
           </Field>
+
+          <button
+            type="button"
+            className="provider-setup-advanced-toggle"
+            aria-expanded={advanced}
+            onClick={() => setAdvanced((open) => !open)}
+          >
+            {t("settings.advanced")}
+          </button>
+          {advanced ? (
+            <div className="provider-setup-advanced">
+              <Field
+                label={t("settings.userAgent")}
+                hint={t("settings.userAgentHint")}
+              >
+                <Input
+                  value={userAgent}
+                  className="font-mono text-sm-plus"
+                  autoComplete="off"
+                  onChange={(event) => setUserAgent(event.target.value)}
+                />
+              </Field>
+            </div>
+          ) : null}
 
           <ModelSelectionPanes
             discovery={discovery}

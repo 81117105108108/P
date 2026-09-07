@@ -70,6 +70,7 @@ This log freezes previously open questions into concrete decisions.
 
 | D239 | Place global defaults under AI | **The eight-destination Settings directory remains unchanged. Basics owns Appearance and platform-supported close behavior. 全局 AI / AI owns Permissions and the Defaults card containing default operating mode (Agent / Plan / Goal), command shell selection/fallback status, and Enter-to-send. Model configuration retains the default provider/model selector. Only renderer content and Settings search ownership move; persisted settings, host APIs, runtime semantics, and deep-link contracts remain unchanged (ADR 0097).** | Default mode, command shell, and Enter-to-send change global agent behavior, so placing them beside appearance mixed unrelated concerns and made the AI destination incomplete. |
 | D240 | Independent vendor OAuth accounts and settings ownership | **Amend D237 / ADR 0095: every OAuth login creates a fresh provider row and row-scoped `CredentialStore`, even when `vendorKey` matches an existing account. The Vendor accounts card owns the full OAuth row lifecycle and deletes through `providers.delete`; the AI services list excludes OAuth rows but the default selector may still choose them. Vendor auth bindings and resolution use the exact `providerId`; ambiguous vendor/name aliases for subagents fail closed.** | One vendor-global row made a second account overwrite or reuse the first credential, while sign-out left a stale AI-service row. The row id is the only unambiguous account identity and lets deletion remove exactly one credential and configuration. See ADR 0098. |
+| D339 | Per-provider User-Agent override | **Each AI-service and OAuth provider row may store optional `config_json.userAgent`. Empty keeps adapter defaults (pi-ai / `claude-cli` / OpenCode). A non-empty value is last-writer `User-Agent` on that row's outbound HTTP (turns, subagents, one-shots, discovery, connection test, OAuth refresh) via a fetch wrapper plus stream-option headers. Update `""` clears. Max 256 bytes; no CR/LF. Advanced UI only; first OAuth login does not collect it. `matches()` includes `userAgent`. The unused `headers` map stays unimplemented. No schema/protocol bump.** | Gateways and vendor subscriptions inspect User-Agent; Codex overwrites it after extra headers. See ADR 0176 and E2E-005G. |
 | D242 | Builtin subagents inherit the parent permission mode | **Builtin subagents use the default `permission: inherit` behavior. The builtin `fixer` no longer overrides the parent session, so `auto` covers its in-root and explicit external-path calls without a second authorization card; explicit non-`inherit` scopes on eligible builtin or user definitions remain intentional overrides.** | The observed popup came from the builtin `fixer` replacing an `auto` parent with `accept-edits`; inheriting the parent fixes the UX without weakening host-core containment or external-path permission rules (ADR 0100). |
 | D241 | Titled Settings navigation clusters | **Keep the eight-destination Settings directory flat and searchable, but render four non-interactive localized group headings — Personal / 个人 (Basics, AI, Shortcuts), Agent / 智能体 (Instructions, Model configuration), Workspace / 工作区 (Import, Project archive), and About / 关于 (Info). Headings use whitespace for separation and no divider lines. Empty groups disappear with filtered search. This supersedes only D238's prohibition on group headings; destination order, IDs, search ownership, and marketplace placement remain unchanged.** | The flat rows became visually dense without scan landmarks. Muted headings restore grouping while preserving one-level navigation and the existing destination ownership. |
 
@@ -288,6 +289,7 @@ Gold source: local Codex electron captures; latest row wins where rows conflict.
 | D332 | Classified plugin file preview and live workspace events | **Amend ADR 0104 / 0105 / 0109 / 0111: add `fs.readPreview` under `fs.read` (text / image data URL / binary / tooLarge, same caps as the host Files tab). Broadcast panel events to docked views as well as detached windows. Deliver `workspace:changed` to panels and plugin processes. The bundled Files view restores Open with default app, search, image preview, and copy path on those public channels.** | `fs.readText` cannot preview images or cap large binaries; docked views missed `appearance:changed`; Files polled for project switches. |
 | D334 | Contained in-chat image display | **Amend the desktop `fs/read` workspace-only clause: `fs/read`, `fs/reveal`, and `fs/open` share `resolveOpenablePath` (workspace, `<data_dir>/scratch/`, `<data_dir>/attachments/`, plus `attachments/<sha256>` blobs). Reads `realpath` the target. Add renderer-only `fs/readImageDataUrl` that returns a bounded image data URL or `missing` / `notImage` / `tooLarge` and never non-image bytes. A known image extension wins over client `mimeType`; extension-less blobs accept only the `IMAGE_MIME` allowlist. Chat thumbnails and local Markdown images load through that channel; click opens the host files viewer. Not a plugin API. See ADR 0172 and E2E-187.** | History attachments are extension-less data-root blobs the renderer origin cannot load; an unbounded absolute-path read would leak arbitrary files. |
 | D336 | Host-owned plugin completions and session context | **Amend D019: plugins may read the in-flight tool session's model-facing transcript through `pi.session.getLlmContext()` when `session.read` is granted, and may run a one-shot completion through `pi.agent.complete()` when `agent.complete` is granted. `pi.models.list()` lists ready provider/model rows (`models.list`). Credentials never leave Electron main. `includeSessionContext` requires both complete permissions and an in-flight tool session; plugins cannot pass a session id. Completions are rate-braked (8/60s) and size-capped. `session:modelChanged` is pushed after `session.configure`. Official reviewer UX ships as bundled plugin `pi.advisor`, disabled by default, enableable, not uninstallable. No protocol/schema bump. See ADR 0174 and E2E-188 / E2E-189.** | Second-opinion tools need the user's models and the current LLM context without holding secrets or calling providers from plugin code. |
+| D340 | User-configurable outbound proxy | **Settings → General → Network exposes Proxy as System / Direct / Custom. Custom accepts http/https/socks5 URLs and a bypass list, persisted as optional `AppSettings.networkProxy`. Chromium `session.setProxy` covers the in-app browser and `net.fetch`; the agent sidecar applies an undici dispatcher (SOCKS5 CONNECT or HTTP ProxyAgent) via `sidecar.configure`; host-core marketplace curl uses `--proxy` from the stored blob and does not inherit proxy env (workspace Bash stays clean). OAuth still uses the system browser. No protocol or schema version bump. See ADR 0177 and E2E-190.** | Node fetch ignores the OS proxy, so Clash/V2Ray/SOCKS5 users could browse but not call models. One settings control should own app-owned HTTP. |
 | D314 | Shipped locale registry and language picker | **Amend D073: UI locales are listed in `@pi-desktop/i18n` (`en`, `zh-CN`, `tr`). Native names stay untranslated. Settings → General language is a searchable picker (Auto + registry), not three preview cards. Plugin labels and the changelog stay `en` + `zh-CN` with English fallback. See ADR 0160 and E2E-091.** | Preview cards cannot scale past two languages; a registry lets Turkish (and later locales) ship without rewriting the Appearance card. |
 | D316 | Searchable theme picker | **Amend ADR 0160: Settings → General theme is a searchable picker row (same anchored-menu pattern as Language), not three preview cards. System / Light / Dark stay pinned at the top; plugin themes follow after a divider. `AppSettings.theme` and plugin-theme fallback are unchanged. See ADR 0161 and E2E-091.** | Plugin themes wrap a three-column card grid, and Language already solved the growing-list control. |
 | D121 | Branded macOS development host | **`pnpm dev` on macOS launches electron-vite through a fingerprinted, ad-hoc-signed PI-Desktop copy of the installed Electron host bundle under `.cache/electron-dev/`. The generated bundle changes only development host metadata, executable name, bundle identifier, and the ICNS resource; it never mutates `node_modules`. Windows/Linux keep the stock development executable, while packaged lanes remain electron-builder-owned.** | AppKit ignores runtime app-name/menu overrides for the top-level application identity and takes the native menu name and About icon from the host bundle; a branded development host is required for parity with packaged PI-Desktop. |
@@ -3716,3 +3718,55 @@ D193, and D194.
   `plugin_pi_advisor_advisor` for a second opinion.
 - Decision D336 is recorded as ADR 0174. See `07-plugins/03-plugin-api.md`,
   `07-plugins/13-plugin-permissions-matrix.md`, and E2E-188 / E2E-189.
+
+## 2026-09-07 — OpenCode Go session routing headers (D337)
+
+- OpenCode Go rejects LLM requests that omit `x-opencode-session`
+  (`MissingSessionID`). pi-ai 0.85 does not emit that header; the official Pi
+  coding-agent injects it in the agent layer.
+- Decision D337 amends ADR 0116: agent-runtime sends `x-opencode-session`,
+  `x-opencode-client: pi-desktop`, and a PI-Desktop `User-Agent` on session,
+  subagent, prompt-enhancement, and plugin one-shot requests to OpenCode Go
+  and any `opencode.ai` host, using the durable conversation id.
+- See `03-runtime/02-agent-runtime.md` §6.2, `03-runtime/11-provider-model-system.md`,
+  `03-runtime/12-provider-config-schema.md`, ADR 0116, and E2E-005D.
+
+## 2026-09-07 — Explain quiet active turns with live agent activity status (D338)
+
+- The transcript showed a generic running timer before the first event, but a
+  provider wait, retry backoff, or parent-side delegated-work wait could still
+  leave no row that explained the delay. Users could only infer activity from
+  the Stop button.
+- The existing normalized `status` event now carries an optional runtime-owned
+  `AgentActivity` phase: `starting`, `waiting-model`, `retrying`, or
+  `waiting-subagents`. The renderer stores it per session and renders one
+  compact localized status row with elapsed time; it does not add a percentage,
+  duplicate progress card, or alter abort semantics.
+- Decision D338 is recorded as ADR 0175. See `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/02-agent-runtime.md`, `04-ux/09-interaction-patterns.md`, and
+  E2E-008c / E2E-094.
+
+## 2026-09-07 — Per-provider User-Agent override (D339)
+
+- Gateways and vendor subscriptions inspect User-Agent. pi-ai, Anthropic OAuth,
+  OpenCode, and Codex each stamp a different default, and Codex overwrites
+  User-Agent after extra headers. The schema listed `headers` but never stored
+  or sent them.
+- Decision D339: each AI-service and OAuth row may store optional
+  `config_json.userAgent`. Empty keeps adapter defaults. A non-empty value is
+  last-writer `User-Agent` on that row's outbound HTTP via a fetch wrapper plus
+  stream-option headers. Advanced UI only; first OAuth login does not collect
+  it. `matches()` includes `userAgent`.
+- See ADR 0176, `03-runtime/12-provider-config-schema.md`, and E2E-005G.
+
+## 2026-09-08 — User-configurable outbound proxy (D340)
+
+- Model calls, marketplace downloads, updates, and the in-app browser each
+  used a different HTTP stack, and none of them honored a product setting.
+  Node `fetch` in the sidecar ignored the OS proxy.
+- Settings → General → Network adds System / Direct / Custom. Custom is one
+  HTTP or SOCKS5 URL plus a loopback bypass. Chromium sessions, main
+  `net.fetch`, sidecar undici, and host-core marketplace curl share it.
+  Workspace Bash does not inherit proxy credentials.
+- Decision D340 is recorded as ADR 0177. See `04-ux/06-settings-ia.md`,
+  `03-runtime/07-process-model.md`, and E2E-190.

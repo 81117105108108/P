@@ -20,6 +20,11 @@ import {
   type RuntimeProviderConfig,
 } from "./provider-binding.js";
 import {
+  openCodeEndpointFromProvider,
+  withOpenCodeSessionHeaders,
+} from "./opencode-session-headers.js";
+import { withProviderUserAgent } from "./provider-user-agent.js";
+import {
   captureProviderResponse,
   createProviderRetryStream,
   PROVIDER_RATE_LIMIT_MAX_RETRIES,
@@ -38,6 +43,8 @@ export type OneShotCompleteOptions = {
   stream?: OneShotCompleteStream;
   emptyErrorCode?: string;
   emptyErrorMessage?: string;
+  /** Conversation id forwarded to OpenCode as `x-opencode-session`. */
+  sessionId?: string;
 };
 
 export type OneShotCompleteResult = {
@@ -78,15 +85,24 @@ export async function completeOneShot(
   let transientRetryAttempt = 0;
   let rateLimitRetryAttempt = 0;
 
-  const requestOptions: SimpleStreamOptions = {
-    ...(options.signal ? { signal: options.signal } : {}),
-    maxRetries: 0,
-    ...(thinkingLevel !== "off" ? { reasoning: thinkingLevel } : {}),
-    fetch: captureProviderResponse(undefined, (response) => {
-      providerStatus = response?.status;
-      providerHeaders = response?.headers;
-    }),
-  };
+  const requestOptions: SimpleStreamOptions = withProviderUserAgent(
+    withOpenCodeSessionHeaders(
+      {
+        ...(options.signal ? { signal: options.signal } : {}),
+        maxRetries: 0,
+        ...(thinkingLevel !== "off" ? { reasoning: thinkingLevel } : {}),
+        fetch: captureProviderResponse(undefined, (response) => {
+          providerStatus = response?.status;
+          providerHeaders = response?.headers;
+        }),
+      },
+      {
+        ...openCodeEndpointFromProvider(provider, model),
+        sessionId: options.sessionId,
+      },
+    ),
+    provider.userAgent,
+  );
   const stream = createProviderRetryStream(
     model,
     context,

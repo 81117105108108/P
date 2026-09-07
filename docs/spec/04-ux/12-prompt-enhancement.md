@@ -50,9 +50,11 @@ The completion context contains exactly:
 
 No prior conversation, tools, attachments, or configurable template are
 included. The selected thinking level is passed to pi-ai, and provider setup
-retries use the existing bounded retry controller. Model output is consumed as
-plain text and trimmed. Empty or whitespace-only output is a
-`PROMPT_ENHANCEMENT_EMPTY` failure.
+retries use the existing bounded retry controller. When the resolved provider
+is OpenCode Go (or another `opencode.ai` host), the one-shot forwards the
+Composer session id as `x-opencode-session`; a request with no session gets a
+per-call id. Model output is consumed as plain text and trimmed. Empty or
+whitespace-only output is a `PROMPT_ENHANCEMENT_EMPTY` failure.
 
 ## 4. Failure and race handling
 

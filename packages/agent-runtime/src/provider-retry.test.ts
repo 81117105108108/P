@@ -9,10 +9,13 @@ import {
   classifyProviderError,
   createProviderRetryStream,
   delayWithAbort,
+  isOpaqueBadRequest,
   isTransientProviderRetryCode,
   PROVIDER_TRANSIENT_MAX_RETRIES,
   providerRateLimitDelayMs,
   providerSetupRetryDelayMs,
+  stripOutputLimitFields,
+  withoutDerivedOutputLimit,
 } from "./provider-retry.js";
 
 const model = {
@@ -474,5 +477,210 @@ describe("bounded transient provider retry", () => {
     const result = await stream.result();
     expect(result.stopReason).toBe("error");
     expect(result.errorMessage).toContain("502");
+  });
+});
+
+describe("opaque bad-request repair", () => {
+  it("detects terminal 400/422s whose body was empty", () => {
+    expect(
+      isOpaqueBadRequest(classifyProviderError("400 status code (no body)", 400)),
+    ).toBe(true);
+    expect(
+      isOpaqueBadRequest(classifyProviderError("422 status code (no body)", 422)),
+    ).toBe(true);
+    // Message-derived status still applies when the capture missed the response.
+    expect(isOpaqueBadRequest(classifyProviderError("400 status code (no body)"))).toBe(
+      true,
+    );
+    // Descriptive bodies and other statuses stay untouched.
+    expect(
+      isOpaqueBadRequest(
+        classifyProviderError('400: {"error":{"message":"nope"}}', 400),
+      ),
+    ).toBe(false);
+    expect(
+      isOpaqueBadRequest(classifyProviderError("403 status code (no body)", 403)),
+    ).toBe(false);
+    expect(
+      isOpaqueBadRequest(classifyProviderError("upstream unavailable", 429)),
+    ).toBe(false);
+  });
+
+  it("repairs a pre-stream 400 with no body by dropping the derived output limit", async () => {
+    let attempts = 0;
+    let repairOptions: { onPayload?: (payload: unknown) => Promise<unknown> } | undefined;
+    const claim = vi.fn(() => undefined);
+    const sleep = vi.fn(async () => undefined);
+    const stream = createProviderRetryStream(
+      model,
+      context,
+      {
+        onPayload: async (payload: unknown) => ({
+          ...(payload as Record<string, unknown>),
+          marked: true,
+        }),
+      } as any,
+      (options) => {
+        attempts += 1;
+        if (attempts === 1) {
+          return failedStream({ errorMessage: "400 status code (no body)" });
+        }
+        repairOptions = options as typeof repairOptions;
+        return successfulStream();
+      },
+      {
+        claim,
+        headers: () => undefined,
+        status: () => 400,
+        sleep,
+      },
+    );
+
+    const events: string[] = [];
+    for await (const event of stream) events.push(event.type);
+
+    expect(attempts).toBe(2);
+    expect(events).toEqual(["start", "done"]);
+    expect((await stream.result()).stopReason).toBe("stop");
+    // The repair is neither a budget retry nor a paced one.
+    expect(claim).not.toHaveBeenCalled();
+    expect(sleep).not.toHaveBeenCalled();
+    // The repair wraps the caller hook: its rewrite survives, the limit does not.
+    const repaired = await repairOptions?.onPayload?.({
+      model: "glm-5.3-flash",
+      max_tokens: 4096,
+      max_completion_tokens: 1_044_472,
+      max_output_tokens: 1_044_472,
+      messages: [{ role: "user", content: "hi" }],
+    });
+    expect(repaired).toEqual({
+      marked: true,
+      model: "glm-5.3-flash",
+      messages: [{ role: "user", content: "hi" }],
+    });
+  });
+
+  it("does not start the repair after the request is aborted", async () => {
+    const abortController = new AbortController();
+    let attempts = 0;
+    const stream = createProviderRetryStream(
+      model,
+      context,
+      { signal: abortController.signal },
+      () => {
+        attempts += 1;
+        const result = createAssistantMessageEventStream();
+        const error = assistantMessage({ errorMessage: "400 status code (no body)" });
+        queueMicrotask(() => {
+          result.push({ type: "error", reason: "error", error });
+          abortController.abort();
+          result.end(error);
+        });
+        return result;
+      },
+      {
+        claim: vi.fn(() => undefined),
+        headers: () => undefined,
+        status: () => 400,
+        sleep: async () => undefined,
+      },
+    );
+
+    const events: string[] = [];
+    for await (const event of stream) events.push(event.type);
+
+    expect(attempts).toBe(1);
+    expect(events).toEqual(["error"]);
+    expect((await stream.result()).stopReason).toBe("aborted");
+  });
+
+  it("surfaces the original error when the repaired attempt fails the same way", async () => {
+    let attempts = 0;
+    const claim = vi.fn(() => undefined);
+    const stream = createProviderRetryStream(
+      model,
+      context,
+      {},
+      () => {
+        attempts += 1;
+        return failedStream({ errorMessage: "400 status code (no body)" });
+      },
+      {
+        claim,
+        headers: () => undefined,
+        status: () => 400,
+        sleep: async () => undefined,
+      },
+    );
+
+    const events: string[] = [];
+    for await (const event of stream) events.push(event.type);
+
+    expect(attempts).toBe(2);
+    expect(events).toEqual(["error"]);
+    const result = await stream.result();
+    expect(result.stopReason).toBe("error");
+    expect(result.errorMessage).toBe("400 status code (no body)");
+    // Only the failed repair reaches the budget; the opaque first failure never did.
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(claim).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "PROVIDER_ERROR", retriable: false }),
+      "request",
+    );
+  });
+
+  it("surfaces descriptive 400 bodies without attempting a repair", async () => {
+    let attempts = 0;
+    const claim = vi.fn(() => undefined);
+    const stream = createProviderRetryStream(
+      model,
+      context,
+      {},
+      () => {
+        attempts += 1;
+        return failedStream({
+          errorMessage: '400: {"error":{"message":"Model does not exist."}}',
+        });
+      },
+      {
+        claim,
+        headers: () => undefined,
+        status: () => 400,
+        sleep: async () => undefined,
+      },
+    );
+
+    const events: string[] = [];
+    for await (const event of stream) events.push(event.type);
+
+    expect(attempts).toBe(1);
+    expect(events).toEqual(["error"]);
+    // A descriptive body is terminal, and the budget is consulted and refuses it.
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(claim).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "PROVIDER_ERROR", retriable: false }),
+      "request",
+    );
+  });
+
+  it("strips only the output-limit fields", () => {
+    expect(
+      stripOutputLimitFields({
+        model: "m",
+        max_tokens: 1,
+        max_completion_tokens: 2,
+        max_output_tokens: 3,
+        stream: true,
+      }),
+    ).toEqual({ model: "m", stream: true });
+    expect(stripOutputLimitFields("raw")).toBe("raw");
+  });
+
+  it("keeps the repair options otherwise unchanged", () => {
+    const options = { maxRetries: 0, fetch: globalThis.fetch } as any;
+    const repaired = withoutDerivedOutputLimit(options);
+    expect(repaired.maxRetries).toBe(0);
+    expect(repaired.fetch).toBe(options.fetch);
+    expect(typeof repaired.onPayload).toBe("function");
   });
 });

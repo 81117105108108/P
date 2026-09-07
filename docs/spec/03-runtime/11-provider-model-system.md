@@ -67,7 +67,16 @@ inside the `openai_compatible` provider path: the preset fixes the endpoint to
 `https://opencode.ai/zen/go/v1`, uses Bearer API-key authentication, discovers
 models from `/models`, and sends chat turns through pi-ai's OpenAI Chat
 Completions adapter. It does not create a second transport or a closed model
-allowlist.
+allowlist. Agent-runtime injects OpenCode routing headers on every LLM
+request (session turns, subagents, prompt enhancement, and plugin
+one-shots): `x-opencode-session` is the durable conversation id (or a
+per-call UUID when the caller has no session), `x-opencode-client` is
+`pi-desktop`, and `User-Agent` is `pi-desktop/<APP_VERSION>` unless the row
+sets `userAgent`. A custom OpenAI-compatible row whose base URL host is
+`opencode.ai` receives the same headers. pi-ai is not relied on to emit
+`x-opencode-session`. Each provider row (AI service or OAuth account) may
+set an optional `userAgent`; empty keeps the adapter default. A fetch
+wrapper is the last writer so Codex and Anthropic cannot overwrite it.
 
 Zhipu / GLM and Z.AI are named OpenAI-compatible endpoint presets among a
 short models.dev-backed Service list of first-party vendors (including
@@ -239,7 +248,8 @@ type ProviderConfig = {
   baseUrl?: string
   authKind: ProviderAuthKind
   secretRef?: string            // pointer into secret store
-  headers?: Record<string, string> // non-secret headers only
+  userAgent?: string            // optional User-Agent; empty keeps adapter default
+  headers?: Record<string, string> // unused; userAgent is the supported override
   apiStyle?:
     | "chat_completions"
     | "opencode_go"
@@ -413,8 +423,9 @@ type ModelDescriptor = {
 - add custom provider
 - edit base URL/headers
 - set/replace/delete key
+- set an optional User-Agent in Advanced (empty keeps the adapter default)
 - sign in to / out of a vendor account, and see which account a row uses
-- edit a vendor account's non-secret label and default model
+- edit a vendor account's non-secret label, User-Agent, and default model
 - enable/disable provider
 - test connection
 - select multiple models and edit each binding's context window, output limit,
@@ -465,7 +476,10 @@ When starting a turn with `(providerId, modelId)`:
 7. clamp the session thinking level against the exact binding's enabled levels
    and build the runtime provider adapter by replacing only provider/model
    identity, selected API adapter, auth, and an explicitly configured endpoint
-   URL
+   URL. For `anthropic_messages`, the runtime removes a trailing `/v1` from
+   that URL before passing it to pi-ai because the Anthropic SDK appends `/v1`
+   itself; configured roots with or without `/v1` therefore both reach the
+   same `/v1/messages` route.
 8. execute stream with abort handle and separate answer/thinking events
 9. translate vendor errors into shared `AppError` codes (§15)
 
@@ -548,7 +562,8 @@ Required fields:
 Optional:
 - `apiStyle` (`chat_completions` | `opencode_go` | `responses` | `auto`)
 - compatibility flags
-- custom headers (non-secret)
+- `userAgent` (optional outbound User-Agent; empty keeps the adapter default)
+- custom headers (non-secret; not implemented — use `userAgent`)
 
 For the OpenAI Chat Completions adapter, system instructions use the
 standard `system` role by default. This keeps arbitrary compatible gateways

@@ -24,6 +24,11 @@ import {
 import { readFile } from "node:fs/promises";
 import { listInstalledFonts } from "./system-fonts";
 import {
+  applyNetworkProxyFromAppSettings,
+  currentNetworkProxy,
+  testNetworkProxy,
+} from "./network-proxy";
+import {
   APP_ID,
   APP_NAME,
   APP_VERSION,
@@ -89,6 +94,7 @@ import {
   type UserSkillRecord,
   type UserSubagentRecord,
   type WindowControlAction,
+  validateNetworkProxy,
 } from "@pi-desktop/shared";
 import {
   capabilitiesFromModelConfig,
@@ -104,6 +110,7 @@ import {
   loadInstructionChain,
   loadSubagentDefinitions,
   resolveSubagentProviders,
+  withUserAgentHeaders,
   type ComposerTemplate,
   type ThinkingCapabilities,
   type RuntimeProviderConfig,
@@ -635,7 +642,7 @@ const plugins: PluginRuntime = new PluginRuntime({
       runtimeProvider,
       context,
       launch.sidecarParams.thinkingLevel,
-      { signal: input.signal },
+      { signal: input.signal, sessionId: launchSessionId },
     );
     return {
       text: result.text,
@@ -878,6 +885,7 @@ type RuntimeProvider = {
   hasSecret?: boolean;
   hasOauth?: boolean;
   oauthAccountLabel?: string;
+  userAgent?: string;
   enabled?: boolean;
   supportsVision?: boolean;
 };
@@ -985,6 +993,7 @@ function validateSettingsWrite<T>(settings: T): T {
   }
   const value = settings as T & {
     defaultCommandShell?: unknown;
+    networkProxy?: unknown;
   };
   if (
     Object.prototype.hasOwnProperty.call(value, "defaultCommandShell") &&
@@ -993,6 +1002,17 @@ function validateSettingsWrite<T>(settings: T): T {
     throw Object.assign(new Error("defaultCommandShell is invalid"), {
       errorCode: ErrorCodes.COMMAND_SHELL_INVALID,
     });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "networkProxy")) {
+    const proxy = validateNetworkProxy(
+      (value as { networkProxy?: unknown }).networkProxy,
+    );
+    if (!proxy.ok) {
+      throw Object.assign(new Error(proxy.error), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    value.networkProxy = proxy.value;
   }
   return settings;
 }
@@ -1516,6 +1536,7 @@ async function resolveAgentRuntimeLaunch(
         apiKey,
         ...(row.authKind ? { authKind: row.authKind } : {}),
         ...(row.apiStyle ? { apiStyle: row.apiStyle } : {}),
+        ...(row.userAgent ? { userAgent: row.userAgent } : {}),
         supportsReasoning: caps.supportsReasoning,
         supportedThinkingLevels: [...caps.supportedThinkingLevels],
         ...(mc ? { modelConfig: mc } : {}),
@@ -1575,6 +1596,7 @@ async function resolveAgentRuntimeLaunch(
         apiKey: secret.value || "",
         authKind: provider.authKind,
         apiStyle,
+        ...(provider.userAgent ? { userAgent: provider.userAgent } : {}),
         supportsReasoning: thinkingCapabilities.supportsReasoning,
         supportsVision: visionFromModelConfig(modelConfig),
         supportedThinkingLevels: [...thinkingCapabilities.supportedThinkingLevels],
@@ -4683,6 +4705,7 @@ async function startSidecar(): Promise<void> {
   await s.call("sidecar.configure", {
     hostBinary: host?.binaryPath,
     dataDir,
+    networkProxy: currentNetworkProxy(),
   });
   logger.app("runtime", "info", "agent sidecar configured");
 }
@@ -5326,6 +5349,12 @@ async function bootBackends() {
     data: { protocolVersion: PROTOCOL_VERSION },
   });
   await startHost();
+  try {
+    const stored = await host!.call("settings.get");
+    await applyNetworkProxyFromAppSettings(stored);
+  } catch {
+    await applyNetworkProxyFromAppSettings({ mode: "system" });
+  }
   await startSidecar();
 
   // Keep plugin host services wired to live workspace / app metadata.
@@ -5945,10 +5974,25 @@ function registerIpc() {
     const settings = await host.call("settings.get");
     return normalizeSettings(settings);
   });
+  handle(IPC.invoke.networkProxyTest, async (settings: unknown) => {
+    return testNetworkProxy(settings);
+  });
   handle(IPC.invoke.settingsSet, async (settings: unknown) => {
     if (!host) throw new Error("host unavailable");
     const validatedSettings = validateSettingsWrite(settings);
     const result = await host.call("settings.set", validatedSettings);
+    await applyNetworkProxyFromAppSettings(validatedSettings);
+    if (sidecar) {
+      try {
+        await sidecar.call("sidecar.configure", {
+          hostBinary: host.binaryPath,
+          dataDir,
+          networkProxy: currentNetworkProxy(),
+        });
+      } catch {
+        // Sidecar will pick up PI_DESKTOP_PROXY_JSON on the next spawn.
+      }
+    }
     applyApplicationMenuSettings(
       validatedSettings as {
         language?: unknown;
@@ -6010,7 +6054,7 @@ function registerIpc() {
     );
     if (!local.ok) return { ...local, network: "skipped" };
     const detail = await host.call<{
-      provider?: { baseUrl?: string; authKind?: string };
+      provider?: { baseUrl?: string; authKind?: string; userAgent?: string };
     }>("providers.get", { id });
     // A vendor account proves itself by resolving auth — refreshing the token
     // if it has expired — not by probing /models with a key it does not have.
@@ -6034,7 +6078,10 @@ function registerIpc() {
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/models`, {
-        headers: secret.value ? { Authorization: `Bearer ${secret.value}` } : {},
+        headers: withUserAgentHeaders(
+          secret.value ? { Authorization: `Bearer ${secret.value}` } : {},
+          detail.provider?.userAgent,
+        ),
         signal: controller.signal,
       });
       if (res.status === 401 || res.status === 403) {
@@ -6103,6 +6150,7 @@ function registerIpc() {
             baseUrl?: string;
             apiKey?: string;
             apiStyle?: string;
+            userAgent?: string;
             source?: "cache" | "refresh";
           },
     ) => {
@@ -6330,7 +6378,12 @@ function registerIpc() {
       let discoveryError: string | undefined;
       if (baseUrl) {
         try {
-          const discovered = await discoverProviderModels({ baseUrl, apiKey, apiStyle });
+          const discovered = await discoverProviderModels({
+            baseUrl,
+            apiKey,
+            apiStyle,
+            userAgent: req.userAgent ?? provider?.userAgent,
+          });
           if (discovered.length > 0) {
             const models = discovered.map((model) => decorate(model));
             // Only what the endpoint actually served is cached; a configured id
@@ -7090,6 +7143,7 @@ function registerIpc() {
       runtimeProvider,
       draft,
       launch.sidecarParams.thinkingLevel,
+      { sessionId: launchSessionId },
     );
     logger.app("session", "info", "prompt enhanced", {
       sessionId: sessionId || undefined,
@@ -8420,6 +8474,7 @@ app.whenReady().then(async () => {
       } | null;
       applyApplicationMenuSettings(stored);
       applyDeveloperMode(stored);
+      await applyNetworkProxyFromAppSettings(stored);
     } catch {
       // Keep the OS-locale menu until settings can be read again, while
       // retaining the historical default launcher fallback for this failure.

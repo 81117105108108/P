@@ -23,6 +23,8 @@ export type PromptEnhancementOptions = {
   signal?: AbortSignal;
   /** Test seam for a provider stream; production uses the resolved model registry. */
   stream?: PromptEnhancementStream;
+  /** Conversation id forwarded to OpenCode as `x-opencode-session`. */
+  sessionId?: string;
 };
 
 export function promptEnhancementContext(draft: string): Context {
@@ -55,6 +57,7 @@ export async function enhancePromptDraft(
     {
       signal: options.signal,
       stream: options.stream,
+      sessionId: options.sessionId,
       emptyErrorCode: "PROMPT_ENHANCEMENT_EMPTY",
       emptyErrorMessage: "The model returned an empty enhanced draft.",
     },

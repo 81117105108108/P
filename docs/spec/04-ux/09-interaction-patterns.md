@@ -508,9 +508,11 @@ may be retained while exactly one workspace supplies the visible shell context.
   the source visible and copyable instead of failing the assistant turn.
 - Cursor indicator: subtle pulsing accent dot or line at the end of streaming content
 - Before the first assistant or tool event, the active turn shows one compact
-  localized `Working…` status with elapsed time. It is replaced by concrete
-  thinking/tool/answer feedback or the inline permission card as soon as one
-  of those states exists.
+  localized `Working…` status with elapsed time. When the runtime reports a
+  quiet interval, that same row identifies whether the turn is waiting for the
+  model, retrying a provider request, or waiting for delegated work. It is
+  replaced by concrete thinking/tool/answer feedback or the inline permission
+  card as soon as one of those states exists.
 - When stream completes: cursor indicator replaced by success state (2s fade)
 
 ### 2.2 Auto-scroll
@@ -546,7 +548,10 @@ may be retained while exactly one workspace supplies the visible shell context.
 
 - An active turn keeps the lower transcript surface clear. Streamed assistant
   and tool rows remain inline with the transcript; no generic understanding,
-  working, or checking card is rendered underneath them.
+  working, or checking card is rendered underneath them. A compact runtime
+  status row is the only exception, and appears only when it explains a
+  provider retry or a delegated-work wait that has no transcript row of its
+  own.
 - A permission card remains visible only when the agent is blocked on an
   explicit approval. It is an actionable interruption, not a progress status
   card.

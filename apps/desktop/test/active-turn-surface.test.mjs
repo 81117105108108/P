@@ -14,14 +14,23 @@ const [store, transcript, messagesStyles, proseStyles, en, zh] =
     read("../../../packages/i18n/src/locales/zh-CN/index.ts"),
   ]);
 
-test("active turns show immediate feedback without a progress card", () => {
-  assert.match(transcript, /function WorkingIndicator\(\)/);
+test("active turns show immediate and phase-specific feedback without a progress card", () => {
+  assert.match(transcript, /function WorkingIndicator\(/);
   assert.match(transcript, /data-testid="working-indicator"/);
   assert.match(transcript, /role="status"/);
   assert.match(transcript, /className="working-indicator-mark" aria-hidden="true"/);
   assert.match(transcript, /className="working-indicator-label"/);
+  assert.match(transcript, /function RunActivityIndicator\(/);
+  assert.match(transcript, /data-testid="run-activity-indicator"/);
+  assert.match(transcript, /waiting-model/);
+  assert.match(transcript, /waitingForSubagents/);
+  assert.match(transcript, /retryingModel/);
+  assert.match(transcript, /state\.agentStatuses\[sessionId\]\?\.activity/);
+  assert.match(transcript, /const specializedActivity =/);
+  assert.match(transcript, /!hasSpecializedActivity/);
   assert.match(transcript, /const showWorking =/);
-  assert.match(transcript, /\{showWorking \? <WorkingIndicator \/> : null\}/);
+  assert.match(transcript, /\{showWorking \? \(/);
+  assert.match(transcript, /<WorkingIndicator[\s\S]*startedAt=/);
   assert.match(transcript, /function PlanningIndicator\(/);
   assert.match(transcript, /data-testid="planning-indicator"/);
   assert.match(transcript, /const showPlanning =/);
@@ -48,6 +57,9 @@ test("active turns show immediate feedback without a progress card", () => {
   assert.doesNotMatch(store, /AgentProgress|agentProgress|updateAgentProgress/);
   assert.match(messagesStyles, /\.working-indicator\s*\{/);
   assert.match(messagesStyles, /\.working-indicator-mark\s*\{/);
+  assert.match(messagesStyles, /\.run-activity-indicator\[data-phase="waiting-model"\]/);
+  assert.match(messagesStyles, /\.run-activity-indicator\[data-phase="retrying"\]/);
+  assert.match(messagesStyles, /\.run-activity-indicator\[data-phase="waiting-subagents"\]/);
   assert.match(messagesStyles, /\.working-indicator-mark > span\s*\{[\s\S]*?animation:\s*working-indicator-dot\s+1s/);
   assert.doesNotMatch(proseStyles, /\.working-indicator\s*\{|\.shimmer-text\s*\{/);
   assert.doesNotMatch(messagesStyles, /\.shimmer-text\s*\{|animation:\s*shimmer\b/);
@@ -63,4 +75,12 @@ test("active turns show immediate feedback without a progress card", () => {
     zh,
     /progressUnderstanding|progressWorking|progressChecking|progressFinalizing|progressWaiting/,
   );
+  for (const catalog of [en, zh]) {
+    assert.match(catalog, /waitingForModel:/);
+    assert.match(catalog, /retryingModel:/);
+    assert.match(catalog, /waitingForSubagents_one:/);
+    assert.match(catalog, /waitingForSubagents_other:/);
+  }
+  assert.match(store, /agentStatuses: Record<string, AgentStatus>/);
+  assert.match(store, /event\.type === "status"/);
 });

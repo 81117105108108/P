@@ -48,6 +48,7 @@
       "type": "object",
       "additionalProperties": { "type": "string" }
     },
+    "userAgent": { "type": "string", "maxLength": 256 },
     "apiStyle": {
       "enum": [
         "chat_completions",
@@ -127,6 +128,13 @@ base URL 与粘贴的密钥工作。厂商行的样式不由厂商固定：GitHu
 | apiStyle | 提供商类型 | authKind | 名称 | baseUrl |
 |---|---|---|---|---|
 | `opencode_go` | `openai_compatible` | `api_key_and_base_url` | `OpenCode Go` | `https://opencode.ai/zen/go/v1` |
+
+OpenCode Go（以及任何 `opencode.ai` 主机）的 LLM 请求必须带稳定的
+`x-opencode-session`。agent-runtime 在会话、子代理、提示增强与插件 one-shot
+上发送该头，并附带 `x-opencode-client: pi-desktop` 与
+`User-Agent: pi-desktop/<APP_VERSION>`。行上可选的 `userAgent` 会覆盖该默认值；留空则保持适配器默认。
+
+每行（AI 服务或 OAuth 账户）可在高级选项中设置 User-Agent。空值保持 pi-ai / `claude-cli` / OpenCode 默认。fetch 包装器是最后写入者，因此 Codex 与 Anthropic SDK 无法覆盖。首次 OAuth 登录不收集 User-Agent，登录后再编辑。覆盖 Anthropic OAuth 的 `claude-cli/…` 可能导致 Claude Pro/Max 拒绝请求。
 
 ### 命名端点预设
 
@@ -229,11 +237,13 @@ Advanced 控件中设置的非默认值仍优先。未知模型继续使用 128k
 - 在：`{ includeDisabled?: boolean }`
 - 输出：`{ providers: ProviderPublic[] }`
 - `ProviderPublic` 排除原始秘密；包括 `hasSecret: boolean`（**任一种**凭据
-  存在即为真）、`hasOauth: boolean` 与非敏感的 `oauthAccountLabel?: string`
+  存在即为真）、`hasOauth: boolean`、非敏感的 `oauthAccountLabel?: string`
+  与可选的 `userAgent?: string`
 
 ### `providers.create` / `providers.update`
 - 在：提供商字段 + 可选的 `secretValue` + 可选的 `oauthAccountLabel`
-  （合并进 `config_json.oauth`，传空字符串即清除）；旧客户端仍可能发送
+  （合并进 `config_json.oauth`，传空字符串即清除）+ 可选的 `userAgent`
+  （合并进 `config_json.userAgent`，传空字符串即清除）；旧客户端仍可能发送
   `supportsReasoning` / `supportedThinkingLevels`
 - 行为：保留配置；如果存在secretValue，则写入密钥存储并设置
   `secretRef`；传统思维领域可能仍保留在
@@ -287,7 +297,8 @@ Advanced 控件中设置的非默认值仍优先。未知模型继续使用 128k
 2. `openai_compatible` / 本地网关需要绝对 `baseUrl`，除非预设表示可选
 3. `authKind=none` 禁止用于需要密钥的云预设
 4. headers key 不区分大小写，唯一
-5. 强制实施 SecretValue 最大长度（例如 8KB）
+5. `userAgent` 需 trim，最多 256 字节，不得含 CR/LF
+6. 强制实施 SecretValue 最大长度（例如 8KB）
 6. modelId 必须是非空的修剪字符串；允许 `/`、`.`、`:`、`-`
 7.旧客户端上的未知协议 => 提供程序显示为禁用并带有警告，而不是崩溃
 8. 旧版 `supportsReasoning`（如果存在）仍必须验证为布尔值，但

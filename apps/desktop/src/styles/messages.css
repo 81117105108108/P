@@ -265,6 +265,38 @@
   font-size: var(--text-sm-plus);
 }
 
+/* Runtime-owned quiet phases explain why no new transcript row is arriving.
+   Keep them as the same lightweight status row, not a second progress card. */
+.run-activity-indicator[data-phase="waiting-model"] {
+  color: var(--ds-info);
+}
+
+.run-activity-indicator[data-phase="waiting-model"]
+  .working-indicator-mark > span {
+  background: var(--ds-info);
+}
+
+.run-activity-indicator[data-phase="retrying"] {
+  color: var(--ds-warning);
+}
+
+.run-activity-indicator[data-phase="retrying"] .working-indicator-mark > span {
+  background: var(--ds-warning);
+}
+
+.run-activity-indicator[data-phase="waiting-subagents"] {
+  color: var(--ds-purple);
+}
+
+.run-activity-indicator[data-phase="waiting-subagents"]
+  .working-indicator-mark > span {
+  background: var(--ds-purple);
+}
+
+.run-activity-indicator .working-indicator-label {
+  color: inherit;
+}
+
 .working-indicator-mark {
   display: inline-flex;
   width: 18px;

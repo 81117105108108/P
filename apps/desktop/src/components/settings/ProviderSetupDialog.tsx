@@ -31,6 +31,81 @@ const API_STYLE_LABEL_KEYS: Record<CatalogApiStyle, string> = {
   opencode_go: "settings.apiStyleOpenCodeGo",
 };
 
+type BaseUrlIssue = "invalid";
+
+function requestPathForApiStyle(apiStyle: CatalogApiStyle): string {
+  switch (apiStyle) {
+    case "anthropic_messages":
+      return "/v1/messages";
+    case "chat_completions":
+      return "/chat/completions";
+    case "responses":
+    case "openai_codex_responses":
+      return "/responses";
+    case "google_generative_ai":
+      return "/models";
+    case "pi_messages":
+      return "/messages";
+    case "opencode_go":
+      return "/responses";
+  }
+}
+
+function endpointPathSuffixes(apiStyle: CatalogApiStyle): string[] {
+  switch (apiStyle) {
+    case "anthropic_messages":
+    case "pi_messages":
+      return ["/messages", "/models"];
+    case "chat_completions":
+      return ["/chat/completions", "/models"];
+    case "responses":
+    case "openai_codex_responses":
+    case "opencode_go":
+      return ["/responses", "/models"];
+    case "google_generative_ai":
+      return ["/models"];
+  }
+}
+
+function getBaseUrlIssue(value: string): BaseUrlIssue | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (
+      !["http:", "https:"].includes(parsed.protocol) ||
+      !parsed.hostname ||
+      parsed.username ||
+      parsed.password ||
+      parsed.search ||
+      parsed.hash
+    ) {
+      return "invalid";
+    }
+    return null;
+  } catch {
+    return "invalid";
+  }
+}
+
+/** Keep pasted operation URLs usable by storing the service root instead. */
+function normalizeBaseUrlInput(value: string, apiStyle: CatalogApiStyle): string {
+  const trimmed = value.trim();
+  if (!trimmed || getBaseUrlIssue(trimmed)) return trimmed;
+
+  let normalized = trimmed.replace(/\/+$/, "");
+  const suffixes = endpointPathSuffixes(apiStyle).sort(
+    (left, right) => right.length - left.length,
+  );
+  for (const suffix of suffixes) {
+    if (normalized.toLowerCase().endsWith(suffix)) {
+      normalized = normalized.slice(0, -suffix.length).replace(/\/+$/, "");
+      break;
+    }
+  }
+  return normalized || trimmed;
+}
+
 function serviceIdFor(provider?: ProviderPublic | null): string {
   if (!provider) return "";
   return (
@@ -96,12 +171,14 @@ export function ProviderSetupDialog({
   const [apiStyle, setApiStyle] = useState<CatalogApiStyle>(
     (provider?.apiStyle as CatalogApiStyle) ?? "chat_completions",
   );
-  const [advanced, setAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(() => Boolean(provider?.userAgent));
+  const [userAgent, setUserAgent] = useState(provider?.userAgent ?? "");
   const [models, setModels] = useState<ModelBinding[]>(provider?.models ?? []);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState("");
   const [testResult, setTestResult] = useState("");
+  const [baseUrlTouched, setBaseUrlTouched] = useState(false);
 
   const namedPreset = NAMED_ENDPOINT_PRESETS.find((preset) => preset.id === service);
   const named = Boolean(namedPreset);
@@ -109,13 +186,24 @@ export function ProviderSetupDialog({
   const resolvedName = namedPreset ? name.trim() || namedPreset.name : name;
   const resolvedBaseUrl = namedPreset?.baseUrl ?? baseUrl;
   const resolvedApiStyle: CatalogApiStyle = namedPreset?.apiStyle ?? apiStyle;
+  const baseUrlIssue = getBaseUrlIssue(resolvedBaseUrl);
+  const baseUrlError =
+    baseUrlTouched && baseUrlIssue ? t("settings.baseUrlInvalid") : undefined;
+  const requestBaseUrl = normalizeBaseUrlInput(resolvedBaseUrl, resolvedApiStyle);
   // Named add-path waits for a key so picking a vendor does not 401-probe.
   // Editing reuses the stored secret. Custom still probes a valid URL alone.
   const discoveryActive =
-    Boolean(service) && (custom || Boolean(apiKey.trim()) || Boolean(provider));
+    Boolean(service) &&
+    !baseUrlIssue &&
+    (custom || Boolean(apiKey.trim()) || Boolean(provider));
   const discovery = useProviderModels(
     discoveryActive,
-    { baseUrl: resolvedBaseUrl, apiKey, apiStyle: resolvedApiStyle },
+    {
+      baseUrl: requestBaseUrl,
+      apiKey,
+      apiStyle: resolvedApiStyle,
+      userAgent,
+    },
     provider,
   );
   const selection = useModelSelection(discovery, models, setModels);
@@ -140,6 +228,7 @@ export function ProviderSetupDialog({
   const onServiceChange = (next: string) => {
     const previous = namedPreset;
     setService(next);
+    setBaseUrlTouched(false);
     const preset = NAMED_ENDPOINT_PRESETS.find((item) => item.id === next);
     if (!preset) {
       if (next === CUSTOM_SERVICE && apiStyle === OPENCODE_GO_API_STYLE) {
@@ -153,6 +242,12 @@ export function ProviderSetupDialog({
     setBaseUrl(preset.baseUrl);
     setApiStyle(preset.apiStyle);
     focusAfterServiceChange(next);
+  };
+
+  const commitBaseUrl = () => {
+    setBaseUrlTouched(true);
+    const normalized = normalizeBaseUrlInput(baseUrl, resolvedApiStyle);
+    if (normalized !== baseUrl) setBaseUrl(normalized);
   };
 
   const testConnection = async () => {
@@ -182,8 +277,16 @@ export function ProviderSetupDialog({
 
   const save = async () => {
     const providerName = resolvedName.trim();
-    const providerBaseUrl = resolvedBaseUrl.trim();
-    if (!providerName || !providerBaseUrl || models.length === 0) return;
+    const providerBaseUrl = normalizeBaseUrlInput(resolvedBaseUrl, resolvedApiStyle);
+    if (
+      !providerName ||
+      !providerBaseUrl ||
+      getBaseUrlIssue(providerBaseUrl) ||
+      models.length === 0
+    ) {
+      setBaseUrlTouched(true);
+      return;
+    }
     const persisted = selection.bindingsToPersist;
     setSaving(true);
     setError("");
@@ -197,6 +300,7 @@ export function ProviderSetupDialog({
           defaultModelId: persisted[0]?.id,
           models: persisted,
           apiStyle: resolvedApiStyle,
+          userAgent,
           ...(apiKey ? { secretValue: apiKey } : {}),
         });
         onSaved(result.provider ?? provider, persisted);
@@ -212,6 +316,7 @@ export function ProviderSetupDialog({
           models: persisted,
           secretValue: apiKey || undefined,
           apiStyle: resolvedApiStyle,
+          userAgent,
         });
         onSaved(result.provider, persisted);
       }
@@ -227,6 +332,7 @@ export function ProviderSetupDialog({
     !!service &&
     !!resolvedName.trim() &&
     !!resolvedBaseUrl.trim() &&
+    !baseUrlIssue &&
     models.length > 0;
 
   return (
@@ -333,14 +439,39 @@ export function ProviderSetupDialog({
                       onChange={(event) => setName(event.target.value)}
                     />
                   </Field>
-                  <Field label={t("settings.baseUrl")}>
-                    <Input
-                      value={baseUrl}
-                      className="font-mono text-sm-plus"
-                      placeholder="https://api.example.com/v1"
-                      onChange={(event) => setBaseUrl(event.target.value)}
-                    />
-                  </Field>
+                  <div className="provider-setup-base-url">
+                    <Field
+                      label={t("settings.baseUrl")}
+                      hint={t("settings.baseUrlHint", {
+                        route: requestPathForApiStyle(resolvedApiStyle),
+                      })}
+                    >
+                      <Input
+                        value={baseUrl}
+                        type="url"
+                        inputMode="url"
+                        autoComplete="url"
+                        className="font-mono text-sm-plus"
+                        placeholder="https://api.example.com/v1"
+                        aria-invalid={Boolean(baseUrlError)}
+                        aria-describedby={baseUrlError ? "provider-base-url-error" : undefined}
+                        onChange={(event) => {
+                          setBaseUrl(event.target.value);
+                          setError("");
+                        }}
+                        onBlur={commitBaseUrl}
+                      />
+                      {baseUrlError ? (
+                        <div
+                          id="provider-base-url-error"
+                          className="provider-setup-field-error"
+                          role="alert"
+                        >
+                          {baseUrlError}
+                        </div>
+                      ) : null}
+                    </Field>
+                  </div>
                   <Field
                     label={t("settings.apiKey")}
                     hint={editing ? t("settings.apiKeyKeepHint") : undefined}
@@ -358,6 +489,7 @@ export function ProviderSetupDialog({
                   <Field label={t("settings.apiStyle")}>
                     <Select
                       value={apiStyle}
+                      disabled={saving}
                       onChange={(event) =>
                         setApiStyle(event.target.value as CatalogApiStyle)
                       }
@@ -375,7 +507,7 @@ export function ProviderSetupDialog({
               ) : null}
             </div>
 
-            {named ? (
+            {named || custom ? (
               <>
                 <button
                   type="button"
@@ -387,10 +519,23 @@ export function ProviderSetupDialog({
                 </button>
                 {advanced ? (
                   <div className="provider-setup-advanced">
-                    <Field label={t("settings.name")}>
+                    {named ? (
+                      <Field label={t("settings.name")}>
+                        <Input
+                          value={name}
+                          onChange={(event) => setName(event.target.value)}
+                        />
+                      </Field>
+                    ) : null}
+                    <Field
+                      label={t("settings.userAgent")}
+                      hint={t("settings.userAgentHint")}
+                    >
                       <Input
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
+                        value={userAgent}
+                        className="font-mono text-sm-plus"
+                        autoComplete="off"
+                        onChange={(event) => setUserAgent(event.target.value)}
                       />
                     </Field>
                   </div>

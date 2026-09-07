@@ -3,7 +3,7 @@ import { createInterface } from "node:readline";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { ErrorCodes, PROTOCOL_VERSION, rpcTimeoutMs } from "@pi-desktop/shared";
+import { ErrorCodes, PROTOCOL_VERSION, rpcTimeoutMs, stripProxyEnv } from "@pi-desktop/shared";
 
 const HOST_DISPOSE_GRACE_MS = 3_000;
 const HOST_FORCE_KILL_GRACE_MS = 1_000;
@@ -102,7 +102,7 @@ export class HostProcess {
     this.child = spawn(this.binaryPath, [], {
       stdio: ["pipe", "pipe", "pipe"],
       env: {
-        ...process.env,
+        ...stripProxyEnv(process.env),
         PI_DESKTOP_DATA_DIR: dataDir,
         // Only Electron knows whether this build runs from `resources/` or a
         // source checkout, so it resolves the bundled-plugin directory and

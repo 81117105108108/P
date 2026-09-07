@@ -13,6 +13,7 @@ import {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type {
+  AgentActivity,
   ContextCompactionMark,
   MessageAttachment,
   MessageUsage,
@@ -1823,18 +1824,20 @@ const ActivityGroup = memo(function ActivityGroup({
 }, activityGroupPropsEqual);
 
 /** Keep the transcript responsive while the model waits for its first event. */
-function WorkingIndicator() {
+function WorkingIndicator({ startedAt }: { startedAt?: number } = {}) {
   const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
+  const startedAtRef = useRef(startedAt ?? Date.now());
 
   useEffect(() => {
-    const startedAt = Date.now();
+    startedAtRef.current = startedAt ?? Date.now();
     const updateElapsed = () => {
-      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+      setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
     };
+    updateElapsed();
     const timer = window.setInterval(updateElapsed, 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [startedAt]);
 
   return (
     <div
@@ -1854,6 +1857,51 @@ function WorkingIndicator() {
           {formatToolDuration(elapsed)}
         </span>
       ) : null}
+    </div>
+  );
+}
+
+type VisibleAgentActivity = Exclude<AgentActivity, { phase: "starting" }>;
+
+function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) {
+  const { t } = useTranslation();
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [activity.since]);
+
+  const elapsed = formatToolDuration(
+    Math.max(0, Math.floor((now - activity.since) / 1000)),
+  );
+  const label =
+    activity.phase === "waiting-model"
+      ? t("chat.waitingForModel")
+      : activity.phase === "retrying"
+        ? t("chat.retryingModel", { attempt: activity.attempt })
+        : t("chat.waitingForSubagents", {
+            count: activity.subagentCount,
+          });
+
+  return (
+    <div
+      className="working-indicator run-activity-indicator"
+      data-phase={activity.phase}
+      data-testid="run-activity-indicator"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="working-indicator-mark" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </span>
+      <span className="working-indicator-label">{label}</span>
+      <span className="working-elapsed" aria-hidden="true">
+        {elapsed}
+      </span>
     </div>
   );
 }
@@ -2479,6 +2527,9 @@ export const ChatTranscript = memo(function ChatTranscript({
           "agent",
       ) ?? "plan",
   );
+  const agentActivity = useAppStore((state) =>
+    sessionId ? state.agentStatuses[sessionId]?.activity : undefined,
+  );
   const compactions = useAppStore((state) =>
     sessionId ? state.sessionCompactions[sessionId] : undefined,
   );
@@ -3054,6 +3105,18 @@ export const ChatTranscript = memo(function ChatTranscript({
     lastTurnPart?.kind === "message" &&
     lastTurnPart.message.status === "streaming" &&
     Boolean((lastTurnPart.message.content || "").trim());
+  const specializedActivity =
+    agentActivity && agentActivity.phase !== "starting"
+      ? agentActivity
+      : undefined;
+  const hasSpecializedActivity = specializedActivity !== undefined;
+  const showRunActivity =
+    isRunning &&
+    !pendingPermission &&
+    !askPending &&
+    !approvalPending &&
+    !assistantIsAnswering &&
+    hasSpecializedActivity;
   // Show immediate feedback after send, then let the concrete activity row
   // (thinking/tool/answer) take over so the transcript never duplicates state.
   const showWorking =
@@ -3063,7 +3126,8 @@ export const ChatTranscript = memo(function ChatTranscript({
     !approvalPending &&
     planningState !== "planning" &&
     !activeToolGroup &&
-    !assistantIsAnswering;
+    !assistantIsAnswering &&
+    !hasSpecializedActivity;
   // Same pre-stream slot as Working: once tools or an answer exist, activity
   // rows carry the live state so a Planning label does not sit orphaned above
   // the composer. The Composer mode chip keeps pulsing for the turn.
@@ -3074,7 +3138,8 @@ export const ChatTranscript = memo(function ChatTranscript({
     !pendingPermission &&
     !askPending &&
     !activeToolGroup &&
-    !assistantIsAnswering;
+    !assistantIsAnswering &&
+    !hasSpecializedActivity;
 
   return (
     <div
@@ -3140,8 +3205,19 @@ export const ChatTranscript = memo(function ChatTranscript({
               queued={queuedPermissions}
             />
           ) : null}
+          {showRunActivity && specializedActivity ? (
+            <RunActivityIndicator activity={specializedActivity} />
+          ) : null}
           {showPlanning ? <PlanningIndicator kind={planningKind} /> : null}
-          {showWorking ? <WorkingIndicator /> : null}
+          {showWorking ? (
+            <WorkingIndicator
+              startedAt={
+                agentActivity?.phase === "starting"
+                  ? agentActivity.since
+                  : undefined
+              }
+            />
+          ) : null}
         </div>
       </div>
       {veilPhase !== "off" ? (

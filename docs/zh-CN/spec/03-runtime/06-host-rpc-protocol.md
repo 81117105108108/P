@@ -198,7 +198,8 @@ type ToolBudgetHealth = {
 `secret:provider:<id>:oauth`（D237）。上面的通用方法同时服务于两者，因此
 厂商账户凭据不需要新的主机方法。`ProviderPublic` 因此报告 `hasSecret`
 （**任一种**凭据存在即为真）、`hasOauth` 与非敏感的 `oauthAccountLabel`；
-`providers.create` / `providers.update` 接受 `oauthAccountLabel`，
+`providers.create` / `providers.update` 接受 `oauthAccountLabel` 与可选的
+`userAgent`（写入 `config_json.userAgent`，空字符串清除），
 `providers.delete` 清除两个引用。登录编排与令牌刷新留在 Electron 主进程，
 永远不会进入本协议 —— 参见
 [14-secrets-storage](/zh-CN/spec/03-runtime/14-secrets-storage) §10。

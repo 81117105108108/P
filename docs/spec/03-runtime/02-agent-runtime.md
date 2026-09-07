@@ -94,6 +94,15 @@ separate cancellation path.
     visible assistant error message
 12. finalize and persist successful answer/thinking blocks independently
 
+While an active turn has no new transcript row, the runtime emits a normalized
+`status` event with one of the following explanations: `waiting-model` while a
+provider request is waiting for its first assistant event, `retrying` during a
+bounded provider backoff, and `waiting-subagents` while the parent is waiting
+for delegated work. The renderer keeps the phase scoped to the session and
+clears it when assistant or tool activity starts, or when the turn terminates.
+This is observability only; it does not add a second agent loop or a
+completion percentage.
+
 The runtime constructs exactly one pi `Agent` per durable session. Plan does
 not select a second model, planner service, permission implementation, or
 runtime. The same Agent changes its planning state and tool registry after a
@@ -115,12 +124,14 @@ the provider message in both phases, so a generic 429 body still enters the
 429 budget while known non-retryable classifications remain terminal. The main
 session and builtin subagents use the same controller and policy.
 
-429 retries are silent: no intermediate assistant error, lifecycle `error`,
-`turn_end`, `agent_end`, or duplicate assistant bubble reaches the UI. The
-visible assistant message id is reused when a retry starts, replacing any
-partial content in one bubble. End events are emitted once by the final
-successful or exhausted attempt. An abort during the wait cancels the timer
-and prevents the next provider request.
+429 retries are silent at the transcript lifecycle: no intermediate assistant
+error, lifecycle `error`, `turn_end`, `agent_end`, or duplicate assistant
+bubble reaches the UI. A normalized `status` event identifies the retry
+backoff so the user can tell that the turn is still active. The visible
+assistant message id is reused when a retry starts, replacing any partial
+content in one bubble. End events are emitted once by the final successful or
+exhausted attempt. An abort during the wait cancels the timer and prevents the
+next provider request.
 
 The delay follows the OpenCode-style order `retry-after-ms`, `retry-after`
 seconds, `retry-after` HTTP-date, then exponential backoff. The fallback starts
@@ -140,6 +151,14 @@ context, and other non-retryable errors do not enter either provider replay
 path, and a non-retryable `PROVIDER_ERROR` from a malformed 400/422 request
 stays terminal.
 
+Before surfacing a pre-stream `PROVIDER_ERROR` for HTTP 400/422 whose message
+ends in `(no body)`, the runtime makes at most one silent repair attempt with
+the generated output-limit fields removed: `max_tokens`,
+`max_completion_tokens`, and `max_output_tokens`. This repair does not consume
+the transient retry budget or add backoff, and the caller's `onPayload` rewrite
+remains active. A second opaque failure is terminal, and an abort before the
+repair starts prevents the repair request.
+
 The non-429 delay honors the server first: `retry-after-ms`, `retry-after`
 seconds, then `retry-after` HTTP-date, capped at 8 seconds. Captured headers are
 retained for every status that can carry a usable delay (429, 408, 409, and
@@ -154,8 +173,9 @@ Only the failed request is replayed. The session, its transcript, and its tool
 state are untouched: the failed assistant is removed from the next model context
 and the same visible message id is reused, so a retry never restarts the turn or
 re-runs a completed tool call.
-Each retry is silent and abortable. The main session, builtin subagents, and
-one-shot composer enhancement use the same codes, budget size, and precedence.
+Each retry is abortable and reports its current backoff through the normalized
+status event. The main session, builtin subagents, and one-shot composer
+enhancement use the same codes, budget size, and precedence.
 
 When the 429 budget is exhausted, the final assistant error and lifecycle
 `error` are emitted once. Provider failures carry bounded diagnostics in
@@ -694,7 +714,30 @@ classification as an agent request, but creates a separate completion context
 with exactly one user message and the static enhancement system prompt. It
 does not instantiate a session agent, include transcript history, expose tools,
 or persist a turn. The renderer receives only the trimmed text result; API
-keys and vendor refresh credentials remain in Electron main.
+keys and vendor refresh credentials remain in Electron main. OpenCode Go
+one-shots reuse the conversation id as `x-opencode-session` when a session is
+present; otherwise the runtime synthesizes a per-call id so the gateway
+accepts the request.
+
+### 6.2 OpenCode session routing headers
+
+Chat, subagent, prompt-enhancement, and plugin one-shot completions whose
+provider is `apiStyle: opencode_go`, whose `vendorKey` is `opencode` or
+`opencode-go`, whose pi-ai provider id is one of those values, or whose base
+URL host is `opencode.ai` send:
+
+- `x-opencode-session`: the durable conversation id, or a per-call UUID when
+  the caller has no session
+- `x-opencode-client: pi-desktop`
+- `User-Agent: pi-desktop/<APP_VERSION>`
+
+Caller-supplied headers override the client and User-Agent defaults. An empty
+session header is restored from the conversation id so OpenCode Go cannot
+return `MissingSessionID`. A provider-row `userAgent` is applied after this
+merge (headers plus a fetch wrapper) so it wins over the OpenCode default
+and over adapter last-writes. This is an agent-runtime concern, matching the
+official Pi coding-agent attribution layer; pi-ai's `sessionId` stream option
+does not emit `x-opencode-session`.
 
 
 ## 7. System prompt composition

@@ -33,6 +33,16 @@ discovery calls `/models` with a Bearer key. Secrets remain owned by the
 existing Rust host secret store; no OpenCode-specific secret or database table
 is introduced.
 
+OpenCode Go requires a stable `x-opencode-session` header on LLM requests so
+the gateway can pin a conversation to one backend. pi-ai does not emit that
+header. Agent-runtime injects it (plus `x-opencode-client: pi-desktop` and a
+PI-Desktop `User-Agent`) on session, subagent, prompt-enhancement, and plugin
+one-shot streams, using the durable conversation id. Detection matches
+`apiStyle: opencode_go`, vendor/provider ids `opencode` / `opencode-go`, or
+an `opencode.ai` base URL so a UUID provider row and a custom Completions
+row pointed at Go both work. This stays in the agent layer, matching the
+official Pi coding-agent attribution helper.
+
 ## Consequences
 
 - OpenCode Go is recognizable in the provider row and durable configuration.
@@ -42,3 +52,5 @@ is introduced.
   style for user-controlled gateways.
 - The preset does not create a second wire adapter or constrain the service's
   model list to a hardcoded catalog.
+- OpenCode Go chat, subagent, and one-shot requests carry a stable session
+  routing header without waiting on a pi-ai change.
