@@ -404,8 +404,19 @@
   min-width: 180px;
 }
 
+.settings-row:has(.settings-font-size) .settings-row-control {
+  max-width: none;
+}
+
 .settings-font-size .settings-segment {
   width: 100%;
+  flex-wrap: nowrap;
+}
+
+.settings-font-size .settings-segment-item {
+  flex: 1 0 auto;
+  padding-inline: 8px;
+  white-space: nowrap;
 }
 
 .settings-font-size-slider {

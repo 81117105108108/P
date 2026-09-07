@@ -67,7 +67,7 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
     (bounded font loading) and opening the picker never blocks input
   - **Font size**: Starbucks-style cup presets (Tall / Grande / Venti /
     Trenta) plus a
-    percentage slider (80%–150%). Selection persists as
+    percentage slider (80%–150%). Cup labels stay on one line. Selection persists as
     `AppSettings.fontScale` (`1` = product ramp; absent means 1). The
     renderer sets `--font-scale` on the root so every `--text-*` step and
     shared Lucide icon scales in proportion without a reload. Window Zoom

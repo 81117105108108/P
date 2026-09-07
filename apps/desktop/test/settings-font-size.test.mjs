@@ -72,3 +72,14 @@ test("font-size control stacks presets and a percentage slider", () => {
   assert.match(styles, /\.settings-font-size-percent\s*\{[^}]*font-size:\s*var\(--text-sm\);/s);
   assert.doesNotMatch(styles, /\.settings-font-size-custom\s*\{/);
 });
+
+test("cup-size preset labels stay on one line", () => {
+  assert.match(
+    styles,
+    /\.settings-font-size \.settings-segment-item\s*\{[^}]*white-space:\s*nowrap;/s,
+  );
+  assert.match(
+    styles,
+    /\.settings-row:has\(\.settings-font-size\) \.settings-row-control\s*\{[^}]*max-width:\s*none;/s,
+  );
+});
