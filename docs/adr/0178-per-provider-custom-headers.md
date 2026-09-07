@@ -41,10 +41,13 @@ optional `headers` map in `config_json.headers`.
   `connection`, `transfer-encoding`, `te`, `trailer`, `upgrade`, `keep-alive`,
   `x-api-key`, `api-key`, `chatgpt-account-id`, `x-opencode-session`.
 - Not a secret. No SQLite or host-protocol version bump.
-- UI is a compact KeyValueRows editor in Advanced (named, custom, and vendor
-  account). Named display name stacks above the header rows in the same
-  single-column Advanced block. First OAuth login does not collect headers;
-  they are edited after the account exists.
+- UI is a compact Advanced toolbar (named, custom, and vendor account) with
+  common header presets including `User-Agent`, JSON import for either a direct
+  header object or `{ "headers": { ... } }`, and case-insensitive merge without
+  duplicate rows. At most two header rows are visible; additional rows scroll
+  inside the editor. Named display name stacks above the header controls in the
+  same single-column Advanced block. First OAuth login does not collect
+  headers; they are edited after the account exists.
 - `AgentRuntime.matches()` includes the header map so editing it rebuilds the
   warm runtime.
 

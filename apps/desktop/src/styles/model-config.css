@@ -379,9 +379,52 @@
   min-height: 0;
 }
 
-/* Keep a growing header list from stealing the model panes' working area. */
-.provider-setup-advanced > .provider-setup-headers {
-  max-height: min(220px, 30vh);
+.provider-setup-headers-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.provider-setup-headers-label {
+  min-width: 0;
+  color: var(--ds-text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+}
+
+.provider-setup-headers-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.provider-setup-header-preset {
+  width: auto;
+  max-width: 170px;
+  min-height: 26px;
+  padding: 3px 7px;
+  color: var(--ds-text-secondary);
+  font-size: var(--text-2xs);
+}
+
+.provider-setup-header-import {
+  flex: none;
+  padding: 4px 8px;
+  font-size: var(--text-2xs);
+}
+
+.provider-setup-header-file {
+  display: none;
+}
+
+/* Keep two header rows visible; additional rows scroll without moving models. */
+.provider-setup-header-list {
+  min-height: 0;
+  max-height: 116px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -389,17 +432,11 @@
   margin: -2px;
 }
 
-.provider-setup-headers-label {
-  color: var(--ds-text-secondary);
-  font-size: var(--text-sm);
-  line-height: var(--leading-tight);
-}
-
-.provider-setup-headers-hint {
+.provider-setup-header-error {
   margin: 0;
-  color: var(--ds-text-muted);
-  font-size: var(--text-xs);
-  line-height: var(--leading-tight);
+  color: var(--ds-warning);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-relaxed);
 }
 
 /* Pick on the left, review on the right; both stretch to the same height. */

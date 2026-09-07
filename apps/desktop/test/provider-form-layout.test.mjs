@@ -15,6 +15,7 @@ import { loadStyles } from "./helpers/styles.mjs";
 const read = (rel) => readFile(new URL(rel, import.meta.url), "utf8");
 
 const setupSource = await read("../src/components/settings/ProviderSetupDialog.tsx");
+const headerEditorSource = await read("../src/components/settings/ProviderHeadersEditor.tsx");
 const vendorDialogSource = await read("../src/components/settings/VendorAccountDialog.tsx");
 // The panes themselves live in the picker both dialogs render (D269).
 const pickerSource = await read("../src/components/settings/ModelSelectionPanes.tsx");
@@ -255,17 +256,26 @@ test("the panes stack again before the dialog gets too narrow to read", () => {
   );
 });
 
-test("Advanced holds a compact header editor on named, custom, and vendor editors", () => {
+test("Advanced offers presets and JSON import without redundant helper rows", () => {
   assert.match(setupSource, /ProviderHeadersEditor/);
   assert.match(vendorDialogSource, /ProviderHeadersEditor/);
   assert.match(vendorDialogSource, /provider-setup-advanced-toggle/);
+  assert.match(headerEditorSource, /HEADER_PRESETS/);
+  assert.match(headerEditorSource, /User-Agent/);
+  assert.match(headerEditorSource, /importJson/);
+  assert.match(headerEditorSource, /JSON\.parse/);
+  assert.match(headerEditorSource, /file\.text\(\)/);
+  assert.match(headerEditorSource, /accept="application\/json,\.json"/);
+  assert.doesNotMatch(headerEditorSource, /provider-setup-headers-hint/);
   const advanced = block(".provider-setup-advanced");
   assert.match(advanced, /flex-direction: column/);
   assert.match(advanced, /min-height: 0/);
   assert.doesNotMatch(advanced, /grid-template-columns: repeat\(2/);
   assert.match(block(".provider-setup-headers"), /flex-direction: column/);
-  const headersViewport = block(".provider-setup-advanced > .provider-setup-headers");
-  assert.match(headersViewport, /max-height: min\(220px, 30vh\)/);
+  const toolbar = block(".provider-setup-headers-toolbar");
+  assert.match(toolbar, /display: flex/);
+  const headersViewport = block(".provider-setup-header-list");
+  assert.match(headersViewport, /max-height: 116px/);
   assert.match(headersViewport, /overflow-y: auto/);
   assert.match(headersViewport, /overscroll-behavior: contain/);
   // Named and custom both expose Advanced; API format stays beside the key.

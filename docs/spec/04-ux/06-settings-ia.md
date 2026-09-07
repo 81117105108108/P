@@ -243,9 +243,12 @@ a usage tab.
     one-line banner above a cached list; raw HTTP/JSON dumps are not shown.
     Named display names and optional custom headers stay behind Advanced. Empty headers keep
     adapter defaults. The Advanced block is a single column: named display
-    name, then a compact key/value header editor. The header editor has a bounded
-    viewport and scrolls internally after it reaches the available height, so
-    adding rows never progressively compresses the model panes below it.
+    name, then a compact header toolbar. The toolbar offers common presets
+    including a ready-to-use User-Agent and imports either a direct JSON header
+    map or `{ "headers": { ... } }`; imported keys merge case-insensitively
+    without duplicating existing rows. The editor keeps at most two header rows
+    visible and scrolls internally for additional rows, so they never compress
+    the model panes below it. Empty headers keep adapter defaults.
     Service is a searchable anchored menu of vendors (filter by localized
     name, vendor key, alias, or host), not a native select, region grouping,
     stepper, or vendor-card grid. Saved named rows store the models.dev `vendorKey` and
