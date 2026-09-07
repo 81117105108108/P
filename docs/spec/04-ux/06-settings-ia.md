@@ -68,9 +68,10 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
   - **Font size**: presets (Small / Default / Large / Extra large) plus a
     percentage slider (80%–150%). Selection persists as
     `AppSettings.fontScale` (`1` = product ramp; absent means 1). The
-    renderer sets `--font-scale` on the root so every `--text-*` step
-    scales in proportion without a reload. Window Zoom In/Out/Reset stays
-    independent. The UI never asks for a px value (D343 / ADR 0180)
+    renderer sets `--font-scale` on the root so every `--text-*` step and
+    shared Lucide icon scales in proportion without a reload. Window Zoom
+    In/Out/Reset stays independent. The UI never asks for a px value
+    (D343 / ADR 0180)
   - **Auto language detection** resolves the OS locale through the main process
     (`app.getLocale()`) rather than the renderer's `navigator.language`, and the
     Auto option shows the detected language inline (e.g. "Currently 简体中文")

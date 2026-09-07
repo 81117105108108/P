@@ -6558,12 +6558,12 @@ This test plan spec is accepted when:
 - **Steps**:
   1) Open Settings → General and confirm the Appearance card shows a Font
      size row below Font, with Default selected and the slider at 100%.
-  2) Choose Large. Confirm chat transcript, composer, settings labels, and
-     sidebar session titles all enlarge without a reload, keeping their
-     relative steps, and that the control shows 115%.
+  2) Choose Large. Confirm chat transcript, composer, settings labels,
+     sidebar session titles, and Lucide chrome icons all enlarge without a
+     reload, keeping their relative steps, and that the control shows 115%.
   3) Drag the slider to 125%. Confirm Extra large becomes selected and
-     every `--text-*` surface grows further. Confirm the UI never shows a
-     px field.
+     every `--text-*` surface and icon grows further. Confirm the UI never
+     shows a px field.
   4) Use Zoom In, then Reset Zoom. Confirm window zoom still scales chrome
      and that the type scale remains 125% after reset.
   5) Restart the app and confirm the 125% scale is still applied
@@ -6573,7 +6573,8 @@ This test plan spec is accepted when:
 - **Expected**: Font size is presets Small / Default / Large / Extra large
   plus a percentage slider 80%–150% in 2.5% steps. Selection persists as
   `AppSettings.fontScale` (absent means 1) and sets `--font-scale`, multiplying
-  every `--text-*` token. Window Zoom In/Out/Reset remains independent.
+  every `--text-*` token and shared Lucide icon. Window Zoom In/Out/Reset remains
+  independent.
   Invalid values are rejected or clamped. No protocol or schema version bump.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/07-ui-design-system.md`,
   ADR 0180, D343

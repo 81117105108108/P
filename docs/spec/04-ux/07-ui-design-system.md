@@ -351,8 +351,8 @@ CJK fallback tier so Chinese text stays readable. The mono stack
 The Font size row (D343 / ADR 0180) persists an optional multiplier in
 `AppSettings.fontScale` (default 1, range 0.8–1.5). The renderer sets
 `--font-scale` on the root so every `--text-*` token (and `--leading-row`)
-scales in proportion. Window zoom remains independent. The UI never asks
-for a px value.
+scales in proportion. Shared Lucide icons use the same multiplier. Window
+zoom remains independent. The UI never asks for a px value.
 
 ### 5.2 Type scale
 

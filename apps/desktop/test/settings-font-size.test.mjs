@@ -53,6 +53,19 @@ test("the renderer applies a global type scale without a reload", () => {
   assert.doesNotMatch(tokensSource, /\.thread-wrap,\s*\n\.composer-dock \{/);
 });
 
+test("shared Lucide icons follow --font-scale", async () => {
+  const iconsSource = await readFile(
+    new URL("../src/components/icons.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(iconsSource, /function scaledIconBox\(/);
+  assert.match(
+    iconsSource,
+    /calc\(\$\{size\}px \* var\(--font-scale\)\)/,
+  );
+  assert.match(iconsSource, /style=\{withScaledIconStyle\(size, style\)\}/);
+});
+
 test("font-size control stacks presets and a percentage slider", () => {
   assert.match(styles, /\.settings-font-size\s*\{[^}]*flex-direction:\s*column;/s);
   assert.match(styles, /\.settings-font-size-slider\s*\{/);

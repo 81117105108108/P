@@ -37,7 +37,9 @@ surfaces that already use different steps of the same ramp.
 3. **Application** is global. The renderer sets `--font-scale` on
    `document.documentElement`. Every `--text-*` token and `--leading-row`
    is `calc(<product px> * var(--font-scale))`, so body, chrome, headings,
-   code, sidebar, and settings stay in proportion without a reload.
+   code, sidebar, and settings stay in proportion without a reload. Shared
+   Lucide wrappers size glyphs with `calc(<px> * var(--font-scale))` so
+   toolbar, sidebar, composer, and settings icons track the same multiplier.
 
 4. **Zoom stays independent.** Menu and shortcut Zoom In / Zoom Out / Reset
    Zoom continue to scale the whole window. Type scale and zoom compose.
@@ -47,8 +49,8 @@ surfaces that already use different steps of the same ramp.
 - One control scales every `--text-*` consumer; places that are already
   smaller or larger than body stay relatively smaller or larger.
 - Users do not pick a px number that only matches `--text-base`.
-- Large scales also enlarge compact chrome. Hit targets that are fixed in
-  px (icons, 28px rows whose height is not `--leading-row`) may feel
+- Large scales also enlarge compact chrome, including Lucide glyphs. Rows
+  whose height is a fixed px value (not `--leading-row`) may still feel
   tighter; the 150% cap bounds that.
 
 ## Alternatives

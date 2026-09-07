@@ -317,8 +317,8 @@ UI 字体栈可从设置 → 基础 → 外观中由用户覆盖（ADR 0083）�
 将 CSS 字体栈持久化为 `AppSettings.fontFamily`；缺失值保持上述令牌栈。
 字体大小行（D343 / ADR 0180）将可选倍率持久化为 `AppSettings.fontScale`
 （默认 1，范围 0.8–1.5）。渲染器在根元素设置 `--font-scale`，全部
-`--text-*` 令牌（以及 `--leading-row`）按比例缩放。窗口缩放仍独立。
-界面不出现 px 输入。
+`--text-*` 令牌（以及 `--leading-row`）按比例缩放。共享 Lucide 图标使用同一倍率。
+窗口缩放仍独立。界面不出现 px 输入。
 内置开源字体（Geist、Inter、Noto Sans SC、LXGW WenKai — SIL OFL 1.1）
 在 `apps/desktop/src/assets/fonts/` 下本地发布并附许可证文本，系统已安装
 字体由 Electron 主进程枚举。每个自定义字体栈都会追加 CJK 回退层，
