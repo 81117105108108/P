@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -82,10 +82,14 @@ test("chip sentinels stay unique inside the private-use range", () => {
 
 test("paste IPC is a typed renderer-to-main bridge", () => {
   assert.match(protocol, /composerPasteFiles: "pi-desktop\/composer\/pasteFiles"/);
+  assert.match(protocol, /composerImportFiles: "pi-desktop\/composer\/importFiles"/);
   assert.match(api, /pasteFiles: \(sessionId: string, files: ComposerPasteFile\[\]\)/);
+  assert.match(api, /importFiles: \(sessionId: string, paths: string\[\]\)/);
   assert.match(api, /IPC\.invoke\.composerPasteFiles/);
+  assert.match(api, /IPC\.invoke\.composerImportFiles/);
   assert.match(main, /host\.call\("session\.get", \{ id: sessionId \}\)/);
   assert.match(main, /saveComposerPasteFiles\(dataDir, sessionId, files\)/);
+  assert.match(main, /importComposerFiles\(\s*dataDir,\s*sessionId,\s*input\.paths/);
 });
 
 test("pasted bytes stay in the session scratch directory", () => {
@@ -95,6 +99,73 @@ test("pasted bytes stay in the session scratch directory", () => {
   assert.match(saver, /MAX_TOTAL_BYTES/);
   assert.match(saver, /kind: isImageFile\(name, mimeType\) \? "image" : "file"/);
   assert.match(saver, /size: bytes\.byteLength/);
+});
+
+test("picker imports are copied into the owning session scratch directory", async () => {
+  const { importComposerFiles } = await import(
+    "../electron/main/composer-paste.ts"
+  );
+  const dataRoot = await mkdtemp(join(tmpdir(), "pi-composer-import-data-"));
+  const sourceRoot = await mkdtemp(join(tmpdir(), "pi-composer-import-source-"));
+  const textPath = join(sourceRoot, "notes with spaces.txt");
+  const imagePath = join(sourceRoot, "marker.png");
+  const text = "picker marker: FILE-7f4d2";
+  const image = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+  await writeFile(textPath, text, "utf8");
+  await writeFile(imagePath, image);
+  try {
+    const files = await importComposerFiles(dataRoot, "session-import", [
+      textPath,
+      imagePath,
+    ]);
+
+    assert.deepEqual(files.map((file) => file.name), [
+      "notes_with_spaces.txt",
+      "marker.png",
+    ]);
+    assert.deepEqual(files.map((file) => file.kind), ["file", "image"]);
+    assert.deepEqual(files.map((file) => file.mimeType), [
+      "text/plain",
+      "image/png",
+    ]);
+    assert.notEqual(files[0].path, files[1].path);
+    assert.match(
+      files[0].path,
+      /scratch[\\/]session-import[\\/]pasted[\\/]pasted-.+-notes_with_spaces\.txt$/,
+    );
+    assert.deepEqual(
+      (await readFile(files[0].path)).toString("utf8"),
+      text,
+    );
+    assert.deepEqual(Array.from(await readFile(files[1].path)), Array.from(image));
+    // The picker source remains untouched; only the session-owned copies are
+    // handed back to the renderer.
+    assert.deepEqual((await readFile(textPath)).toString("utf8"), text);
+  } finally {
+    await Promise.all([
+      rm(dataRoot, { recursive: true, force: true }),
+      rm(sourceRoot, { recursive: true, force: true }),
+    ]);
+  }
+});
+
+test("picker import rejects directories and non-absolute paths", async () => {
+  const { importComposerFiles } = await import(
+    "../electron/main/composer-paste.ts"
+  );
+  const root = await mkdtemp(join(tmpdir(), "pi-composer-import-invalid-"));
+  try {
+    await assert.rejects(
+      importComposerFiles(root, "session-invalid", [root]),
+      /selected path is not a file/,
+    );
+    await assert.rejects(
+      importComposerFiles(root, "session-invalid", ["relative.txt"]),
+      /must be absolute/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("large image attachments avoid whole-file startup reads", () => {

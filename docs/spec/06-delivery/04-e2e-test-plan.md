@@ -4686,6 +4686,33 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (`apps/desktop/test/composer-paste-files.test.mjs`);
   full UI journey Draft (do not run E2E locally unless explicitly requested)
 
+#### E2E-102h: Composer picker imports files into session scratch
+
+- **Preconditions**: The app is running with a home or Agent composer and a
+  durable session. The native picker can select a text file and an image outside
+  the active workspace.
+- **Steps**: 1) Open the Composer `+` menu and choose the file action. 2) Select
+  both fixtures. 3) Inspect the draft chips and send a prompt asking the agent
+  to read the text fixture and identify the image marker. 4) Inspect the
+  renderer request, session transcript, and the session scratch directory.
+- **Expected**: The picker selections are copied into
+  `<data_dir>/scratch/<sessionId>/pasted/` before they enter the draft. Chips
+  show sanitized leaf names while prompt attachments reference only the copied
+  paths; the workspace is unchanged. The agent can call `Read` on the text
+  fixture, and a vision-capable model receives the image as an image block.
+  Durable messages retain metadata and refs only, never the source absolute
+  path or binary bytes. Selecting a directory, a missing path, or an oversized
+  file returns a visible IPC error and writes nothing.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md` §13c,
+  `03-runtime/04-data-storage.md`, `04-ux/08-component-spec.md` §11.7–11.8,
+  ADR 0059, ADR 0101
+- **Acceptance**: B (model config), C (conversation & stream), E (tools &
+  permissions), F (persistence), Security, Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`apps/desktop/test/composer-paste-files.test.mjs`);
+  provider/UI journey Draft (do not run E2E locally unless explicitly
+  requested)
+
 #### E2E-102a: Composer file reference results use compact leaf names
 
 - **Preconditions**: The app is running with an Agent session in a workspace
