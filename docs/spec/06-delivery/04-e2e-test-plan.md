@@ -7945,7 +7945,6 @@ are withdrawn with ADR 0165.
   `plugin-complete.test.mjs`); full UI journey Draft (do not run E2E locally
   unless explicitly requested)
 
-<<<<<<< HEAD
 #### E2E-190: Settings Network proxy applies to app-owned HTTP
 
 - **Preconditions**: A reachable local HTTP or SOCKS5 proxy, or a known-bad
