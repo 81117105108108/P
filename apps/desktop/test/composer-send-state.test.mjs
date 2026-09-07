@@ -184,6 +184,55 @@ test("mode slash prefixes send the trailing prompt and retain failed drafts", ()
   );
 });
 
+test("draft attachment routing keeps image chips structured and file chips textual", () => {
+  const helperSource = store.match(
+    /function promptAttachmentsFromDraft\([\s\S]*?\n\}\n\nfunction promptAttachmentsFromMessage/,
+  )?.[0]?.replace(/\n\nfunction promptAttachmentsFromMessage[\s\S]*$/, "");
+  assert.ok(helperSource, "prompt attachment mapper not found");
+  const executable = helperSource.replace(
+    /function promptAttachmentsFromDraft\(\s*references: ComposerDraftSnapshot\["fileReferences"\],\s*\): AgentPromptAttachment\[\] \{/,
+    "function promptAttachmentsFromDraft(references) {",
+  );
+  const promptAttachmentsFromDraft = new Function(
+    `${executable}; return promptAttachmentsFromDraft;`,
+  )();
+  const attachments = promptAttachmentsFromDraft([
+    {
+      path: "/tmp/photo.png",
+      name: "photo.png",
+      kind: "image",
+      mimeType: "image/png",
+      token: "\uE001",
+    },
+    {
+      path: "/tmp/notes.txt",
+      name: "notes.txt",
+      kind: "file",
+      token: "\uE002",
+    },
+    {
+      path: "src/legacy.jpg",
+      name: "legacy.jpg",
+      token: "\uE003",
+    },
+    { path: "src/index.ts", name: "index.ts", kind: "file" },
+  ]);
+  assert.deepEqual(attachments, [
+    {
+      path: "/tmp/photo.png",
+      name: "photo.png",
+      kind: "image",
+      mimeType: "image/png",
+    },
+    {
+      path: "src/legacy.jpg",
+      name: "legacy.jpg",
+      kind: "image",
+    },
+    { path: "src/index.ts", name: "index.ts", kind: "file" },
+  ]);
+});
+
 test("the user row is inserted before the host round trip and echoed under the same id (D288)", () => {
   const sendPrompt = store.match(/\n  sendPrompt: async \([\s\S]*?\n  },\n/)?.[0] ?? "";
   assert.ok(sendPrompt.length > 0, "sendPrompt not found");
