@@ -348,6 +348,12 @@ system families are enumerated by Electron main. Every custom stack appends a
 CJK fallback tier so Chinese text stays readable. The mono stack
 (`--font-mono`) is not user-configurable.
 
+The Font size row (D343 / ADR 0180) persists an optional integer px in
+`AppSettings.fontSize` (default 14, range 12–24). The renderer sets
+`--reading-font-size` and remaps the `--text-*` ramp inside `.thread-wrap`
+and `.composer-dock` only. Window zoom remains independent. Sidebar and
+settings chrome stay on the product ramp.
+
 ### 5.2 Type scale
 
 All font sizes come from the `--text-*` ramp defined in the `@theme` block of `styles/tokens.css` (imported first by `styles/globals.css`, which is now only an import sequence — see D170). Raw px literals for `font-size`, `font-weight`, `line-height`, and `letter-spacing` are **forbidden** in component CSS and TSX arbitrary utilities (`text-[13px]` etc.) — enforced by `scripts/check-style-tokens.mjs` (runs in `pnpm lint`). `-plus` suffixed tokens are the Codex half-steps between named sizes.
@@ -373,6 +379,8 @@ Line-height tokens: `--leading-none` 1, `--leading-heading` 1.15, `--leading-tig
 Letter-spacing tokens: `--tracking-tighter` −0.03em, `--tracking-tight` −0.02em, `--tracking-normal` 0, `--tracking-wide` 0.02em.
 
 > Note: 14px base is intentional for developer-density. Do not bump to 16px default.
+> Users who want larger or denser *reading* text change Font size in Appearance;
+> that scales the ramp only inside the transcript and composer.
 >
 > Sidebar primary chrome (nav items, footer identity, profile menu actions)
 > uses `--text-base` so the left rail matches main body readability.

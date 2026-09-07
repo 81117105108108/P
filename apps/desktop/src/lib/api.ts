@@ -84,6 +84,7 @@ import {
   normalizeLargePasteThreshold,
   normalizeMode,
   normalizeNetworkProxy,
+  normalizeReadingFontSize,
   validateNetworkProxy,
 } from "@pi-desktop/shared";
 
@@ -185,6 +186,9 @@ export function normalizeSettings(settings: AppSettings): AppSettings {
     largePasteThreshold: normalizeLargePasteThreshold(
       (settings as { largePasteThreshold?: unknown }).largePasteThreshold,
     ),
+    fontSize: normalizeReadingFontSize(
+      (settings as { fontSize?: unknown }).fontSize,
+    ),
     networkProxy: normalizeNetworkProxy(
       (settings as { networkProxy?: unknown }).networkProxy,
     ),
@@ -195,6 +199,7 @@ export function validateSettingsWrite(settings: AppSettings): AppSettings {
   const value = settings as AppSettings & {
     defaultCommandShell?: unknown;
     largePasteThreshold?: unknown;
+    fontSize?: unknown;
     networkProxy?: unknown;
   };
   if (
@@ -211,6 +216,14 @@ export function validateSettingsWrite(settings: AppSettings): AppSettings {
       value.largePasteThreshold
   ) {
     throw Object.assign(new Error("largePasteThreshold is invalid"), {
+      errorCode: "INVALID_PARAMS",
+    });
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(value, "fontSize") &&
+    normalizeReadingFontSize(value.fontSize) !== value.fontSize
+  ) {
+    throw Object.assign(new Error("fontSize is invalid"), {
       errorCode: "INVALID_PARAMS",
     });
   }
@@ -787,6 +800,11 @@ export const api = {
     invoke<{ requested: number; applied: number }>(
       IPC.invoke.windowSetWorkPanelChatWidth,
       { width },
+    ),
+  setWindowBackgroundColor: (theme: "light" | "dark") =>
+    invoke<{ applied: boolean; theme: "light" | "dark" }>(
+      IPC.invoke.windowSetBackgroundColor,
+      { theme },
     ),
   windowControl: (action: WindowControlAction) =>
     invoke<{ maximized: boolean }>(IPC.invoke.windowControl, { action }),

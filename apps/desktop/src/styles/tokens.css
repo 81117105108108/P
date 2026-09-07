@@ -277,3 +277,31 @@
   --tracking-normal: 0em;
   --tracking-wide: 0.02em;
 }
+
+/*
+  Reading type scale (D343 / ADR 0180). Chat transcript and composer remap
+  the `--text-*` ramp from `--reading-font-size` (default 14px, matching
+  `--text-base`). Window chrome, settings, and the sidebar stay on the
+  product ramp; Zoom In/Out still scales the whole window.
+*/
+:root {
+  --reading-font-size: 14px;
+}
+
+.thread-wrap,
+.composer-dock {
+  --text-3xs: calc(var(--reading-font-size) * 10.5 / 14);
+  --text-2xs: calc(var(--reading-font-size) * 11 / 14);
+  --text-xs: calc(var(--reading-font-size) * 11 / 14);
+  --text-xs-plus: calc(var(--reading-font-size) * 11.5 / 14);
+  --text-sm: calc(var(--reading-font-size) * 12 / 14);
+  --text-sm-plus: calc(var(--reading-font-size) * 12.5 / 14);
+  --text-md: calc(var(--reading-font-size) * 13 / 14);
+  --text-md-plus: calc(var(--reading-font-size) * 13.5 / 14);
+  --text-base: var(--reading-font-size);
+  --text-base-plus: calc(var(--reading-font-size) * 15 / 14);
+  --text-lg: calc(var(--reading-font-size) * 16 / 14);
+  --text-lg-plus: calc(var(--reading-font-size) * 18 / 14);
+  --text-xl: calc(var(--reading-font-size) * 20 / 14);
+  --text-2xl: calc(var(--reading-font-size) * 28 / 14);
+}

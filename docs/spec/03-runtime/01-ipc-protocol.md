@@ -1347,7 +1347,7 @@ main and return one-shot tokens; `composer/importFiles` and
 `composer/pasteFiles` write only to the originating session's Electron-owned
 scratch directory. None adds a host RPC method or changes the host protocol
 version. Renderer-supplied absolute source paths are never accepted by the
-picker import channel (ADR 0180).
+picker import channel (ADR 0181).
 
 ### composer/commands
 

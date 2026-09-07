@@ -18,6 +18,7 @@ import {
   isActiveInProject,
   keybindingDisplayParts,
   keybindingMatchesEvent,
+  normalizeReadingFontSize,
   resolveKeybinding,
   type AppMenuCommand,
   type KeyboardShortcutId,
@@ -450,17 +451,15 @@ function AppShell() {
       delete document.documentElement.dataset.pluginTheme;
     }
 
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
     const apply = () => {
-      document.documentElement.dataset.theme =
-        base === "system"
-          ? window.matchMedia("(prefers-color-scheme: light)").matches
-            ? "light"
-            : "dark"
-          : base;
+      const resolvedTheme =
+        base === "system" ? (mq.matches ? "light" : "dark") : base;
+      document.documentElement.dataset.theme = resolvedTheme;
+      void api.setWindowBackgroundColor(resolvedTheme).catch(() => undefined);
     };
     apply();
     if (base !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: light)");
     const onChange = () => apply();
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -476,6 +475,15 @@ function AppShell() {
       root.style.removeProperty("--font-sans");
     }
   }, [settings?.fontFamily]);
+
+  // Reading size: Settings persists px in `AppSettings.fontSize`; the
+  // transcript and composer remap `--text-*` from `--reading-font-size`.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--reading-font-size",
+      `${normalizeReadingFontSize(settings?.fontSize)}px`,
+    );
+  }, [settings?.fontSize]);
 
   useEffect(() => {
     if (bootstrapStartedRef.current) return;

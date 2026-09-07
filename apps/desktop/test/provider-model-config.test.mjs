@@ -91,7 +91,8 @@ test("custom API format is a common-path choice, named services skip it", () => 
   assert.match(setupSource, /settings\.apiStyle/);
   assert.match(setupSource, /API_STYLES/);
   assert.match(setupSource, /custom \? \(/);
-  assert.doesNotMatch(setupSource, /provider-advanced/);
+  assert.match(setupSource, /provider-advanced-dialog/);
+  assert.doesNotMatch(setupSource, /provider-setup-advanced-toggle/);
 });
 
 test("both credential kinds share one live list and one binding shape", () => {

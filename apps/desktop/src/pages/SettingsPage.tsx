@@ -47,6 +47,7 @@ import {
 import { ModelConfigPage } from "../components/settings/ModelConfigPage";
 import { KeyboardShortcutsSection } from "../components/settings/KeyboardShortcutsSection";
 import { FontFamilyRow } from "../components/settings/FontFamilyRow";
+import { FontSizeRow } from "../components/settings/FontSizeRow";
 import { LanguageRow } from "../components/settings/LanguageRow";
 import { ThemeRow } from "../components/settings/ThemeRow";
 import { NetworkProxySection } from "../components/settings/NetworkProxySection";
@@ -1279,6 +1280,7 @@ export function SettingsPage() {
                 <ThemeRow settings={settings} saveSettings={saveSettings} />
                 <LanguageRow settings={settings} saveSettings={saveSettings} />
                 <FontFamilyRow settings={settings} saveSettings={saveSettings} />
+                <FontSizeRow settings={settings} saveSettings={saveSettings} />
               </SettingsCard>
 
               <NetworkProxySection settings={settings} saveSettings={saveSettings} />

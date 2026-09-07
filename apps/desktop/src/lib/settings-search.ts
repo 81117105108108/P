@@ -55,6 +55,7 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "settings.language",
       "settings.languageAuto",
       "settings.font",
+      "settings.fontSize",
       "settings.closeBehaviorTitle",
       "settings.closeBehaviorTray",
       "settings.closeBehaviorQuit",

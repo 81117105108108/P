@@ -347,9 +347,13 @@ Each scenario is documented in this format:
 - **Preconditions**: One API-key AI service (including an OpenCode Go row) and
   one signed-in vendor (OAuth) account; a capture proxy records outbound HTTP
   headers, including Codex and Anthropic adapters.
-- **Steps**: 1) Open the AI service, expand Advanced, add `User-Agent:
-  CustomAgent/1.0` and `X-Gateway: alpha`, and save. 2) Start an Agent turn,
-  a follow-up, prompt enhancement, and a plugin one-shot. 3) Refresh
+- **Steps**: 1) Open the AI service and click the upper-right Advanced settings
+  action. Confirm a separate modal opens without changing the main form layout.
+  Use the common-header preset to add User-Agent, then import a JSON object
+  containing `X-Gateway: alpha` and enough headers to exceed two visible rows.
+  Confirm the header list scrolls inside the modal while the underlying model
+  panes keep their working area, close the modal, then save. 2) Start an Agent
+  turn, a follow-up, prompt enhancement, and a plugin one-shot. 3) Refresh
   `/models` from the form before saving a second change and confirm the
   unsaved headers are sent. 4) Clear the rows and save; confirm adapter
   defaults return. 5) Edit the OAuth account Advanced headers, save, then
@@ -360,7 +364,12 @@ Each scenario is documented in this format:
 - **Expected**: Non-empty custom headers are the last writer on that row's
   outbound HTTP (turns, subagents, one-shots, discovery, connection test,
   OAuth refresh). Empty restores pi-ai / `claude-cli` / OpenCode defaults.
-  OpenCode still sends `x-opencode-session` and `x-opencode-client`. Codex
+  Advanced keeps the header list in its own bounded scroll area, so additional
+  rows do not compress or hide the model panes. Escape and outside-click close
+  only the Advanced modal while it is open. The preset adds the expected
+  User-Agent value, JSON import accepts both supported object shapes, and
+  case-insensitive duplicate keys are merged rather than duplicated. OpenCode still sends
+  `x-opencode-session` and `x-opencode-client`. Codex
   and Anthropic still send the custom User-Agent despite adapter last-writes.
   First OAuth login does not collect headers. Reserved keys and CR/LF are
   rejected. Advanced is a compact key/value editor, not a lone User-Agent
@@ -1290,6 +1299,16 @@ Each scenario is documented in this format:
 - **Acceptance**: A (core shell), H (localization)
 - **Milestone**: M4
 - **Status**: Documented
+
+#### E2E-091a: Theme changes keep the Windows frameless background aligned
+
+- **Preconditions**: App running windowed on Windows with the OS in light mode.
+- **Steps**: 1) Select Dark in Settings → General → Appearance. 2) Inspect the lower-left, lower-right, and resize edges while the shell settles and while collapsing/expanding the sidebar. 3) Select Light and repeat. 4) Switch the OS color preference and select System; repeat after the app resolves the system theme.
+- **Expected**: The native BrowserWindow background follows the resolved application theme (`#181818` for dark and `#ffffff` for light), so no white strip appears around the frameless renderer during theme changes or shell animations. macOS keeps its transparent vibrancy behavior unchanged.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `02-architecture/01-architecture.md`
+- **Acceptance**: A (core shell)
+- **Milestone**: M5
+- **Status**: Documented; native Windows validation pending
 
 #### E2E-039: Settings titlebar drag moves the window
 
@@ -6531,6 +6550,38 @@ This test plan spec is accepted when:
 - **Acceptance**: A (core shell), H (localization)
 - **Milestone**: M5+
 - **Status**: Documented
+
+#### E2E-193: Appearance card sets a reading font size
+
+- **Preconditions**: App running with a clean `~/.pi-desktop` profile and an
+  open conversation that shows transcript text and the composer.
+- **Steps**:
+  1) Open Settings → General and confirm the Appearance card shows a Font
+     size row below Font, with Default selected and a px field at 14.
+  2) Choose Large. Confirm chat transcript prose, headings, code, tool
+     output, and the composer input enlarge without a reload, while the
+     settings card, sidebar session list, and window chrome stay at the
+     product size.
+  3) Type 20 in the custom px field and commit (blur or Enter). Confirm the
+     reading surfaces grow further and no preset stays selected.
+  4) Use Zoom In, then Reset Zoom. Confirm window zoom still scales chrome
+     and that the reading size remains 20px after reset.
+  5) Restart the app, open a conversation, and confirm the 20px reading
+     size is still applied (`AppSettings.fontSize`).
+  6) Choose Default. Confirm transcript and composer return to 14px
+     immediately; restart and confirm the default remains.
+- **Expected**: Font size is presets 12 / 14 / 16 / 18 plus custom integer
+  px 12–24. Selection persists as `AppSettings.fontSize` (absent means 14)
+  and sets `--reading-font-size`, remapping `--text-*` inside `.thread-wrap`
+  and `.composer-dock` only. Window Zoom In/Out/Reset remains independent.
+  Invalid values are rejected or clamped. No protocol or schema version bump.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/07-ui-design-system.md`,
+  ADR 0180, D343
+- **Acceptance**: A (core shell), B (settings), H (localization)
+- **Milestone**: M5+
+- **Status**: Unit-covered (`packages/shared/src/font-size.test.ts`,
+  `apps/desktop/test/settings-font-size.test.mjs`); full UI journey Draft
+  (do not run E2E locally unless explicitly requested)
 
 #### E2E-127: macOS keeps the app in the Dock and Cmd+Tab
 

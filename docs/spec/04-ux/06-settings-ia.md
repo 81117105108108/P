@@ -65,6 +65,13 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
     (`--font-sans`) without a reload; System default clears the override;
     long system lists are windowed so only the visible slice is in the DOM
     (bounded font loading) and opening the picker never blocks input
+  - **Font size**: presets (Small 12 / Default 14 / Large 16 / Extra large 18)
+    plus a custom integer px field (12–24). Selection persists as
+    `AppSettings.fontSize`; absent means 14. The renderer sets
+    `--reading-font-size` and remaps the `--text-*` ramp inside the session
+    transcript (`.thread-wrap`) and composer (`.composer-dock`) without a
+    reload. Window Zoom In/Out/Reset stays independent and still scales
+    chrome. Sidebar and settings stay on the product ramp (D343 / ADR 0180)
   - **Auto language detection** resolves the OS locale through the main process
     (`app.getLocale()`) rather than the renderer's `navigator.language`, and the
     Auto option shows the detected language inline (e.g. "Currently 简体中文")
@@ -232,18 +239,24 @@ a usage tab.
     Mistral, Together, Fireworks, OpenCode Go, Z.AI, DeepSeek, Qwen/DashScope,
     Moonshot/Kimi, Zhipu, SiliconFlow, Volcengine Ark, MiniMax, Xiaomi, Kimi
     For Coding) then show Service + API key, with the published host as a
-    one-line summary. Custom endpoint then shows Service, then Name beside Base
-    URL, then API key beside API format. The custom Base URL field shares a row
-    with Name (wider column) rather than spanning the dialog; it accepts only
-    http(s) service base URLs and trims pasted operation paths such as `/models`,
+    one-line summary. Custom endpoint then shows Service, Name beside Base URL,
+    and API key beside API format in three explicit rows so each input keeps a
+    stable alignment as the form changes. The custom Base URL field accepts
+    only http(s) service base URLs and trims pasted operation paths such as `/models`,
     `/messages`, `/chat/completions`, or `/responses` when the field loses
     focus. The placeholder is enough — no helper paragraph under the URL.
     Invalid URLs show an inline error and block discovery and save. A failed
     model-list probe shows a compact classified error in the empty pane, or a
     one-line banner above a cached list; raw HTTP/JSON dumps are not shown.
-    Named display names and optional custom headers stay behind Advanced. Empty headers keep
-    adapter defaults. The Advanced block is a single column: named display
-    name, then a compact key/value header editor.
+    Named display names and optional custom headers stay behind Advanced settings.
+    The dialog header's upper-right actions include an explicit Advanced settings
+    button that opens a separate compact modal, keeping the main form focused on
+    the endpoint and model panes. The modal offers common presets including a
+    ready-to-use User-Agent and imports either a direct JSON header map or
+    `{ "headers": { ... } }`; imported keys merge case-insensitively without
+    duplicating existing rows. The editor keeps at most two header rows visible
+    and scrolls internally for additional rows. Empty headers keep adapter
+    defaults.
     Service is a searchable anchored menu of vendors (filter by localized
     name, vendor key, alias, or host), not a native select, region grouping,
     stepper, or vendor-card grid. Saved named rows store the models.dev `vendorKey` and

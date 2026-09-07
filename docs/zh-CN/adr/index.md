@@ -36,6 +36,8 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
 | [ADR 0177：用户可配置的出站代理](/adr/0177-user-configurable-outbound-proxy) | 设置里的系统/直连/自定义代理覆盖模型请求、市场、更新和内置浏览器 |
 | [ADR 0178：按供应商自定义 HTTP 请求头](/adr/0178-per-provider-custom-headers) | 每个 AI 服务/OAuth 行可在高级选项中编辑任意非敏感请求头 |
 | [ADR 0179：从本地智能体存储导入模型配置](/adr/0179-import-model-configuration) | 设置 → 导入显式扫描 Claude Code / Codex / OpenCode / Pi 的提供商配置并复制 API 密钥 |
+| [ADR 0180：自定义阅读字号](/adr/0180-custom-reading-font-size) | 设置外观增加字体大小，只放大会话内容和输入框，窗口缩放仍独立 |
+| [ADR 0181：主进程拥有的文件选择能力](/adr/0181-main-owned-picker-capabilities) | 文件选择路径留在主进程，以一次性令牌保护导入边界，并移除不支持的文件夹选择 |
 
 ## 什么时候看 ADR
 

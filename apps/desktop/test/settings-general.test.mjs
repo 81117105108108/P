@@ -92,6 +92,7 @@ test("Basics and AI tabs expose their respective app and AI controls", () => {
   assert.match(generalSource, /<ThemeRow /);
   assert.match(generalSource, /<LanguageRow /);
   assert.match(generalSource, /<FontFamilyRow /);
+  assert.match(generalSource, /<FontSizeRow /);
   assert.match(generalSource, /<NetworkProxySection /);
   assert.doesNotMatch(generalSource, /\(\["auto", "zh-CN", "en"\] as const\)/);
   assert.doesNotMatch(generalSource, /defaultMode: value/);
@@ -115,6 +116,7 @@ test("Basics and AI tabs expose their respective app and AI controls", () => {
 test("language persists as part of shared app settings", () => {
   assert.match(sharedTypesSource, /language\?: "auto" \| "en" \| "zh-CN" \| "tr"/);
   assert.match(sharedTypesSource, /largePasteThreshold\?: number/);
+  assert.match(sharedTypesSource, /fontSize\?: number/);
   assert.match(sharedTypesSource, /networkProxy\?: NetworkProxySettings/);
 });
 
