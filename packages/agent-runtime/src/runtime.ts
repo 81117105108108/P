@@ -130,6 +130,7 @@ import {
   openCodeEndpointFromProvider,
   withOpenCodeSessionHeaders,
 } from "./opencode-session-headers.js";
+import { withProviderUserAgent } from "./provider-user-agent.js";
 import {
   captureProviderResponse,
   classifyProviderError,
@@ -1398,32 +1399,35 @@ Delegation rules:
         this.setAgentActivity({ phase: "waiting-model", since: Date.now() });
         this.providerResponseStatus = undefined;
         this.providerRetryHeaders = undefined;
-        const requestOptions: SimpleStreamOptions = withOpenCodeSessionHeaders(
-          {
-            ...options,
-            maxRetries: PROVIDER_REQUEST_MAX_RETRIES,
-            sessionId: this.sessionId,
-            // pi-ai only exposes onResponse after a request succeeds. Capture the
-            // failed response separately so a 429 can honor Retry-After headers.
-            fetch: captureProviderResponse(options?.fetch, (response) => {
-              this.providerResponseStatus = response?.status;
-              // A gateway 502/503 can also state Retry-After, so keep headers for
-              // every status whose delay is usable instead of only for 429.
-              this.providerRetryHeaders = carriesRetryDelayHeaders(
-                response?.status,
-              )
-                ? response?.headers
-                : undefined;
-            }),
-            onResponse: async (response, responseModel) => {
-              this.providerResponseStatus = response.status;
-              await options?.onResponse?.(response, responseModel);
+        const requestOptions: SimpleStreamOptions = withProviderUserAgent(
+          withOpenCodeSessionHeaders(
+            {
+              ...options,
+              maxRetries: PROVIDER_REQUEST_MAX_RETRIES,
+              sessionId: this.sessionId,
+              // pi-ai only exposes onResponse after a request succeeds. Capture the
+              // failed response separately so a 429 can honor Retry-After headers.
+              fetch: captureProviderResponse(options?.fetch, (response) => {
+                this.providerResponseStatus = response?.status;
+                // A gateway 502/503 can also state Retry-After, so keep headers for
+                // every status whose delay is usable instead of only for 429.
+                this.providerRetryHeaders = carriesRetryDelayHeaders(
+                  response?.status,
+                )
+                  ? response?.headers
+                  : undefined;
+              }),
+              onResponse: async (response, responseModel) => {
+                this.providerResponseStatus = response.status;
+                await options?.onResponse?.(response, responseModel);
+              },
             },
-          },
-          {
-            ...openCodeEndpointFromProvider(this.provider, m),
-            sessionId: this.sessionId,
-          },
+            {
+              ...openCodeEndpointFromProvider(this.provider, m),
+              sessionId: this.sessionId,
+            },
+          ),
+          this.provider.userAgent,
         );
         return createProviderRetryStream(
           m,
@@ -1630,6 +1634,7 @@ Delegation rules:
       this.provider.apiKey === config.provider.apiKey &&
       this.provider.authKind === config.provider.authKind &&
       (this.provider.apiStyle ?? "") === (config.provider.apiStyle ?? "") &&
+      (this.provider.userAgent ?? "") === (config.provider.userAgent ?? "") &&
       this.provider.supportsReasoning === config.provider.supportsReasoning &&
       currentThinkingLevels === nextThinkingLevels &&
       safeJson(this.provider.modelConfig ?? null) ===

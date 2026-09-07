@@ -45,6 +45,7 @@ Tables (canonical DDL in [04-data-storage](04-data-storage.md) §4.3–4.4, §4.
       "type": "object",
       "additionalProperties": { "type": "string" }
     },
+    "userAgent": { "type": "string", "maxLength": 256 },
     "apiStyle": {
       "enum": [
         "chat_completions",
@@ -187,6 +188,20 @@ plus `x-opencode-client: pi-desktop` and `User-Agent: pi-desktop/<APP_VERSION>`
 on session turns, subagent turns, prompt enhancement, and plugin one-shots.
 Caller-supplied headers override the client and User-Agent values; a missing
 or empty session header is always restored from the conversation id.
+
+`userAgent` is an optional per-row override stored in `config_json.userAgent`.
+Empty or omitted keeps the adapter default (pi-ai's `pi (…)` string, Anthropic
+OAuth's `claude-cli/<version>`, or OpenCode's `pi-desktop/<APP_VERSION>`). A
+non-empty trimmed value is sent as `User-Agent` on that row's outbound HTTP —
+session turns, subagents, prompt enhancement, plugin one-shots, `/models`
+discovery, connection tests, and OAuth token refresh. A fetch wrapper is the
+last writer so Codex and the Anthropic SDK cannot overwrite it. Updating with
+`""` clears the override. CR/LF are rejected (header injection). Max 256
+bytes. This is not a secret. The unused `headers` map is not implemented; if
+it is added later, `userAgent` remains the UI alias and wins over
+`headers["User-Agent"]`. Overriding Anthropic OAuth's `claude-cli/…` User-Agent
+can make Claude Pro/Max reject the request. First OAuth login does not collect
+a User-Agent; it is edited on the account after it exists.
 
 ## 3. Built-in vendor presets
 
@@ -337,12 +352,14 @@ The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary
 - in: `{ includeDisabled?: boolean }`
 - out: `{ providers: ProviderPublic[] }`
 - `ProviderPublic` excludes raw secrets; includes `hasSecret: boolean` (true
-  for **either** credential), `hasOauth: boolean`, and the non-secret
-  `oauthAccountLabel?: string`
+  for **either** credential), `hasOauth: boolean`, the non-secret
+  `oauthAccountLabel?: string`, and optional `userAgent?: string`
 
 ### `providers.create` / `providers.update`
 - in: provider fields + optional `secretValue` + optional `oauthAccountLabel`
-  (merged into `config_json.oauth`, cleared with an empty string); legacy
+  (merged into `config_json.oauth`, cleared with an empty string) + optional
+  `userAgent` (merged into `config_json.userAgent`, cleared with an empty
+  string); legacy
   clients may still send `supportsReasoning` / `supportedThinkingLevels`; new
   clients send `models: ModelBinding[]`
 - behavior: persist config; if secretValue present, write secret store and set
@@ -405,12 +422,13 @@ The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary
 3. `apiStyle=opencode_go` requires the fixed OpenCode Go name and endpoint; clients must not accept overrides
 4. `authKind=none` forbidden for cloud presets that require keys
 5. headers keys are case-insensitive unique
-6. secretValue max length enforced (e.g. 8KB)
-7. modelId must be non-empty trimmed string; allow `/`, `.`, `:`, `-`
-8. unknown protocol on older clients => provider shown disabled with warning, not crash
-9. Legacy `supportsReasoning`, when present, must still validate as boolean but
+6. `userAgent` is trimmed, at most 256 bytes, and must not contain CR or LF
+7. secretValue max length enforced (e.g. 8KB)
+8. modelId must be non-empty trimmed string; allow `/`, `.`, `:`, `-`
+9. unknown protocol on older clients => provider shown disabled with warning, not crash
+10. Legacy `supportsReasoning`, when present, must still validate as boolean but
    has no runtime effect
-10. Legacy `supportedThinkingLevels`, when present, must still validate as an
+11. Legacy `supportedThinkingLevels`, when present, must still validate as an
   array of canonical thinking levels but has no runtime effect
 
 ## 11. Secret ref format

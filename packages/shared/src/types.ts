@@ -818,6 +818,11 @@ export type ProviderPublic = {
   hasOauth?: boolean;
   /** Non-secret label for the signed-in account; never carries a token. */
   oauthAccountLabel?: string;
+  /**
+   * Optional outbound User-Agent. Empty/absent keeps the adapter default
+   * (pi-ai / `claude-cli` / OpenCode).
+   */
+  userAgent?: string;
   /** Per-model settings selected in the provider dialog. */
   models: ModelBinding[];
   /** @deprecated Use `models[0]?.id`; retained for older runtime consumers. */
@@ -855,6 +860,11 @@ export type ProviderCreateInput = {
    * the owning provider row instead of clearing only this label.
    */
   oauthAccountLabel?: string;
+  /**
+   * Optional outbound User-Agent. On update, an empty string clears the stored
+   * override; omit the field to leave it unchanged.
+   */
+  userAgent?: string;
   /** Explicit override for custom model catalogs. */
   supportsReasoning?: boolean;
   /**

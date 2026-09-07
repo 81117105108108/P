@@ -82,23 +82,35 @@ export function modelListRequest(opts: {
   baseUrl: string;
   apiKey?: string;
   apiStyle?: string;
+  userAgent?: string;
 }): { url: string; headers: Record<string, string> } {
   const base = opts.baseUrl.trim().replace(/\/+$/, "");
   const apiKey = opts.apiKey ?? "";
+  const withUa = (headers: Record<string, string>): Record<string, string> => {
+    const ua = opts.userAgent?.trim();
+    if (!ua) return headers;
+    const next: Record<string, string> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      if (key.toLowerCase() === "user-agent") continue;
+      next[key] = value;
+    }
+    next["User-Agent"] = ua;
+    return next;
+  };
   if (opts.apiStyle === "google_generative_ai") {
     const params = new URLSearchParams({ pageSize: "1000" });
     if (apiKey) params.set("key", apiKey);
-    return { url: `${base}/models?${params}`, headers: {} };
+    return { url: `${base}/models?${params}`, headers: withUa({}) };
   }
   if (opts.apiStyle === "anthropic_messages") {
     // Anthropic base URLs conventionally exclude /v1 (runtime appends it).
     const root = base.endsWith("/v1") ? base : `${base}/v1`;
     return {
       url: `${root}/models?limit=1000`,
-      headers: {
+      headers: withUa({
         ...(apiKey ? { "x-api-key": apiKey } : {}),
         "anthropic-version": "2023-06-01",
-      },
+      }),
     };
   }
   // OpenCode Go exposes the same authenticated OpenAI-compatible /models
@@ -106,12 +118,12 @@ export function modelListRequest(opts: {
   if (opts.apiStyle === OPENCODE_GO_API_STYLE) {
     return {
       url: `${base}/models`,
-      headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+      headers: withUa(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
     };
   }
   return {
     url: `${base}/models`,
-    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+    headers: withUa(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
   };
 }
 
@@ -120,6 +132,7 @@ export async function discoverProviderModels(opts: {
   baseUrl: string;
   apiKey?: string;
   apiStyle?: string;
+  userAgent?: string;
 }): Promise<DiscoveredModel[]> {
   const { url, headers } = modelListRequest(opts);
   const controller = new AbortController();

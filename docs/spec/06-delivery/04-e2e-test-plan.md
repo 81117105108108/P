@@ -320,6 +320,34 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Unit-covered; rendered UI scenario pending
 
+#### E2E-005G: Per-provider custom User-Agent
+
+- **Preconditions**: One API-key AI service (including an OpenCode Go row) and
+  one signed-in vendor (OAuth) account; a capture proxy records outbound HTTP
+  headers, including Codex and Anthropic adapters.
+- **Steps**: 1) Open the AI service, expand Advanced, set User-Agent to
+  `CustomAgent/1.0`, and save. 2) Start an Agent turn, a follow-up, prompt
+  enhancement, and a plugin one-shot. 3) Refresh `/models` from the form
+  before saving a second change and confirm the unsaved value is sent. 4)
+  Clear the field and save; confirm adapter defaults return. 5) Edit the
+  OAuth account Advanced User-Agent, save, then run a turn that refreshes
+  the access token. 6) Repeat against OpenCode Go and confirm
+  `x-opencode-session` is still present. 7) Repeat against Codex/Anthropic
+  OAuth inference.
+- **Expected**: A non-empty User-Agent is the last writer on that row's
+  outbound HTTP (turns, subagents, one-shots, discovery, connection test,
+  OAuth refresh). Empty restores pi-ai / `claude-cli` / OpenCode defaults.
+  OpenCode still sends `x-opencode-session` and `x-opencode-client`. Codex
+  and Anthropic still send the custom value despite adapter last-writes.
+  First OAuth login does not collect a User-Agent. CR/LF is rejected.
+- **Specs linked**: `03-runtime/12-provider-config-schema.md`,
+  `03-runtime/11-provider-model-system.md`, `03-runtime/02-agent-runtime.md`,
+  ADR 0176
+- **Acceptance**: B (model configuration), F (runtime provider requests)
+- **Milestone**: M2
+- **Status**: Unit-covered (host persistence, fetch wrapper, discovery,
+  form Advanced); rendered UI scenario pending
+
 #### E2E-005D: Configure a Zhipu / Z.AI named endpoint preset
 
 - **Preconditions**: App running; no Zhipu provider configured; the models.dev
@@ -5481,7 +5509,7 @@ Each scenario is documented in this format:
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004, E2E-067, E2E-076, E2E-079, E2E-092, E2E-097, E2E-143, E2E-150, E2E-168 |
-| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174 |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-005G |
 | C — Conversation & stream | E2E-008, E2E-008a, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-031, E2E-040, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-059a, E2E-060c, E2E-060d, E2E-061, E2E-061a, E2E-062, E2E-064, E2E-065, E2E-068, E2E-071, E2E-073, E2E-074, E2E-075, E2E-081, E2E-083, E2E-084, E2E-086, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-106, E2E-109, E2E-111, E2E-114, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-121, E2E-AGENTS-001, E2E-142, E2E-144, E2E-145, E2E-146, E2E-147, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-161, E2E-162, E2E-166, E2E-172, E2E-173, E2E-174, E2E-177, E2E-178, E2E-179, E2E-180, E2E-182, E2E-183, E2E-187 |
 | D — Workspace | E2E-012, E2E-013, E2E-022B, E2E-024I, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060, E2E-068, E2E-075, E2E-078, E2E-153, E2E-158, E2E-182, E2E-187 |
 | E — Tools & permissions | E2E-008a, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-024I, E2E-024K, E2E-040, E2E-049, E2E-074, E2E-093, E2E-097, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102d, E2E-102e, E2E-102g, E2E-103, E2E-105, E2E-106, E2E-107, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-119, E2E-121, E2E-122, E2E-142, E2E-145, E2E-147, E2E-155, E2E-158, E2E-166, E2E-181 |

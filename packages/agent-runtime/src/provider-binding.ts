@@ -46,6 +46,11 @@ export type RuntimeProviderConfig = {
   /** Complete model metadata resolved from models.dev by Electron main. */
   modelConfig?: ModelConfig;
   /**
+   * Optional outbound User-Agent. Empty/absent keeps the adapter default.
+   * Injected last via a fetch wrapper so Codex/Anthropic cannot overwrite it.
+   */
+  userAgent?: string;
+  /**
    * Vendor-account auth, resolved once per request by Electron main.
    *
    * Injected by the sidecar, never part of the JSON launch payload: an OAuth

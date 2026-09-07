@@ -858,6 +858,8 @@ export const en = {
     vendorCopyCode: "Copy code",
     vendorSubmit: "Continue",
     advanced: "Advanced",
+    userAgent: "User-Agent",
+    userAgentHint: "Leave blank for the default.",
     next: "Next",
     changeDefaultModel: "Change",
     setupStageProvider: "Provider",

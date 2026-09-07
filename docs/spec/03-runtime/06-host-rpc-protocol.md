@@ -213,9 +213,12 @@ A provider row has two independent refs — `secret:provider:<id>:api_key` and
 vendor-account credential needed no new host method. `ProviderPublic` therefore
 reports `hasSecret` (true for **either** credential), `hasOauth`, and the
 non-secret `oauthAccountLabel`; `providers.create` / `providers.update` accept
-`oauthAccountLabel`, and `providers.delete` clears both refs for exactly one
-row. Login orchestration and token refresh stay in Electron main and never
-reach this protocol — see [14-secrets-storage](14-secrets-storage.md) §10.
+`oauthAccountLabel` and optional `userAgent` (stored in `config_json.userAgent`,
+cleared with an empty string), and `providers.delete` clears both refs for
+exactly one row. Login orchestration and token refresh stay in Electron main
+and never reach this protocol — see [14-secrets-storage](14-secrets-storage.md)
+§10. An OAuth row's User-Agent is edited after the account exists and applies
+to later refresh and inference; the vendor picker does not collect it.
 
 ### Settings
 - `settings.get`

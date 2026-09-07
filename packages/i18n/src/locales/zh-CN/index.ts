@@ -850,6 +850,8 @@ export const zhCN = {
     vendorCopyCode: "复制代码",
     vendorSubmit: "继续",
     advanced: "高级",
+    userAgent: "User-Agent",
+    userAgentHint: "留空则使用默认值。",
     next: "下一步",
     changeDefaultModel: "更改",
     setupStageProvider: "提供商",

@@ -171,7 +171,8 @@ export function ProviderSetupDialog({
   const [apiStyle, setApiStyle] = useState<CatalogApiStyle>(
     (provider?.apiStyle as CatalogApiStyle) ?? "chat_completions",
   );
-  const [advanced, setAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(() => Boolean(provider?.userAgent));
+  const [userAgent, setUserAgent] = useState(provider?.userAgent ?? "");
   const [models, setModels] = useState<ModelBinding[]>(provider?.models ?? []);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -197,7 +198,12 @@ export function ProviderSetupDialog({
     (custom || Boolean(apiKey.trim()) || Boolean(provider));
   const discovery = useProviderModels(
     discoveryActive,
-    { baseUrl: requestBaseUrl, apiKey, apiStyle: resolvedApiStyle },
+    {
+      baseUrl: requestBaseUrl,
+      apiKey,
+      apiStyle: resolvedApiStyle,
+      userAgent,
+    },
     provider,
   );
   const selection = useModelSelection(discovery, models, setModels);
@@ -294,6 +300,7 @@ export function ProviderSetupDialog({
           defaultModelId: persisted[0]?.id,
           models: persisted,
           apiStyle: resolvedApiStyle,
+          userAgent,
           ...(apiKey ? { secretValue: apiKey } : {}),
         });
         onSaved(result.provider ?? provider, persisted);
@@ -309,6 +316,7 @@ export function ProviderSetupDialog({
           models: persisted,
           secretValue: apiKey || undefined,
           apiStyle: resolvedApiStyle,
+          userAgent,
         });
         onSaved(result.provider, persisted);
       }
@@ -499,7 +507,7 @@ export function ProviderSetupDialog({
               ) : null}
             </div>
 
-            {named ? (
+            {named || custom ? (
               <>
                 <button
                   type="button"
@@ -511,10 +519,23 @@ export function ProviderSetupDialog({
                 </button>
                 {advanced ? (
                   <div className="provider-setup-advanced">
-                    <Field label={t("settings.name")}>
+                    {named ? (
+                      <Field label={t("settings.name")}>
+                        <Input
+                          value={name}
+                          onChange={(event) => setName(event.target.value)}
+                        />
+                      </Field>
+                    ) : null}
+                    <Field
+                      label={t("settings.userAgent")}
+                      hint={t("settings.userAgentHint")}
+                    >
                       <Input
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
+                        value={userAgent}
+                        className="font-mono text-sm-plus"
+                        autoComplete="off"
+                        onChange={(event) => setUserAgent(event.target.value)}
                       />
                     </Field>
                   </div>

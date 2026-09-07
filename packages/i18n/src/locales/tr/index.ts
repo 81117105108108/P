@@ -860,6 +860,8 @@ export const tr = {
     vendorCopyCode: "Kodu kopyala",
     vendorSubmit: "Devam et",
     advanced: "Gelişmiş",
+    userAgent: "User-Agent",
+    userAgentHint: "Varsayılan için boş bırakın.",
     next: "İleri",
     changeDefaultModel: "Değiştir",
     setupStageProvider: "Sağlayıcı",

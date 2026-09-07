@@ -348,6 +348,7 @@ export const api = {
     baseUrl?: string;
     apiKey?: string;
     apiStyle?: string;
+    userAgent?: string;
     source?: "cache" | "refresh";
   }) =>
     invoke<{

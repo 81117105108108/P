@@ -104,6 +104,7 @@ import {
   loadInstructionChain,
   loadSubagentDefinitions,
   resolveSubagentProviders,
+  withUserAgentHeaders,
   type ComposerTemplate,
   type ThinkingCapabilities,
   type RuntimeProviderConfig,
@@ -875,6 +876,7 @@ type RuntimeProvider = {
   hasSecret?: boolean;
   hasOauth?: boolean;
   oauthAccountLabel?: string;
+  userAgent?: string;
   enabled?: boolean;
   supportsVision?: boolean;
 };
@@ -1513,6 +1515,7 @@ async function resolveAgentRuntimeLaunch(
         apiKey,
         ...(row.authKind ? { authKind: row.authKind } : {}),
         ...(row.apiStyle ? { apiStyle: row.apiStyle } : {}),
+        ...(row.userAgent ? { userAgent: row.userAgent } : {}),
         supportsReasoning: caps.supportsReasoning,
         supportedThinkingLevels: [...caps.supportedThinkingLevels],
         ...(mc ? { modelConfig: mc } : {}),
@@ -1572,6 +1575,7 @@ async function resolveAgentRuntimeLaunch(
         apiKey: secret.value || "",
         authKind: provider.authKind,
         apiStyle,
+        ...(provider.userAgent ? { userAgent: provider.userAgent } : {}),
         supportsReasoning: thinkingCapabilities.supportsReasoning,
         supportsVision: visionFromModelConfig(modelConfig),
         supportedThinkingLevels: [...thinkingCapabilities.supportedThinkingLevels],
@@ -6007,7 +6011,7 @@ function registerIpc() {
     );
     if (!local.ok) return { ...local, network: "skipped" };
     const detail = await host.call<{
-      provider?: { baseUrl?: string; authKind?: string };
+      provider?: { baseUrl?: string; authKind?: string; userAgent?: string };
     }>("providers.get", { id });
     // A vendor account proves itself by resolving auth — refreshing the token
     // if it has expired — not by probing /models with a key it does not have.
@@ -6031,7 +6035,10 @@ function registerIpc() {
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/models`, {
-        headers: secret.value ? { Authorization: `Bearer ${secret.value}` } : {},
+        headers: withUserAgentHeaders(
+          secret.value ? { Authorization: `Bearer ${secret.value}` } : {},
+          detail.provider?.userAgent,
+        ),
         signal: controller.signal,
       });
       if (res.status === 401 || res.status === 403) {
@@ -6100,6 +6107,7 @@ function registerIpc() {
             baseUrl?: string;
             apiKey?: string;
             apiStyle?: string;
+            userAgent?: string;
             source?: "cache" | "refresh";
           },
     ) => {
@@ -6327,7 +6335,12 @@ function registerIpc() {
       let discoveryError: string | undefined;
       if (baseUrl) {
         try {
-          const discovered = await discoverProviderModels({ baseUrl, apiKey, apiStyle });
+          const discovered = await discoverProviderModels({
+            baseUrl,
+            apiKey,
+            apiStyle,
+            userAgent: req.userAgent ?? provider?.userAgent,
+          });
           if (discovered.length > 0) {
             const models = discovered.map((model) => decorate(model));
             // Only what the endpoint actually served is cached; a configured id

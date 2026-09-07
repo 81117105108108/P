@@ -169,7 +169,8 @@ type ProviderConfig = {
   baseUrl?: string
   authKind: ProviderAuthKind
   secretRef?: string            // pointer into secret store
-  headers?: Record<string, string> // non-secret headers only
+  userAgent?: string            // optional User-Agent; empty keeps adapter default
+  headers?: Record<string, string> // unused; userAgent is the supported override
   apiStyle?:
     | "chat_completions"
     | "responses"
@@ -304,6 +305,7 @@ type ModelDescriptor = {
 - 添加 OpenAI 兼容端点
 - 添加自定义提供商
 - 编辑基础 URL/headers
+- 在高级选项中设置可选 User-Agent（留空则使用适配器默认值）
 - set/replace/delete 键
 - 登录/退出厂商账户，并看到某一行使用的是哪个账户
 - 选择多个模型并编辑每个绑定的上下文窗口、输出上限与启用的思考等级；目录元数据

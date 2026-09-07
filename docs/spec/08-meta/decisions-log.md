@@ -70,6 +70,7 @@ This log freezes previously open questions into concrete decisions.
 
 | D239 | Place global defaults under AI | **The eight-destination Settings directory remains unchanged. Basics owns Appearance and platform-supported close behavior. 全局 AI / AI owns Permissions and the Defaults card containing default operating mode (Agent / Plan / Goal), command shell selection/fallback status, and Enter-to-send. Model configuration retains the default provider/model selector. Only renderer content and Settings search ownership move; persisted settings, host APIs, runtime semantics, and deep-link contracts remain unchanged (ADR 0097).** | Default mode, command shell, and Enter-to-send change global agent behavior, so placing them beside appearance mixed unrelated concerns and made the AI destination incomplete. |
 | D240 | Independent vendor OAuth accounts and settings ownership | **Amend D237 / ADR 0095: every OAuth login creates a fresh provider row and row-scoped `CredentialStore`, even when `vendorKey` matches an existing account. The Vendor accounts card owns the full OAuth row lifecycle and deletes through `providers.delete`; the AI services list excludes OAuth rows but the default selector may still choose them. Vendor auth bindings and resolution use the exact `providerId`; ambiguous vendor/name aliases for subagents fail closed.** | One vendor-global row made a second account overwrite or reuse the first credential, while sign-out left a stale AI-service row. The row id is the only unambiguous account identity and lets deletion remove exactly one credential and configuration. See ADR 0098. |
+| D339 | Per-provider User-Agent override | **Each AI-service and OAuth provider row may store optional `config_json.userAgent`. Empty keeps adapter defaults (pi-ai / `claude-cli` / OpenCode). A non-empty value is last-writer `User-Agent` on that row's outbound HTTP (turns, subagents, one-shots, discovery, connection test, OAuth refresh) via a fetch wrapper plus stream-option headers. Update `""` clears. Max 256 bytes; no CR/LF. Advanced UI only; first OAuth login does not collect it. `matches()` includes `userAgent`. The unused `headers` map stays unimplemented. No schema/protocol bump.** | Gateways and vendor subscriptions inspect User-Agent; Codex overwrites it after extra headers. See ADR 0176 and E2E-005G. |
 | D242 | Builtin subagents inherit the parent permission mode | **Builtin subagents use the default `permission: inherit` behavior. The builtin `fixer` no longer overrides the parent session, so `auto` covers its in-root and explicit external-path calls without a second authorization card; explicit non-`inherit` scopes on eligible builtin or user definitions remain intentional overrides.** | The observed popup came from the builtin `fixer` replacing an `auto` parent with `accept-edits`; inheriting the parent fixes the UX without weakening host-core containment or external-path permission rules (ADR 0100). |
 | D241 | Titled Settings navigation clusters | **Keep the eight-destination Settings directory flat and searchable, but render four non-interactive localized group headings — Personal / 个人 (Basics, AI, Shortcuts), Agent / 智能体 (Instructions, Model configuration), Workspace / 工作区 (Import, Project archive), and About / 关于 (Info). Headings use whitespace for separation and no divider lines. Empty groups disappear with filtered search. This supersedes only D238's prohibition on group headings; destination order, IDs, search ownership, and marketplace placement remain unchanged.** | The flat rows became visually dense without scan landmarks. Muted headings restore grouping while preserving one-level navigation and the existing destination ownership. |
 
@@ -3743,3 +3744,16 @@ D193, and D194.
 - Decision D338 is recorded as ADR 0175. See `03-runtime/01-ipc-protocol.md`,
   `03-runtime/02-agent-runtime.md`, `04-ux/09-interaction-patterns.md`, and
   E2E-008c / E2E-094.
+
+## 2026-09-07 — Per-provider User-Agent override (D339)
+
+- Gateways and vendor subscriptions inspect User-Agent. pi-ai, Anthropic OAuth,
+  OpenCode, and Codex each stamp a different default, and Codex overwrites
+  User-Agent after extra headers. The schema listed `headers` but never stored
+  or sent them.
+- Decision D339: each AI-service and OAuth row may store optional
+  `config_json.userAgent`. Empty keeps adapter defaults. A non-empty value is
+  last-writer `User-Agent` on that row's outbound HTTP via a fetch wrapper plus
+  stream-option headers. Advanced UI only; first OAuth login does not collect
+  it. `matches()` includes `userAgent`.
+- See ADR 0176, `03-runtime/12-provider-config-schema.md`, and E2E-005G.

@@ -223,6 +223,20 @@ test("the panes stack again before the dialog gets too narrow to read", () => {
   );
 });
 
+test("Advanced holds an optional User-Agent on named, custom, and vendor editors", () => {
+  assert.match(setupSource, /settings\.userAgent/);
+  assert.match(setupSource, /settings\.userAgentHint/);
+  assert.match(vendorDialogSource, /settings\.userAgent/);
+  assert.match(vendorDialogSource, /provider-setup-advanced-toggle/);
+  // Named and custom both expose Advanced; API format stays beside the key.
+  const fieldsBlock = setupSource.slice(
+    setupSource.indexOf("provider-setup-fields"),
+    setupSource.indexOf("<ModelSelectionPanes"),
+  );
+  assert.match(fieldsBlock, /named \|\| custom/);
+  assert.match(fieldsBlock, /settings\.apiStyle"/);
+});
+
 test("the vendor account dialog hosts the same panes in the same shell", () => {
   // It renders the shared picker (D269), so it needs the provider dialog's box
   // rather than the narrower stacked one it used while it had its own copy.

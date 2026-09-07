@@ -274,6 +274,11 @@ describe("DesktopAgentRuntime configuration matching", () => {
         provider: { ...oauthProvider, modelId: "another-model" },
       }),
     ).toBe(false);
+    expect(
+      runtimeMatches(runtime, {
+        provider: { ...oauthProvider, userAgent: "Custom/1" },
+      }),
+    ).toBe(false);
 
     await runtime.dispose();
   });
