@@ -61,6 +61,20 @@
   color: var(--ds-text-primary);
 }
 
+.composer-plus-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 40;
+  width: min(248px, calc(100vw - 24px));
+  padding: 6px;
+  border-radius: var(--radius-lg);
+  background: var(--ds-bg-elevated-opaque);
+  box-shadow: var(--ds-shadow-dialog);
+  border: 1px solid var(--ds-border-subtle);
+  color: var(--ds-text-primary);
+}
+
 .composer-model-menu {
   position: absolute;
   right: 0;

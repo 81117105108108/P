@@ -186,6 +186,7 @@ export const IPC = {
     devtoolsToggle: "pi-desktop/devtools/toggle",
     composerPickFiles: "pi-desktop/composer/pickFiles",
     composerPickPhotos: "pi-desktop/composer/pickPhotos",
+    composerImportFiles: "pi-desktop/composer/importFiles",
     composerPasteFiles: "pi-desktop/composer/pasteFiles",
     composerCommands: "pi-desktop/composer/commands",
     workspaceDiff: "pi-desktop/workspace/diff",

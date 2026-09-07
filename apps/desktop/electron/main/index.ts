@@ -185,7 +185,14 @@ import {
   resolveRealOpenablePath,
 } from "./fs-panel";
 import { getWorkspaceFileIndex } from "./fs-index";
-import { saveComposerPasteFiles } from "./composer-paste";
+import {
+  importComposerFiles,
+  saveComposerPasteFiles,
+} from "./composer-paste";
+import {
+  consumeComposerPickerSelection,
+  rememberComposerPickerSelection,
+} from "./composer-picker";
 import { builtinComposerCommands, builtinPaletteItems } from "./builtin-commands";
 import {
   convertSession,
@@ -5437,6 +5444,14 @@ function registerIpc() {
   const handle = (channel: string, fn: (...args: any[]) => Promise<any>) => {
     ipcMain.handle(channel, async (_event, ...args) => wrap(() => fn(...args)));
   };
+  const handleWithEvent = (
+    channel: string,
+    fn: (event: { sender: { id: number } }, ...args: any[]) => Promise<any>,
+  ) => {
+    ipcMain.handle(channel, async (event, ...args) =>
+      wrap(() => fn(event, ...args)),
+    );
+  };
 
   handle(IPC.invoke.pluginLauncherToggle, async () => {
     await togglePluginLauncher();
@@ -6635,24 +6650,67 @@ function registerIpc() {
     return host.call("workspace.clear");
   });
 
-  handle(IPC.invoke.composerPickFiles, async () => {
+  handleWithEvent(IPC.invoke.composerPickFiles, async (event) => {
     const result = await dialog.showOpenDialog({
-      properties: ["openFile", "openDirectory", "multiSelections"],
+      properties: ["openFile", "multiSelections"],
     });
-    if (result.canceled) return { paths: [] as string[], canceled: true };
-    return { paths: result.filePaths, canceled: false };
+    if (result.canceled || result.filePaths.length === 0) {
+      return { token: null, canceled: true };
+    }
+    return {
+      token: rememberComposerPickerSelection(result.filePaths, event.sender.id),
+      canceled: false,
+    };
   });
 
-  handle(IPC.invoke.composerPickPhotos, async () => {
+  handleWithEvent(IPC.invoke.composerPickPhotos, async (event) => {
     const result = await dialog.showOpenDialog({
       properties: ["openFile", "multiSelections"],
       filters: [
         { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "heic", "tif", "tiff"] },
       ],
     });
-    if (result.canceled) return { paths: [] as string[], canceled: true };
-    return { paths: result.filePaths, canceled: false };
+    if (result.canceled || result.filePaths.length === 0) {
+      return { token: null, canceled: true };
+    }
+    return {
+      token: rememberComposerPickerSelection(result.filePaths, event.sender.id),
+      canceled: false,
+    };
   });
+
+  handleWithEvent(
+    IPC.invoke.composerImportFiles,
+    async (
+      event,
+      input: { sessionId?: unknown; token?: unknown } = {},
+    ) => {
+      if (!host) throw new Error("host unavailable");
+      const sessionId =
+        typeof input.sessionId === "string" ? input.sessionId.trim() : "";
+      if (!sessionId) {
+        throw Object.assign(new Error("session required"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      const session = (await host.call("session.get", { id: sessionId })) as {
+        session?: unknown;
+      };
+      if (!session.session) {
+        throw Object.assign(new Error("session not found"), {
+          errorCode: ErrorCodes.NOT_FOUND,
+        });
+      }
+      const paths = consumeComposerPickerSelection(input.token, event.sender.id);
+      return {
+        files: await importComposerFiles(
+          dataDir,
+          sessionId,
+          paths,
+        ),
+      };
+    },
+  );
 
   handle(
     IPC.invoke.composerPasteFiles,

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-const [composer, api, main, attachments, saver, protocol, sidecar] = await Promise.all([
+const [composer, api, main, attachments, saver, protocol, sidecar, picker] = await Promise.all([
   read("../src/components/Composer.tsx"),
   read("../src/lib/api.ts"),
   read("../electron/main/index.ts"),
@@ -14,6 +14,7 @@ const [composer, api, main, attachments, saver, protocol, sidecar] = await Promi
   read("../electron/main/composer-paste.ts"),
   read("../../../packages/shared/src/protocol.ts"),
   read("../../../packages/agent-runtime/src/sidecar.ts"),
+  read("../electron/main/composer-picker.ts"),
 ]);
 
 test("composer converts oversized text paste and materializes clipboard files", () => {
@@ -82,10 +83,43 @@ test("chip sentinels stay unique inside the private-use range", () => {
 
 test("paste IPC is a typed renderer-to-main bridge", () => {
   assert.match(protocol, /composerPasteFiles: "pi-desktop\/composer\/pasteFiles"/);
+  assert.match(protocol, /composerImportFiles: "pi-desktop\/composer\/importFiles"/);
   assert.match(api, /pasteFiles: \(sessionId: string, files: ComposerPasteFile\[\]\)/);
+  assert.match(api, /pickFiles: \(\) =>[\s\S]*token: string \| null/);
+  assert.match(api, /importFiles: \(sessionId: string, token: string\)/);
   assert.match(api, /IPC\.invoke\.composerPasteFiles/);
+  assert.match(api, /IPC\.invoke\.composerImportFiles/);
   assert.match(main, /host\.call\("session\.get", \{ id: sessionId \}\)/);
   assert.match(main, /saveComposerPasteFiles\(dataDir, sessionId, files\)/);
+  assert.match(main, /rememberComposerPickerSelection\(result\.filePaths, event\.sender\.id\)/);
+  assert.match(main, /consumeComposerPickerSelection\(input\.token, event\.sender\.id\)/);
+  assert.match(main, /importComposerFiles\(\s*dataDir,\s*sessionId,\s*paths/);
+  assert.doesNotMatch(main, /input\.paths/);
+  assert.doesNotMatch(api, /importFiles: \(sessionId: string, paths: string\[\]\)/);
+});
+
+test("picker attachments materialize a session before importing paths", () => {
+  assert.match(
+    composer,
+    /const sessionId = sourceSessionId \?\? \(await materializeDraftSession\(\)\)/,
+  );
+  assert.match(composer, /api\.importFiles\(\s*sessionId,\s*result\.token\s*\)/);
+  assert.match(
+    composer,
+    /createFileReference\(file\.path, file\.name, sessionId, \{[\s\S]*kind: file\.kind/,
+  );
+  assert.doesNotMatch(
+    composer,
+    /createFileReference\(path, undefined, referenceSessionId/,
+  );
+});
+
+test("composer keeps the upload button at the far left of the toolbar", () => {
+  const leftStart = composer.indexOf('<div className="composer-left">');
+  const plusIndex = composer.indexOf("ref={plusRef}", leftStart);
+  const modeIndex = composer.indexOf("composer-mode-chip", leftStart);
+  assert.ok(leftStart >= 0 && plusIndex > leftStart && modeIndex > leftStart);
+  assert.ok(plusIndex < modeIndex, "upload must precede the agent mode chip");
 });
 
 test("pasted bytes stay in the session scratch directory", () => {
@@ -95,6 +129,91 @@ test("pasted bytes stay in the session scratch directory", () => {
   assert.match(saver, /MAX_TOTAL_BYTES/);
   assert.match(saver, /kind: isImageFile\(name, mimeType\) \? "image" : "file"/);
   assert.match(saver, /size: bytes\.byteLength/);
+});
+
+test("picker imports are copied into the owning session scratch directory", async () => {
+  const { importComposerFiles } = await import(
+    "../electron/main/composer-paste.ts"
+  );
+  const dataRoot = await mkdtemp(join(tmpdir(), "pi-composer-import-data-"));
+  const sourceRoot = await mkdtemp(join(tmpdir(), "pi-composer-import-source-"));
+  const textPath = join(sourceRoot, "notes with spaces.txt");
+  const imagePath = join(sourceRoot, "marker.png");
+  const text = "picker marker: FILE-7f4d2";
+  const image = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+  await writeFile(textPath, text, "utf8");
+  await writeFile(imagePath, image);
+  try {
+    const files = await importComposerFiles(dataRoot, "session-import", [
+      textPath,
+      imagePath,
+    ]);
+
+    assert.deepEqual(files.map((file) => file.name), [
+      "notes_with_spaces.txt",
+      "marker.png",
+    ]);
+    assert.deepEqual(files.map((file) => file.kind), ["file", "image"]);
+    assert.deepEqual(files.map((file) => file.mimeType), [
+      "text/plain",
+      "image/png",
+    ]);
+    assert.notEqual(files[0].path, files[1].path);
+    assert.match(
+      files[0].path,
+      /scratch[\\/]session-import[\\/]pasted[\\/]pasted-.+-notes_with_spaces\.txt$/,
+    );
+    assert.deepEqual(
+      (await readFile(files[0].path)).toString("utf8"),
+      text,
+    );
+    assert.deepEqual(Array.from(await readFile(files[1].path)), Array.from(image));
+    // The picker source remains untouched; only the session-owned copies are
+    // handed back to the renderer.
+    assert.deepEqual((await readFile(textPath)).toString("utf8"), text);
+  } finally {
+    await Promise.all([
+      rm(dataRoot, { recursive: true, force: true }),
+      rm(sourceRoot, { recursive: true, force: true }),
+    ]);
+  }
+});
+
+test("picker selections are one-shot, sender-bound capabilities", async () => {
+  const {
+    consumeComposerPickerSelection,
+    rememberComposerPickerSelection,
+  } = await import("../electron/main/composer-picker.ts");
+  const token = rememberComposerPickerSelection(["/etc/passwd"], 17, 1000);
+
+  assert.deepEqual(consumeComposerPickerSelection(token, 17, 1001), ["/etc/passwd"]);
+  assert.throws(
+    () => consumeComposerPickerSelection(token, 17, 1002),
+    /picker selection is unavailable/,
+  );
+
+  const otherToken = rememberComposerPickerSelection(["/tmp/selected.txt"], 17, 2000);
+  assert.throws(
+    () => consumeComposerPickerSelection(otherToken, 18, 2001),
+    /picker selection is unavailable/,
+  );
+  assert.throws(
+    () => consumeComposerPickerSelection(otherToken, 17, 2002),
+    /picker selection is unavailable/,
+  );
+
+  const expiredToken = rememberComposerPickerSelection(["/tmp/expired.txt"], 17, 3000);
+  assert.throws(
+    () => consumeComposerPickerSelection(expiredToken, 17, 63001),
+    /picker selection is unavailable/,
+  );
+});
+
+test("file picker exposes files only", () => {
+  assert.match(main, /properties: \["openFile", "multiSelections"\]/);
+  assert.doesNotMatch(main, /properties: \["openFile", "openDirectory", "multiSelections"\]/);
+  assert.doesNotMatch(api, /paths: string\[\]/);
+  assert.match(picker, /PICKER_TOKEN_TTL_MS = 60_000/);
 });
 
 test("large image attachments avoid whole-file startup reads", () => {
