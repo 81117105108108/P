@@ -25,10 +25,12 @@ import {
   normalizeSupportedThinkingLevels,
   normalizeThinkingLevel,
 } from "./sidecar-config.js";
+import { applyNodeNetworkProxy } from "./node-proxy.js";
 import {
   formatFileInsert,
   isCommandShellOption,
   normalizeMode,
+  normalizeNetworkProxy,
   OAUTH_AUTH_KIND,
 } from "@pi-desktop/shared";
 import type {
@@ -426,6 +428,9 @@ async function handle(method: string, params: any): Promise<unknown> {
   switch (method) {
     case "sidecar.configure": {
       // Main owns host-core; sidecar only keeps config metadata.
+      if (params && typeof params === "object" && "networkProxy" in params) {
+        applyNodeNetworkProxy(normalizeNetworkProxy(params.networkProxy));
+      }
       return { ok: true, mode: "host-proxy" };
     }
     case "sidecar.health":
@@ -572,4 +577,12 @@ rl.on("line", async (line) => {
   }
 });
 
+const bootProxy = process.env.PI_DESKTOP_PROXY_JSON;
+if (bootProxy) {
+  try {
+    applyNodeNetworkProxy(normalizeNetworkProxy(JSON.parse(bootProxy)));
+  } catch {
+    // Invalid boot payload is ignored; sidecar.configure will replace it.
+  }
+}
 process.stderr.write("[agent-sidecar] ready (host-proxy mode)\n");

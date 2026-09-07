@@ -1942,3 +1942,16 @@
     transition: none;
   }
 }
+
+.settings-proxy-control {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 220px;
+  width: min(100%, 280px);
+}
+
+.settings-proxy-control .field-input {
+  width: 100%;
+}

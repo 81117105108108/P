@@ -83,6 +83,8 @@ import {
   isCommandShellId,
   normalizeLargePasteThreshold,
   normalizeMode,
+  normalizeNetworkProxy,
+  validateNetworkProxy,
 } from "@pi-desktop/shared";
 
 export type ImportSource = "claude-code" | "opencode" | "codex" | "pi";
@@ -172,6 +174,9 @@ export function normalizeSettings(settings: AppSettings): AppSettings {
     largePasteThreshold: normalizeLargePasteThreshold(
       (settings as { largePasteThreshold?: unknown }).largePasteThreshold,
     ),
+    networkProxy: normalizeNetworkProxy(
+      (settings as { networkProxy?: unknown }).networkProxy,
+    ),
   };
 }
 
@@ -179,6 +184,7 @@ export function validateSettingsWrite(settings: AppSettings): AppSettings {
   const value = settings as AppSettings & {
     defaultCommandShell?: unknown;
     largePasteThreshold?: unknown;
+    networkProxy?: unknown;
   };
   if (
     Object.prototype.hasOwnProperty.call(value, "defaultCommandShell") &&
@@ -196,6 +202,15 @@ export function validateSettingsWrite(settings: AppSettings): AppSettings {
     throw Object.assign(new Error("largePasteThreshold is invalid"), {
       errorCode: "INVALID_PARAMS",
     });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "networkProxy")) {
+    const proxy = validateNetworkProxy(value.networkProxy);
+    if (!proxy.ok) {
+      throw Object.assign(new Error(proxy.error), {
+        errorCode: "INVALID_ARGUMENT",
+      });
+    }
+    value.networkProxy = proxy.value;
   }
   return settings;
 }
@@ -318,6 +333,8 @@ export const api = {
   getSettings: () => invoke<AppSettings>(IPC.invoke.settingsGet).then(normalizeSettings),
   setSettings: (settings: AppSettings) =>
     invoke(IPC.invoke.settingsSet, validateSettingsWrite(settings)),
+  testNetworkProxy: (settings: unknown) =>
+    invoke<{ ok: boolean; error?: string }>(IPC.invoke.networkProxyTest, settings),
   /** Installed system font families (Electron main, cached briefly). */
   listSystemFonts: () => invoke<string[]>(IPC.invoke.systemFontsList),
   listCommandShells: () =>

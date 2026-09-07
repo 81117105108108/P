@@ -7916,3 +7916,42 @@ are withdrawn with ADR 0165.
 - **Status**: Unit-covered (`bundled-plugins.test.mjs`,
   `plugin-complete.test.mjs`); full UI journey Draft (do not run E2E locally
   unless explicitly requested)
+
+#### E2E-190: Settings Network proxy applies to app-owned HTTP
+
+- **Preconditions**: A reachable local HTTP or SOCKS5 proxy, or a known-bad
+  port for the failure path. At least one configured provider is optional for
+  the settings-only steps.
+- **Steps**:
+  1. Open Settings → General. Confirm a Network card with Proxy modes
+     System, Direct, and Custom. System is selected on a profile that never
+     set a proxy.
+  2. Choose Custom. Confirm a Proxy URL field, Bypass defaulting to
+     localhost / 127.0.0.1 / ::1 / `<local>`, and Test. Enter
+     `not-a-proxy` and blur. Confirm an inline invalid-URL error and that
+     settings are not saved.
+  3. Enter `socks5://127.0.0.1:1080` or `http://127.0.0.1:7890` and blur.
+     Confirm `AppSettings.networkProxy.mode` is `custom` after
+     `settings.get`.
+  4. Click Test against a listening proxy. Confirm a Connected status. Click
+     Test against a closed port. Confirm a failure status without changing
+     the saved URL.
+  5. With Custom saved, confirm a subsequent marketplace refresh and a
+     models.dev catalog refresh use the proxy (host-core curl `--proxy`,
+     Electron `net.fetch`). Confirm a loopback URL in Bypass is not
+     proxied.
+  6. Switch to Direct, then System. Confirm Chromium returns to
+     `mode: "direct"` then `mode: "system"`, and the sidecar is reconfigured
+     without an app restart.
+- **Expected**: Custom covers model calls, marketplace, updates, plugin
+  `net.fetch`, and the in-app browser. Workspace Bash `env` does not show
+  `HTTP_PROXY` / `ALL_PROXY` from the setting. OAuth still opens the system
+  browser. Invalid schemes (`file:`, `ftp:`) are rejected. No protocol or
+  schema version bump.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `03-runtime/07-process-model.md`, ADR 0176, D339
+- **Acceptance**: B (settings), F (providers), Security
+- **Milestone**: M5
+- **Status**: Unit-covered (`network-proxy.test.ts`,
+  `settings-general.test.mjs`, host-core `network_proxy` tests); full UI
+  journey Draft (do not run E2E locally unless explicitly requested)

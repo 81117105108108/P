@@ -52,6 +52,13 @@ queued/running `plan_approvals` execution states interrupted and aborts their
 running turns. This internal process-epoch fence is not serialized or sent over
 the protocol.
 
+After host-core is up, Electron main reads `AppSettings.networkProxy` and
+applies it before spawning the agent sidecar (D339). Chromium sessions use
+`session.setProxy`; main-process `fetch` is `net.fetch`; the sidecar receives
+the same config through `sidecar.configure` and `PI_DESKTOP_PROXY_JSON`.
+host-core marketplace `curl` gets `--proxy` from the stored settings and does
+**not** inherit proxy env, so workspace Bash cannot see proxy credentials.
+
 ## 4. Crash policy
 
 | Crash | Policy |

@@ -31,6 +31,8 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
 | [ADR 0145：发布本机 macOS Intel 工件](/adr/0145-native-macos-intel-release-lane) | 通过匹配的 macOS 原生运行器发布 arm64 与 Intel x64 DMG/ZIP，并合并更新源 |
 | [ADR 0148：明确禁用应用快捷键](/adr/0148-explicitly-disable-keyboard-shortcuts) | 缺少覆盖使用默认值，`null` 表示未绑定并关闭渲染器、菜单和启动器分发 |
 | [ADR 0174：宿主代发的插件补全与会话上下文](/adr/0174-plugin-host-owned-completion-and-session-context) | 插件可通过公开 API 列出已登录模型、读取进行中工具会话，并由宿主代打一次性补全 |
+| [ADR 0175：解释安静的进行中回合](/adr/0175-live-agent-activity-status) | 用 waiting-model / retrying / waiting-subagents 状态行说明停顿 |
+| [ADR 0176：用户可配置的出站代理](/adr/0176-user-configurable-outbound-proxy) | 设置里的系统/直连/自定义代理覆盖模型请求、市场、更新和内置浏览器 |
 
 ## 什么时候看 ADR
 

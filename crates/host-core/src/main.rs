@@ -5,6 +5,7 @@ mod audit;
 mod db;
 mod keyboard;
 mod mcp_servers;
+mod network_proxy;
 mod notifications;
 mod permissions;
 mod plans;
