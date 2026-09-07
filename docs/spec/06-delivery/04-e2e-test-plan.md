@@ -6557,20 +6557,21 @@ This test plan spec is accepted when:
   open conversation that shows transcript text, the composer, and the sidebar.
 - **Steps**:
   1) Open Settings → General and confirm the Appearance card shows a Font
-     size row below Font, with Default selected and the slider at 100%.
-  2) Choose Large. Confirm chat transcript, composer, settings labels,
+     size row below Font, with Grande selected and the slider at 100%.
+  2) Choose Venti. Confirm chat transcript, composer, settings labels,
      sidebar session titles, and Lucide chrome icons all enlarge without a
      reload, keeping their relative steps, and that the control shows 115%.
-  3) Drag the slider to 125%. Confirm Extra large becomes selected and
+  3) Drag the slider to 125%. Confirm Trenta becomes selected and
      every `--text-*` surface and icon grows further. Confirm the UI never
      shows a px field.
   4) Use Zoom In, then Reset Zoom. Confirm window zoom still scales chrome
      and that the type scale remains 125% after reset.
   5) Restart the app and confirm the 125% scale is still applied
      (`AppSettings.fontScale` = 1.25).
-  6) Choose Default. Confirm the whole UI returns to 100% immediately;
+  6) Choose Grande. Confirm the whole UI returns to 100% immediately;
      restart and confirm the default remains.
-- **Expected**: Font size is presets Small / Default / Large / Extra large
+- **Expected**: Font size is Starbucks-style cup presets Tall / Grande /
+  Venti / Trenta
   plus a percentage slider 80%–150% in 2.5% steps. Selection persists as
   `AppSettings.fontScale` (absent means 1) and sets `--font-scale`, multiplying
   every `--text-*` token and shared Lucide icon. Window Zoom In/Out/Reset remains

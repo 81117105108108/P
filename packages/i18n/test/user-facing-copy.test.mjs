@@ -89,3 +89,14 @@ test("page copy keeps actions and removes redundant explanatory paragraphs", () 
   assert.doesNotMatch(english["project.archiveSubtitle"], /without losing|Activate|archive the rest/);
   assert.doesNotMatch(chinese["project.archiveSubtitle"], /可以|而不丢失/);
 });
+
+test("font size presets use Starbucks-style cup names", () => {
+  assert.equal(english["settings.fontSizeSmall"], "Tall");
+  assert.equal(english["settings.fontSizeDefault"], "Grande");
+  assert.equal(english["settings.fontSizeLarge"], "Venti");
+  assert.equal(english["settings.fontSizeXl"], "Trenta");
+  assert.equal(chinese["settings.fontSizeSmall"], "中杯");
+  assert.equal(chinese["settings.fontSizeDefault"], "大杯");
+  assert.equal(chinese["settings.fontSizeLarge"], "超大杯");
+  assert.equal(chinese["settings.fontSizeXl"], "超超大杯");
+});

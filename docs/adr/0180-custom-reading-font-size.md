@@ -24,9 +24,10 @@ surfaces that already use different steps of the same ramp.
 ## Decision
 
 1. **Settings → General → Appearance** gains a **Font size** row under Font.
-   Four presets (Small 85% / Default 100% / Large 115% / Extra large 125%)
-   sit above a percentage slider. Valid values are 80%–150% in 2.5% steps.
-   Absent means 100%. The UI never asks for a px value.
+   Four Starbucks-style cup presets (Tall 85% / Grande 100% / Venti 115% /
+   Trenta 125%; zh-CN: 中杯 / 大杯 / 超大杯 / 超超大杯) sit above a
+   percentage slider. Valid values are 80%–150% in 2.5% steps. Absent means
+   100%. The UI never asks for a px value.
 
 2. **Persistence** is optional `AppSettings.fontScale` (`1` = product ramp).
    Invalid writes are rejected at the renderer edge; reads clamp through

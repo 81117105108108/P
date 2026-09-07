@@ -65,7 +65,8 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
     (`--font-sans`) without a reload; System default clears the override;
     long system lists are windowed so only the visible slice is in the DOM
     (bounded font loading) and opening the picker never blocks input
-  - **Font size**: presets (Small / Default / Large / Extra large) plus a
+  - **Font size**: Starbucks-style cup presets (Tall / Grande / Venti /
+    Trenta) plus a
     percentage slider (80%–150%). Selection persists as
     `AppSettings.fontScale` (`1` = product ramp; absent means 1). The
     renderer sets `--font-scale` on the root so every `--text-*` step and
