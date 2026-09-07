@@ -724,17 +724,13 @@ export const zhTW = {
     marketSource: "來源：{{url}}",
     marketProviderTitle: "擴充套件市場",
     marketProvider: "外掛市場來源",
-    marketProviderDesc: "擴充套件中心獲取外掛目錄和安裝包的位置。",
     marketProviderOfficial: "GitHub（官方）",
     marketProviderMirror: "映象（cnb.cool）",
     marketProviderCustom: "自定義地址",
-    marketProviderMirrorHint:
-      "GitHub 無法訪問時改用映象。映象與官方源內容一致，安裝時校驗的仍是同一份校驗和。",
     marketCustomUrl: "目錄地址",
     marketCustomUrlDesc:
       "catalog.json 的完整地址。目錄內的安裝包相對路徑會基於該地址解析。",
     marketCustomUrlPlaceholder: "https://example.com/catalog.json",
-    marketActiveSource: "當前來源：{{url}}",
     search: "搜尋設定",
     searchPlaceholder: "搜尋設定…",
     noResults: "沒有匹配的設定項",
