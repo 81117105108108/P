@@ -728,18 +728,13 @@ export const tr = {
     marketSource: "Kaynak: {{url}}",
     marketProviderTitle: "Uzantı mağazası",
     marketProvider: "Mağaza kaynağı",
-    marketProviderDesc:
-      "Uzantı merkezinin katalog ve paketleri aldığı yer.",
     marketProviderOfficial: "GitHub (resmi)",
     marketProviderMirror: "Ayna (cnb.cool)",
     marketProviderCustom: "Özel URL",
-    marketProviderMirrorHint:
-      "GitHub’a ulaşılamadığında aynayı kullanın. Aynı katalog ve paketleri sunar; kurulumlar aynı sağlama toplamlarıyla doğrulanır.",
     marketCustomUrl: "Katalog URL’si",
     marketCustomUrlDesc:
       "Bir catalog.json dosyasının tam URL’si. İçindeki paket yolları bu adrese göre çözülür.",
     marketCustomUrlPlaceholder: "https://example.com/catalog.json",
-    marketActiveSource: "Etkin kaynak: {{url}}",
     search: "Ayarlarda ara",
     searchPlaceholder: "Ayarlarda ara…",
     noResults: "Eşleşen ayar yok",

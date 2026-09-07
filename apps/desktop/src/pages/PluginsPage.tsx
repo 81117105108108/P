@@ -1353,7 +1353,6 @@ export function PluginsPage() {
             {settings ? (
               <MarketplaceSourceSettings
                 settings={settings}
-                activeSource={marketSource}
                 onSourceRefreshed={(source) => {
                   setMarketSource(source);
                   void refreshMarket(query);

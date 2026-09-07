@@ -1498,7 +1498,7 @@ Each scenario is documented in this format:
 
 - **Preconditions**: Network available to `cnb.cool`.
 - **Steps**: 1) Open Extensions → Marketplace. 2) Switch Marketplace source from GitHub (official) to Mirror (cnb.cool). 3) Confirm the catalog refreshes in the same surface. 4) Install a plugin.
-- **Expected**: Switching triggers a refresh and reports the new plugin count; the active-source status shows the cnb.cool catalog URL; the install downloads its package from the mirror and passes shasum verification. Switching back to official restores the GitHub source. Choosing Custom URL with an empty value falls back to the official default rather than an empty endpoint.
+- **Expected**: Switching triggers a refresh and reports the new plugin count; the source selector remains the only source-status control, with no redundant provider explanation or active-source status line; the install downloads its package from the mirror and passes shasum verification. Switching back to official restores the GitHub source. Choosing Custom URL with an empty value falls back to the official default rather than an empty endpoint.
 - **Specs linked**: `07-plugins/07-plugin-marketplace.md`
 - **Acceptance**: G (remote marketplace source)
 - **Status**: Documented / host-core unit covered

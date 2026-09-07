@@ -724,17 +724,13 @@ export const zhCN = {
     marketSource: "来源：{{url}}",
     marketProviderTitle: "扩展市场",
     marketProvider: "插件市场来源",
-    marketProviderDesc: "扩展中心获取插件目录和安装包的位置。",
     marketProviderOfficial: "GitHub（官方）",
     marketProviderMirror: "镜像（cnb.cool）",
     marketProviderCustom: "自定义地址",
-    marketProviderMirrorHint:
-      "GitHub 无法访问时改用镜像。镜像与官方源内容一致，安装时校验的仍是同一份校验和。",
     marketCustomUrl: "目录地址",
     marketCustomUrlDesc:
       "catalog.json 的完整地址。目录内的安装包相对路径会基于该地址解析。",
     marketCustomUrlPlaceholder: "https://example.com/catalog.json",
-    marketActiveSource: "当前来源：{{url}}",
     search: "搜索设置",
     searchPlaceholder: "搜索设置…",
     noResults: "没有匹配的设置项",

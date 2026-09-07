@@ -726,18 +726,13 @@ export const en = {
     marketSource: "Source: {{url}}",
     marketProviderTitle: "Extension marketplace",
     marketProvider: "Marketplace source",
-    marketProviderDesc:
-      "Where the extension center fetches its catalog and packages.",
     marketProviderOfficial: "GitHub (official)",
     marketProviderMirror: "Mirror (cnb.cool)",
     marketProviderCustom: "Custom URL",
-    marketProviderMirrorHint:
-      "Use the mirror when GitHub is unreachable. It serves the same catalog and packages, so installs verify against the same checksums.",
     marketCustomUrl: "Catalog URL",
     marketCustomUrlDesc:
       "Full URL of a catalog.json. Package paths inside it resolve against this address.",
     marketCustomUrlPlaceholder: "https://example.com/catalog.json",
-    marketActiveSource: "Active source: {{url}}",
     search: "Search settings",
     searchPlaceholder: "Search settings…",
     noResults: "No matching settings",
