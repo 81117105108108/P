@@ -32,9 +32,9 @@ Rules:
 2. `message` is English source text (i18n key may map separately)
 3. UI should prefer i18n key derived from `code` when available
 
-The shared test suite verifies every live runtime and Edit code listed below
-is present in `ErrorCodes`; reserved codes in §3.7 remain intentionally absent
-until an implementation emits them.
+The shared test suite verifies the newly emitted runtime and Edit codes added
+by this update are present in `ErrorCodes`; reserved codes in §3.7 remain
+intentionally absent until an implementation emits them.
 
 ## 3. Code registry
 

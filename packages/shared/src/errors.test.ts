@@ -31,8 +31,8 @@ describe("result helpers", () => {
     expect(ErrorCodes.COMMAND_SHELL_INVALID).toBe("COMMAND_SHELL_INVALID");
   });
 
-  it("registers every live runtime and Edit error code", () => {
-    const liveCodes = [
+  it("registers newly emitted runtime and Edit error codes", () => {
+    const newlyLiveCodes = [
       "CONTEXT_COMPACTION_FAILED",
       "EMPTY_MODEL_RESPONSE",
       "EDIT_TAG_REQUIRED",
@@ -49,7 +49,7 @@ describe("result helpers", () => {
       "EDIT_AMPLIFICATION_LIMIT",
     ] as const;
 
-    for (const code of liveCodes) {
+    for (const code of newlyLiveCodes) {
       expect(ErrorCodes[code]).toBe(code);
     }
   });
