@@ -835,6 +835,7 @@ export const tr = {
     presetSiliconflowCn: "SiliconFlow",
     presetVolcengine: "Volcengine Ark",
     presetMinimaxCn: "MiniMax",
+    presetMinimaxCnOpenai: "MiniMax (OpenAI)",
     presetKimiCoding: "Kimi For Coding",
     presetXiaomi: "Xiaomi",
     apiStyleResponses: "OpenAI Responses",

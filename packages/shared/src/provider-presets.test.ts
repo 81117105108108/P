@@ -112,6 +112,11 @@ describe("named endpoint presets", () => {
     expect(
       matchNamedPreset({ baseUrl: "https://api.minimaxi.com/anthropic/v1" })?.apiStyle,
     ).toBe("anthropic_messages");
+    expect(matchNamedPreset({ baseUrl: "https://api.minimaxi.com/v1" })).toMatchObject({
+      id: "minimax-cn-openai",
+      vendorKey: "minimax-cn",
+      apiStyle: "chat_completions",
+    });
   });
 
   it("maps DashScope and Doubao aliases to China catalog keys", () => {
