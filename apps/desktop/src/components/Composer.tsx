@@ -2204,39 +2204,6 @@ export function Composer({
 
           <div className="composer-toolbar">
             <div className="composer-left">
-              <button
-                className="icon-btn mode-chip composer-mode-chip"
-                data-mode={mode}
-                data-planning={planningLive ? "true" : undefined}
-                title={
-                  planningLive ? t(`${mode}.planning`) : t("settings.mode")
-                }
-                disabled={controlsBlocked}
-                onClick={async () => {
-                  setModelThinkingOpen(false);
-                  setPermissionOpen(false);
-                  const next: Mode = nextMode(mode);
-                  try {
-                    await configureActiveSession({
-                      mode: next,
-                      providerId: provider?.id,
-                      modelId,
-                      thinkingLevel,
-                    });
-                  } catch (e) {
-                    showToast(e instanceof Error ? e.message : String(e), {
-                      variant: "error",
-                    });
-                  }
-                }}
-              >
-                <span className="composer-mode-chip-face" key={mode}>
-                  <ModeIcon mode={mode} />
-                  <span className="composer-mode-chip-label text-sm">
-                    {t(MODE_LABEL_KEYS[mode])}
-                  </span>
-                </span>
-              </button>
               <div className="composer-plus" ref={plusRef}>
                 <button
                   type="button"
@@ -2276,6 +2243,39 @@ export function Composer({
                   </div>
                 ) : null}
               </div>
+              <button
+                className="icon-btn mode-chip composer-mode-chip"
+                data-mode={mode}
+                data-planning={planningLive ? "true" : undefined}
+                title={
+                  planningLive ? t(`${mode}.planning`) : t("settings.mode")
+                }
+                disabled={controlsBlocked}
+                onClick={async () => {
+                  setModelThinkingOpen(false);
+                  setPermissionOpen(false);
+                  const next: Mode = nextMode(mode);
+                  try {
+                    await configureActiveSession({
+                      mode: next,
+                      providerId: provider?.id,
+                      modelId,
+                      thinkingLevel,
+                    });
+                  } catch (e) {
+                    showToast(e instanceof Error ? e.message : String(e), {
+                      variant: "error",
+                    });
+                  }
+                }}
+              >
+                <span className="composer-mode-chip-face" key={mode}>
+                  <ModeIcon mode={mode} />
+                  <span className="composer-mode-chip-label text-sm">
+                    {t(MODE_LABEL_KEYS[mode])}
+                  </span>
+                </span>
+              </button>
               {mode === "agent" || mode === "plan" || mode === "goal" ? (
                 <div className="composer-permission" ref={permissionRef}>
                   <button
