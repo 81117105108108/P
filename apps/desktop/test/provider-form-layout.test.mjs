@@ -67,8 +67,9 @@ test("credentials use explicit rows for predictable field alignment", () => {
 
 test("custom API format sits beside the key, not in a disclosure", () => {
   assert.doesNotMatch(setupSource, /<details/);
-  assert.doesNotMatch(setupSource, /provider-advanced/);
-  assert.doesNotMatch(setupSource, /advancedOpen/);
+  assert.doesNotMatch(setupSource, /provider-setup-advanced-toggle/);
+  assert.match(setupSource, /provider-advanced-dialog/);
+  assert.match(setupSource, /settings\.advancedSettings/);
   const fieldsBlock = setupSource.slice(
     setupSource.indexOf("provider-setup-fields"),
     setupSource.indexOf("<ModelSelectionPanes"),
@@ -256,10 +257,29 @@ test("the panes stack again before the dialog gets too narrow to read", () => {
   );
 });
 
+test("Advanced opens from the dialog header into a separate modal", () => {
+  assert.match(setupSource, /ProviderHeadersEditor/);
+  assert.match(vendorDialogSource, /ProviderHeadersEditor/);
+  assert.match(setupSource, /provider-setup-head-actions/);
+  assert.match(vendorDialogSource, /vendor-account-head/);
+  assert.match(setupSource, /settings\.advancedSettings/);
+  assert.match(vendorDialogSource, /settings\.advancedSettings/);
+  assert.match(setupSource, /provider-advanced-dialog/);
+  assert.match(vendorDialogSource, /provider-advanced-dialog/);
+  assert.doesNotMatch(setupSource, /provider-setup-advanced-toggle/);
+  assert.doesNotMatch(vendorDialogSource, /provider-setup-advanced-toggle/);
+  assert.match(setupSource, /if \(advancedOpen\)/);
+  assert.match(vendorDialogSource, /if \(advancedOpen\)/);
+  const modal = block(".provider-advanced-dialog");
+  assert.ok(modal.includes("width: min(560px, calc(100vw - 48px))"));
+  assert.ok(modal.includes("max-height: min(560px, calc(100vh - 64px))"));
+  const modalBody = block(".provider-advanced-body");
+  assert.match(modalBody, /overflow-y: auto/);
+});
+
 test("Advanced offers presets and JSON import without redundant helper rows", () => {
   assert.match(setupSource, /ProviderHeadersEditor/);
   assert.match(vendorDialogSource, /ProviderHeadersEditor/);
-  assert.match(vendorDialogSource, /provider-setup-advanced-toggle/);
   assert.match(headerEditorSource, /HEADER_PRESETS/);
   assert.match(headerEditorSource, /User-Agent/);
   assert.match(headerEditorSource, /importJson/);
@@ -283,7 +303,7 @@ test("Advanced offers presets and JSON import without redundant helper rows", ()
     setupSource.indexOf("provider-setup-fields"),
     setupSource.indexOf("<ModelSelectionPanes"),
   );
-  assert.match(fieldsBlock, /named \|\| custom/);
+  assert.match(setupSource, /named \|\| custom/);
   assert.match(fieldsBlock, /settings\.apiStyle"/);
 });
 

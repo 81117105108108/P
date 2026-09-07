@@ -890,6 +890,7 @@ export const en = {
     vendorCopyCode: "Copy code",
     vendorSubmit: "Continue",
     advanced: "Advanced",
+    advancedSettings: "Advanced settings",
     headers: "Headers",
     headerName: "Name",
     headerValue: "Value",

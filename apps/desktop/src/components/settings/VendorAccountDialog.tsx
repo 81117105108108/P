@@ -45,7 +45,7 @@ export function VendorAccountDialog({
   const { t } = useTranslation();
   const [name, setName] = useState(initialName);
   const [headerPairs, setHeaderPairs] = useState(() => recordToPairs(provider.headers));
-  const [advanced, setAdvanced] = useState(() => headerPairs.length > 0);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [models, setModels] = useState<ModelBinding[]>(
     provider.models.length > 0
       ? provider.models
@@ -70,11 +70,16 @@ export function VendorAccountDialog({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !saving) onClose();
+      if (event.key !== "Escape" || saving) return;
+      if (advancedOpen) {
+        setAdvancedOpen(false);
+        return;
+      }
+      onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, saving]);
+  }, [advancedOpen, onClose, saving]);
 
   const canSave = !saving && !!name.trim() && models.length > 0;
 
@@ -113,6 +118,9 @@ export function VendorAccountDialog({
           <h3 id="vendor-account-title" className="vendor-account-title">
             {t("settings.editVendorAccount")}
           </h3>
+          <Button variant="ghost" size="sm" onClick={() => setAdvancedOpen(true)}>
+            {t("settings.advancedSettings")}
+          </Button>
         </div>
 
         <div className="vendor-account-body">
@@ -123,20 +131,6 @@ export function VendorAccountDialog({
               onChange={(event) => setName(event.target.value)}
             />
           </Field>
-
-          <button
-            type="button"
-            className="provider-setup-advanced-toggle"
-            aria-expanded={advanced}
-            onClick={() => setAdvanced((open) => !open)}
-          >
-            {t("settings.advanced")}
-          </button>
-          {advanced ? (
-            <div className="provider-setup-advanced">
-              <ProviderHeadersEditor pairs={headerPairs} onChange={setHeaderPairs} />
-            </div>
-          ) : null}
 
           <ModelSelectionPanes
             discovery={discovery}
@@ -155,6 +149,44 @@ export function VendorAccountDialog({
           </Button>
         </div>
       </div>
+
+      {advancedOpen ? (
+        <div
+          className="overlay provider-advanced-overlay"
+          role="presentation"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (event.target === event.currentTarget) setAdvancedOpen(false);
+          }}
+        >
+          <div
+            className="dialog provider-advanced-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="vendor-advanced-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="provider-advanced-head">
+              <h4 id="vendor-advanced-title" className="provider-advanced-title">
+                {t("settings.advancedSettings")}
+              </h4>
+              <Button variant="ghost" size="sm" onClick={() => setAdvancedOpen(false)}>
+                {t("settings.close")}
+              </Button>
+            </div>
+            <div className="provider-advanced-body">
+              <div className="provider-setup-advanced">
+                <ProviderHeadersEditor pairs={headerPairs} onChange={setHeaderPairs} />
+              </div>
+            </div>
+            <div className="provider-advanced-actions">
+              <Button variant="primary" onClick={() => setAdvancedOpen(false)}>
+                {t("settings.close")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

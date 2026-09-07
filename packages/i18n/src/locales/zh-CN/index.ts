@@ -881,6 +881,7 @@ export const zhCN = {
     vendorCopyCode: "复制代码",
     vendorSubmit: "继续",
     advanced: "高级",
+    advancedSettings: "高级设置",
     headers: "请求头",
     headerName: "名称",
     headerValue: "值",

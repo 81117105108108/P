@@ -347,12 +347,13 @@ Each scenario is documented in this format:
 - **Preconditions**: One API-key AI service (including an OpenCode Go row) and
   one signed-in vendor (OAuth) account; a capture proxy records outbound HTTP
   headers, including Codex and Anthropic adapters.
-- **Steps**: 1) Open the AI service and expand Advanced. Use the common-header
-  preset to add User-Agent, then import a JSON object containing `X-Gateway:
-  alpha` and enough headers to exceed two visible rows. Confirm the header list
-  scrolls inside Advanced while the model panes keep their working area, then
-  save. 2) Start an Agent turn, a follow-up, prompt enhancement, and a plugin
-  one-shot. 3) Refresh
+- **Steps**: 1) Open the AI service and click the upper-right Advanced settings
+  action. Confirm a separate modal opens without changing the main form layout.
+  Use the common-header preset to add User-Agent, then import a JSON object
+  containing `X-Gateway: alpha` and enough headers to exceed two visible rows.
+  Confirm the header list scrolls inside the modal while the underlying model
+  panes keep their working area, close the modal, then save. 2) Start an Agent
+  turn, a follow-up, prompt enhancement, and a plugin one-shot. 3) Refresh
   `/models` from the form before saving a second change and confirm the
   unsaved headers are sent. 4) Clear the rows and save; confirm adapter
   defaults return. 5) Edit the OAuth account Advanced headers, save, then
@@ -364,7 +365,8 @@ Each scenario is documented in this format:
   outbound HTTP (turns, subagents, one-shots, discovery, connection test,
   OAuth refresh). Empty restores pi-ai / `claude-cli` / OpenCode defaults.
   Advanced keeps the header list in its own bounded scroll area, so additional
-  rows do not compress or hide the model panes. The preset adds the expected
+  rows do not compress or hide the model panes. Escape and outside-click close
+  only the Advanced modal while it is open. The preset adds the expected
   User-Agent value, JSON import accepts both supported object shapes, and
   case-insensitive duplicate keys are merged rather than duplicated. OpenCode still sends
   `x-opencode-session` and `x-opencode-client`. Codex

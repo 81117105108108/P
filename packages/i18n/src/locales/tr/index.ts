@@ -892,6 +892,7 @@ export const tr = {
     vendorCopyCode: "Kodu kopyala",
     vendorSubmit: "Devam et",
     advanced: "Gelişmiş",
+    advancedSettings: "Gelişmiş ayarlar",
     headers: "Başlıklar",
     headerName: "Ad",
     headerValue: "Değer",

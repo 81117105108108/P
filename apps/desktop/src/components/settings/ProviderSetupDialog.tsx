@@ -156,7 +156,7 @@ export function ProviderSetupDialog({
     (provider?.apiStyle as CatalogApiStyle) ?? "chat_completions",
   );
   const [headerPairs, setHeaderPairs] = useState(() => recordToPairs(provider?.headers));
-  const [advanced, setAdvanced] = useState(() => headerPairs.length > 0);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [models, setModels] = useState<ModelBinding[]>(provider?.models ?? []);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -196,11 +196,15 @@ export function ProviderSetupDialog({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || saving) return;
+      if (advancedOpen) {
+        setAdvancedOpen(false);
+        return;
+      }
       onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, saving]);
+  }, [advancedOpen, onClose, saving]);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const focusAfterServiceChange = (next: string) => {
@@ -341,6 +345,16 @@ export function ProviderSetupDialog({
             {editing ? t("settings.editProviderTitle") : t("settings.addProviderTitle")}
           </h3>
           <div className="provider-setup-head-actions">
+            {named || custom ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={saving}
+                onClick={() => setAdvancedOpen(true)}
+              >
+                {t("settings.advancedSettings")}
+              </Button>
+            ) : null}
             {provider ? (
               <Button
                 variant="ghost"
@@ -496,32 +510,6 @@ export function ProviderSetupDialog({
               ) : null}
             </div>
 
-            {named || custom ? (
-              <>
-                <button
-                  type="button"
-                  className="provider-setup-advanced-toggle"
-                  aria-expanded={advanced}
-                  onClick={() => setAdvanced((open) => !open)}
-                >
-                  {t("settings.advanced")}
-                </button>
-                {advanced ? (
-                  <div className="provider-setup-advanced">
-                    {named ? (
-                      <Field label={t("settings.name")}>
-                        <Input
-                          value={name}
-                          onChange={(event) => setName(event.target.value)}
-                        />
-                      </Field>
-                    ) : null}
-                    <ProviderHeadersEditor pairs={headerPairs} onChange={setHeaderPairs} />
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-
             {testResult ? (
               <div className="provider-credential-test">
                 <span className="provider-credential-test-result">{testResult}</span>
@@ -537,6 +525,52 @@ export function ProviderSetupDialog({
           />
         </div>
       </div>
+
+      {advancedOpen && (named || custom) ? (
+        <div
+          className="overlay provider-advanced-overlay"
+          role="presentation"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (event.target === event.currentTarget) setAdvancedOpen(false);
+          }}
+        >
+          <div
+            className="dialog provider-advanced-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="provider-advanced-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="provider-advanced-head">
+              <h4 id="provider-advanced-title" className="provider-advanced-title">
+                {t("settings.advancedSettings")}
+              </h4>
+              <Button variant="ghost" size="sm" onClick={() => setAdvancedOpen(false)}>
+                {t("settings.close")}
+              </Button>
+            </div>
+            <div className="provider-advanced-body">
+              <div className="provider-setup-advanced">
+                {named ? (
+                  <Field label={t("settings.name")}>
+                    <Input
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                    />
+                  </Field>
+                ) : null}
+                <ProviderHeadersEditor pairs={headerPairs} onChange={setHeaderPairs} />
+              </div>
+            </div>
+            <div className="provider-advanced-actions">
+              <Button variant="primary" onClick={() => setAdvancedOpen(false)}>
+                {t("settings.close")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
