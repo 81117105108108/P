@@ -560,10 +560,14 @@ core set rather than the on-demand catalog of §7.1:
   (`"provider/modelId"`) that overrides the delegate's model for that run.
   Resolution priority: Task.model parameter → definition frontmatter pin →
   session model. The parent agent sees a model summary in the system prompt
-  listing all models marked `availableForSubagents` in provider settings.
-  When a model key is not pre-resolved, the runtime asks Electron main to
-  resolve it on-demand via the `provider.resolveSubagentModel` RPC. The started
-  `Task` result details record the effective `modelId` used for that run.
+  listing all models marked `availableForSubagents` in provider settings. If
+  the delegation catalog is empty, the prompt tells the model to omit `model`
+  and inherit the session model; an explicit key that exactly names the current
+  session provider/model is treated as the same inheritance case. Other
+  explicit model keys must be configured and enabled for delegation. When a
+  model key is not pre-resolved, the runtime asks Electron main to resolve it
+  on-demand via the `provider.resolveSubagentModel` RPC. The started `Task`
+  result details record the effective `modelId` used for that run.
 - `TaskWait(delegationIds?, mode?, minCompleted?, timeoutSeconds?)` — converges
   on running delegations (defaults to all of them) and returns their reports;
   `mode: "any"` with `minCompleted` converges as soon as the first N settle.

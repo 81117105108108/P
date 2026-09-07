@@ -2859,7 +2859,10 @@ D193, and D194.
   delegation catalog injected into the parent agent's system prompt. The parent
   sees a model summary listing all available delegation models.
 - When the parent specifies a model that is not configured or not enabled for
-  delegation, the Task tool returns a tool error listing available models.
+  delegation, the Task tool returns a tool error listing available models. An
+  exact repeat of the current session provider/model is treated as inheritance,
+  equivalent to omitting `model`, so an empty delegation catalog does not turn
+  the parent model into a false unavailable-model error.
 - Models not pre-resolved at sidecar launch are resolved on-demand via the
   `provider.resolveSubagentModel` RPC to Electron main, where credentials and
   the models.dev snapshot live.

@@ -2640,6 +2640,34 @@ Delegation rules:
   }
 
   /**
+   * An explicit override that names the session's own provider/model is
+   * semantically the same as omitting `Task.model`. Models sometimes echo the
+   * current model id even when the delegation catalog is empty; accepting this
+   * exact inheritance case avoids turning that harmless echo into a false
+   * "model is not available" tool error while keeping other overrides gated.
+   */
+  private isSessionModelOverride(key: string): boolean {
+    const slash = key.indexOf("/");
+    if (slash < 1) return false;
+    const requestedProvider = key
+      .slice(0, slash)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
+    const requestedModel = key.slice(slash + 1).trim().toLowerCase();
+    if (!requestedProvider || requestedModel !== this.provider.modelId.toLowerCase()) {
+      return false;
+    }
+    return [this.provider.id, this.provider.vendorKey, this.provider.name]
+      .filter((value): value is string => Boolean(value))
+      .some(
+        (value) =>
+          value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "") ===
+          requestedProvider,
+      );
+  }
+
+  /**
    * On-demand model resolution for Task-time model overrides. Asks Electron
    * main to resolve a `providerId/modelId` key that was not statically pinned
    * by any definition. The result is cached for the life of this runtime.
@@ -2688,7 +2716,13 @@ Delegation rules:
    */
   private subagentModelSummary(): string | undefined {
     const keys = Object.keys(this.subagentProviders);
-    if (keys.length === 0) return undefined;
+    if (keys.length === 0) {
+      return [
+        "No delegation model overrides are configured.",
+        "Omit the `model` parameter on Task to inherit the parent conversation's selected model.",
+        "Never invent a provider/model key. Prefer omitting `model`; repeating the exact parent provider/model is safe but unnecessary.",
+      ].join(" ");
+    }
     const lines: string[] = [
       "Available models for delegation (pass as `model` parameter on Task):\n",
     ];
@@ -2780,6 +2814,13 @@ Delegation rules:
         "Start one subagent in the background and return immediately; you keep working while it runs, then converge with TaskWait when you need its report.",
         "Use it when the work is separable: parallel exploration of independent directions (one Task per direction in the same assistant message), a multi-file implementation with a complete spec (fixer), an adversarial read-only review of a change you just made (code-reviewer), or a wide search / long log / multi-file survey whose intermediate output would otherwise fill this context (explorer, test-runner).",
         "Do not delegate what you can finish in a couple of tool calls, and do not delegate anything that needs the user — a subagent cannot ask a question or propose a plan on your behalf.",
+        ...(this.availableSubagentModelKeys().length
+          ? [
+              "Only pass `model` when selecting a listed delegation model; otherwise omit it. Repeating the exact parent provider/model is also safe but unnecessary.",
+            ]
+          : [
+              "No delegation model overrides are configured. Omit `model` so the subagent inherits the parent conversation's selected model; never invent a provider/model key.",
+            ]),
         "`task` is the delegate's only instruction. It cannot see this conversation, and you cannot correct it while it runs, so state the goal, the paths and facts it cannot infer, and exactly what to report back.",
         "To run delegates concurrently, emit several Task calls in one assistant message. A message that mixes Task with any other tool runs one call at a time. You may keep working or talk to the user while they run; the runtime delivers their reports when they finish. Call TaskStop only to cancel.",
         `Available subagents:\n${catalog}`,
@@ -2836,7 +2877,12 @@ Delegation rules:
             : "";
         let provider: RuntimeProviderConfig | undefined;
         if (modelOverride) {
-          provider = this.subagentProviders[modelOverride];
+          // Repeating the parent model is inheritance, not a request to select
+          // an additional delegation model. This also handles a model that was
+          // echoed by the parent despite an empty delegation catalog.
+          provider = this.isSessionModelOverride(modelOverride)
+            ? this.provider
+            : this.subagentProviders[modelOverride];
           if (!provider) {
             // On-demand resolution: ask Electron main for a provider the
             // definitions did not statically pin but the user has configured.

@@ -7580,7 +7580,9 @@ are withdrawn with ADR 0165.
   model that is not configured at all. 6) Delegate a Task with no `model:`
   parameter and a definition that has a frontmatter model pin. 7) Delegate a
   Task with no `model:` parameter and a definition that has no frontmatter
-  model pin.
+  model pin. 8) With no enabled delegation models, delegate a Task once with
+  no `model:` and once with `model:` repeating the current session's
+  `provider/modelId`.
 - **Expected**:
   1. Saving and reopening the provider preserves the
      `availableForSubagents` opt-in, including after an application restart.
@@ -7595,6 +7597,9 @@ are withdrawn with ADR 0165.
      session model.
   6. On-demand resolution succeeds for models enabled in provider settings via
      the `provider.resolveSubagentModel` RPC.
+  7. When no delegation model is configured, omitting `model:` and explicitly
+     repeating the current session `provider/modelId` both start the delegate
+     on the session model; the latter is not reported as an unavailable model.
 - **Specs linked**: `03-runtime/02-agent-runtime.md` §5f,
   `03-runtime/11-provider-model-system.md` §7,
   `03-runtime/12-provider-config-schema.md` §2,
