@@ -1101,6 +1101,12 @@ export type AppSettings = {
    * are offered by the settings picker.
    */
   fontFamily?: string;
+  /**
+   * Chat transcript and composer body size in px (D343). Absent means the
+   * product `--text-base` (14). Integers 12–24 inclusive; window zoom is
+   * independent.
+   */
+  fontSize?: number;
   enterToSend: boolean;
   /** Text length above which a plain-text paste becomes a session file reference. */
   largePasteThreshold?: number;

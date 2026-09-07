@@ -396,6 +396,35 @@
   width: 140px;
 }
 
+.settings-font-size {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.settings-font-size .settings-segment {
+  width: 100%;
+}
+
+.settings-font-size-custom {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.settings-row-control .settings-font-size-custom .field-input {
+  width: 72px;
+  min-width: 72px;
+}
+
+.settings-font-size-suffix {
+  color: var(--ds-text-muted);
+  font-size: var(--text-sm);
+}
+
 .shortcut-map {
   overflow: visible;
 }

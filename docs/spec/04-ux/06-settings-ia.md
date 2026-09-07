@@ -65,6 +65,13 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
     (`--font-sans`) without a reload; System default clears the override;
     long system lists are windowed so only the visible slice is in the DOM
     (bounded font loading) and opening the picker never blocks input
+  - **Font size**: presets (Small 12 / Default 14 / Large 16 / Extra large 18)
+    plus a custom integer px field (12–24). Selection persists as
+    `AppSettings.fontSize`; absent means 14. The renderer sets
+    `--reading-font-size` and remaps the `--text-*` ramp inside the session
+    transcript (`.thread-wrap`) and composer (`.composer-dock`) without a
+    reload. Window Zoom In/Out/Reset stays independent and still scales
+    chrome. Sidebar and settings stay on the product ramp (D343 / ADR 0180)
   - **Auto language detection** resolves the OS locale through the main process
     (`app.getLocale()`) rather than the renderer's `navigator.language`, and the
     Auto option shows the detected language inline (e.g. "Currently 简体中文")

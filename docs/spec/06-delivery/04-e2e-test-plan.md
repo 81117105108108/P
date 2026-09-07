@@ -6512,6 +6512,38 @@ This test plan spec is accepted when:
 - **Milestone**: M5+
 - **Status**: Documented
 
+#### E2E-193: Appearance card sets a reading font size
+
+- **Preconditions**: App running with a clean `~/.pi-desktop` profile and an
+  open conversation that shows transcript text and the composer.
+- **Steps**:
+  1) Open Settings → General and confirm the Appearance card shows a Font
+     size row below Font, with Default selected and a px field at 14.
+  2) Choose Large. Confirm chat transcript prose, headings, code, tool
+     output, and the composer input enlarge without a reload, while the
+     settings card, sidebar session list, and window chrome stay at the
+     product size.
+  3) Type 20 in the custom px field and commit (blur or Enter). Confirm the
+     reading surfaces grow further and no preset stays selected.
+  4) Use Zoom In, then Reset Zoom. Confirm window zoom still scales chrome
+     and that the reading size remains 20px after reset.
+  5) Restart the app, open a conversation, and confirm the 20px reading
+     size is still applied (`AppSettings.fontSize`).
+  6) Choose Default. Confirm transcript and composer return to 14px
+     immediately; restart and confirm the default remains.
+- **Expected**: Font size is presets 12 / 14 / 16 / 18 plus custom integer
+  px 12–24. Selection persists as `AppSettings.fontSize` (absent means 14)
+  and sets `--reading-font-size`, remapping `--text-*` inside `.thread-wrap`
+  and `.composer-dock` only. Window Zoom In/Out/Reset remains independent.
+  Invalid values are rejected or clamped. No protocol or schema version bump.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/07-ui-design-system.md`,
+  ADR 0180, D343
+- **Acceptance**: A (core shell), B (settings), H (localization)
+- **Milestone**: M5+
+- **Status**: Unit-covered (`packages/shared/src/font-size.test.ts`,
+  `apps/desktop/test/settings-font-size.test.mjs`); full UI journey Draft
+  (do not run E2E locally unless explicitly requested)
+
 #### E2E-127: macOS keeps the app in the Dock and Cmd+Tab
 
 - **Preconditions**: Built desktop app on macOS; the plugin launcher shortcut
