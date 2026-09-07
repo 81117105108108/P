@@ -5748,11 +5748,11 @@ IPC 请求无法关闭。
   4. 对正在监听的代理点测试，确认已连接；对关闭的端口点测试，确认失败且不改已保存 URL。
   5. 自定义保存后，确认扩展市场刷新和 models.dev 刷新走代理；绕过列表中的回环地址不走代理。
   6. 切到直连再切回系统。确认无需重启应用即可生效。
-- **预期**：自定义覆盖模型请求、市场、更新、插件 `net.fetch` 和内置浏览器。工作区 Bash 的 `env` 看不到该设置写入的 `HTTP_PROXY` / `ALL_PROXY`。OAuth 仍走系统浏览器。`file:` / `ftp:` 被拒绝。无协议/存储版本升级。
+- **预期**：自定义覆盖模型请求、市场、更新、插件 `net.fetch` 和内置浏览器。工作区 Bash 的 `env` 看不到该设置写入的 `HTTP_PROXY` / `ALL_PROXY`。OAuth 仍走系统浏览器。`file:` / `ftp:`、SOCKS4 以及百分号编码错误的认证信息均被拒绝。无协议/存储版本升级。
 - **链接规格**：`04-ux/06-settings-ia.md`、`03-runtime/07-process-model.md`、ADR 0177、D340
 - **验收**：B（设置）、F（供应商）、安全
 - **里程碑**：M5
-- **状态**：单元已覆盖（`network-proxy.test.ts`、`settings-general.test.mjs`、host-core `network_proxy`）；完整 UI 旅程仍为草稿
+- **状态**：单元已覆盖（`network-proxy.test.ts`、`settings-general.test.mjs`、host-core `network_proxy`）；畸形认证信息和不支持的 SOCKS4 协议由共享解析器测试覆盖；完整 UI 旅程仍为草稿
 
 #### E2E-193：文档截图在 GitHub 与 VitePress 中都能解析
 

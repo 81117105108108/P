@@ -8093,15 +8093,16 @@ are withdrawn with ADR 0165.
 - **Expected**: Custom covers model calls, marketplace, updates, plugin
   `net.fetch`, and the in-app browser. Workspace Bash `env` does not show
   `HTTP_PROXY` / `ALL_PROXY` from the setting. OAuth still opens the system
-  browser. Invalid schemes (`file:`, `ftp:`) are rejected. No protocol or
-  schema version bump.
+  browser. Invalid schemes (`file:`, `ftp:`, and SOCKS4) and malformed
+  percent-encoded credentials are rejected. No protocol or schema version bump.
 - **Specs linked**: `04-ux/06-settings-ia.md`,
   `03-runtime/07-process-model.md`, ADR 0177, D340
 - **Acceptance**: B (settings), F (providers), Security
 - **Milestone**: M5
 - **Status**: Unit-covered (`network-proxy.test.ts`,
-  `settings-general.test.mjs`, host-core `network_proxy` tests); full UI
-  journey Draft (do not run E2E locally unless explicitly requested)
+  `settings-general.test.mjs`, host-core `network_proxy` tests); malformed
+  credentials and unsupported SOCKS4 schemes are covered by the shared parser
+  tests; full UI journey Draft (do not run E2E locally unless explicitly requested)
 
 #### E2E-191: Newly emitted AppError codes stay registered
 
