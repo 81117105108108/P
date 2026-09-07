@@ -1732,7 +1732,7 @@ export function Composer({
     setPlusOpen(false);
     try {
       const result = kind === "photos" ? await api.pickPhotos() : await api.pickFiles();
-      if (result.canceled || !result.paths.length || inputBlocked) return;
+      if (result.canceled || !result.token || inputBlocked) return;
 
       const editor = ref.current;
       const sourceValue = editor ? readEditorValue(editor) : valueRef.current;
@@ -1748,7 +1748,7 @@ export function Composer({
         // before native paths are copied into scratch.
         const sessionId = sourceSessionId ?? (await materializeDraftSession());
         if (!sessionId) throw new Error("session unavailable");
-        const imported = await api.importFiles(sessionId, result.paths);
+        const imported = await api.importFiles(sessionId, result.token);
         const chips = imported.files.map((file) => {
           const token = nextChipToken();
           return {

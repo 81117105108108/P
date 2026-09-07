@@ -439,13 +439,13 @@ export const api = {
       IPC.invoke.projectOpen,
     ),
   pickFiles: () =>
-    invoke<{ paths: string[]; canceled?: boolean }>(IPC.invoke.composerPickFiles),
+    invoke<{ token: string | null; canceled?: boolean }>(IPC.invoke.composerPickFiles),
   pickPhotos: () =>
-    invoke<{ paths: string[]; canceled?: boolean }>(IPC.invoke.composerPickPhotos),
-  importFiles: (sessionId: string, paths: string[]) =>
+    invoke<{ token: string | null; canceled?: boolean }>(IPC.invoke.composerPickPhotos),
+  importFiles: (sessionId: string, token: string) =>
     invoke<{ files: ComposerPastedFile[] }>(IPC.invoke.composerImportFiles, {
       sessionId,
-      paths,
+      token,
     }),
   pasteFiles: (sessionId: string, files: ComposerPasteFile[]) =>
     invoke<{ files: ComposerPastedFile[] }>(IPC.invoke.composerPasteFiles, {

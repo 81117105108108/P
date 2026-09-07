@@ -2301,10 +2301,10 @@ Anatomy:
   session is available. The scratch lifecycle removes pasted files with the
   session and never dirties the workspace git tree.
 - A `+` picker selection follows the same session ownership and chip flow: the
-  renderer materializes a home draft when needed, sends native paths through
-  `composer/importFiles`, and keeps only the returned scratch references. The
-  main process rejects directories and applies the same size limits before
-  copying.
+  renderer materializes a home draft when needed, sends a one-shot picker token
+  through `composer/importFiles`, and keeps only the returned scratch
+  references. The native file picker accepts regular files only; Electron main
+  owns the selected paths and applies the same size limits before copying.
 - Reference chips wrap within the prompt area, expose the canonical path in
   their tooltip and accessible name, and provide a focus-visible localized
   remove button that restores textarea focus. Duplicate leaf labels remain

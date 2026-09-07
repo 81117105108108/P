@@ -1342,9 +1342,12 @@ reservation, and background artifacts cannot change visible window geometry.
 
 Electron-only channels backing composer autocomplete and file references.
 `composer/commands` and `fs/index` are read-only and fail soft;
-`composer/importFiles` and `composer/pasteFiles` write only to the originating
-session's Electron-owned scratch directory. None adds a host RPC method or
-changes the host protocol version.
+`composer/pickFiles` and `composer/pickPhotos` open native pickers in Electron
+main and return one-shot tokens; `composer/importFiles` and
+`composer/pasteFiles` write only to the originating session's Electron-owned
+scratch directory. None adds a host RPC method or changes the host protocol
+version. Renderer-supplied absolute source paths are never accepted by the
+picker import channel (ADR 0180).
 
 ### composer/commands
 
@@ -1382,24 +1385,35 @@ directories derived from file paths, 8000-entry cap with `truncated: true`,
 short TTL cache per root. Fails closed to an empty list without a
 workspace. Fuzzy filtering happens renderer-side.
 
+### composer/pickFiles and composer/pickPhotos
+
+```ts
+composer/pickFiles() -> { token: string | null; canceled: boolean }
+composer/pickPhotos() -> { token: string | null; canceled: boolean }
+```
+
+Both dialogs run in Electron main. `pickFiles` accepts regular files only;
+directories are not part of the MVP picker contract. When the user selects
+files, main stores the native paths against a token bound to the invoking
+`WebContents`, with a 60-second lifetime and one-shot consumption. The
+renderer receives the token but never receives the selected absolute paths.
+
 ### composer/importFiles
 
 ```ts
-composer/importFiles({ sessionId, paths }) -> {
+composer/importFiles({ sessionId, token }) -> {
   files: ComposerPastedFile[];
 }
 ```
 
-The native file picker returns absolute paths to the renderer only as a
-short-lived handoff. The renderer immediately sends those paths with the
-durable `sessionId`; Electron main resolves each path through `realpath`,
-requires an existing regular file, applies the same 20-file / 64 MiB per file /
-128 MiB total limits as clipboard transfer, and copies the bytes into
-`<data_dir>/scratch/<sessionId>/pasted/` under a UUID-backed sanitized name.
-Directories, relative paths, missing files, and oversized selections fail with
-an IPC error. The returned `ComposerPastedFile` records are the only paths the
-renderer stores or dispatches, so a picker selection cannot leave an external
-absolute path in the prompt or bypass the attachment-root boundary.
+Electron main consumes the sender-bound picker token, resolves each recorded
+path through `realpath`, requires an existing regular file, applies the same
+20-file / 64 MiB per file / 128 MiB total limits as clipboard transfer, and
+copies the bytes into `<data_dir>/scratch/<sessionId>/pasted/` under a
+UUID-backed sanitized name. The token is deleted before import starts, so it
+cannot be replayed. The returned `ComposerPastedFile` records are the only
+paths the renderer stores or dispatches, so a picker selection cannot leave an
+external source path in the prompt or bypass the attachment-root boundary.
 
 ### composer/pasteFiles
 

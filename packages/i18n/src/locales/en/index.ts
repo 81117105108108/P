@@ -197,7 +197,7 @@ export const en = {
     placeholderHomeHint: "Type / for commands · @ for files",
     placeholderShortcut: "Shift+Enter for newline · Use Send to submit",
     addFiles: "Add files and more",
-    attachFiles: "Attach files or folders",
+    attachFiles: "Attach files",
     addPhotos: "Add photos",
     captureAppshot: "Capture screenshot",
     filesAttached: "Added {{count}} item(s) to the draft",

@@ -192,7 +192,7 @@ export const zhCN = {
     placeholderHomeHint: "输入 / 使用命令 · @ 引用文件",
     placeholderShortcut: "Shift+Enter 换行 · 点击发送提交",
     addFiles: "添加文件等内容",
-    attachFiles: "附加文件或文件夹",
+    attachFiles: "附加文件",
     addPhotos: "添加图片",
     captureAppshot: "截取屏幕",
     filesAttached: "已将 {{count}} 项加入草稿",
