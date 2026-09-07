@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const esEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.1",
+    "date": "2026-09-08",
+    "highlights": [
+      "Haga que la delegación de subagentes herede el modelo principal cuando no haya un modelo de delegación configurado.",
+      "Evite que los IDs del modelo principal repetidos se rechacen por error como modelos de delegación no disponibles.",
+    ]
+  },
+  {
     "version": "0.14.0",
     "date": "2026-09-08",
     "highlights": [

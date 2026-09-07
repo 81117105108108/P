@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const deEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.1",
+    "date": "2026-09-08",
+    "highlights": [
+      "Ermöglichen Sie die Vererbung des Elternmodells für Subagenten, wenn kein Delegationsmodell konfiguriert ist.",
+      "Verhindern Sie, dass zurückgegebene IDs des Elternmodells fälschlich als nicht verfügbare Delegationsmodelle abgelehnt werden.",
+    ]
+  },
+  {
     "version": "0.14.0",
     "date": "2026-09-08",
     "highlights": [

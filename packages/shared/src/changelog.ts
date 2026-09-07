@@ -28,6 +28,14 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "0.14.1",
+    date: "2026-09-08",
+    highlights: [
+      "Make subagent delegation inherit the parent model when no delegation model is configured.",
+      "Prevent echoed parent model IDs from being rejected as unavailable delegation models.",
+    ],
+  },
+  {
     version: "0.14.0",
     date: "2026-09-08",
     highlights: [
@@ -684,6 +692,14 @@ const enEntries: ChangelogEntry[] = [
 
 const zhCNEntries: ChangelogEntry[] = [
   {
+    version: "0.14.1",
+    date: "2026-09-08",
+    highlights: [
+      "未配置委派模型时，让子智能体继承主 Agent 当前使用的模型。",
+      "避免主 Agent 回显当前模型 ID 时被误判为不可用的委派模型。",
+    ],
+  },
+  {
     version: "0.14.0",
     date: "2026-09-08",
     highlights: [
@@ -1339,6 +1355,14 @@ const zhCNEntries: ChangelogEntry[] = [
 ];
 
 const zhTWEntries: ChangelogEntry[] = [
+  {
+    version: "0.14.1",
+    date: "2026-09-08",
+    highlights: [
+      "未設定委派模型時，讓子智慧體繼承主 Agent 目前使用的模型。",
+      "避免主 Agent 回傳目前模型 ID 時，被誤判為不可用的委派模型。",
+    ],
+  },
   {
     version: "0.14.0",
     date: "2026-09-08",

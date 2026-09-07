@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const frEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.1",
+    "date": "2026-09-08",
+    "highlights": [
+      "Faites hériter les sous-agents du modèle parent lorsqu’aucun modèle de délégation n’est configuré.",
+      "Évitez que les identifiants du modèle parent répétés soient refusés à tort comme modèles de délégation indisponibles.",
+    ]
+  },
+  {
     "version": "0.14.0",
     "date": "2026-09-08",
     "highlights": [

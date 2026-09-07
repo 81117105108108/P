@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const trEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.1",
+    "date": "2026-09-08",
+    "highlights": [
+      "Delegasyon modeli yapılandırılmadığında alt aracıların üst modelden miras almasını sağlayın.",
+      "Üst model kimliklerinin kullanılamayan delegasyon modelleri olarak yanlışlıkla reddedilmesini önleyin.",
+    ]
+  },
+  {
     "version": "0.14.0",
     "date": "2026-09-08",
     "highlights": [
