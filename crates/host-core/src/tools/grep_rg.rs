@@ -6,9 +6,9 @@
 //! Spawn failures and `rg` exit 2 fall back to the in-process searcher so a
 //! missing or broken install never changes the tool's public shape.
 
-use super::{BUDGET_SEARCH, MAX_LINE_CHARS, clip_chars, display_tool_path, grep_output};
+use super::{clip_chars, display_tool_path, grep_output, BUDGET_SEARCH, MAX_LINE_CHARS};
 use crate::workspace::ToolRoot;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -32,33 +32,23 @@ pub struct SystemGrep<'a> {
 }
 
 #[cfg(test)]
-static TEST_RG: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
-
-#[cfg(test)]
-static TEST_RG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-#[cfg(test)]
-pub struct TestRgGuard {
-    _serial: std::sync::MutexGuard<'static, ()>,
+thread_local! {
+    static TEST_RG: std::cell::RefCell<Option<PathBuf>> = std::cell::RefCell::new(None);
 }
 
 #[cfg(test)]
+pub struct TestRgGuard;
+
+#[cfg(test)]
 pub fn install_test_rg(path: PathBuf) -> TestRgGuard {
-    let serial = TEST_RG_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    *TEST_RG
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(path);
-    TestRgGuard { _serial: serial }
+    TEST_RG.with(|rg| *rg.borrow_mut() = Some(path));
+    TestRgGuard
 }
 
 #[cfg(test)]
 impl Drop for TestRgGuard {
     fn drop(&mut self) {
-        *TEST_RG
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+        TEST_RG.with(|rg| *rg.borrow_mut() = None);
     }
 }
 
@@ -70,10 +60,7 @@ pub fn try_system_rg(req: SystemGrep<'_>) -> Option<Value> {
 fn resolve_rg() -> Option<PathBuf> {
     #[cfg(test)]
     {
-        return TEST_RG
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .clone();
+        return TEST_RG.with(|rg| rg.borrow().clone());
     }
     #[cfg(not(test))]
     {
