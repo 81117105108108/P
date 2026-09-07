@@ -191,7 +191,7 @@ export const zhCN = {
     placeholderHint: "输入 / 使用命令 · @ 引用文件",
     placeholderHomeHint: "输入 / 使用命令 · @ 引用文件",
     placeholderShortcut: "Shift+Enter 换行 · 点击发送提交",
-    addFiles: "添加文件等内容",
+    addFiles: "添加文件",
     attachFiles: "附加文件",
     addPhotos: "添加图片",
     captureAppshot: "截取屏幕",

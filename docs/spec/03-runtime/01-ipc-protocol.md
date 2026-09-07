@@ -1342,12 +1342,13 @@ reservation, and background artifacts cannot change visible window geometry.
 
 Electron-only channels backing composer autocomplete and file references.
 `composer/commands` and `fs/index` are read-only and fail soft;
-`composer/pickFiles` and `composer/pickPhotos` open native pickers in Electron
-main and return one-shot tokens; `composer/importFiles` and
-`composer/pasteFiles` write only to the originating session's Electron-owned
-scratch directory. None adds a host RPC method or changes the host protocol
-version. Renderer-supplied absolute source paths are never accepted by the
-picker import channel (ADR 0181).
+`composer/pickFiles` opens the unified native picker used by the Composer and
+returns a one-shot token; the legacy `composer/pickPhotos` channel remains
+available for compatibility but is not exposed by the Composer UI.
+`composer/importFiles` and `composer/pasteFiles` write only to the originating
+session's Electron-owned scratch directory. None adds a host RPC method or
+changes the host protocol version. Renderer-supplied absolute source paths are
+never accepted by the picker import channel (ADR 0181).
 
 ### composer/commands
 
@@ -1392,8 +1393,11 @@ composer/pickFiles() -> { token: string | null; canceled: boolean }
 composer/pickPhotos() -> { token: string | null; canceled: boolean }
 ```
 
-Both dialogs run in Electron main. `pickFiles` accepts regular files only;
-directories are not part of the MVP picker contract. When the user selects
+Both dialogs run in Electron main. The Composer uses `pickFiles` as its single
+file/image entry point: it accepts regular files without a type filter, and the
+importer classifies each result as an image or file from MIME/extension metadata.
+`pickPhotos` is retained as a compatibility channel for older renderer clients.
+Directories are not part of the MVP picker contract. When the user selects
 files, main stores the native paths against a token bound to the invoking
 `WebContents`, with a 60-second lifetime and one-shot consumption. The
 renderer receives the token but never receives the selected absolute paths.

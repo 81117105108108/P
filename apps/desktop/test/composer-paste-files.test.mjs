@@ -114,12 +114,16 @@ test("picker attachments materialize a session before importing paths", () => {
   );
 });
 
-test("composer keeps the upload button at the far left of the toolbar", () => {
+test("composer opens one unified file picker directly from the plus button", () => {
   const leftStart = composer.indexOf('<div className="composer-left">');
-  const plusIndex = composer.indexOf("ref={plusRef}", leftStart);
+  const plusIndex = composer.indexOf('title={t("chat.addFiles")}', leftStart);
   const modeIndex = composer.indexOf("composer-mode-chip", leftStart);
   assert.ok(leftStart >= 0 && plusIndex > leftStart && modeIndex > leftStart);
   assert.ok(plusIndex < modeIndex, "upload must precede the agent mode chip");
+  assert.match(composer, /void pickAndAttach\(\);/);
+  assert.match(composer, /const pickAndAttach = async \(\) =>/);
+  assert.match(composer, /const result = await api\.pickFiles\(\);/);
+  assert.doesNotMatch(composer, /plusOpen|plusRef|composer-plus-menu|pickAndAttach\("photos"\)/);
 });
 
 test("pasted bytes stay in the session scratch directory", () => {

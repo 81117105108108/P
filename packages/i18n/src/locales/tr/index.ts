@@ -198,7 +198,7 @@ export const tr = {
     placeholderHint: "Komutlar için / · dosyalar için @ yazın",
     placeholderHomeHint: "Komutlar için / · dosyalar için @ yazın",
     placeholderShortcut: "Yeni satır için Shift+Enter · göndermek için Gönder",
-    addFiles: "Dosya ve daha fazlasını ekle",
+    addFiles: "Dosya ekle",
     attachFiles: "Dosya veya klasör ekle",
     addPhotos: "Fotoğraf ekle",
     captureAppshot: "Ekran görüntüsü al",

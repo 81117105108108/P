@@ -4868,20 +4868,23 @@ Each scenario is documented in this format:
 - **Preconditions**: The app is running with a home or Agent composer and a
   durable session. The native picker can select a text file and an image outside
   the active workspace.
-- **Steps**: 1) Open the Composer `+` menu and choose the file action. 2) Select
-  both fixtures. 3) Inspect the draft chips and send a prompt asking the agent
-  to read the text fixture and identify the image marker. 4) Inspect the
-  renderer request, session transcript, and the session scratch directory.
+- **Steps**: 1) Click the Composer `+` button; confirm it opens the native file
+  picker directly without an intermediate type-choice menu. 2) Select both
+  fixtures. 3) Inspect the draft chips and send a prompt asking the agent to
+  read the text fixture and identify the image marker. 4) Inspect the renderer
+  request, session transcript, and the session scratch directory.
 - **Expected**: The native picker returns a short-lived one-shot token, never a
   source absolute path, and the selections are copied into
-  `<data_dir>/scratch/<sessionId>/pasted/` before they enter the draft. Chips
-  show sanitized leaf names while prompt attachments reference only the copied
-  paths; the workspace is unchanged. The agent can call `Read` on the text
-  fixture, and a vision-capable model receives the image as an image block.
-  Durable messages retain metadata and refs only, never the source absolute
-  path or binary bytes. The file picker does not offer directory selection;
-  missing files, expired/replayed tokens, and oversized files return a visible
-  IPC error and write nothing.
+  `<data_dir>/scratch/<sessionId>/pasted/` before they enter the draft. The app
+  classifies each selected item from its MIME/extension metadata, so the same
+  picker handles both regular files and images. Chips show sanitized leaf names
+  while prompt attachments reference only the copied paths; the workspace is
+  unchanged. The agent can call `Read` on the text fixture, and a
+  vision-capable model receives the image as an image block. Durable messages
+  retain metadata and refs only, never the source absolute path or binary bytes.
+  The file picker does not offer directory selection; missing files,
+  expired/replayed tokens, and oversized files return a visible IPC error and
+  write nothing.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md` §13c,
   `03-runtime/04-data-storage.md`, `04-ux/08-component-spec.md` §11.7–11.8,
   ADR 0059, ADR 0101

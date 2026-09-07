@@ -2204,11 +2204,12 @@ reasoning-level control.
   above it is saved as UTF-8 in the session's scratch `pasted/` directory and
   inserts an inline temporary-file token at the paste position (D197, D209,
   D262, ADR 0059, ADR 0070, ADR 0131)
-- The Composer `+` menu offers native file and image pickers. Selected regular
-  files are copied into the active session's scratch `pasted/` directory before
-  their compact chips are added; the original absolute picker paths never enter
-  the prompt. Directory selections are rejected with the normal error toast in
-  the current MVP.
+- The Composer `+` button opens one native file picker with no type-choice menu.
+  The picker accepts regular files, and the importer classifies each selected
+  item as an image or file from its MIME/extension metadata before copying it
+  into the active session's scratch `pasted/` directory and adding its compact
+  chip; the original absolute picker paths never enter the prompt. Directory
+  selections are rejected with the normal error toast in the current MVP.
 - The compact chips retain structured kind/name/MIME metadata while keeping
   the textarea free of binary data. The selected model's models.dev
   capability controls dispatch when its exact models.dev record matches;

@@ -63,8 +63,6 @@ import {
   IconArrowUp,
   IconUndo2,
   IconPlus,
-  IconFolder,
-  IconImage,
   IconShield,
   IconStop,
   IconChevronDown,
@@ -657,8 +655,6 @@ export function Composer({
   );
   const [permissionOpen, setPermissionOpen] = useState(false);
   const permissionRef = useRef<HTMLDivElement>(null);
-  const [plusOpen, setPlusOpen] = useState(false);
-  const plusRef = useRef<HTMLDivElement>(null);
   const [modelThinkingOpen, setModelThinkingOpen] = useState(false);
   const [modelThinkingView, setModelThinkingView] =
     useState<ComposerMenuView>("root");
@@ -939,26 +935,9 @@ export function Composer({
 
   useEffect(() => {
     if (!controlsBlocked) return;
-    setPlusOpen(false);
     setPermissionOpen(false);
     setModelThinkingOpen(false);
   }, [controlsBlocked]);
-
-  useEffect(() => {
-    if (!plusOpen) return;
-    const onPointer = (e: MouseEvent) => {
-      if (!plusRef.current?.contains(e.target as Node)) setPlusOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPlusOpen(false);
-    };
-    window.addEventListener("mousedown", onPointer);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("mousedown", onPointer);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [plusOpen]);
 
   useEffect(() => {
     // Relative autocomplete references belong to the workspace that produced
@@ -1728,10 +1707,11 @@ export function Composer({
         ...(token ? { token } : {}),
       }));
 
-  const pickAndAttach = async (kind: "files" | "photos") => {
-    setPlusOpen(false);
+  const pickAndAttach = async () => {
     try {
-      const result = kind === "photos" ? await api.pickPhotos() : await api.pickFiles();
+      // The picker intentionally accepts every regular file. The importer
+      // classifies images from MIME/extension metadata after selection.
+      const result = await api.pickFiles();
       if (result.canceled || !result.token || inputBlocked) return;
 
       const editor = ref.current;
@@ -2204,44 +2184,20 @@ export function Composer({
 
           <div className="composer-toolbar">
             <div className="composer-left">
-              <div className="composer-plus" ref={plusRef}>
+              <div className="composer-plus">
                 <button
                   type="button"
-                  className={`icon-btn ${plusOpen ? "active" : ""}`}
+                  className="icon-btn"
                   title={t("chat.addFiles")}
                   aria-label={t("chat.addFiles")}
-                  aria-expanded={plusOpen}
-                  aria-haspopup="menu"
                   disabled={controlsBlocked || pasting}
                   onClick={() => {
                     setPermissionOpen(false);
-                    setPlusOpen((open) => !open);
+                    void pickAndAttach();
                   }}
                 >
                   <IconPlus size={15} aria-hidden="true" />
                 </button>
-                {plusOpen ? (
-                  <div className="composer-plus-menu" role="menu">
-                    <button
-                      type="button"
-                      className="composer-plus-item"
-                      role="menuitem"
-                      onClick={() => void pickAndAttach("files")}
-                    >
-                      <IconFolder size={15} aria-hidden="true" />
-                      <span>{t("chat.attachFiles")}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="composer-plus-item"
-                      role="menuitem"
-                      onClick={() => void pickAndAttach("photos")}
-                    >
-                      <IconImage size={15} aria-hidden="true" />
-                      <span>{t("chat.addPhotos")}</span>
-                    </button>
-                  </div>
-                ) : null}
               </div>
               <button
                 className="icon-btn mode-chip composer-mode-chip"
