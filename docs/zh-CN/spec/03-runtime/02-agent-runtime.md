@@ -49,12 +49,19 @@ crates/host-core (tool execution + permissions)
 ```ts
 interface AgentRuntime {
  prompt(input: PromptInput): Promise<{ turnId: string }>
+ requestGracefulStop(): { requested: boolean }
  abort(turnId?: string): Promise<void>
  getStatus(): RuntimeStatus
  dispose(): Promise<void>
  subscribe(handler: (event: NormalizedAgentEvent) => void): () => void
 }
 ```
+
+`requestGracefulStop()` 是针对当前活动运行时的一次性请求。pi 循环会在
+`turn_end` 之后、当前助手响应与这一批工具都已完成时对它求值，并在发出下一次
+模型请求之前正常地发出 `agent_end`。它不会取消进行中的提供商流或正在运行的
+工具。空闲的运行时返回 `{ requested: false }`；立即生效的 `abort()` 仍然是另
+一条独立的取消路径。
 
 ## 5. 提示流程
 
@@ -422,16 +429,19 @@ Goal 批准所承诺的内容与 Plan 批准所承诺的内容完全相同：`mo
 
 - 规范级别为 `off`、`minimal`、`low`、`medium`、`high`、`xhigh`、
   和 `max`。
-- Pi生成的模型目录对于推理支持具有权威性，
+- 随包的 models.dev 发布快照对于已发布的推理支持具有权威性，
   思维层面的映射、限制、输入模式、定价、标题和适配器
   每个已解决的已知模型的兼容性。
 - 提供商配置不能覆盖已知模型语义。未知
   自由格式的 id 仍然可以通过通用的纯文本、非推理的方式运行
   模型，因此仅公开 `off`。
-- 不支持的请求级别使用 pi 的最近支持级别规则：扫描
+- 不支持的请求级别采用所选 models.dev 模型的最近受支持级别规则：先向上扫描
   先向上，然后向下。非推理提供商总是决心
   `off`。
-- 有效电平传递给pi `Agent`；特定于提供商的请求
+- 视觉支持由同一条 models.dev 记录解析：只有 `input.includes("image")` 才启用
+  图片传输。未知/自定义模型 id 保持为保守的 text/path 模型，即使发现到的元数据
+  声称支持 `vision`。
+- 有效级别会传给 pi `Agent`；特定于提供商的请求
   序列化仍然是 pi-ai 的责任。
 - Pi `thinking` 块变为 `UiMessage.thinking` 并且
   `message_update.deltaThinking`。他们从不附加到 `content` 或
@@ -445,6 +455,10 @@ Goal 批准所承诺的内容与 Plan 批准所承诺的内容完全相同：`mo
   恢复为错误结果；辅助行丢失的工具行
   获得合成的仅呼叫辅助运营商，以便 call/result 对保留
 格式良好，适用于每个提供商 API。
+- 视觉运行时只从会话绑定的附件、scratch 与项目根目录中水合持久化的图片引用。
+  处于 20 MiB 内联安全上限之内的图片会成为临时的 pi-ai 图片块；超限或不可用的
+  图片则退化为安全的 `@path` 回退。超限历史的水合会直接复制文件，不会先把内容
+  读进内存。Base64 绝不会被还原进持久的 UI 消息或转录记录。
 - 失败的助理消息仍然是持久的诊断记录条目，但
   在以后的回合中永远不会恢复到 pi 模型上下文中。
 - 恢复的检查点可清除保留的助理消息中的提供商使用情况
