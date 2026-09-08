@@ -563,11 +563,6 @@ export function ProviderSetupDialog({
                 <ProviderHeadersEditor pairs={headerPairs} onChange={setHeaderPairs} />
               </div>
             </div>
-            <div className="provider-advanced-actions">
-              <Button variant="primary" onClick={() => setAdvancedOpen(false)}>
-                {t("settings.close")}
-              </Button>
-            </div>
           </div>
         </div>
       ) : null}

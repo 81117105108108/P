@@ -393,13 +393,6 @@
   padding: 2px;
 }
 
-.provider-advanced-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  flex: none;
-}
-
 .provider-setup-headers {
   display: flex;
   flex-direction: column;
@@ -463,10 +456,10 @@
   display: none;
 }
 
-/* Keep two header rows visible; additional rows scroll without moving models. */
+/* Keep five header rows visible; additional rows scroll without moving models. */
 .provider-setup-header-list {
   min-height: 0;
-  max-height: 116px;
+  max-height: min(220px, 30vh);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;

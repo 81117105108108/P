@@ -355,9 +355,10 @@ Each scenario is documented in this format:
   one signed-in vendor (OAuth) account; a capture proxy records outbound HTTP
   headers, including Codex and Anthropic adapters.
 - **Steps**: 1) Open the AI service and click the upper-right Advanced settings
-  action. Confirm a separate modal opens without changing the main form layout.
-  Use the common-header preset to add User-Agent, then import a JSON object
-  containing `X-Gateway: alpha` and enough headers to exceed two visible rows.
+  action. Confirm a separate modal opens without changing the main form layout,
+  and that its header close action is the only close control (no footer action
+  row). Use the common-header preset to add User-Agent, then import a JSON object
+  containing `X-Gateway: alpha` and enough headers to exceed five visible rows.
   Copy headers as JSON and confirm the clipboard is the pretty-printed persisted
   record (blank names omitted, last write wins) with localized success feedback.
   Confirm the header list scrolls inside the modal while the underlying model
@@ -373,8 +374,8 @@ Each scenario is documented in this format:
 - **Expected**: Non-empty custom headers are the last writer on that row's
   outbound HTTP (turns, subagents, one-shots, discovery, connection test,
   OAuth refresh). Empty restores pi-ai / `claude-cli` / OpenCode defaults.
-  Advanced keeps the header list in its own bounded scroll area, so additional
-  rows do not compress or hide the model panes. Escape and outside-click close
+  Advanced keeps up to five header rows visible and scrolls additional rows in its
+  own bounded area, so they do not compress or hide the model panes. Escape and outside-click close
   only the Advanced modal while it is open. The preset adds the expected
   User-Agent value, Copy JSON serializes the same `pairsToRecord` map saved on
   the row, JSON import accepts both supported object shapes, and
