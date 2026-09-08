@@ -547,6 +547,18 @@ Write/Edit 免提示裁决；其余一切按会话模式行事”。
 `04-ux/03-permission-ux.md` §6a（多个待处理请求）以及
 `04-ux/08-component-spec.md` §9.9（代表团如何解读）。
 
+### 5f.2 不存在同级或父级之间的通道（D326、ADR 0165）
+
+并发的受委托方之间不互发消息，父 agent 也不向其他会话发消息。进程内的
+`Peer` 邮箱（ADR 0138 / ADR 0140）与 host-core 的 A2A 代理（ADR 0147 /
+ADR 0162 / ADR 0164）均已撤销。
+
+协调工作仍然走既有的委托契约：父方撰写彼此独立的任务简报，启动 `Task`，
+再通过 `TaskWait` / `TaskList` / `TaskStop` 收集各自完备的报告。如果还需要
+下一轮工作，那就是一个新的 `Task`，其简报里包含先前的报告。`A2A` 与 `Peer`
+不是可分配的工具；定义中若出现这两个名字，会被当作未知工具名，并在解析时
+带警告丢弃。
+
 ## 6. 提供商和模型
 
 > 完整政策：`11-provider-model-system.md`、`12-provider-config-schema.md`、`13-model-catalog-and-selection.md`。
@@ -577,6 +589,32 @@ MVP UI 始终至少包括：
 - 支持abort/cancel中流
 
 本地模型通过 OpenAI 兼容端点（Ollama、LM Studio、vLLM 等）获得支持。
+
+### 6.1 一次性 Composer 增强
+
+Composer 增强使用与 agent 请求相同的已解析提供商绑定和重试分类，但会创建一个
+独立的补全上下文，其中恰好只有一条用户消息和那段静态的增强系统提示。它不会
+实例化会话 agent，不包含转录历史，不暴露工具，也不持久化任何回合。渲染器只
+拿到裁剪后的文本结果；API key 与厂商刷新凭据始终留在 Electron main。存在会话
+时，OpenCode Go 的一次性调用复用会话 id 作为 `x-opencode-session`；否则运行时
+会为该次调用合成一个 id，使网关接受该请求。
+
+### 6.2 OpenCode 会话路由标头
+
+对话、子代理、提示增强以及插件的一次性补全，只要其提供商满足下列任一条件——
+`apiStyle` 为 `opencode_go`、`vendorKey` 为 `opencode` 或 `opencode-go`、
+pi-ai 提供商 id 为上述值之一，或 base URL 的主机为 `opencode.ai`——都会发送：
+
+- `x-opencode-session`：持久的对话 id；调用方没有会话时则为一个按次生成的 UUID
+- `x-opencode-client: pi-desktop`
+- `User-Agent: pi-desktop/<APP_VERSION>`
+
+调用方自带的标头会覆盖 client 与 User-Agent 默认值。空的会话标头会由对话 id
+补回，使 OpenCode Go 不会返回 `MissingSessionID`。提供商行上的 `headers` 映射
+在这次合并之后应用（标头加上一层 fetch 包装），因此自定义值优先于 OpenCode
+默认值，也优先于适配器的最后写入。保留键无法冲掉 `x-opencode-session`。这属于
+agent 运行时的职责，与官方 Pi 编码 agent 的归属层保持一致；pi-ai 的 `sessionId`
+流选项并不会发出 `x-opencode-session`。
 
 
 ## 7. 系统提示组成
