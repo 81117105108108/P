@@ -8729,8 +8729,8 @@ app.whenReady().then(async () => {
   // A launch that lost the single-instance lock is already quitting. Never
   // create a window, a tray, or a child process on top of the running app.
   if (!hasSingleInstanceLock) return;
-  bootTiming.mark("when-ready");
   applyDevelopmentBranding();
+  bootTiming.mark("when-ready");
   try {
     await bootTiming.span("clipboard-history-start", () => clipboardHistory.start());
   } catch (error) {
