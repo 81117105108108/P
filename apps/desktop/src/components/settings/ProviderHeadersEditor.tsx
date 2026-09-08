@@ -1,10 +1,12 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { APP_VERSION } from "@pi-desktop/shared";
 import {
   KeyValueRows,
+  pairsToRecord,
   type KeyValuePair,
 } from "../extensions/KeyValueRows";
+import { IconCheck, IconCopy } from "../icons";
 import { Button, Select } from "../ui";
 
 type HeaderPreset = {
@@ -60,6 +62,10 @@ export function ProviderHeadersEditor({
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(copyTimer.current), []);
 
   const addPreset = (key: string) => {
     const preset = HEADER_PRESETS.find((item) => item.key === key);
@@ -68,6 +74,17 @@ export function ProviderHeadersEditor({
       (item) => item.key.trim().toLowerCase() === preset.key.toLowerCase(),
     );
     if (!exists) onChange([...pairs, preset]);
+  };
+
+  const copyHeaders = () => {
+    void navigator.clipboard.writeText(JSON.stringify(pairsToRecord(pairs), null, 2)).then(
+      () => {
+        setCopied(true);
+        window.clearTimeout(copyTimer.current);
+        copyTimer.current = window.setTimeout(() => setCopied(false), 1500);
+      },
+      () => undefined,
+    );
   };
 
   const importJson = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +118,16 @@ export function ProviderHeadersEditor({
               </option>
             ))}
           </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={copyHeaders}
+            aria-label={copied ? t("chat.copied") : t("chat.copy")}
+            title={copied ? t("chat.copied") : t("chat.copy")}
+          >
+            {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+            {copied ? t("chat.copied") : t("chat.copy")}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
