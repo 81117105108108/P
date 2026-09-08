@@ -25,6 +25,25 @@
 
 ---
 
+## 0.1 GitHub Pull Request 准入
+
+当提示包含 GitHub pull request URL 或本仓库中无歧义的 pull request 编号时，必须在重写该变更或开始后续完善之前完成本门禁：
+
+- [ ] 已获取 pull request 的标题、正文、文件、提交、评论、检查、草稿状态、base/head 以及关联 issue。
+- [ ] 已独立判断**原则**（真实且在范围内的问题；方案与基线、安全和架构兼容）。
+- [ ] 未把完整性缺口（规格、测试、i18n、e2e 文档、风格、命名）当作合入阻塞项。
+- [ ] 若原则成立：已先合入该 pull request 并保留贡献者提交；落地阻塞仅在作者工作之上追加了最小提交。
+- [ ] 仅在该 pull request 进入 `main` 之后，才用新的 R4 请求分支和工作树开始后续完善。
+- [ ] 若原则不成立或存在危害阻塞：未合入该 pull request，并已用评论记录证据。未悄悄重做该想法。
+- [ ] 除非用户明确要求，否则未合入草稿 pull request。
+- [ ] 评论使用该 pull request 的原文语言。
+- [ ] 未评论或合入无关 pull request。
+- [ ] 未对贡献者分支 force-push。未从 pull request 链接推断无关的远程发布。
+
+参见 [R6 — 原则没问题的链接 PR 先合入，再完善](/zh-CN/spec/06-delivery/03-ai-development-workflow#r6--原则没问题的链接-pr-先合入再完善)。
+
+---
+
 ## 1. 请求启动清单
 
 在为新请求编辑任何文件之前：
@@ -177,5 +196,6 @@
 | 9 | PR/MR 合并为 `main`；请求删除工作树和分支 | [R4 — 请求分支 + 工作树 + 合并门](/zh-CN/spec/06-delivery/03-ai-development-workflow#r4--request-branch--worktree--merge-gate) |
 | 10 | 磁盘上没有留下合并的工作树； `git worktree list` 没有该请求的过时条目 | [§6.1 合并清理清单](#61-merge-cleanup-checklist) |
 | 11 | 若链接了 GitHub issue：实现前已核实；以其原文语言评论；结论明确时已关闭 | [R5 — 先核实链接的 GitHub issue](/zh-CN/spec/06-delivery/03-ai-development-workflow#r5--先核实链接的-github-issue再回复并关闭) |
+| 12 | 若链接了 GitHub pull request：已审查原则；原则成立时已先合入；后续完善在合入之后；未丢掉贡献者工作 | [R6 — 原则没问题的链接 PR 先合入，再完善](/zh-CN/spec/06-delivery/03-ai-development-workflow#r6--原则没问题的链接-pr-先合入再完善) |
 
 如果任何一个门失败，则更改**未完成**。
