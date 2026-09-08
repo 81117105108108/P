@@ -154,6 +154,7 @@ import {
   type QueuedPrompt,
   type QueuedPrompts,
 } from "../lib/queued-prompts";
+import { settleBootstrapRequests } from "../lib/bootstrap-result";
 
 const ErrorCodes = {
   ...SharedErrorCodes,
@@ -1213,11 +1214,53 @@ export const useAppStore = create<AppState>((set, get) => ({
   errorRetriable: null,
 
   bootstrap: async () => {
+    let recoveredSettings: AppSettings | undefined;
     try {
+      const settingsRequest = api.getSettings().then(async (settingsRaw) => {
+        let settings = settingsRaw
+          ? {
+              ...settingsRaw,
+              defaultMode: normalizeMode(
+                (settingsRaw as { defaultMode?: unknown }).defaultMode,
+              ),
+            }
+          : settingsRaw;
+        // First-run default per D003: Agent. Never force-rewrite an existing
+        // user choice on boot.
+        if (settings && !settings.defaultMode) {
+          const next = { ...settings, defaultMode: "agent" as const };
+          try {
+            await api.setSettings(next);
+            settings = next;
+          } catch {
+            settings = next;
+          }
+        }
+        return settings;
+      });
+      const snapshotRequest = Promise.all([
+        api.getVersion(),
+        api.health(),
+        api.listSessions(),
+        api.listProviders(),
+        api.getProject(),
+        api.getOnboarding(),
+        api.listPlugins(),
+        api.listNotifications({ limit: 200 }),
+        api.pendingPlans(),
+      ]);
+      const bootstrapResult = await settleBootstrapRequests(
+        settingsRequest,
+        snapshotRequest,
+      );
+      recoveredSettings = bootstrapResult.settings;
+      if (!bootstrapResult.ok) {
+        throw bootstrapResult.error;
+      }
+      const settings = bootstrapResult.settings;
       const [
         version,
         health,
-        settingsRaw,
         sessions,
         providers,
         project,
@@ -1225,38 +1268,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         plugins,
         notifications,
         pendingPlansResult,
-      ] =
-        await Promise.all([
-          api.getVersion(),
-          api.health(),
-          api.getSettings(),
-          api.listSessions(),
-          api.listProviders(),
-          api.getProject(),
-          api.getOnboarding(),
-          api.listPlugins(),
-          api.listNotifications({ limit: 200 }),
-          api.pendingPlans(),
-        ]);
-      let settings = settingsRaw
-        ? {
-            ...settingsRaw,
-            defaultMode: normalizeMode(
-              (settingsRaw as { defaultMode?: unknown }).defaultMode,
-            ),
-          }
-        : settingsRaw;
-      // First-run default per D003: Agent. Never force-rewrite an existing
-      // user choice on boot.
-      if (settings && !settings.defaultMode) {
-        const next = { ...settings, defaultMode: "agent" as const };
-        try {
-          await api.setSettings(next);
-          settings = next;
-        } catch {
-          settings = next;
-        }
-      }
+      ] = bootstrapResult.snapshot;
       if (version.protocolVersion !== PROTOCOL_VERSION) {
         set({
           error: `Protocol mismatch: UI ${PROTOCOL_VERSION} vs app ${version.protocolVersion}`,
@@ -1380,6 +1392,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         ready: true,
         healthOk: false,
+        ...(recoveredSettings ? { settings: recoveredSettings } : {}),
         error: e instanceof Error ? e.message : String(e),
       });
     }

@@ -4,6 +4,12 @@
 
 Settings is a **full-window page** that replaces the app sidebar + main chrome (Codex electron behavior):
 
+- Settings remains usable when an unrelated startup read fails: a successfully
+  loaded settings snapshot is retained independently from the remaining
+  bootstrap data. If the settings read itself is unavailable, the content pane
+  shows a compact loading/failure state with a retry action instead of an empty
+  section.
+
 - Left settings rail only (sidebar surface `#f4f4f4` light / `#000` dark), **~275px** (Codex gold at 1200-wide)
 - Top of rail: traffic-light clearance, **Back to app** (`返回应用`), pill **Search settings…**
 - The 46px top band is a native window drag region across both the rail and the

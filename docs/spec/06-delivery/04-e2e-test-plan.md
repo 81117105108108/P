@@ -3485,6 +3485,11 @@ Each scenario is documented in this format:
   - On macOS the splash uses the same glass tint and sheen as the sidebar over native `under-window` vibrancy; the mounted shell stays hidden until the splash exit fade, then cross-fades in. Other platforms keep the opaque `--ds-bg-primary` fill.
   - No plain unbranded “Starting…” centered text as the only boot UI.
   - Overlay/dialog enter motion uses shared tokens; reduced motion keeps state changes without decorative duration.
+  - If a non-settings bootstrap request fails while the settings read is still
+    in flight, opening Settings still renders the loaded controls. If the
+    settings request itself fails, the active section shows a loading/failure
+    state and retry action rather than a blank content pane; retrying after the
+    local service recovers restores the controls without leaving Settings.
 - **Specs linked**: `04-ux/07-ui-design-system.md` §8, `04-ux/02-i18n-english-first.md`, decisions-log D146 / D304
 - **Acceptance**: A (app startup), Quality
 - **Milestone**: M5

@@ -1111,6 +1111,26 @@ export function SettingsPage() {
   const platform = (window.piDesktop?.platform ?? "darwin") as ShortcutPlatform;
 
   const [query, setQuery] = useState("");
+  const [recoveringSettings, setRecoveringSettings] = useState(!settings);
+  const [settingsRecoveryFailed, setSettingsRecoveryFailed] = useState(false);
+
+  const recoverSettings = useCallback(async () => {
+    setRecoveringSettings(true);
+    setSettingsRecoveryFailed(false);
+    try {
+      const recovered = await api.getSettings();
+      useAppStore.setState({ settings: recovered });
+    } catch {
+      setSettingsRecoveryFailed(true);
+    } finally {
+      setRecoveringSettings(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (settings) return;
+    void recoverSettings();
+  }, [settings, recoverSettings]);
 
   // Arriving from the global search dialog: scroll to and flash the row
   // whose title matches the pending anchor key. Rows are located by their
@@ -1216,6 +1236,7 @@ export function SettingsPage() {
 
   const activeTitleKey =
     navItems.find((item) => item.id === tab)?.titleKey ?? "settings.title";
+  const tabNeedsSettings = ["general", "ai", "shortcuts", "agent"].includes(tab);
 
   return (
     <div className="settings-shell settings-shell-full">
@@ -1273,6 +1294,24 @@ export function SettingsPage() {
       <div className="settings-content">
         <div className="settings-content-inner">
           <h1 className="settings-section-title">{t(activeTitleKey)}</h1>
+
+          {tabNeedsSettings && !settings ? (
+            <div className="settings-recovery" role="status" aria-live="polite">
+              {recoveringSettings ? (
+                <>
+                  <span className="route-pending-indicator" aria-hidden />
+                  <span>{t("common.loading")}</span>
+                </>
+              ) : settingsRecoveryFailed ? (
+                <>
+                  <span>{t("errors.HOST_UNAVAILABLE")}</span>
+                  <Button variant="secondary" onClick={() => void recoverSettings()}>
+                    {t("errors.action.retry")}
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          ) : null}
 
           {tab === "general" && settings && (
             <div className="settings-stack">
