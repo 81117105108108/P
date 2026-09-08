@@ -211,7 +211,7 @@ describe("parsePiModelConfig", () => {
 });
 
 describe("matching and sanitizing", () => {
-  it("treats the same endpoint + api style as already imported", () => {
+  it("matches only the same endpoint, api style, and credential", () => {
     const key = existingProviderMatchKey({
       baseUrl: "https://API.example.com/v1/",
       apiStyle: "chat_completions",
@@ -219,16 +219,78 @@ describe("matching and sanitizing", () => {
     expect(key).toBe("url:https://api.example.com/v1|chat_completions");
     expect(
       draftMatchesExisting(
-        { baseUrl: "https://api.example.com/v1", apiStyle: "chat_completions", vendorKey: "custom" },
-        [{ baseUrl: "https://API.example.com/v1/", apiStyle: "chat_completions", vendorKey: "other" }],
+        {
+          baseUrl: "https://api.example.com/v1",
+          apiStyle: "chat_completions",
+          vendorKey: "custom",
+          secretValue: "same-key",
+          hasSecret: true,
+        },
+        [
+          {
+            baseUrl: "https://API.example.com/v1/",
+            apiStyle: "chat_completions",
+            vendorKey: "other",
+            secretValue: "same-key",
+            hasSecret: true,
+          },
+        ],
       ),
     ).toBe(true);
     expect(
       draftMatchesExisting(
-        { baseUrl: "https://api.example.com/v1", apiStyle: "anthropic_messages", vendorKey: "custom" },
-        [{ baseUrl: "https://api.example.com/v1", apiStyle: "chat_completions" }],
+        {
+          baseUrl: "https://api.example.com/v1",
+          apiStyle: "chat_completions",
+          vendorKey: "custom",
+          secretValue: "different-key",
+          hasSecret: true,
+        },
+        [
+          {
+            baseUrl: "https://api.example.com/v1",
+            apiStyle: "chat_completions",
+            secretValue: "same-key",
+            hasSecret: true,
+          },
+        ],
       ),
     ).toBe(false);
+    expect(
+      draftMatchesExisting(
+        {
+          baseUrl: "https://api.example.com/v1",
+          apiStyle: "chat_completions",
+          vendorKey: "custom",
+          secretValue: "same-key",
+          hasSecret: true,
+        },
+        [
+          {
+            baseUrl: "https://api.example.com/v1",
+            apiStyle: "chat_completions",
+            hasSecret: false,
+          },
+        ],
+      ),
+    ).toBe(false);
+    expect(
+      draftMatchesExisting(
+        {
+          baseUrl: "https://api.example.com/v1",
+          apiStyle: "chat_completions",
+          vendorKey: "custom",
+          hasSecret: false,
+        },
+        [
+          {
+            baseUrl: "https://api.example.com/v1",
+            apiStyle: "chat_completions",
+            hasSecret: false,
+          },
+        ],
+      ),
+    ).toBe(true);
   });
 
   it("drops placeholder secrets", () => {

@@ -455,8 +455,10 @@ type ModelDescriptor = {
 - Settings → Import can copy provider/model rows from Claude Code, Codex,
   OpenCode, Pi, and CC Switch. The scan is explicit. Stored API keys are
   copied into the host secret store; OAuth/subscription grants are not.
-  An equivalent endpoint (normalized URL + API style) is skipped on
-  re-import. No protocol or schema version bump (D342 / ADR 0179).
+  An equivalent provider (normalized URL + API style + same credential) is
+  skipped on re-import. Different credentials at one endpoint remain
+  independent providers. No protocol or schema version bump
+  (D342 / ADR 0179 / ADR 0188).
 
 ### Model selector
 - search all models across enabled providers

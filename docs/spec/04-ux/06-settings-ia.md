@@ -369,10 +369,10 @@ system while preserving their different data ownership:
   Stored API keys from those configs are copied into the host secret store;
   subscription/OAuth logins are not copied. CC Switch (`~/.cc-switch`) is
   scanned as its own source so saved profiles, not only the currently
-  applied live file, can be imported. Re-importing an equivalent
-  endpoint (same normalized base URL and API style) is skipped. If the app
-  has no default model yet, the first newly created provider becomes the
-  default.
+  applied live file, can be imported. Re-importing an equivalent provider
+  (same normalized base URL, API style, and credential) is skipped; profiles
+  with different credentials at one endpoint remain separate. If the app has
+  no default model yet, the first newly created provider becomes the default.
 
 ### Project archive
 - Reuses the durable Projects index as a settings-scale management surface
