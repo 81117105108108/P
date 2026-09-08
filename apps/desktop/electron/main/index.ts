@@ -5683,7 +5683,6 @@ function registerIpc() {
     if (
       !mainWindow ||
       mainWindow.isDestroyed() ||
-      mainWindow.isFocused() ||
       !SystemNotification.isSupported()
     ) {
       return { shown: false };
@@ -5693,6 +5692,16 @@ function registerIpc() {
     const title = String(input.title ?? "").trim().slice(0, 100);
     const body = String(input.body ?? "").trim().slice(0, 240);
     if (!id || !sessionId || !title) return { shown: false };
+
+    const liveWindow = mainWindow !== null && !mainWindow.isDestroyed();
+    const isVisibleToUser =
+      liveWindow &&
+      mainWindow.isVisible() === true &&
+      mainWindow.isFocused() === true &&
+      notificationViewingSessionId === sessionId;
+    if (isVisibleToUser) {
+      return { shown: false };
+    }
 
     const notification = new SystemNotification({ title, body });
     notification.on("click", () => {

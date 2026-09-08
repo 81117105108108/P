@@ -1732,6 +1732,13 @@ export const fr = {
     "failedTitle": "{{sessionTitle}} a besoin d'attention",
     "failedBody": "La conversation n'a pas abouti.",
     "failedBodyWithCode": "Le chat s'est arrêté avec l'erreur {{code}}.",
+    "askTitle": "{{sessionTitle}} a besoin de votre réponse",
+    "askBody": "{{question}}",
+    "askBodyFallback": "La tâche nécessite votre réponse pour continuer.",
+    "permissionTitle": "{{sessionTitle}} nécessite une autorisation d'outil",
+    "permissionBody": "Autorisation requise pour exécuter {{toolName}}.",
+    "planApprovalTitle": "{{sessionTitle}} plan en attente d'approbation",
+    "planApprovalBody": "Le plan proposé est prêt pour examen.",
     "actionFailed": "Impossible de mettre à jour les notifications.",
     "justNow": "À l'instant"
   },
