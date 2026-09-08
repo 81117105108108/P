@@ -538,6 +538,17 @@
   padding: 7px 7px 3px;
 }
 
+.provider-models-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.provider-models-select-all {
+  flex: none;
+}
+
 .provider-models-title {
   margin: 0;
   color: var(--ds-text-secondary);

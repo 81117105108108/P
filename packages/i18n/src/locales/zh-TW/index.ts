@@ -969,6 +969,8 @@ export const zhTW = {
     availableForSubagentsHint: "允許 AI 在委派子任務時自動選用此模型",
     notSupported: "不支援",
     searchModelId: "搜尋模型 ID…",
+    selectAllVisibleModels: "全選",
+    deselectAllVisibleModels: "取消全選",
     reasoning: "思考",
     vision: "視覺",
     textOnly: "文本",

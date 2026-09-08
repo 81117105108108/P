@@ -2305,6 +2305,7 @@ dismissToast(id: number); // ToastHost internal / tests
 
 ### 19. 4 交互
 - 添加提供商打开模式对话框，对话框留在 overlay 内（可从 1040px 首选宽度收缩）。聚焦的凭据输入框须完整显示 2px 强调环，滚动区域为此留出间隙而不是裁切。Cancel/close 重置字段并关闭对话框
+- 左侧模型列表标题旁的全选复选框一次勾选或取消当前可见行；搜索过滤时只作用于匹配行，过滤外已选模型保持不变。可见行全部选中时为勾选，全部未选时为空，部分选中时为不确定态。
 - 保存创建提供商，存储秘密，成功后将其设置为默认值，并刷新列表
 - 测试连接调用 `providers.testConnection` 并祝酒 success/failure
 - 思考预设更新通过具有 D102 语义的 `providers.update` 持续存在
@@ -2312,6 +2313,7 @@ dismissToast(id: number); // ToastHost internal / tests
 
 ### 19. 5 辅助功能
 - 分段控件公开 `aria-pressed`
+- 发现列表标题旁的全选复选框有本地化无障碍名称（全选 / 取消全选），部分可见行被选中时为不确定态
 - 输入发送使用 `role="switch"` + `aria-checked`
 - 卡片操作保留可见的文本标签； Thinking select 有一个易于理解的名称
 - 空白和英雄区域暴露本地化标签

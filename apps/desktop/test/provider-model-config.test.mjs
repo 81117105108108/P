@@ -117,10 +117,24 @@ test("one picker component serves the service dialog and the account dialog", ()
     assert.doesNotMatch(source, /visibleRows/);
     assert.doesNotMatch(source, /addCustomModel/);
     assert.doesNotMatch(source, /toggleModel/);
+    assert.doesNotMatch(source, /applyVisibleModelSelection/);
+    assert.doesNotMatch(source, /selectAllVisibleModels/);
   }
   // Only the heading of the discovered list differs between them.
   assert.match(setupSource, /listTitle=\{t\("settings\.serviceModels"\)\}/);
   assert.match(vendorDialogSource, /listTitle=\{t\("settings\.accountModels"\)\}/);
+});
+
+test("the shared picker can select or clear every visible model at once", () => {
+  assert.match(pickerSource, /export function applyVisibleModelSelection/);
+  assert.match(pickerSource, /provider-models-select-all/);
+  assert.match(pickerSource, /toggleVisibleModels/);
+  assert.match(pickerSource, /settings\.selectAllVisibleModels/);
+  assert.match(pickerSource, /settings\.deselectAllVisibleModels/);
+  assert.match(pickerSource, /el\.indeterminate/);
+  // A filtered select-all must not drop models the filter is hiding.
+  assert.match(pickerSource, /a filtered select-all does not touch hidden matches/);
+  assert.match(pickerSource, /visibleRows\.length > 0/);
 });
 
 test("the shared picker owns the advanced per-model controls for both kinds", () => {

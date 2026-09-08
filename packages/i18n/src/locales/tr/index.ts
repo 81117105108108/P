@@ -979,6 +979,8 @@ export const tr = {
     availableForSubagentsHint: "Görevler alt ajanlara devredilirken AI’nin bu modeli kullanmasına izin ver",
     notSupported: "Desteklenmiyor",
     searchModelId: "Model kimliği ara…",
+    selectAllVisibleModels: "Tümünü seç",
+    deselectAllVisibleModels: "Tümünün seçimini kaldır",
     reasoning: "akıl yürütme",
     vision: "Görüntü",
     textOnly: "Metin",

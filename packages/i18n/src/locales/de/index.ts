@@ -958,6 +958,8 @@ export const de = {
     "availableForSubagentsHint": "Ermöglichen Sie AI, dieses Modell zu verwenden, wenn Aufgaben an Subagenten delegiert werden.",
     "notSupported": "Nicht unterstützt.",
     "searchModelId": "Modell-ID suchen…",
+    "selectAllVisibleModels": "Alle auswählen",
+    "deselectAllVisibleModels": "Auswahl aufheben",
     "reasoning": "Begründung",
     "vision": "Vision",
     "textOnly": "Text",

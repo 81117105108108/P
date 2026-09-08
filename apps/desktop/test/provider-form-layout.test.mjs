@@ -150,6 +150,17 @@ test("pane titles are section labels, not competing headings", () => {
   assert.match(block(".provider-setup-title"), /font-size: var\(--text-base-plus\)/);
 });
 
+test("the discovered list header hosts a select-all checkbox beside the title", () => {
+  assert.match(pickerSource, /provider-models-heading/);
+  assert.match(pickerSource, /provider-models-select-all/);
+  const heading = block(".provider-models-heading");
+  assert.match(heading, /display: flex/);
+  assert.match(heading, /align-items: center/);
+  assert.doesNotMatch(heading, /border:|box-shadow/);
+  const selectAll = block(".provider-models-select-all");
+  assert.match(selectAll, /flex: none/);
+});
+
 test("the dialog's actions live in the header, not in a footer bar", () => {
   assert.match(setupSource, /className="provider-setup-head-actions"/);
   // The bare X is replaced by a labelled Cancel.
