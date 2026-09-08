@@ -101,13 +101,12 @@ import {
 } from "../lib/assistant-turns";
 import { calculateTokenRate } from "../lib/context-usage";
 import {
-  IconActivity,
   IconArrowDown,
   IconBot,
   IconBranch,
   IconCheck,
   IconCircleAlert,
-  IconClock,
+  IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconCopy,
@@ -118,7 +117,6 @@ import {
   IconFolder,
   IconGlobe,
   IconImage,
-  IconListChecks,
   IconSheet,
   IconVideo,
   IconPencil,
@@ -953,30 +951,39 @@ function SubagentRunRows({
   agentName,
   onCollapse,
   scrollable = true,
+  variant = "inline",
 }: {
   run: SubagentRun;
   agentName: string;
   onCollapse?: () => void;
   /** Side-panel mode lets the parent panel own the only scrollbar. */
   scrollable?: boolean;
+  /** Dock headings are section labels; inline headings name the delegate. */
+  variant?: "inline" | "dock";
 }) {
   const { t } = useTranslation();
   const headingId = useId();
   if (run.items.length === 0) return null;
+  const dock = variant === "dock";
   return (
-    <div className="subagent-run">
+    <div className={dock ? "subagent-run is-dock" : "subagent-run"}>
       {onCollapse ? (
         <DisclosureCollapseRail
           label={t("chat.collapseDetails")}
           onCollapse={onCollapse}
         />
       ) : null}
-      <div className="subagent-run-heading" id={headingId}>
-        <IconBot size={13} aria-hidden />
+      <div
+        className={dock ? "subagent-run-heading is-dock" : "subagent-run-heading"}
+        id={headingId}
+      >
+        {dock ? null : <IconBot size={13} aria-hidden />}
         <span>
-          {agentName
-            ? t("chat.subagentWork", { agent: agentName })
-            : t("chat.subagentWorkUnnamed")}
+          {dock
+            ? t("chat.subagentProcess")
+            : agentName
+              ? t("chat.subagentWork", { agent: agentName })
+              : t("chat.subagentWorkUnnamed")}
         </span>
         <span className="subagent-run-count">
           {t("chat.processingSteps", { count: run.items.length })}
@@ -1086,8 +1093,8 @@ function delegateTaskDescription(message: UiMessage): string {
 }
 
 /**
- * The conversation-like view for a selected delegate. It shows the header, the
- * task sent to the AI, and the delegate's live thinking/tool/answer process.
+ * The side-sheet view for a selected delegate. It shows a sticky identity
+ * header, the task as an inset grouped card, and the live process timeline.
  * Reports and counters remain omitted from this compact surface.
  */
 export function SubagentDetail({
@@ -1132,9 +1139,11 @@ export function SubagentDetail({
       : "";
   const taskDescription = delegateTaskDescription(message);
   const taskBodyId = useId();
+  const taskLabelId = useId();
   const taskBodyRef = useRef<HTMLDivElement>(null);
   const [taskExpanded, setTaskExpanded] = useState(false);
   const [taskOverflow, setTaskOverflow] = useState(false);
+  const outcomeClass = outcome.replaceAll("_", "-");
 
   useLayoutEffect(() => {
     setTaskExpanded(false);
@@ -1162,73 +1171,79 @@ export function SubagentDetail({
 
   return (
     <div className="subagent-detail" data-testid="subagent-detail">
-      <div className="subagent-detail-heading">
-        <span className="subagent-detail-avatar" aria-hidden>
-          <IconBot size={17} />
-          <span className={`subagent-detail-status outcome-${outcome.replaceAll("_", "-")}`} />
-        </span>
-        <div className="subagent-detail-heading-copy">
-          <div className="subagent-detail-title-row">
-            <strong>{agentName || t("chat.subagentUnnamed")}</strong>
-            {modelId ? <span title={modelId}>{modelId}</span> : null}
-          </div>
-        </div>
-      </div>
-      <div
-        className="subagent-detail-summary"
-        role="list"
-        aria-label={t("panel.subagent")}
-      >
-        <div className="subagent-detail-stat" role="listitem">
-          <IconActivity size={14} aria-hidden />
-          <span>{t(`chat.subagentStatus.${outcome}`)}</span>
-        </div>
-        {duration ? (
-          <div className="subagent-detail-stat" role="listitem">
-            <IconClock size={14} aria-hidden />
-            <span>{duration}</span>
-          </div>
-        ) : null}
-        {delegate ? (
-          <div className="subagent-detail-stat" role="listitem">
-            <IconListChecks size={14} aria-hidden />
-            <span>{t("chat.processingSteps", { count: delegate.items.length })}</span>
-          </div>
-        ) : null}
-      </div>
-      <div className="subagent-detail-task-row message-row user">
-        <div className="message-col">
-          <div className="message-bubble subagent-detail-task-bubble">
-            <div
-              id={taskBodyId}
-              ref={taskBodyRef}
-              className={`message-user-text subagent-task-message-body${
-                taskExpanded ? " is-expanded" : " is-collapsed"
-              }`}
-            >
-              {taskDescription || t("panel.subagentTaskEmpty")}
-            </div>
-            {taskOverflow ? (
-              <button
-                type="button"
-                className="subagent-task-toggle"
-                aria-expanded={taskExpanded}
-                aria-controls={taskBodyId}
-                onClick={() => setTaskExpanded((expanded) => !expanded)}
-              >
-                {taskExpanded
-                  ? t("chat.subagentTaskCollapse")
-                  : t("chat.subagentTaskExpand")}
-              </button>
+      <header className="subagent-detail-hero">
+        <div className="subagent-detail-heading">
+          <span className="subagent-detail-avatar" aria-hidden>
+            <IconBot size={18} />
+            <span className={`subagent-detail-status outcome-${outcomeClass}`} />
+          </span>
+          <div className="subagent-detail-heading-copy">
+            <strong className="subagent-detail-name">
+              {agentName || t("chat.subagentUnnamed")}
+            </strong>
+            {modelId ? (
+              <span className="subagent-detail-model" title={modelId}>
+                {modelId}
+              </span>
             ) : null}
           </div>
         </div>
-      </div>
+        <div
+          className="subagent-detail-summary"
+          role="list"
+          aria-label={t("panel.subagent")}
+        >
+          <span
+            className={`subagent-detail-badge outcome-${outcomeClass}`}
+            role="listitem"
+          >
+            {t(`chat.subagentStatus.${outcome}`)}
+          </span>
+          {duration ? (
+            <span className="subagent-detail-meta" role="listitem">
+              {duration}
+            </span>
+          ) : null}
+        </div>
+      </header>
+      <section className="subagent-detail-task" aria-labelledby={taskLabelId}>
+        <div className="subagent-detail-section-label" id={taskLabelId}>
+          {t("panel.subagentTask")}
+        </div>
+        <div className="subagent-detail-task-card">
+          <div
+            id={taskBodyId}
+            ref={taskBodyRef}
+            className={`subagent-task-message-body selectable${
+              taskExpanded ? " is-expanded" : " is-collapsed"
+            }`}
+          >
+            {taskDescription || t("panel.subagentTaskEmpty")}
+          </div>
+          {taskOverflow ? (
+            <button
+              type="button"
+              className="subagent-task-toggle"
+              aria-expanded={taskExpanded}
+              aria-controls={taskBodyId}
+              onClick={() => setTaskExpanded((expanded) => !expanded)}
+            >
+              <span>
+                {taskExpanded
+                  ? t("chat.subagentTaskCollapse")
+                  : t("chat.subagentTaskExpand")}
+              </span>
+              <IconChevronDown size={12} aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      </section>
       {delegate ? (
         <SubagentRunRows
           run={delegate}
           agentName={agentName}
           scrollable={false}
+          variant="dock"
         />
       ) : null}
     </div>

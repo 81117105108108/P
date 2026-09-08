@@ -58,14 +58,16 @@ test("the side panel renders the live conversation process", () => {
   assert.match(panelSource, /selected\.item\.delegate/);
   assert.doesNotMatch(panelSource, /role="tablist"|aria-selected|subagent-panel-tabs/);
   assert.match(transcriptSource, /function delegateTaskDescription\(message: UiMessage\)/);
-  assert.match(detailSource, /className="subagent-detail-task-row message-row user"/);
-  assert.match(detailSource, /className="message-bubble subagent-detail-task-bubble"/);
+  assert.match(detailSource, /className="subagent-detail-hero"/);
+  assert.match(detailSource, /className="subagent-detail-task-card"/);
+  assert.match(detailSource, /panel.subagentTask/);
   assert.match(detailSource, /subagentTaskExpand/);
   assert.match(detailSource, /subagentTaskCollapse/);
   assert.match(detailSource, /aria-controls={taskBodyId}/);
   assert.match(workPanelCss, /-webkit-line-clamp: 4/);
   assert.match(detailSource, /<SubagentRunRows/);
   assert.match(detailSource, /scrollable=\{false\}/);
+  assert.match(detailSource, /variant="dock"/);
 });
 
 test("the side panel re-finds live rows instead of storing a stale render snapshot", () => {
@@ -108,33 +110,35 @@ test("the task dock keeps one body scroll owner while the process streams", () =
   assert.match(panelSource, /\[jumpToLatest, selection\.delegationId\]/);
 });
 
-test("the subagent dock uses one task anchor and a continuous process timeline", () => {
+test("the subagent dock uses a grouped identity, task card, and process timeline", () => {
   assert.match(
     detailSource,
-    /className="subagent-detail-summary"[\s\S]*?IconActivity[\s\S]*?IconClock[\s\S]*?IconListChecks/,
+    /className="subagent-detail-hero"[\s\S]*?subagent-detail-badge[\s\S]*?subagent-detail-meta/,
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail-summary\s*\{[\s\S]*?gap:\s*8px;/,
+    /\.subagent-detail-hero\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?top:\s*0;/,
   );
   assert.match(
     detailSource,
-    /className="subagent-detail-task-row message-row user"[\s\S]*?className="message-bubble subagent-detail-task-bubble"/,
+    /className="subagent-detail-task"[\s\S]*?className="subagent-detail-task-card"/,
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail-task-row\s*\{[\s\S]*?margin-right:\s*-16px;[\s\S]*?padding:\s*8px 0 12px;/,
+    /\.subagent-detail-task-card\s*\{[\s\S]*?border-radius:\s*var\(--radius-md\);[\s\S]*?background:\s*var\(--ds-tile\);/,
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail-task-row\.message-row\.user\s+\.message-bubble\s*\{[\s\S]*?max-width:\s*min\(100%, 92%\);/,
+    /\.subagent-detail-badge\s*\{[\s\S]*?border-radius:\s*var\(--radius-full\);/,
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail > \.subagent-run\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?padding:\s*8px 0 0;/,
+    /\.subagent-detail > \.subagent-run\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?padding:\s*0 16px;/,
   );
   assert.match(
     workPanelCss,
     /\.subagent-detail > \.subagent-run \.subagent-run-rows\s*\{[\s\S]*?border-left:\s*1px solid var\(--ds-border-subtle\);[\s\S]*?background:\s*transparent;/,
   );
+  assert.match(transcriptSource, /t\("chat.subagentProcess"\)/);
+  assert.match(detailSource, /variant="dock"/);
 });

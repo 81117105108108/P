@@ -131,8 +131,8 @@ test("a terminal tool event repairs a row lost during renderer reload", () => {
 test("the shared side-panel detail keeps the live conversation process", () => {
   assert.match(transcriptSource, /delegate\?: SubagentRun/);
   assert.match(detailSource, /function delegateTaskDescription\(message: UiMessage\)/);
-  assert.match(detailSource, /className="subagent-detail-task-row message-row user"/);
-  assert.match(detailSource, /className="message-bubble subagent-detail-task-bubble"/);
+  assert.match(detailSource, /className="subagent-detail-hero"/);
+  assert.match(detailSource, /className="subagent-detail-task-card"/);
   assert.match(detailSource, /taskOverflow/);
   assert.match(detailSource, /setTaskOverflow\(\(current\) => \(taskExpanded \? current : overflowing\)\)/);
   assert.match(detailSource, /aria-expanded=\{taskExpanded\}/);
@@ -302,7 +302,7 @@ test("a delegate's rows scroll in place instead of growing the page (D271)", () 
   );
   assert.match(
     transcriptSource,
-    /className="subagent-run-heading" id=\{headingId\}/,
+    /className=\{dock \? "subagent-run-heading is-dock" : "subagent-run-heading"\}[\s\S]*?id=\{headingId\}/,
   );
   assert.match(
     messagesCss,

@@ -7369,11 +7369,11 @@ This test plan spec is accepted when:
   topology node. 2) Observe the right-side dock while the delegate streams.
   3) Scroll the task/process conversation upward and then return to the latest
   output. 4) Switch sessions and return to the original session.
-- **Expected**: The right dock shows one compact identity row, a status/
-  elapsed-time/step-count summary, the Task call's description as a
-  right-aligned user message bubble capped at four lines with an inline
-  expand/collapse control for longer tasks, matching the main conversation, and
-  the delegate's live thinking/tool/answer process
+- **Expected**: The right dock shows a sticky identity header (avatar, name,
+  model caption, status capsule, and elapsed time), the Task call's description
+  as a full-width inset grouped card under a Task section label, capped at four
+  lines with an inline Show more / Show less control for longer tasks, and
+  the delegate's live thinking/tool/answer process under an Activity section
   on one subtle vertical timeline using the same row components as the main
   conversation.
   New rows appear without a reload and follow the bottom while pinned. The

@@ -923,8 +923,8 @@ workflow while rendering entirely inside the plugin's isolated page:
 ### 5.7 Subagent task conversation
 
 A topology node opens the selected delegate in the same right-side dock as the
-work panel. The dock intentionally mirrors a conversation surface: one compact
-header, the task description sent to the AI, and the delegate's live process.
+work panel. The dock is an inset grouped side sheet: a sticky identity header,
+the task description as a full-width card, and the delegate's live process.
 It does not render separate Details or Output tabs.
 
 - The selection is renderer-local and session-scoped: it stores only the
@@ -933,7 +933,7 @@ It does not render separate Details or Output tabs.
   process therefore update as thinking, tool calls, and answer fragments stream
   in.
 - The task description is the Task call's `task` argument, rendered as one
-  selectable conversation-like message. The delegate's thinking, tool rows,
+  selectable inset grouped card. The delegate's thinking, tool rows,
   and answer fragments reuse the same components and styling as the main
   conversation. Reports and counters remain omitted from this compact surface.
 - The dock has one scroll owner, the panel body. The scroll owner is
@@ -945,15 +945,15 @@ It does not render separate Details or Output tabs.
   While pinned to the latest output, the panel body follows new process rows;
   a real upward gesture pauses follow and exposes the standard jump-to-latest
   control.
-- The selected delegate uses a compact identity row followed by status,
-  elapsed-time, and step-count metadata. The task is rendered as a
-  right-aligned user message bubble using the main transcript treatment. The
-  bubble shows at most four lines by default; longer tasks expose an inline
-  expand/collapse control and are not rendered as a separate task card. The
-  bubble sits close to the panel's right edge, leaving only a small hover-safe
-  gap. The live process uses one subtle vertical timeline and no nested card,
-  so unused panel space reads as one continuous work surface instead of a stack
-  of floating boxes.
+- The selected delegate uses a sticky identity header: a 36px avatar with a
+  status dot, the agent name as the title, the model as a caption, and a
+  tinted status capsule beside elapsed time. The task is an inset grouped card
+  under a **Task** section label, left-aligned and full-width, not a transcript
+  bubble. The card shows at most four lines by default; longer tasks expose an
+  inline Show more / Show less control with a disclosure chevron. The live
+  process uses an **Activity** section label (it does not repeat the agent
+  name), a trailing step count, and one subtle vertical timeline with no nested
+  card, so unused panel space reads as one continuous work surface.
 - The dock header identifies the view as **Subagent** and offers close and
   collapse controls. Closing returns to the previously selected work-panel
   resource, if any; `Cmd/Ctrl + J` hides the whole dock. Selecting another node
@@ -1694,24 +1694,34 @@ never summarizes from its own arguments:
   └────────────────┘    └───────────────────────────────────────────┘
 ```
 
-Clicking a topology node opens a conversation-like task view in the right-side
+Clicking a topology node opens an inset grouped side sheet in the right-side
 work-panel dock rather than expanding the transcript:
 
 ```text
 ┌──────────────────────────────────────────────┐
-│ [bot] code-reviewer             Completed · 32s│
-├──────────────────────────────────────────────┤
-│ Task                                         │
-│ Review the changes in src/stores for …       │
+│ [bot] code-reviewer                          │
+│       claude-sonnet-4-5                      │
+│ [Completed]  32s                             │
+│                                              │
+│ TASK                                         │
+│ ┌──────────────────────────────────────────┐ │
+│ │ Review the changes in src/stores for …   │ │
+│ │                               Show more  │ │
+│ └──────────────────────────────────────────┘ │
+│                                              │
+│ ACTIVITY                            3 steps  │
+│ ● Thinking …                                 │
+│ ● Read store.ts                              │
 └──────────────────────────────────────────────┘
 ```
 
-- The dock renders one compact header with the delegate name, model, status, and
-  elapsed time, followed by the Task call's `task` argument as selectable
-  conversation-like text.
-- Reports, counters, nested tool rows, and workflow output are intentionally
-  not rendered in this surface. The topology card remains a compact summary in
-  the transcript and does not gain height when the dock opens.
+- The dock renders a sticky identity header with the delegate name, model,
+  status capsule, and elapsed time, followed by the Task call's `task` argument
+  as a selectable inset grouped card and the live process timeline.
+- Reports and counters remain omitted from this surface. The live thinking,
+  tool, and answer process is shown on the dock timeline. The topology card
+  remains a compact summary in the transcript and does not gain height when
+  the dock opens.
 - The selected task is re-found from the session's live/retained messages, so
   the header status and elapsed time stay current while the delegate runs.
 - A missing or deleted task renders a localized unavailable state. Delegation
