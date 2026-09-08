@@ -8,7 +8,9 @@ import {
   statSync,
   rmSync,
 } from "node:fs";
-import { basename, join, dirname, relative, resolve, sep } from "node:path";
+import { open as openFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 import { AsyncLocalStorage } from "node:async_hooks";
 import {
@@ -133,6 +135,11 @@ export type PluginPanelRequest = {
   netDomains?: readonly string[];
   /** Development panels show the host drag-band reminder in their chrome. */
   development?: boolean;
+};
+
+export type PluginPanelBridgeContext = {
+  /** Absolute path recorded by the panel preload for a real drop gesture. */
+  droppedPath?: string;
 };
 
 /** Transport to one plugin host process (ADR 0008). */
@@ -299,6 +306,8 @@ const HOST_API_ALLOWLIST = new Set([
   "ui.showNativeNotification",
   "workspace.get",
   "fs.readText",
+  "fs.stat",
+  "fs.readRange",
   "fs.readPreview",
   "fs.openDefault",
   "fs.reveal",
@@ -410,6 +419,8 @@ export const MAX_COMPLETE_MESSAGE_CHARS = 200_000;
 const MAX_GLOB_MATCHES = 500;
 /** Entries returned for one directory. A tree is walked lazily, not dumped. */
 const MAX_LIST_ENTRIES = 1000;
+/** Maximum bytes one plugin range call may cross the broker with. */
+const MAX_FS_READ_RANGE_BYTES = 8 * 1024 * 1024;
 /** Directories `pi.fs.glob` never walks into; they are noise and are denied anyway. */
 const GLOB_SKIP_DIRS = new Set([".git", "node_modules", ".venv", "__pycache__"]);
 /** Entries in one plugin's write ledger; oldest are dropped past this. */
@@ -436,6 +447,8 @@ type LoadedPlugin = {
   userRoot?: string;
   /** Timestamps of recent deletes, backing the rate brake. */
   deletes: number[];
+  /** Memory-only grants created by a real panel drop gesture. */
+  dropGrants: Map<string, { fullPath: string; requestPath: string }>;
   child?: PluginProcessHandle;
   pending: Map<string, PendingCall>;
   nextCallId: number;
@@ -933,6 +946,7 @@ export class PluginRuntime {
       fsPolicy: access.policy,
       legacyFs: access.legacy,
       deletes: [],
+      dropGrants: new Map(),
       child,
       pending: new Map(),
       nextCallId: 1,
@@ -1172,6 +1186,7 @@ export class PluginRuntime {
     pluginId: string,
     channel: string,
     payload?: Record<string, unknown>,
+    context?: PluginPanelBridgeContext,
   ): Promise<unknown> {
     const loaded = this.loaded.get(pluginId);
     if (!loaded) throw apiError("NOT_FOUND", `plugin not loaded: ${pluginId}`);
@@ -1211,6 +1226,24 @@ export class PluginRuntime {
         return { ok: true };
       case "fs.readText":
         return api.fs.readText(String(payload?.path ?? ""));
+      case "fs.stat":
+        return api.fs.stat(
+          String(payload?.path ?? ""),
+          typeof payload?.grantId === "string" ? payload.grantId : undefined,
+        );
+      case "fs.readRange":
+        return api.fs.readRange(
+          String(payload?.path ?? ""),
+          Number(payload?.byteOffset),
+          Number(payload?.length),
+          typeof payload?.grantId === "string" ? payload.grantId : undefined,
+        );
+      case "fs.registerDropped":
+        return this.registerDroppedFile(
+          loaded,
+          String(payload?.path ?? ""),
+          context?.droppedPath,
+        );
       case "fs.readPreview":
         return api.fs.readPreview(String(payload?.path ?? ""));
       case "fs.openDefault":
@@ -2536,6 +2569,45 @@ export class PluginRuntime {
   }
 
   /**
+   * Turn a real panel drop into a one-file, read-only grant. The panel host
+   * proves the gesture; this method still re-resolves and rechecks the path so
+   * a symlink or a protected file cannot turn that gesture into broader reach.
+   */
+  private registerDroppedFile(
+    loaded: LoadedPlugin,
+    requestPath: string,
+    droppedPath?: string,
+  ): { grantId: string } {
+    this.assertPermission(loaded, "fs.read");
+    if (!droppedPath || !isAbsolute(requestPath) || resolve(requestPath) !== resolve(droppedPath)) {
+      this.auditFs(loaded, "read", requestPath, "PERMISSION_DENIED");
+      throw apiError("PERMISSION_DENIED", "file was not dropped into this plugin panel");
+    }
+    let full: string;
+    try {
+      full = realpathSync(requestPath);
+      if (!statSync(full).isFile()) throw new Error("not a file");
+    } catch {
+      this.auditFs(loaded, "read", requestPath, "NOT_FOUND");
+      throw apiError("NOT_FOUND", `cannot register dropped file: ${requestPath}`);
+    }
+    if (this.isProtectedPath(full) || isDeniedFsPath(normalizeFsPath(full))) {
+      this.auditFs(loaded, "read", requestPath, "PERMISSION_DENIED");
+      throw apiError("PERMISSION_DENIED", "dropped path is reserved by the app");
+    }
+    const grantId = randomUUID();
+    loaded.dropGrants.set(grantId, { fullPath: full, requestPath: resolve(requestPath) });
+    this.services.audit?.({
+      pluginId: loaded.manifest.id,
+      api: "fs.registerDropped",
+      ok: true,
+      ts: Date.now(),
+      path: `<dropped>/${basename(full)}`,
+    });
+    return { grantId };
+  }
+
+  /**
    * Resolve one file request and decide whether it may proceed.
    *
    * Four gates in a fixed order, because each one is only sound behind the
@@ -2548,9 +2620,46 @@ export class PluginRuntime {
     loaded: LoadedPlugin,
     mode: PluginFsMode,
     requestPath: string,
-    options: { create?: boolean } = {},
+    options: { create?: boolean; dropGrantId?: string } = {},
   ): Promise<{ full: string; rel: string; root: string }> {
     this.assertPermission(loaded, `fs.${mode}`);
+    if (typeof options.dropGrantId === "string") {
+      if (mode !== "read") {
+        throw apiError("PERMISSION_DENIED", "dropped-file grants are read-only");
+      }
+      const grant = loaded.dropGrants.get(options.dropGrantId);
+      if (!grant) {
+        this.auditFs(loaded, mode, requestPath, "PERMISSION_DENIED");
+        throw apiError("PERMISSION_DENIED", "dropped-file grant is missing or expired");
+      }
+      if (!isAbsolute(requestPath) || resolve(requestPath) !== grant.requestPath) {
+        this.auditFs(loaded, mode, requestPath, "PERMISSION_DENIED");
+        throw apiError("PERMISSION_DENIED", "path does not match the dropped-file grant");
+      }
+      let full = grant.fullPath;
+      try {
+        full = realpathSync(full);
+      } catch {
+        this.auditFs(loaded, mode, requestPath, "NOT_FOUND");
+        throw apiError("NOT_FOUND", `path not found: ${requestPath}`);
+      }
+      let requestedFull: string;
+      try {
+        requestedFull = realpathSync(requestPath);
+      } catch {
+        this.auditFs(loaded, mode, requestPath, "NOT_FOUND");
+        throw apiError("NOT_FOUND", `path not found: ${requestPath}`);
+      }
+      if (full !== grant.fullPath || requestedFull !== grant.fullPath || !statSync(full).isFile()) {
+        this.auditFs(loaded, mode, requestPath, "PERMISSION_DENIED");
+        throw apiError("PERMISSION_DENIED", "dropped file was replaced");
+      }
+      if (this.isProtectedPath(full) || isDeniedFsPath(normalizeFsPath(full))) {
+        this.auditFs(loaded, mode, requestPath, "PERMISSION_DENIED");
+        throw apiError("PERMISSION_DENIED", "dropped path is reserved by the app");
+      }
+      return { full, rel: `<dropped>/${basename(full)}`, root: dirname(full) };
+    }
     const rule: PluginFsRule = loaded.fsPolicy[mode] ?? { root: "workspace", scope: [] };
     const root =
       rule.root === "userSelected" ? loaded.userRoot : this.services.getWorkspacePath();
@@ -2892,6 +3001,77 @@ export class PluginRuntime {
           });
           return content;
         },
+        stat: async (pathFromRoot: string, grantId?: string) => {
+          const { full, rel } = await this.resolveFsRequest(loaded, "read", pathFromRoot, {
+            dropGrantId: grantId,
+          });
+          let info: ReturnType<typeof statSync>;
+          try {
+            info = statSync(full);
+          } catch (error) {
+            this.auditFs(loaded, "read", rel, "NOT_FOUND");
+            throw apiError("NOT_FOUND", error instanceof Error ? error.message : String(error));
+          }
+          if (!info.isFile()) {
+            this.auditFs(loaded, "read", rel, "INVALID_ARGUMENT");
+            throw apiError("INVALID_ARGUMENT", "only files can be stated");
+          }
+          this.services.audit?.({
+            pluginId,
+            api: "fs.stat",
+            ok: true,
+            ts: Date.now(),
+            path: rel,
+          });
+          return { size: info.size, mtimeMs: info.mtimeMs };
+        },
+        readRange: async (
+          pathFromRoot: string,
+          byteOffset: number,
+          length: number,
+          grantId?: string,
+        ) => {
+          const { full, rel } = await this.resolveFsRequest(loaded, "read", pathFromRoot, {
+            dropGrantId: grantId,
+          });
+          if (
+            !Number.isSafeInteger(byteOffset) ||
+            byteOffset < 0 ||
+            !Number.isSafeInteger(length) ||
+            length < 0 ||
+            length > MAX_FS_READ_RANGE_BYTES
+          ) {
+            this.auditFs(loaded, "read", rel, "INVALID_ARGUMENT");
+            throw apiError(
+              "INVALID_ARGUMENT",
+              `byte range must be a non-negative offset and a length up to ${MAX_FS_READ_RANGE_BYTES} bytes`,
+            );
+          }
+          const info = statSync(full);
+          if (!info.isFile()) {
+            this.auditFs(loaded, "read", rel, "INVALID_ARGUMENT");
+            throw apiError("INVALID_ARGUMENT", "only files can be read by range");
+          }
+          const handle = await openFile(full, "r");
+          try {
+            const buffer = Buffer.alloc(length);
+            const { bytesRead } = await handle.read(buffer, 0, length, byteOffset);
+            this.services.audit?.({
+              pluginId,
+              api: "fs.readRange",
+              ok: true,
+              ts: Date.now(),
+              path: rel,
+              data: { byteOffset, length: bytesRead, totalSize: info.size },
+            });
+            return {
+              bytes: Uint8Array.from(buffer.subarray(0, bytesRead)),
+              totalSize: info.size,
+            };
+          } finally {
+            await handle.close().catch(() => {});
+          }
+        },
         readPreview: async (pathFromRoot: string) => {
           const { full, rel } = await this.resolveFsRequest(
             loaded,
@@ -3041,6 +3221,7 @@ export class PluginRuntime {
             path: string;
             isDirectory: boolean;
             size?: number;
+            mtimeMs?: number;
           }> = [];
           for (const name of names.sort()) {
             if (entries.length >= MAX_LIST_ENTRIES) break;
@@ -3069,6 +3250,7 @@ export class PluginRuntime {
               path: childRel,
               isDirectory: false,
               size: st.size,
+              mtimeMs: st.mtimeMs,
             });
           }
           this.services.audit?.({

@@ -72,6 +72,15 @@ test("plugin panel window controls stay private, bounded, and accessible", () =>
   );
 });
 
+test("plugin panels expose host-owned dropped-file authorization", () => {
+  assert.match(preloadSource, /webUtils\.getPathForFile\(file\)/);
+  assert.match(preloadSource, /pi-plugin-panel-drop/);
+  assert.match(preloadSource, /event\.dataTransfer\?\.files/);
+  assert.match(hostSource, /fs\.registerDropped/);
+  assert.match(hostSource, /consumeDroppedPath\(event\.sender\.id, payload\?\.path\)/);
+  assert.match(hostSource, /DROPPED_PATH_TTL_MS/);
+});
+
 test("plugin content is offset below the strict 46px host drag band", () => {
   assert.match(preloadSource, /getComputedStyle\(body\)\.paddingTop/);
   assert.match(preloadSource, /padding-top/);
