@@ -184,6 +184,29 @@ Plan 和 shell 记录使用相同的 `sessionId`、`turnId` 和 `toolCallId`
 `.pi/plan/`、哈希值和大小； shell 日志包括目录 ID 和方言，
 绝不是来自渲染器的任意可执行命令行或路径哈希。
 
+## 7b. 启动、剪贴板与更新器计时
+
+首个窗口变慢几乎从来不是单个数字能解释的。请通过 `app/timing.log` 中可 grep 的
+`[timing] kind=<boot|clipboard|updater>` 行来归因：
+
+| kind | phase | 测量内容 |
+|---|---|---|
+| boot | `when-ready` | 进程模块加载 → Electron `app.whenReady` |
+| boot | `clipboard-history-start` | 首次原生剪贴板采样（基线） |
+| boot | `host` | host-core 生成 + 握手（`spawnedMs`、`handshakeMs`） |
+| boot | `sidecar` | agent sidecar 生成 + `sidecar.configure` |
+| boot | `plugin-restore` | 每个已启用插件的 `utilityProcess` 加载 |
+| boot | `window-created` / `window-loaded` / `window-shown` | BrowserWindow 分配、`loadFile`、`ready-to-show` |
+| boot | `renderer-bootstrap` | 渲染器 settings/snapshot IPC 直到 `ready` |
+| clipboard | `poll` | 一次历史采样（`formatsMs`、`readImageMs`、`toPngMs`、`bytes`） |
+| updater | `check-start` / `check-done` | GitHub 更新源检查，附带 `outcome=ok\|timeout\|error` |
+
+- `elapsedMs` 从进程启动开始计时；`durationMs` 只计该阶段本身。
+- 剪贴板采样始终记录第一次轮询。之后的轮询仅在超过 25ms（限流）或 100ms
+  （始终记录）时才记录，并且绝不包含剪贴板内容。
+- 自动更新检查在首个窗口存在之后才调度，不在启动路径上等待，并把等待时间限制
+  在 8s，使 Chromium 约 60s 的 GitHub 超时无法把更新器状态钉在 `checking` 上。
+
 ## 8. 面向用户的诊断
 
 MVP 提供：
