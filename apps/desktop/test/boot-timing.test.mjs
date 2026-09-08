@@ -132,6 +132,11 @@ test("main boot path records the spans needed to diagnose a blank first window",
   }
   assert.match(mainSource, /timingMessage\("clipboard"/);
   assert.match(mainSource, /toPngMs/);
+  assert.match(
+    mainSource,
+    /const pluginStarted = Date.now\(\);\s*try \{/,
+    "plugin restore duration must be in scope for both success and failure marks",
+  );
 });
 
 test("renderer bootstrap emits a greppable boot timing line", async () => {

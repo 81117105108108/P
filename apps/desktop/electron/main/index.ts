@@ -5561,8 +5561,8 @@ async function bootBackends() {
     rememberPluginScopes(listed.plugins ?? []);
     for (const p of listed.plugins ?? []) {
       if (p.enabled && p.path) {
+        const pluginStarted = Date.now();
         try {
-          const pluginStarted = Date.now();
           await plugins.loadFromPath(p.path, p.permissions ?? [], {
             development: p.source === "dev",
           });

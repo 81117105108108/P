@@ -274,7 +274,10 @@ export class AppUpdaterController {
         }
         // Auto checks fail quietly. Drop "checking" so a 60s GitHub hang
         // cannot skip the next interval or freeze Settings on a spinner.
-        if (this.state.status === "checking") {
+        // Read through getState(): check() already narrowed this.state.status
+        // away from "checking", but the checking-for-update listener can set
+        // it during the awaited race.
+        if (this.getState().status === "checking") {
           this.setState({ status: "idle", error: undefined });
         }
         return this.state;
