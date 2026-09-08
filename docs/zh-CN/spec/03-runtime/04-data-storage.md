@@ -340,7 +340,7 @@ CREATE TABLE sessions (
                                           'high', 'xhigh', 'max')),
   permission_mode TEXT NOT NULL DEFAULT 'inherit' -- D115: inherit follows settings
                 CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto')),
-  source      TEXT,                            -- import origin: claude-code | codex | opencode | pi | workbuddy
+  source      TEXT,                            -- import origin: claude-code | codex | opencode | pi
   pinned      INTEGER NOT NULL DEFAULT 0,
   last_seq    INTEGER NOT NULL DEFAULT 0,      -- message ordinal allocator
   created_at  INTEGER NOT NULL,

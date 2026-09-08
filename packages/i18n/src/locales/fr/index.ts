@@ -698,7 +698,6 @@ export const fr = {
     "importSourceOpenCode": "OpenCode",
     "importSourceCodex": "Codex",
     "importSourcePi": "Pi",
-    "importSourceWorkBuddy": "WorkBuddy",
     "importSourceCcSwitch": "CC Switch",
     "importModelsTitle": "Configuration du modèle",
     "importModelsScanDesc": "Recherchez les paramètres du fournisseur local et du modèle. Les clés API stockées sont copiées ; les connexions par abonnement ne le sont pas.",
