@@ -153,6 +153,10 @@ jobs:
             -c.mac.forceCodeSigning=true \
             -c.mac.notarize=true
 
+      - name: Staple macOS installer ticket
+        if: matrix.platform == 'macos'
+        run: scripts/staple-macos-release-dmg.sh apps/desktop/release
+
       - name: Verify signed and notarized macOS installer
         if: matrix.platform == 'macos'
         run: scripts/verify-macos-release.sh apps/desktop/release

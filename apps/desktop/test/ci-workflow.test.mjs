@@ -147,6 +147,10 @@ test("tag releases sign, notarize, and verify each macOS installer before upload
   assert.match(releaseWorkflowSource, /-c\.mac\.notarize=true/);
   assert.match(
     releaseWorkflowSource,
+    /Staple macOS installer ticket[\s\S]*?scripts\/staple-macos-release-dmg\.sh apps\/desktop\/release[\s\S]*?Verify signed and notarized macOS installer/,
+  );
+  assert.match(
+    releaseWorkflowSource,
     /Verify signed and notarized macOS installer[\s\S]*?scripts\/verify-macos-release\.sh apps\/desktop\/release/,
   );
 });

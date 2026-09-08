@@ -68,6 +68,7 @@ pnpm --filter @pi-desktop/desktop exec electron-builder --mac "--${MAC_ARCH}" \
   -c.mac.forceCodeSigning=true \
   -c.mac.notarize=true
 
+scripts/staple-macos-release-dmg.sh apps/desktop/release
 scripts/verify-macos-release.sh apps/desktop/release
 
 echo "==> Done. Artifacts in apps/desktop/release/"

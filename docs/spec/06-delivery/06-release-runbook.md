@@ -184,7 +184,8 @@ runner. The macOS package step receives `CSC_LINK`, `CSC_KEY_PASSWORD`,
 `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` only from
 GitHub Actions secrets. It forces code signing and notarization, then verifies
 the Developer ID authority, code-signing integrity, Gatekeeper assessment, and
-stapled app and DMG tickets before any artifact upload. The per-architecture
+stapled app ticket. It explicitly staples and validates the generated DMG
+before any artifact upload. The per-architecture
 `latest-mac.yml` files are renamed before upload; the publish job merges them
 into one feed after downloading both artifacts.
 
