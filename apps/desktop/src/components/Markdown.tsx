@@ -31,9 +31,13 @@ import {
   IconCircleAlert,
   IconCode,
   IconCopy,
+  IconExternal,
+  IconGlobe,
   IconImage,
   IconWorkflow,
 } from "./icons";
+import { createPortal } from "react-dom";
+import { api } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useReferencedImageDataUrl } from "../lib/use-referenced-image-data-url";
 import {
@@ -476,19 +480,53 @@ function Anchor({
   href,
   ...rest
 }: ComponentProps<"a"> & { node?: unknown }) {
+  const { t } = useTranslation();
   const root = useAppStore((s) => s.workspace?.path);
   const baseDir = useContext(MarkdownBaseDirContext);
   const openFile = useAppStore((s) => s.openFileInWorkPanel);
   const openUrl = useAppStore((s) => s.openUrlInWorkPanel);
-  // Plain click previews in the work panel (browser tab for http(s), files
-  // viewer for workspace paths). Modified clicks fall through to _blank,
-  // which main routes to shell.openExternal; in-window navigation is blocked.
+  const showToast = useAppStore((s) => s.showToast);
+  const linkOpenTarget = useAppStore((s) => s.settings?.linkOpenTarget ?? "workpanel");
+
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (!menuPosition) return;
+    const close = () => setMenuPosition(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuPosition(null);
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuPosition]);
+
+  const onContextMenu = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!href || !/^https?:\/\//i.test(href)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const x = Math.min(e.clientX, window.innerWidth - 200);
+    const y = Math.min(e.clientY + 4, window.innerHeight - 150);
+    setMenuPosition({ top: y, left: x });
+  };
+
+  // Plain click previews in the work panel (or external browser based on setting).
+  // Modified clicks fall through to _blank, which main routes to shell.openExternal.
   const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     if (!href) return;
     if (/^https?:\/\//i.test(href)) {
       e.preventDefault();
-      openUrl(href);
+      if (linkOpenTarget === "external") {
+        void api.browserOpenExternal(href);
+      } else {
+        openUrl(href);
+      }
       return;
     }
     const rel = toWorkspaceRel(safeDecodeUri(href), root, baseDir);
@@ -498,9 +536,70 @@ function Anchor({
     }
   };
   return (
-    <a {...rest} href={href} onClick={onClick} target="_blank" rel="noopener noreferrer">
-      {children}
-    </a>
+    <>
+      <a
+        {...rest}
+        href={href}
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {children}
+      </a>
+      {menuPosition &&
+        createPortal(
+          <div
+            className="sidebar-row-menu sidebar-floating-menu"
+            role="menu"
+            style={{
+              top: menuPosition.top,
+              left: menuPosition.left,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuPosition(null);
+                if (href) void api.browserOpenExternal(href);
+              }}
+            >
+              <IconExternal size={14} />
+              {t("settings.linkContextMenuOpenExternal", { defaultValue: "Open in default browser" })}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuPosition(null);
+                if (href) openUrl(href);
+              }}
+            >
+              <IconGlobe size={14} />
+              {t("settings.linkContextMenuOpenWorkpanel", { defaultValue: "Open in work panel" })}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuPosition(null);
+                if (href) {
+                  void navigator.clipboard.writeText(href);
+                  showToast(t("settings.linkCopied", { defaultValue: "Link copied to clipboard" }), {
+                    variant: "success",
+                  });
+                }
+              }}
+            >
+              <IconCopy size={14} />
+              {t("settings.linkContextMenuCopy", { defaultValue: "Copy link address" })}
+            </button>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 

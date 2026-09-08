@@ -242,6 +242,47 @@ function CommandShellRow({
   );
 }
 
+function LinkOpenTargetRow({
+  settings,
+  saveSettings,
+}: {
+  settings: AppSettings;
+  saveSettings: (patch: Partial<AppSettings>) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const current = settings.linkOpenTarget ?? "workpanel";
+  return (
+    <SettingsRow
+      title={t("settings.linkOpenTarget")}
+      description={t("settings.linkOpenTargetDesc")}
+    >
+      <div
+        className="settings-segment"
+        role="group"
+        aria-label={t("settings.linkOpenTarget")}
+      >
+        {([
+          ["workpanel", "settings.linkOpenTargetWorkpanel"],
+          ["external", "settings.linkOpenTargetExternal"],
+        ] as const).map(([value, labelKey]) => (
+          <button
+            key={value}
+            type="button"
+            className={cx(
+              "settings-segment-item",
+              current === value && "active",
+            )}
+            aria-pressed={current === value}
+            onClick={() => void saveSettings({ linkOpenTarget: value })}
+          >
+            {t(labelKey)}
+          </button>
+        ))}
+      </div>
+    </SettingsRow>
+  );
+}
+
 function LargePasteThresholdRow({
   settings,
   saveSettings,
@@ -1382,6 +1423,7 @@ export function SettingsPage() {
                   </div>
                 </SettingsRow>
                 <CommandShellRow settings={settings} saveSettings={saveSettings} />
+                <LinkOpenTargetRow settings={settings} saveSettings={saveSettings} />
                 <SettingsRow
                   title={t("settings.enterToSend")}
                   description={t("settings.enterToSendDesc")}
