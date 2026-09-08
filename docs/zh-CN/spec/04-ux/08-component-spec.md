@@ -2174,7 +2174,7 @@ MainChat 底部的输入区域，用于撰写和发送提示。支持多行输�
 
 - `ToastHost`（在 `components/Toast.tsx` 中）渲染堆栈；在 `App.tsx` 中的每个 shell 分支安装一次
 - 每张卡片：16px 变体图标（语义色调）·消息·X 关闭按钮
-- Surface：`bg-elevated-opaque` + 1px `border-subtle` + `shadow-dialog`，radius-md-plus — 与菜单相同的浮动系列； [07-ui-design-system.md §11.8](/zh-CN/spec/04-ux/07-ui-design-system#118-toast) 中的指标
+- Surface：`bg-elevated-opaque` + 1px `border-subtle` + `shadow-dialog`，radius-md-plus — 与菜单相同的浮动系列； [07-ui-design-system.md §11.8](/zh-CN/spec/04-ux/07-ui-design-system#_11-8-toast) 中的指标
 
 ### 17.3 API
 
