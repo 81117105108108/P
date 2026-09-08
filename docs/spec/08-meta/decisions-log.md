@@ -3839,3 +3839,18 @@ D193, and D194.
   heading is remaining tokens plus percentage; inner section rules stay
   forbidden (D297). Assistant meta keeps the model badge.
 - See ADR 0184, `04-ux/08-component-spec.md` §8.3 / §11.3, and E2E-060d.
+
+## 2026-09-08 — macOS sidebar uses the source-list vibrancy material (D347)
+
+- Dark-theme CSS over `under-window` vibrancy painted a light plate on macOS 26
+  Liquid Glass. The 40% charcoal tint could not keep the dock in the dark
+  range, so session rows sat on a washed gray sidebar beside an opaque dark
+  main pane.
+- Decision D347: the main window uses Electron `vibrancy: "sidebar"` instead of
+  `under-window`. `nativeTheme.themeSource` follows the app theme preference
+  (`system` / `light` / `dark` / plugin base) so native menus and the vibrancy
+  plate match the renderer. The thin `--ds-sidebar-glass-tint` recipe is
+  unchanged. Amends D304.
+- `macos-sidebar-vibrancy.test.mjs` asserts the sidebar material and
+  `themeSource` assignment. See `04-ux/08-component-spec.md` §1.7 and
+  US-UI-74 / E2E-076.

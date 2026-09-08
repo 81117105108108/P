@@ -2744,3 +2744,15 @@ D193 和 D194。
 - 紧凑上下文检查器原先挂在最新助手回合下方，会话一滚动就够不着。协作者同意把唯一入口移到模型选择器旁，而不是两处显示同一份数字。
 - 决策 D347：检查器放在输入框右侧工具栏、模型 × 推理芯片左侧，始终对应当前最新一条已报告用量的助手回合。触发器是圆环加百分比。弹层标题为剩余 tokens + 百分比；内部分隔线仍然禁止（D297）。答案下方的助理元只保留模型徽章。
 - 见 ADR 0184、`04-ux/08-component-spec.md` §8.3 / §11.3 与 E2E-060d。
+
+## 2026-09-08 —— macOS 侧边栏改用 source-list vibrancy 材质（D347）
+
+- 深色主题 CSS 叠在 `under-window` vibrancy 上时，macOS 26 Liquid Glass 会画出
+  一块浅色底板。40% 炭黑 tint 压不住，会话行就像浅色侧栏贴在不透明深色主面板
+  旁边。
+- 决策 D347：主窗口改用 Electron `vibrancy: "sidebar"`，不再用 `under-window`。
+  `nativeTheme.themeSource` 跟随应用主题偏好（`system` / `light` / `dark` /
+  插件 base），让原生菜单和毛玻璃底板与渲染器一致。薄的
+  `--ds-sidebar-glass-tint` 配方不变。修正 D304。
+- `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质和 `themeSource` 赋值。见
+  `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。
