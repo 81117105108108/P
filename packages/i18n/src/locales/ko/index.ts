@@ -1236,6 +1236,8 @@ export const ko = {
   panel: {
     title: "작업 패널",
     subagent: "서브에이전트",
+    subagentTask: "작업",
+    subagentTaskEmpty: "작업 설명이 없습니다.",
     subagentClose: "서브에이전트 세부 정보 닫기",
     subagentEmpty: "서브에이전트 세부 정보를 더 이상 사용할 수 없습니다.",
     collapse: "작업 패널 숨기기",

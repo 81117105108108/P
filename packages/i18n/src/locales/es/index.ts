@@ -1215,6 +1215,8 @@ export const es = {
   "panel": {
     "title": "Panel de trabajo",
     "subagent": "Subagente",
+    "subagentTask": "Tarea",
+    "subagentTaskEmpty": "No hay descripción de la tarea.",
     "subagentClose": "Cerrar detalles del subagente",
     "subagentEmpty": "Los detalles del subagente ya no están disponibles.",
     "collapse": "Ocultar panel de trabajo",

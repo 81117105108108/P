@@ -6,6 +6,10 @@ const transcriptSource = await readFile(
   new URL("../src/components/ChatTranscript.tsx", import.meta.url),
   "utf8",
 );
+const detailSource = transcriptSource.slice(
+  transcriptSource.indexOf("function delegateTaskDescription"),
+  transcriptSource.indexOf("/**\n * A truthful one-level graph", transcriptSource.indexOf("function delegateTaskDescription")),
+);
 const runtimeSource = await readFile(
   new URL("../../../packages/agent-runtime/src/runtime.ts", import.meta.url),
   "utf8",
@@ -124,21 +128,14 @@ test("a terminal tool event repairs a row lost during renderer reload", () => {
   assert.match(storeSource, /toolName: message\.toolName \?\? completed\.toolName/);
 });
 
-test("delegate rows remain available to the shared side-panel detail renderer", () => {
+test("the shared side-panel detail is a conversation-like task view", () => {
   assert.match(transcriptSource, /delegate\?: SubagentRun/);
-  assert.match(transcriptSource, /const inlineOpen = variant !== "topology" && open;/);
-  assert.match(
-    transcriptSource,
-    /\{inlineOpen && delegate \? \([\s\S]*?<SubagentRunRows[\s\S]*?run=\{delegate\}[\s\S]*?agentName=\{agentName\}/,
-  );
-  assert.match(transcriptSource, /export function SubagentDetail\(/);
-  assert.match(transcriptSource, /buildToolPresentation\(message, \{/);
-  assert.match(transcriptSource, /<SubagentRunRows run=\{delegate\} agentName=\{agentName\} \/>/);
-  assert.match(transcriptSource, /<div className="subagent-run">/);
-  // The nested rows are the same components, so a delegate's tool calls and
-  // reasoning read exactly like the parent's in the side panel.
-  assert.match(transcriptSource, /<ToolRow message=\{item\.message\} \/>/);
-  assert.match(transcriptSource, /className="subagent-answer"/);
+  assert.match(detailSource, /function delegateTaskDescription\(message: UiMessage\)/);
+  assert.match(detailSource, /className="subagent-task-message"/);
+  assert.match(detailSource, /panel\.subagentTask/);
+  assert.match(detailSource, /panel\.subagentTaskEmpty/);
+  assert.doesNotMatch(detailSource, /<ToolDetailBlocks blocks=\{blocks\}/);
+  assert.doesNotMatch(detailSource, /<SubagentRunRows run=\{delegate\} agentName=\{agentName\} \/>/);
 });
 
 test("a Task row is expandable and names the delegate it used", () => {

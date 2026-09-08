@@ -1060,21 +1060,19 @@ When drag/drop is implemented, these patterns should apply:
 - Button appears as soon as upward scrolling releases follow mode
 - Click button: scrolls to bottom, resumes auto-scroll
 - Button disappears when at bottom
-- An expanded delegate run's `.subagent-run-rows` scroller uses that same
-  contract independently of the parent transcript (D302): expanding pins to
-  the latest output, new nested rows keep the viewport at the bottom while
-  pinned, the first upward gesture pauses follow and shows a nested
-  jump-to-latest control, and a layout clamp or programmatic follow `scrollTo`
-  never releases it. Native overflow anchoring is disabled on that scroller.
-- Clicking a delegation topology node opens its details in the right-side
-  work-panel dock instead of expanding the transcript. The node remains a
-  compact summary; the dock re-finds the selected session's live rows so
-  streamed output, status, and elapsed time continue updating. Selecting a
-  different node replaces the dock content, closing it restores the prior
-  resource view when present, and switching sessions or routes hides the
-  selection. `Cmd/Ctrl + J` hides the whole dock, including an active subagent
-  detail. The dock's nested scroller follows independently from the parent
-  transcript.
+- The subagent task dock uses the same single-body scroll owner as the work
+  panel. It does not mount a nested `.subagent-run-rows` workflow scroller;
+  therefore a long task description can scroll in the dock body without a
+  second scrollbar or an empty tail.
+- Clicking a delegation topology node opens a conversation-like task view in the
+  right-side work-panel dock instead of expanding the transcript. The dock has
+  one compact header and the Task call's selectable description; it does not
+  render separate details, output, or workflow tabs. The panel body is the only
+  scroll owner, so a long task description cannot create a second workflow
+  scrollbar or an empty tail. Selecting another node replaces the task in
+  place, closing it restores the prior resource view when present, and
+  switching sessions or routes hides the selection. `Cmd/Ctrl + J` hides the
+  whole dock.
 
 ### 9.1a Sidebar project path and open folder
 

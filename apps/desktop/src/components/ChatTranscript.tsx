@@ -1064,24 +1064,30 @@ function SubagentRunFollow({
   );
 }
 
+/** The task text sent to the delegate, shown as the conversation-like body. */
+function delegateTaskDescription(message: UiMessage): string {
+  const args = message.toolArgs;
+  if (!args || typeof args !== "object" || Array.isArray(args)) return "";
+  const task = (args as { task?: unknown }).task;
+  return typeof task === "string" ? task.trim() : "";
+}
+
 /**
- * Full detail for the selected delegate. It is shared by the transcript's
- * inline fallback and the right-side work-panel dock so the two surfaces never
- * drift in how they render briefs, reports, or nested activity.
+ * The compact conversation-like view for a selected delegate. It intentionally
+ * shows only the header and the task sent to the AI; reports and tool traces
+ * remain out of this surface.
  */
 export function SubagentDetail({
   message,
-  delegate,
   delegationStatuses,
   delegationTimings,
 }: {
   message: UiMessage;
-  delegate?: SubagentRun;
   delegationStatuses?: ReadonlyMap<string, SubagentOutcome>;
   delegationTimings?: ReadonlyMap<string, SubagentTiming>;
 }) {
   const { t } = useTranslation();
-  const agentName = delegateAgentName(message, delegate);
+  const agentName = delegateAgentName(message);
   const modelId = delegateModelId(message);
   const outcome = subagentOutcome(message, delegationStatuses);
   const payload = toolResultPayload(message);
@@ -1109,11 +1115,7 @@ export function SubagentDetail({
     typeof durationMs === "number" && durationMs > 0
       ? formatToolDuration(durationMs / 1000)
       : "";
-  const nestedReport = delegate?.items.some((item) => item.kind === "answer");
-  const blocks = buildToolPresentation(message, {
-    hideSummaryArg: true,
-    ...(nestedReport ? { hideDelegateReport: true } : {}),
-  });
+  const taskDescription = delegateTaskDescription(message);
 
   useEffect(() => {
     if (outcome !== "running") return;
@@ -1140,14 +1142,12 @@ export function SubagentDetail({
           </span>
         </div>
       </div>
-      {blocks.length > 0 ? (
-        <div className="subagent-detail-blocks">
-          <ToolDetailBlocks blocks={blocks} />
+      <div className="subagent-task-message">
+        <div className="subagent-task-message-label">{t("panel.subagentTask")}</div>
+        <div className="subagent-task-message-body">
+          {taskDescription || t("panel.subagentTaskEmpty")}
         </div>
-      ) : null}
-      {delegate ? (
-        <SubagentRunRows run={delegate} agentName={agentName} />
-      ) : null}
+      </div>
     </div>
   );
 }

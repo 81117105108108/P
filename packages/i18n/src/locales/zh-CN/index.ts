@@ -1226,6 +1226,8 @@ export const zhCN = {
   panel: {
     title: "工作面板",
     subagent: "子智能体",
+    subagentTask: "任务",
+    subagentTaskEmpty: "暂无任务描述。",
     subagentClose: "关闭子智能体详情",
     subagentEmpty: "子智能体详情已不可用。",
     collapse: "收起工作面板",

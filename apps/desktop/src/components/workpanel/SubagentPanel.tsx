@@ -67,7 +67,6 @@ export function SubagentPanel({ selection }: { selection: SubagentPanelSelection
     () => findSelectedSubagent(messages, selection.delegationId),
     [messages, selection.delegationId],
   );
-
   const delegationStatuses = useMemo<ReadonlyMap<string, SubagentOutcome>>(
     () =>
       selected
@@ -97,7 +96,6 @@ export function SubagentPanel({ selection }: { selection: SubagentPanelSelection
         {selected ? (
           <SubagentDetail
             message={selected.item.message}
-            {...(selected.item.delegate ? { delegate: selected.item.delegate } : {})}
             delegationStatuses={delegationStatuses}
             delegationTimings={delegationTimings}
           />

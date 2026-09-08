@@ -7344,87 +7344,29 @@ This test plan spec is accepted when:
   `runtime.test.ts` subagent suite and host-core `rpc/mod.rs` delegate-scope
   tests; desktop journey pending)
 
-#### E2E-162: An expanded delegate run scrolls without growing the transcript
+#### E2E-162 / E2E-173: Delegate workflow scrolling
+
+- **Status**: Superseded by E2E-180. The subagent dock no longer renders
+  delegate reports or workflow rows, so nested workflow scrolling and
+  jump-to-latest behavior are not part of the current UI contract.
+
+#### E2E-180: A subagent task opens as a conversation in the side dock
 
 - **Preconditions**: A project-bound Agent session with a mocked provider stream
-  where one `explorer` delegate performs 40 tool calls and returns a long
-  report, plus a `TaskWait` whose joined reports approach the 50k-character
-  bound.
-- **Steps**: 1) Note the transcript scroll position and the parent's next row,
-  then expand the delegation node. 2) Scroll to the end of the delegate's rows
-  and keep scrolling. 3) Tab to the run's row area and scroll with the keyboard.
-  4) Confirm the run heading and the collapse rail remain visible while the rows
-  scroll. 5) Expand the `TaskWait` row and inspect the joined reports and a
-  30-entry roster table. 6) Repeat at a short viewport height and at a narrow
-  chat width.
-- **Expected**: Expanding the node does not push the parent's next row out of
-  view: the delegate's rows scroll inside a bounded area at most 420px or 48dvh
-  tall. Reaching the end of that area does not chain into scrolling the
-  transcript behind it. The area is reachable and scrollable by keyboard with a
-  visible focus ring, and the run heading plus the hairline collapse rail stay
-  visible and unclipped throughout. The lifecycle row's joined reports and its
-  roster table each scroll within their own bounded block rather than stretching
-  the page, and the report block remains copyable. At a short viewport the run
-  area shrinks with `dvh` instead of overflowing, and at a narrow width no
-  horizontal page overflow appears.
-- **Specs linked**: `04-ux/08-component-spec.md` §9.9, ADR 0062,
-  decisions-log D271
-- **Acceptance**: C (conversation), Quality
-
-#### E2E-173: An expanded live delegate run follows its latest output
-
-- **Preconditions**: A project-bound Agent session with a mocked provider
-  stream where one `explorer` delegate is still running: it has already
-  produced enough thinking and tool rows to overflow the bounded
-  `.subagent-run-rows` area, and it continues to append rows and stream an
-  answer after the card is expanded.
-- **Steps**: 1) Expand the running delegation node and leave the nested
-  scroller untouched. 2) Watch new nested rows arrive (thinking, tool calls,
-  streamed answer). 3) Scroll the nested area upward to reread an earlier
-  tool row while the delegate is still producing output. 4) Click the nested
-  jump-to-latest control. 5) Repeat with keyboard scrolling (`Tab` to the
-  labelled run group, then `PageUp` / `ArrowUp`). 6) Confirm the parent
-  transcript's own follow state is unchanged: if it was pinned it stays
-  pinned; if the user had scrolled the transcript up, it stays unpinned.
-- **Expected**: Expanding pins the nested scroller to the newest row. While
-  pinned, new nested output stays in view without the user scrolling. The
-  first real upward gesture pauses nested follow, leaves earlier rows in
-  view as new output appends below, and shows a jump-to-latest control over
-  the nested scroller (not the parent transcript's control). Clicking it, or
-  scrolling back within 48px of the nested bottom, re-pins and jumps to the
-  latest nested row. A layout clamp or programmatic follow `scrollTo` does
-  not release nested follow. The parent transcript's pin / jump-to-latest
-  state is independent. The run heading and collapse rail remain visible and
-  unclipped.
-- **Specs linked**: `04-ux/08-component-spec.md` §9.9,
-  `04-ux/09-interaction-patterns.md` §9.1, decisions-log D271 / D302
-- **Acceptance**: C (conversation), Quality
-- **Milestone**: M6+
-- **Status**: Unit/source-contract covered (`subagent-transcript.test.mjs`,
-  `transcript-scroll.test.mjs`); desktop journey pending
-
-#### E2E-180: An expanded subagent opens in the side dock
-
-- **Preconditions**: A project-bound Agent session with a mocked provider stream
-  where one `explorer` delegate has a Task brief, at least one nested tool row,
-  and a streamed answer. The work panel is initially closed.
+  where one `explorer` delegate has a Task description. The work panel is
+  initially closed.
 - **Steps**: 1) Expand the activity group if needed and click the `explorer`
-  topology node. 2) Observe the right-side dock while the delegate continues
-  streaming. 3) Scroll the delegate's nested rows and the parent transcript
-  independently. 4) Click another topology node, then close the subagent detail.
-  5) Switch sessions and return to the original session.
-- **Expected**: The node remains a compact summary in the transcript; its brief,
-  report, status, elapsed time, and nested activity open in the right-side dock
-  without increasing the transcript height or moving the parent's scroll
-  position. Streaming rows and lifecycle status updates are reflected in the
-  dock, and nested follow-scroll remains independent of the parent transcript.
-  Selecting another node replaces the dock content without changing its width.
-  Closing returns to the prior resource view when one exists, otherwise hides
-  the dock. Session switching hides the selection and returning never shows a
-  different session's delegate. A missing/deleted delegate shows a localized
-  unavailable state rather than stale or cross-session content.
+  topology node. 2) Observe the right-side dock. 3) Select and copy the task
+  description. 4) Switch sessions and return to the original session.
+- **Expected**: The right dock shows one compact header and the Task call's
+  description as a selectable conversation-like message. No Details, Output,
+  or Workflow tab appears, and no nested workflow scrollbar or empty tail is
+  rendered. The dock body has at most one scrollbar when the description is
+  long. The transcript remains the same height and keeps its scroll position.
+  Session switching hides the selection and returning never shows another
+  session's task. Missing data shows a localized unavailable state.
 - **Specs linked**: `04-ux/08-component-spec.md` §5.7,
-  `04-ux/09-interaction-patterns.md` §1.6
+  `04-ux/09-interaction-patterns.md` §9.1
 - **Acceptance**: C (conversation), Quality
 - **Milestone**: M6+
 - **Status**: Documented; desktop journey pending

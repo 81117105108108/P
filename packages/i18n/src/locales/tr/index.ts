@@ -1236,6 +1236,8 @@ export const tr = {
   panel: {
     title: "Çalışma paneli",
     subagent: "Alt ajan",
+    subagentTask: "Görev",
+    subagentTaskEmpty: "Görev açıklaması yok.",
     subagentClose: "Alt ajan ayrıntılarını kapat",
     subagentEmpty: "Alt ajan ayrıntıları artık kullanılamıyor.",
     collapse: "Çalışma panelini gizle",

@@ -18,6 +18,10 @@ const transcriptSource = await readFile(
   new URL("../src/components/ChatTranscript.tsx", import.meta.url),
   "utf8",
 );
+const detailSource = transcriptSource.slice(
+  transcriptSource.indexOf("export function SubagentDetail"),
+  transcriptSource.indexOf("/**\n * A truthful one-level graph", transcriptSource.indexOf("export function SubagentDetail")),
+);
 const storeSource = await readFile(
   new URL("../src/stores/app-store.ts", import.meta.url),
   "utf8",
@@ -42,6 +46,19 @@ test("a topology node opens a session-scoped side-panel selection", () => {
   assert.match(storeSource, /if \(state\.subagentPanel\) \{/);
   assert.match(storeSource, /state\.closeSubagentPanel\(\)/);
   assert.match(storeSource, /if \(get\(\)\.workPanelOpen\) get\(\)\.collapseWorkPanel\(\)/);
+});
+
+test("the side panel renders only a conversation-like task", () => {
+  assert.match(panelSource, /<SubagentDetail/);
+  assert.match(panelSource, /data-testid="subagent-panel"/);
+  assert.doesNotMatch(panelSource, /role="tablist"|aria-selected|subagent-panel-tabs/);
+  assert.match(transcriptSource, /function delegateTaskDescription\(message: UiMessage\)/);
+  assert.match(transcriptSource, /const task = \(args as \{ task\?: unknown \}\)\.task/);
+  assert.match(detailSource, /className="subagent-task-message"/);
+  assert.match(detailSource, /panel\.subagentTask/);
+  assert.match(detailSource, /panel\.subagentTaskEmpty/);
+  assert.doesNotMatch(detailSource, /<ToolDetailBlocks blocks=\{blocks\}/);
+  assert.doesNotMatch(detailSource, /<SubagentRunRows run=\{delegate\} agentName=\{agentName\} \/>/);
 });
 
 test("the side panel re-finds live rows instead of storing a stale render snapshot", () => {
@@ -70,9 +87,11 @@ test("the work-panel dock hosts subagent details without creating a resource tab
   assert.match(workPanelSource, /if \(subagentPanel\) setContextOpen\(false\)/);
 });
 
-test("the side-panel body scrolls while the conversation keeps its own layout", () => {
+test("the task dock has one body scroll owner", () => {
   assert.match(workPanelCss, /\.subagent-panel \{[^}]*flex: 1/);
   assert.match(workPanelCss, /\.subagent-panel-scroll \{[^}]*overflow-y: auto/);
-  assert.match(workPanelCss, /\.subagent-detail \.subagent-run \{[^}]*margin: 12px 0 0/);
-  assert.match(workPanelCss, /\.subagent-detail \.subagent-run-rows \{[^}]*max-height: min\(520px, 58dvh\)/);
+  assert.match(workPanelCss, /\.subagent-task-message \{/);
+  assert.match(workPanelCss, /\.subagent-task-message-body \{[^}]*white-space: pre-wrap/);
+  assert.doesNotMatch(workPanelCss, /\.subagent-detail \.subagent-run/);
+  assert.doesNotMatch(workPanelCss, /\.subagent-detail \.subagent-run-rows/);
 });

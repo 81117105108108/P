@@ -1215,6 +1215,8 @@ export const de = {
   "panel": {
     "title": "Arbeitsfenster",
     "subagent": "Unteragent",
+    "subagentTask": "Aufgabe",
+    "subagentTaskEmpty": "Keine Aufgabenbeschreibung.",
     "subagentClose": "Unteragent-Details schließen",
     "subagentEmpty": "Die Unteragent-Details sind nicht mehr verfügbar.",
     "collapse": "Arbeitsfenster ausblenden",

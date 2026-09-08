@@ -1234,6 +1234,8 @@ export const en = {
   panel: {
     title: "Work panel",
     subagent: "Subagent",
+    subagentTask: "Task",
+    subagentTaskEmpty: "No task description.",
     subagentClose: "Close subagent details",
     subagentEmpty: "Subagent details are no longer available.",
     collapse: "Hide work panel",

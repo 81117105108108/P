@@ -916,28 +916,28 @@ workflow while rendering entirely inside the plugin's isolated page:
   Browser is user-driven (no agent control); Files is read-only
 - Single panel instance; no per-tab detach or split
 
-### 5.7 Subagent detail dock
+### 5.7 Subagent task conversation
 
-A topology node's detail disclosure opens the selected delegate in the same
-right-side dock as the work panel. It does not expand the transcript or add a
-resource tab. The transcript keeps the coordinator card and compact node
-summary in place, so opening a long delegate run cannot push the parent's next
-message out of view.
+A topology node opens the selected delegate in the same right-side dock as the
+work panel. The dock intentionally mirrors a conversation surface: one compact
+header followed by the task description sent to the AI. It does not render
+separate Details, Output, or Workflow tabs.
 
 - The selection is renderer-local and session-scoped: it stores only the
-  `sessionId` and delegation id, then re-finds the current Task and its
-  `parentToolCallId` rows from the live/retained transcript. Streaming thinking,
-  tool calls, reports, status, and elapsed time therefore update in the dock.
-- The dock header identifies the view as **Subagent** and offers the standard
-  close and collapse controls. Closing the detail returns to the previously
-  selected work-panel resource, if any; otherwise it hides the dock. The
-  `Cmd/Ctrl + J` work-panel toggle hides the subagent dock as a whole. Selecting
-  another topology node replaces the detail in place without changing width or
-  the conversation scroll position.
-- The detail body reuses the Task brief/report blocks and the delegate's bounded
-  `.subagent-run-rows` follow-scroll. Nested tool rows remain expandable inside
-  the dock; parent transcript scrolling and nested delegate scrolling are
-  independent.
+  `sessionId` and delegation id, then re-finds the current Task from the
+  live/retained transcript. The header can therefore update its status, model,
+  and elapsed time while the task is running.
+- The task description is the Task call's `task` argument, rendered as one
+  selectable conversation-like message. Reports, counters, and nested tool
+  traces are deliberately omitted from this surface.
+- The dock has one scroll owner, the panel body. The subagent task view does
+  not mount a second workflow scroller or a fixed-height nested run, so it
+  cannot leave a long empty tail below an inner scrollbar.
+- The dock header identifies the view as **Subagent** and offers close and
+  collapse controls. Closing returns to the previously selected work-panel
+  resource, if any; `Cmd/Ctrl + J` hides the whole dock. Selecting another node
+  replaces the task in place without changing panel width or conversation
+  scroll position.
 - A session switch or leaving the chat route hides the selection. A stale or
   deleted delegation shows a localized unavailable state and never displays
   another session's rows.
@@ -1673,70 +1673,47 @@ never summarizes from its own arguments:
   └────────────────┘    └───────────────────────────────────────────┘
 ```
 
-Opening a node reveals the blocks the call carries, then the delegate's own rows:
+Clicking a topology node opens a conversation-like task view in the right-side
+work-panel dock rather than expanding the transcript:
 
 ```text
-└─ [bot] code-reviewer  check the store diff   Completed · 32s   [›]
-   ├─ task                                        [copy]
-   │  Review the changes in src/stores for …
-   ├─ Details
-   │  status  completed   turns  4   toolCalls  9
-   └─ [bot] What code-reviewer did          3 steps
-      ├─ [thinking] Thought for 2s                [›]
-      ├─ [file] Read /src/stores/app-store.ts     [›]
-      └─ The queue drops a request by id, so …
+┌──────────────────────────────────────────────┐
+│ [bot] code-reviewer             Completed · 32s│
+├──────────────────────────────────────────────┤
+│ Task                                         │
+│ Review the changes in src/stores for …       │
+└──────────────────────────────────────────────┘
 ```
 
-- A delegation is **always** expandable, even with no result blocks: the brief,
-  the report and the delegate's own rows all live in the body.
-- Block order is brief in, report out, counters last: the `task` argument as an
-  `input` block, the report as the output block, then a `Details` block holding
-  the counters pi handed back — `status`, `turns`, `toolCalls`, and `usage` when
-  present. `agent` and `modelId` are omitted because the node title already shows them,
-  and an `error` is rendered as the leading error block, not as a counter. The
-  delegate's own rows follow the whole body, so the summary reads before the
-  detail.
-- A failed delegation shows its error instead of an empty report.
-- The delegate's rows render inside a `.subagent-run` block, a `--ds-tile`
-  plate with no rail (D297), headed by the agent name and a step count. They collapse with
-  the node, so a transcript at rest reads as one card per activity group.
-- **An expanded run scrolls in place rather than growing the transcript**
-  (D271). A delegate that made forty tool calls would otherwise add forty rows
-  the moment its node opens, pushing the reading position and the parent's next
-  row out of view. The rows sit in a bounded `.subagent-run-rows` scroll area,
-  `min(420px, 48dvh)` tall, with `overscroll-behavior-y: contain` so reaching
-  its end does not start scrolling the transcript behind it. The scroll lives on
-  that inner wrapper, never on `.subagent-run`, because the collapse rail is
-  positioned outside the run's padding box and an overflow there would clip it.
-  The run heading stays outside the scroll area, so the attribution cannot
-  scroll away from the rows it labels, and the area is a labelled, focusable
-  group so a keyboard reader can scroll what the pointer can.
-- **While the run is expanded, the nested scroller follows the latest output**
-  (D302). It uses the same pinned-follow contract as the parent transcript
-  (`04-ux/09-interaction-patterns.md` §9.1), independently: expanding pins to
-  the newest row, new thinking / tool / answer rows keep the viewport at the
-  bottom, the first real upward gesture pauses follow and shows a nested
-  jump-to-latest control over the scroller, and a layout clamp or programmatic
-  follow `scrollTo` never counts as that gesture. Native overflow anchoring is
-  disabled on `.subagent-run-rows` so it cannot fight pinned follow. The jump
-  control reuses `chat.scrollToBottom` and sits in a relative wrapper around
-  the scroller, never on `.subagent-run`, so the collapse rail stays unclipped.
-- Every detail block is bounded the same way: `fields` tables cap at 260px like
-  `content`, file lists and match lists, so a long roster or a plugin payload
-  with thirty keys scrolls instead of stretching the page. A lifecycle row's
-  joined reports render as an `output` block — bounded and copyable — rather
-  than as a note, which has no height limit.
-- Nesting is one level deep by construction: a delegate has no `Task` tool.
-- Delegate rows are ordinary rows inside that block — tool rows with their own
-  disclosures, thinking rows, and answer rows — so no new presentation is needed
-  for what a delegate does.
-- **The report is printed exactly once.** When the delegate produced an answer
-  row, that row is the report and the body's output block is suppressed; when it
-  produced none (aborted, capped, failed), the body prints it.
-- Delegate rows never appear in the turn stream, the minimap, or a processing
-  group of their own; grouping is by the parent's rows only
-  (`03-runtime/04-data-storage.md` §4.7a).
+- The dock renders one compact header with the delegate name, model, status, and
+  elapsed time, followed by the Task call's `task` argument as selectable
+  conversation-like text.
+- Reports, counters, nested tool rows, and workflow output are intentionally
+  not rendered in this surface. The topology card remains a compact summary in
+  the transcript and does not gain height when the dock opens.
+- The selected task is re-found from the session's live/retained messages, so
+  the header status and elapsed time stay current while the delegate runs.
+- A missing or deleted task renders a localized unavailable state. Delegation
+  rows remain excluded from the parent turn stream and minimap.
+
 - Runs are rebuilt from the message list on every render, so group memoization
+  compares them by row identity and length rather than by object identity —
+  otherwise a streaming delegate would freeze at its first row.
+- Every `Task` call in an activity group becomes one full-width delegation card
+  rather than a compact tool row, a lone delegation included (D265). Its header
+  presents aggregate state, the number of subagents, the settled/total count and
+  elapsed time; it keeps the standard disclosure caret. The aggregate state is
+  count-aware, so a single delegation is not announced in the plural.
+- **The card contains only those `Task` calls** (D319). Consecutive `Task`
+  starts stay in one topology group so a fan-out still reads as one card.
+  Parent thinking, workspace tools (`Read`/`Grep`/`Bash`/…), and lifecycle rows
+  (`TaskWait`/`TaskList`/`TaskStop`) are a separate processing group — before
+  the card, after it, or both — so the parent's own work is not painted as
+  subagent work. The tile, the “Subagent working” header, and the topology
+  canvas belong only to that Task group. The parent turn itself stays
+  transparent while streaming — no whole-turn tile wrapping thinking, tools, or
+  answer fragments (D323). The card keeps 16px inset from its
+  tile edge so the graph and any leftover rows do not sit on the border.- Runs are rebuilt from the message list on every render, so group memoization
   compares them by row identity and length rather than by object identity —
   otherwise a streaming delegate would freeze at its first row.
 - Every `Task` call in an activity group becomes one full-width delegation card

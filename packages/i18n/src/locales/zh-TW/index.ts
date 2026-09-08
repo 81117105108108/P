@@ -1226,6 +1226,8 @@ export const zhTW = {
   panel: {
     title: "工作面板",
     subagent: "子智慧體",
+    subagentTask: "任務",
+    subagentTaskEmpty: "暫無任務描述。",
     subagentClose: "關閉子智慧體詳情",
     subagentEmpty: "子智慧體詳情已不可用。",
     collapse: "收起工作面板",
