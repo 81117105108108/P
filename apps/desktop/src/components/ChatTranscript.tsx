@@ -194,7 +194,7 @@ type ContextPopoverPosition = {
   left: number;
 };
 
-function ContextUsageInspector({
+export function ContextUsageInspector({
   usage,
   turnUsage,
   contextWindow,
@@ -383,20 +383,14 @@ function ContextUsageInspector({
       }
     >
       <div className="context-inspector-heading">
-        <div className="context-inspector-heading-copy">
-          <span className="context-inspector-eyebrow">
-            {t("chat.usageContextLabel")}
-          </span>
-          <strong>
-            {t("chat.usageContextLeft", {
-              count: formatTokenCount(context.remainingTokens),
-            })}
-          </strong>
-        </div>
-        <div className="context-inspector-remaining">
-          <strong>{context.remainingPercent}%</strong>
-          <span>{t("chat.usageContextRemaining")}</span>
-        </div>
+        <strong className="context-inspector-heading-value">
+          {t("chat.usageContextLeft", {
+            count: formatTokenCount(context.remainingTokens),
+          })}
+        </strong>
+        <strong className="context-inspector-heading-percent">
+          {context.remainingPercent}%
+        </strong>
       </div>
       <div className="context-inspector-window">
         <span>{t("chat.usageContextWindow")}</span>
@@ -528,9 +522,8 @@ function ContextUsageInspector({
             }
           />
         </svg>
-        <span className="context-inspector-trigger-copy">
-          <span>{t("chat.usageContextLabel")}</span>
-          <strong>{context.remainingPercent}%</strong>
+        <span className="context-inspector-ring-value">
+          {context.remainingPercent}%
         </span>
       </button>
       {popover && typeof document !== "undefined"
@@ -574,17 +567,6 @@ function MessageMeta({
         <span className="message-meta-chip model" title={modelId}>
           {modelId}
         </span>
-      ) : null}
-      {visibleContextUsage ? (
-        <ContextUsageInspector
-          usage={visibleContextUsage}
-          turnUsage={usage ?? visibleContextUsage}
-          contextWindow={contextWindow}
-          tools={tools}
-          responseDurationMs={responseDurationMs}
-          responseOutputTokens={responseOutputTokens}
-          responseOutputEstimated={responseOutputEstimated}
-        />
       ) : null}
       {!visibleContextUsage && throughput !== undefined ? (
         <span className="message-meta-chip throughput">
