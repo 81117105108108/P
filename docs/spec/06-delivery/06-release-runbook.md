@@ -206,6 +206,18 @@ the patterns are applied during electron-builder execution, the generated
 `latest-mac-x64.yml` feed references the Intel asset names and their matching
 checksums.
 
+Every macOS DMG and ZIP also includes
+`PI-Desktop-macOS-opening-help.txt` at the package root. It tells users how to
+clear the quarantine attribute for a trusted unsigned app if macOS reports that
+the app is damaged:
+
+```sh
+xattr -cr /Applications/PI-Desktop.app
+```
+
+This guidance is only for trusted unsigned artifacts. Signed and notarized
+builds should open without this command.
+
 DMG, ZIP, NSIS, AppImage, deb, blockmap, and updater feed outputs are already
 compressed or compression-insensitive. The workflow therefore uploads their
 temporary Actions artifacts with compression level zero before the publish job

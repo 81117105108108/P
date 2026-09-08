@@ -1,0 +1,11 @@
+PI-Desktop macOS opening help
+
+If macOS says “PI-Desktop is damaged and can’t be opened” for this unsigned
+build, move PI-Desktop.app to /Applications and run this command in Terminal:
+
+xattr -cr /Applications/PI-Desktop.app
+
+Then open PI-Desktop again.
+
+Use this only for an app obtained from a trusted PI-Desktop source. Signed and
+notarized builds do not need this command.

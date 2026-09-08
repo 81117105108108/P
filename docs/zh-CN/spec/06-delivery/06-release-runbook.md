@@ -182,6 +182,16 @@ arm64 通道保留通用的 `PI-Desktop-<version>.dmg` 和
 `PI-Desktop-<version>-mac.zip` 名称。命名模板在 electron-builder 打包时生效，
 因此生成的 `latest-mac-x64.yml` 会引用带 Intel 后缀的工件及其匹配校验和。
 
+每个 macOS DMG 和 ZIP 的安装包根目录还会包含
+`PI-Desktop-macOS-opening-help.txt`。如果 macOS 对可信的未签名应用提示应用已损坏，
+文件会提醒用户将 `PI-Desktop.app` 移动到 `/Applications` 后在终端执行：
+
+```sh
+xattr -cr /Applications/PI-Desktop.app
+```
+
+该提示仅适用于可信来源的未签名工件；已签名并公证的版本无需执行此命令。
+
 默认 macOS 打包步骤生成未签名工件。只有手动运行明确设置
 `sign_macos: true` 时，才会从 GitHub Actions 密钥接收 `CSC_LINK`、
 `CSC_KEY_PASSWORD`、`APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD` 和
