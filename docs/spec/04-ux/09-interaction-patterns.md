@@ -1069,8 +1069,10 @@ When drag/drop is implemented, these patterns should apply:
   a second scrollbar or an empty tail.
 - Clicking a delegation topology node opens a conversation-like task view in the
   right-side work-panel dock instead of expanding the transcript. The dock has
-  one compact header, the Task call's selectable description, and its live
-  process; it does not render separate details, output, or workflow tabs.
+  one compact identity header, a status/elapsed-time/step-count summary, the
+  Task call's selectable description, and its live process on one subtle
+  vertical timeline; it does not render separate details, output, or workflow
+  tabs.
   Selecting another node replaces the task in place, closing it restores the
   prior resource view when present, and switching sessions or routes hides the
   selection. `Cmd/Ctrl + J` hides the whole dock.

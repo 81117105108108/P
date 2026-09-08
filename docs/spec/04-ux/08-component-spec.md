@@ -942,10 +942,11 @@ It does not render separate Details or Output tabs.
   While pinned to the latest output, the panel body follows new process rows;
   a real upward gesture pauses follow and exposes the standard jump-to-latest
   control.
-- The selected delegate uses a compact status summary, a single task tile with
-  a quiet leading rail, and a continuous process timeline. The task tile is
-  the only elevated anchor; the live rows do not nest another card inside the
-  dock.
+- The selected delegate uses a compact identity row followed by status,
+  elapsed-time, and step-count capsules. The task is one full-width tile with a
+  quiet leading rail; the live process uses one subtle vertical timeline and
+  no nested card, so unused panel space reads as one continuous work surface
+  instead of a stack of floating boxes.
 - The dock header identifies the view as **Subagent** and offers close and
   collapse controls. Closing returns to the previously selected work-panel
   resource, if any; `Cmd/Ctrl + J` hides the whole dock. Selecting another node

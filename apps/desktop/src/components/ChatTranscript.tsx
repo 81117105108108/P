@@ -101,11 +101,13 @@ import {
 } from "../lib/assistant-turns";
 import { calculateTokenRate } from "../lib/context-usage";
 import {
+  IconActivity,
   IconArrowDown,
   IconBot,
   IconBranch,
   IconCheck,
   IconCircleAlert,
+  IconClock,
   IconChevronLeft,
   IconChevronRight,
   IconCopy,
@@ -116,6 +118,7 @@ import {
   IconFolder,
   IconGlobe,
   IconImage,
+  IconListChecks,
   IconSheet,
   IconVideo,
   IconPencil,
@@ -1148,11 +1151,29 @@ export function SubagentDetail({
             <strong>{agentName || t("chat.subagentUnnamed")}</strong>
             {modelId ? <span title={modelId}>{modelId}</span> : null}
           </div>
-          <span className="subagent-detail-meta">
-            {t(`chat.subagentStatus.${outcome}`)}
-            {duration ? ` · ${duration}` : ""}
-          </span>
         </div>
+      </div>
+      <div
+        className="subagent-detail-summary"
+        role="list"
+        aria-label={t("panel.subagent")}
+      >
+        <div className="subagent-detail-stat" role="listitem">
+          <IconActivity size={14} aria-hidden />
+          <span>{t(`chat.subagentStatus.${outcome}`)}</span>
+        </div>
+        {duration ? (
+          <div className="subagent-detail-stat" role="listitem">
+            <IconClock size={14} aria-hidden />
+            <span>{duration}</span>
+          </div>
+        ) : null}
+        {delegate ? (
+          <div className="subagent-detail-stat" role="listitem">
+            <IconListChecks size={14} aria-hidden />
+            <span>{t("chat.processingSteps", { count: delegate.items.length })}</span>
+          </div>
+        ) : null}
       </div>
       <div className="subagent-task-message">
         <div className="subagent-task-message-label">{t("panel.subagentTask")}</div>

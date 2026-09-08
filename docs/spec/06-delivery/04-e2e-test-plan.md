@@ -7357,15 +7357,16 @@ This test plan spec is accepted when:
   topology node. 2) Observe the right-side dock while the delegate streams.
   3) Scroll the task/process conversation upward and then return to the latest
   output. 4) Switch sessions and return to the original session.
-- **Expected**: The right dock shows one compact header, the Task call's
-  description in one quiet tile, and the delegate's live
-  thinking/tool/answer process as a continuous timeline using the same row
-  components as the main conversation. New rows appear without a reload and
-  follow the bottom while pinned. The panel has one body scrollbar; the
-  process does not create a nested scrollbar or an empty tail. A real upward
-  gesture pauses follow and exposes jump-to-latest. The transcript remains the
-  same height and keeps its own scroll state. Session switching hides the
-  selection and returning never shows another session's task.
+- **Expected**: The right dock shows one compact identity row, a status/
+  elapsed-time/step-count summary, the Task call's description in one quiet
+  tile, and the delegate's live thinking/tool/answer process on one subtle
+  vertical timeline using the same row components as the main conversation.
+  New rows appear without a reload and follow the bottom while pinned. The
+  panel has one body scrollbar; the process does not create a nested scrollbar
+  or a second elevated card. A real upward gesture pauses follow and exposes
+  jump-to-latest. The transcript remains the same height and keeps its own
+  scroll state. Session switching hides the selection and returning never
+  shows another session's task.
 - **Specs linked**: `04-ux/08-component-spec.md` §5.7,
   `04-ux/09-interaction-patterns.md` §9.1
 - **Acceptance**: C (conversation), Quality

@@ -102,8 +102,12 @@ test("the task dock keeps one body scroll owner while the process streams", () =
 
 test("the subagent dock uses one task anchor and a continuous process timeline", () => {
   assert.match(
+    detailSource,
+    /className="subagent-detail-summary"[\s\S]*?IconActivity[\s\S]*?IconClock[\s\S]*?IconListChecks/,
+  );
+  assert.match(
     workPanelCss,
-    /\.subagent-detail-meta\s*\{[\s\S]*?background:\s*var\(--ds-tile\)/,
+    /\.subagent-detail-summary\s*\{[\s\S]*?gap:\s*6px;/,
   );
   assert.match(
     workPanelCss,
@@ -111,6 +115,10 @@ test("the subagent dock uses one task anchor and a continuous process timeline",
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail > \.subagent-run\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?padding:\s*16px 0 0;/,
+    /\.subagent-detail > \.subagent-run\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?padding:\s*12px 0 0;/,
+  );
+  assert.match(
+    workPanelCss,
+    /\.subagent-detail > \.subagent-run \.subagent-run-rows\s*\{[\s\S]*?border-left:\s*1px solid var\(--ds-border-subtle\);/,
   );
 });

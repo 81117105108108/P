@@ -434,7 +434,7 @@
   flex: 1;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 20px 20px 40px;
+  padding: 14px 14px 28px;
 }
 
 .subagent-panel-jump {
@@ -463,16 +463,15 @@
   display: flex;
   min-width: 0;
   align-items: flex-start;
-  gap: 11px;
-  padding: 4px 0 18px;
-  border-bottom: 1px solid var(--ds-border-subtle);
+  gap: 10px;
+  padding: 4px 2px 8px;
 }
 
 .subagent-detail-avatar {
   position: relative;
   display: inline-flex;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
@@ -512,7 +511,9 @@
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  gap: 4px;
+  justify-content: center;
+  min-height: 34px;
+  gap: 2px;
 }
 
 .subagent-detail-title-row {
@@ -543,24 +544,53 @@
   white-space: nowrap;
 }
 
-.subagent-detail-meta {
+.subagent-detail-summary {
   display: inline-flex;
-  width: fit-content;
+  min-width: 0;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 6px;
+  margin: 0 2px 13px;
+}
+
+.subagent-detail-stat {
+  display: inline-flex;
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--ds-border-subtle);
   border-radius: var(--radius-full);
-  background: var(--ds-tile);
-  padding: 3px 7px;
+  background: color-mix(in oklab, var(--ds-tile) 72%, transparent);
   color: var(--ds-text-secondary);
-  font-family: var(--font-mono);
   font-size: var(--text-xs);
+  line-height: var(--leading-row);
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.subagent-detail-stat span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subagent-detail-stat svg {
+  flex: none;
+  color: var(--ds-text-muted);
+}
+
+.subagent-detail-stat:first-child svg {
+  color: var(--ds-accent);
 }
 
 .subagent-task-message {
   position: relative;
-  margin-top: 20px;
+  margin-top: 0;
+  border: 1px solid var(--ds-border-subtle);
   border-radius: var(--radius-md);
   background: var(--ds-tile);
-  padding: 13px 15px 14px 17px;
+  padding: 11px 13px 12px 15px;
   box-shadow: none;
 }
 
@@ -595,20 +625,56 @@
    anchor. Let the live process read as a continuous timeline instead of a
    second nested card inside the panel. */
 .subagent-detail > .subagent-run {
-  margin: 20px 0 0;
+  margin: 15px 0 0;
   border-top: 1px solid var(--ds-border-subtle);
   border-radius: 0;
   background: transparent;
-  padding: 16px 0 0;
+  padding: 12px 0 0;
 }
 
 .subagent-detail > .subagent-run .subagent-run-heading {
-  min-height: 24px;
+  min-height: 26px;
+  gap: 6px;
   color: var(--ds-text-secondary);
 }
 
 .subagent-detail > .subagent-run .subagent-run-rows {
-  margin-top: 6px;
+  position: relative;
+  margin-top: 4px;
+  padding: 5px 0 10px 15px;
+  border-left: 1px solid var(--ds-border-subtle);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: color-mix(in oklab, var(--ds-tile) 28%, transparent);
+}
+
+.subagent-detail > .subagent-run .subagent-run-rows.is-panel-flow > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.subagent-detail > .subagent-run .subagent-run-rows.is-panel-flow > div > .tool-row,
+.subagent-detail > .subagent-run .subagent-run-rows.is-panel-flow > div > .subagent-answer {
+  position: relative;
+  min-width: 0;
+}
+
+.subagent-detail > .subagent-run .subagent-run-rows.is-panel-flow > div > .tool-row::before,
+.subagent-detail > .subagent-run .subagent-run-rows.is-panel-flow > div > .subagent-answer::before {
+  position: absolute;
+  top: 11px;
+  left: -19px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--ds-bg-secondary);
+  border-radius: var(--radius-round);
+  background: var(--ds-text-muted);
+  content: "";
+}
+
+.subagent-detail > .subagent-run .subagent-run-rows.is-panel-flow > div > .tool-row:last-child::before,
+.subagent-detail > .subagent-run .subagent-run-rows.is-panel-flow > div > .subagent-answer:last-child::before {
+  background: var(--ds-accent);
 }
 
 /* Empty states borrow the plugin/project page proportions (`.ext-empty`) so the
