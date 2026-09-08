@@ -304,7 +304,9 @@ test("assistant context inspector keeps a compact summary and retry action wired
   assert.match(transcriptSource, /chat\.usageToolsSummary/);
   assert.match(transcriptSource, /context-inspector-kpis/);
   assert.match(transcriptSource, /context-inspector-window-percent/);
-  assert.match(transcriptSource, /chat\.usageContextRemaining/);
+  // The heading shows the remaining count directly; the standalone
+  // "remaining" sublabel is gone.
+  assert.match(transcriptSource, /chat\.usageContextLeft/);
   assert.match(transcriptSource, /chat\.usageThroughput/);
   assert.match(transcriptSource, /calculateCacheRate/);
   assert.match(transcriptSource, /chat\.usageCacheRate/);

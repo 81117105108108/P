@@ -1052,23 +1052,13 @@
   transition: stroke-dashoffset var(--motion-duration-normal) var(--motion-ease-out);
 }
 
-.context-inspector-trigger-copy {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.context-inspector-trigger-copy > span {
-  color: var(--ds-text-muted);
-  font-size: var(--text-xs);
-}
-
-.context-inspector-trigger-copy strong {
+.context-inspector-ring-value {
   color: currentColor;
   font-size: var(--text-xs);
-  font-weight: var(--font-weight-strong);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--leading-compact);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .context-inspector-popover {
@@ -1108,28 +1098,15 @@
   transition-delay: 0s;
 }
 
-.context-inspector-heading,
-.context-inspector-window,
-.context-inspector-compaction {
+.context-inspector-heading {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
 }
 
-.context-inspector-heading-copy {
-  display: grid;
+.context-inspector-heading-value {
   min-width: 0;
-  gap: 4px;
-}
-
-.context-inspector-eyebrow {
-  color: var(--ds-text-muted);
-  font-size: var(--text-2xs);
-  letter-spacing: var(--tracking-wide);
-}
-
-.context-inspector-heading-copy > strong {
   color: var(--ds-text-primary);
   font-size: var(--text-lg);
   font-weight: var(--font-weight-strong);
@@ -1137,43 +1114,48 @@
   font-variant-numeric: tabular-nums;
 }
 
-.context-inspector-remaining {
-  display: grid;
+.context-inspector-heading-percent {
   flex: 0 0 auto;
-  justify-items: end;
-  gap: 3px;
   color: currentColor;
-}
-
-.context-inspector-remaining strong {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: var(--font-weight-semibold);
   line-height: var(--leading-none);
   font-variant-numeric: tabular-nums;
 }
 
-.context-inspector-remaining span {
-  color: var(--ds-text-muted);
-  font-size: var(--text-2xs);
+/*
+ * Every section below the heading is one aligned list — muted micro label on
+ * the left, tabular value on the right — with hairlines between sections. The
+ * heading carries no rule of its own: the first section's top border already
+ * separates them, and a second line just reads as a double underline.
+ */
+.context-inspector-window,
+.context-inspector-kpis,
+.context-inspector-summary,
+.context-inspector-compaction {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ds-border-subtle);
 }
 
-/* Sections inside the popover are set apart by space alone (D297). */
 .context-inspector-window {
+  display: flex;
   align-items: baseline;
-  margin-top: 18px;
+  justify-content: space-between;
+  gap: 12px;
   color: var(--ds-text-secondary);
-  font-size: var(--text-2xs);
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
 
 .context-inspector-window > span:first-child {
   color: var(--ds-text-muted);
+  font-size: var(--text-2xs);
 }
 
 .context-inspector-window strong {
   margin-left: auto;
-  color: var(--ds-text-secondary);
-  font-size: var(--text-xs);
+  color: var(--ds-text-primary);
   font-weight: var(--font-weight-medium);
   white-space: nowrap;
 }
@@ -1184,10 +1166,8 @@
 }
 
 .context-inspector-kpis {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .context-inspector-kpis > div {
@@ -1195,11 +1175,8 @@
   min-width: 0;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-}
-
-.context-inspector-kpis > div + div {
-  padding-left: 12px;
+  gap: 12px;
+  padding: 2px 0;
 }
 
 .context-inspector-kpis span {
@@ -1211,29 +1188,29 @@
 
 .context-inspector-kpis strong {
   color: var(--ds-text-primary);
-  font-size: var(--text-sm);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .context-inspector-summary {
-  display: grid;
-  gap: 10px;
-  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
 }
 
 .context-inspector-summary-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 12px;
+  padding: 2px 0;
 }
 
 .context-inspector-summary-row > strong {
-  color: var(--ds-text-primary);
-  font-size: var(--text-xs-plus);
-  font-weight: var(--font-weight-medium);
+  color: var(--ds-text-muted);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-normal);
   white-space: nowrap;
 }
 
@@ -1242,9 +1219,9 @@
   min-width: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 4px 10px;
-  color: var(--ds-text-secondary);
-  font-size: var(--text-2xs);
+  gap: 2px 10px;
+  color: var(--ds-text-primary);
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -1254,7 +1231,10 @@
 }
 
 .context-inspector-compaction {
-  margin-top: 16px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   color: var(--ds-text-muted);
   font-size: var(--text-2xs);
   font-variant-numeric: tabular-nums;
