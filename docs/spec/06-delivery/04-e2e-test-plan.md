@@ -8257,3 +8257,34 @@ are withdrawn with ADR 0165.
 - **Milestone**: M5
 - **Status**: Static/documentation check covered (`pnpm docs:build` and path
   audit); remote GitHub and browser journey pending
+
+#### E2E-196: Chat links honor destination settings and context menu actions
+
+- **Preconditions**: A chat transcript can render an HTTP(S) Markdown link. The
+  work-panel Browser view and the system browser opener are available. The
+  clipboard can be observed or stubbed for the copy action.
+- **Steps**:
+  1. In Settings → AI → Defaults, select **Work panel browser** and click the
+     link from a chat reply.
+  2. Select **Default OS browser** and click the same link again.
+  3. Right-click the link and activate each context-menu item with the pointer:
+     Open in default browser, Open in work panel, and Copy link address. Repeat
+     the menu actions with keyboard focus and Arrow/Home/End navigation.
+  4. Repeat a link click with Ctrl/Cmd, Shift, and Alt held.
+- **Expected**:
+  - The Work panel browser is the default plain-click destination.
+  - The Default OS browser setting routes plain HTTP(S) clicks through the
+    main-owned external opener; changing the setting persists after reload.
+  - The body-level context menu remains interactive when clicked. Its external
+    and work-panel actions open the requested destination, and Copy link address
+    updates the clipboard before showing the success toast. A rejected clipboard
+    write shows an error toast instead of a success toast.
+  - Modifier clicks continue to open links externally regardless of the setting.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §8.3, `03-runtime/01-ipc-protocol.md`,
+  `08-meta/decisions-log.md` (D330)
+- **Acceptance**: B (settings), C (conversation & stream), Security, Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`apps/desktop/test/markdown-link-menu.test.mjs` and
+  locale catalog tests); full UI journey Draft (do not run E2E locally unless
+  explicitly requested)

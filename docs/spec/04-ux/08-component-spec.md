@@ -1195,10 +1195,13 @@ Single message render — either user (plaintext) or assistant (markdown streami
   workspace HTML chip previews it in the side browser; clicking a resolved
   image thumbnail opens the host files viewer on that ref; clicking any other
   allowed file opens it with the OS default application for that suffix.
-  HTTP(S) URLs remain inline text links
-  that open in the side browser; long URL links wrap within the plate and
-  keep logical-start alignment instead of inheriting the browser's centered
-  button text.
+  HTTP(S) URLs remain inline text links. Plain clicks follow the persisted
+  Link open destination setting (Work panel browser by default, or the system
+  default browser). Right-clicking a link opens a body-level context menu with
+  Open in default browser, Open in work panel, and Copy link address. Modifier
+  clicks (Ctrl/Cmd/Shift/Alt) continue to open externally. Long URL links wrap
+  within the plate and keep logical-start alignment instead of inheriting the
+  browser's centered button text.
 - Assistant: transparent surface, left-aligned, markdown rendered at full
   content width. Workspace file paths in that markdown are previewable:
   inline code, markdown links, and bare path tokens (with a known
@@ -2333,7 +2336,8 @@ Anatomy:
   leaf-name chip as the draft. Clicking a workspace `.html`/`.htm` file opens
   the work-panel browser; clicking any other allowed file (workspace, session
   scratch, or attachments) opens it with the OS default application. HTTP(S)
-  URLs stay text links into the side browser.
+  URLs stay text links. Plain clicks follow the Link open destination setting,
+  and right-clicking exposes the same external, work-panel, and copy actions.
 - States: keyboard-active row uses the shared `kb-active` treatment; empty
   query lists everything (slash) / recently indexed order (file); zero
   matches renders the localized empty row and the menu counts as closed for
