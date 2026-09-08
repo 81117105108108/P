@@ -715,8 +715,9 @@ Switch config files from the user home directory and returns public provider dra
 (`source`, `externalId`, `name`, `baseUrl`, `apiStyle`, `modelIds`,
 `hasSecret`). Secrets stay in the main-process scan cache and are written
 through `providers.create` on `modelConfig/importRun`. Re-importing a
-matching endpoint is skipped. OAuth tokens from those tools are never
-copied. No host protocol or storage schema version bump.
+matching endpoint, API style, and credential is skipped; a different
+credential at the same endpoint remains independent. OAuth tokens from those
+tools are never copied. No host protocol or storage schema version bump.
 
 A regenerate or edit-resend truncates the durable transcript before appending
 its new user turn. `agent/prompt` accepts `truncateFromMessageId` — the identity

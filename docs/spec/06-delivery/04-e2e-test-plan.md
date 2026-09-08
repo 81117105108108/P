@@ -8330,23 +8330,27 @@ are withdrawn with ADR 0165.
 - **Preconditions**: At least one supported local config exists among
   `~/.claude/settings.json`, `~/.codex/config.toml` `[model_providers.*]`,
   `~/.config/opencode/opencode.json`, `~/.pi/agent/models.json`, or
-  `~/.cc-switch/cc-switch.db`, including one API-key provider and optionally
-  one OAuth-only vendor. PI-Desktop may already have an equivalent endpoint.
+  `~/.cc-switch/cc-switch.db`, including two API-key profiles with the same
+  endpoint and different keys, and optionally one OAuth-only vendor.
+  PI-Desktop may already have an equivalent provider.
 - **Steps**:
   1. Open Settings → Import. Confirm a Sessions card and a Model
      configuration card, each with its own Scan.
   2. Scan model configuration. Confirm groups start collapsed, rows show
      name, model count, host, and an API key / No API key badge, and that
      no secret value appears in the UI or in the scan IPC payload.
-  3. Import the selected providers. Confirm new rows appear under Settings
-     → Models. Re-import the same selection and confirm they are skipped.
+  3. Import the selected providers. Confirm both same-endpoint profiles appear
+     as separate rows under Settings → Models and remain selectable in the
+     Composer model menu. Re-import the same selection and confirm those
+     unchanged credentials are skipped.
   4. If the app had no default model, confirm the first imported provider
      becomes the default. If a default already existed, confirm it is
      unchanged.
   5. Confirm an OAuth-only source account is absent from the candidate
      list and that session import still works independently.
 - **Expected**: Explicit scan only (D007). Stored API keys land in the host
-  secret store. Equivalent endpoints (normalized URL + API style) skip.
+  secret store. Only equivalent providers (normalized URL + API style + same
+  credential) skip; different credentials at one endpoint remain separate.
   No protocol or schema version bump.
 - **Specs linked**: `04-ux/06-settings-ia.md`,
   `04-ux/08-component-spec.md` §18.5, `03-runtime/01-ipc-protocol.md`,

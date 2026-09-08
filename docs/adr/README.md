@@ -200,3 +200,4 @@ Each ADR includes:
 | 0185 | Korean shell locale | Accepted (amends 0160 / 0183) |
 | 0186 | Summarize first-turn session titles with a main-owned one-shot | Accepted |
 | 0187 | Focus-aware native task notifications | Accepted (amends 0107 / D117) |
+| 0188 | Preserve distinct credentials during model configuration import | Accepted (amends 0179 / D342) |

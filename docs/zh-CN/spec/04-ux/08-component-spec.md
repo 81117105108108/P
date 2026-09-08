@@ -2298,10 +2298,11 @@ dismissToast(id: number); // ToastHost internal / tests
 - 每一行显示提供商名称、模型数量、主机、"有 API key / 无 API key"徽章，
   以及来源。原始密钥绝不会到达渲染器。
 - 导入会为每个选中的候选项创建一条 `providers.create` 记录。若已存在
-  base URL 归一化结果与 API 风格都相同的提供商，则跳过。仅支持 OAuth 的
+  base URL 归一化结果、API 风格和凭据都相同的提供商，则跳过；同一端点的
+  不同凭据创建独立记录。仅支持 OAuth 的
   来源账户不会出现在扫描结果中。CC Switch 是第五个来源
-  （`~/.cc-switch/cc-switch.db`）；与某个 CC Switch 端点匹配的实时工具文件
-  不会被列出两次。
+  （`~/.cc-switch/cc-switch.db`）；与某个 CC Switch 端点和凭据都匹配的实时
+  工具文件不会被列出两次，不同凭据仍会保留。
 - 若一次成功创建之后 `settings.defaultProviderId` 仍为空，则第一个新建的
   提供商成为全局默认。
 

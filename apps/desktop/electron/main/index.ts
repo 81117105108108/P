@@ -6231,12 +6231,35 @@ function registerIpc() {
       const items = Array.isArray(selections) ? selections : [];
       const existing = await host.call<{
         providers: Array<{
+          id: string;
           baseUrl?: string | null;
           apiStyle?: string | null;
           vendorKey?: string | null;
+          hasSecret?: boolean;
         }>;
       }>("providers.list", { includeDisabled: true });
-      const known = [...(existing.providers ?? [])];
+      // Matching an import by endpoint alone collapses distinct credentials.
+      // Resolve existing API keys in Electron main so same-endpoint profiles
+      // remain independent without exposing secrets to the renderer.
+      const known = await Promise.all(
+        (existing.providers ?? []).map(async (provider) => {
+          let secretValue: string | undefined;
+          if (provider.hasSecret) {
+            try {
+              secretValue = (
+                await host!.call<{ value?: string }>("providers.getSecret", {
+                  id: provider.id,
+                })
+              ).value;
+            } catch {
+              // A provider may only have an OAuth credential, or its secret
+              // backend may be temporarily unavailable. In either case,
+              // failing closed here avoids collapsing a new profile.
+            }
+          }
+          return { ...provider, secretValue };
+        }),
+      );
       let firstImported:
         | { id: string; defaultModelId?: string; models?: Array<{ id: string }> }
         | undefined;
@@ -6259,7 +6282,11 @@ function registerIpc() {
             provider: { id: string; defaultModelId?: string; models?: Array<{ id: string }> };
           }>("providers.create", providerCreateInputFromDraft(draft));
           imported += 1;
-          known.push(draft);
+          known.push({
+            ...draft,
+            id: created.provider.id,
+            secretValue: draft.secretValue,
+          });
           firstImported ??= created.provider;
         } catch (e) {
           failed += 1;
