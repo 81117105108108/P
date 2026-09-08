@@ -1210,7 +1210,7 @@
 .context-inspector-summary-row > strong {
   color: var(--ds-text-muted);
   font-size: var(--text-2xs);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
   white-space: nowrap;
 }
 
