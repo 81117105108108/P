@@ -154,6 +154,7 @@ test("renderer exposes the updates API, banner and settings row", () => {
   assert.match(settingsSource, /updates\.releaseNotes/);
   assert.match(settingsSource, /<ReleaseNotesDialog/);
   assert.match(releaseNotesDialogSource, /CHANGELOG\[locale\]/);
+  assert.match(releaseNotesDialogSource, /new Intl\.DateTimeFormat\(locale,/);
   assert.match(releaseNotesDialogSource, /role="dialog"/);
   assert.match(releaseNotesDialogSource, /aria-modal="true"/);
   assert.match(releaseNotesDialogSource, /data-release-version/);

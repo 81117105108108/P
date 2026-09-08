@@ -7,16 +7,16 @@
 > macOS signing/notarization 保留下面的详细资格通道。
 > 交叉引用：[里程碑](/zh-CN/spec/06-delivery/01-mvp-milestones) · [进程模型](/zh-CN/spec/03-runtime/07-process-model) · [安全性](/zh-CN/spec/05-security/01-security)
 
-## 1. 修建车道
+## 1. 构建通道
 
-| 巷 | 命令 | 签约 | 使用 |
+| 通道 | 命令 | 签名 | 用途 |
 |---|---|---|---|
-| 开发者 | `pnpm dev` | 无 | 日常发展 |
-| 本地套餐 | `pnpm --filter @pi-desktop/desktop pack` | 未签名（`identity: null`） | 包装烟雾（`--dir` 输出） |
-| 局部DMG | `pnpm --filter @pi-desktop/desktop dist` | 未签名 | 本地安装测试 |
-| 发布 | `scripts/release-macos.sh` | 开发者 ID + 可选公证 | 可分发的工件 |
+| 开发 | `pnpm dev` | 无 | 日常开发 |
+| 本地打包 | `pnpm --filter @pi-desktop/desktop pack` | 未签名（`identity: null`） | 打包冒烟测试（`--dir` 输出） |
+| 本地 DMG | `pnpm --filter @pi-desktop/desktop dist` | 未签名 | 本地安装测试 |
+| 发布 | `scripts/release-macos.sh` | Developer ID + 可选公证 | 可分发产物 |
 
-静态电子构建器配置保持未签名友好（`identity: null`）
+静态 electron-builder 配置保持未签名友好（`identity: null`）
 因此没有证书的贡献者可以随时打包。发布脚本
 在构建时通过 `-c.mac.identity` 注入真实身份。
 
@@ -73,7 +73,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 
 ## 4. 发布步骤
 
-### 4. 1 强制发布版本面门禁 (D164 + D260)
+### 4.1 强制发布版本面门禁 (D164 + D260)
 
 **每个提升稳定应用版本并打标签的产品发布，都必须先更新所有带版本号的位置：
 双语应用内产品更新日志，以及项目文档中声明的版本号。** 如果任一位置仍在描述
@@ -133,7 +133,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 - [ ] `node scripts/check-release-docs.mjs` 在发布提交上通过
 - [ ] `release.mjs` / 打标签仅在文档提交进入发布分支后执行
 
-### 4. 2 构建/打包
+### 4.2 构建/打包
 
 ```bash
 export MAC_SIGNING_IDENTITY="Developer ID Application: ... (TEAMID)"
@@ -149,10 +149,10 @@ scripts/release-macos.sh
 `MAC_ARCH=x64`，但该值必须与主机匹配，以保持 Rust 本机主机和 Electron
 软件包的架构一致。
 
-### 4. 3 GitHub 标签工作流程
+### 4.3 GitHub 标签工作流程
 
 GitHub Release 工作流程启动所有本机平台运行程序，无需
-单独的验证作业障碍。每个跑步者都会验证推送的标签
+单独的验证作业障碍。每个运行器都会验证推送的标签
 结账后、打包前立即匹配 `apps/desktop/package.json`
 输入已准备好。
 
@@ -189,7 +189,7 @@ for APP in apps/desktop/release/mac-*/PI-Desktop.app; do
 done
 ```
 
-### 5. 1 封装封装门
+### 5.1 安装包体积门禁
 
 在发布之前检查每个本机运行程序包并记录所有内容
 压缩工件格式、解压应用程序、ASAR、Electron
@@ -303,7 +303,7 @@ Linux:   pnpm --filter @pi-desktop/desktop dist:linux
 macOS 软件包包括按本机架构构建的 `bin/pi-desktop-host-core`；Windows
 软件包包括 `bin/pi-desktop-host-core.exe`；Linux 包括
 `bin/pi-desktop-host-core`。签名、回滚和安装程序升级资质仍保持发布
-硬化工作；出版物本身在 D126/D285 下有效。
+硬化工作；发布本身已在 D126/D285 下启用。
 
 Native-runner 输出矩阵：
 
@@ -311,8 +311,17 @@ Native-runner 输出矩阵：
 - macOS Intel x64：DMG 和 ZIP
 - Windows x64：NSIS 安装程序
 - Linux x64：AppImage 和 deb
+- Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`
 
-每个本地跑步者身上都冒着贝壳烟：
+该 ASAR 产物包含的是 Electron 应用归档，而不是完整的 Linux 发行包。
+若要重新打包，请把它作为应用归档放入目标 Electron 的 resources 布局中，
+与目标软件包内的本机主机及其他资源放在一起，然后用以下命令启动：
+
+```bash
+electron PI-Desktop-<version>-linux-x64.asar
+```
+
+每个本机运行器上的外壳冒烟测试：
 
 1. 确认窗口中没有出现 File/Edit/View/Window/Help 菜单。
 2. 验证 F10 和 Shift+F10 对焦点内容仍然可用。

@@ -1,4 +1,4 @@
-# ADR 0185: Show provider retry causes in the active-turn status
+# ADR 0186: Show provider retry causes in the active-turn status
 
 - Status: Accepted
 - Date: 2026-09-08

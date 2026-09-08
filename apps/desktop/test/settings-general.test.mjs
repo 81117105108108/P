@@ -15,6 +15,10 @@ const providersSource = await readFile(
   new URL("../src/components/settings/ModelConfigPage.tsx", import.meta.url),
   "utf8",
 );
+const scheduledSource = await readFile(
+  new URL("../src/pages/ScheduledPage.tsx", import.meta.url),
+  "utf8",
+);
 const pluginsPageSource = await readFile(
   new URL("../src/pages/PluginsPage.tsx", import.meta.url),
   "utf8",
@@ -64,6 +68,10 @@ const trLocaleSource = await readFile(
 );
 const zhTWLocaleSource = await readFile(
   new URL("../../../packages/i18n/src/locales/zh-TW/index.ts", import.meta.url),
+  "utf8",
+);
+const koLocaleSource = await readFile(
+  new URL("../../../packages/i18n/src/locales/ko/index.ts", import.meta.url),
   "utf8",
 );
 const mainSource = await readFile(
@@ -120,7 +128,7 @@ test("Basics and AI tabs expose their respective app and AI controls", () => {
 test("language persists as part of shared app settings", () => {
   assert.match(
     sharedTypesSource,
-    /language\?: "auto" \| "en" \| "zh-CN" \| "zh-TW" \| "tr" \| "de" \| "es" \| "fr"/,
+    /language\?: "auto" \| "en" \| "zh-CN" \| "zh-TW" \| "tr" \| "de" \| "es" \| "fr" \| "ko"/,
   );
   assert.match(sharedTypesSource, /largePasteThreshold\?: number/);
   assert.match(sharedTypesSource, /fontScale\?: number/);
@@ -134,7 +142,13 @@ test("General Network card persists a custom HTTP or SOCKS5 proxy", () => {
   assert.match(electronMainSource, /applyNetworkProxyFromAppSettings/);
   assert.match(electronMainSource, /IPC\.invoke\.networkProxyTest/);
   assert.match(protocolSource, /networkProxyTest: "pi-desktop\/network\/testProxy"/);
-  for (const source of [enLocaleSource, zhLocaleSource, zhTWLocaleSource, trLocaleSource]) {
+  for (const source of [
+    enLocaleSource,
+    zhLocaleSource,
+    zhTWLocaleSource,
+    trLocaleSource,
+    koLocaleSource,
+  ]) {
     assert.match(source, /proxyCustom:/);
     assert.match(source, /proxyUrlPlaceholder:/);
   }
@@ -156,11 +170,23 @@ test("basics gates developer tools behind a persisted developer mode", () => {
   }
 });
 
-test("stored language drives i18n at startup and on settings change", () => {
+test("stored language drives i18n and native labels at startup and on settings change", () => {
   assert.match(languageSource, /export function initLanguageSync/);
   assert.match(languageSource, /changeLanguage/);
   assert.match(languageSource, /resolveLocale/);
   assert.match(mainSource, /initLanguageSync\(\)/);
+  assert.match(electronMainSource, /catalogs\[resolveLocale\(updaterLocale\)\]/);
+});
+
+test("date copy follows the active application locale", () => {
+  assert.match(
+    scheduledSource,
+    /toLocaleString\(\s*i18n\.resolvedLanguage \?\? i18n\.language/s,
+  );
+  assert.match(
+    providersSource,
+    /toLocaleString\(\s*i18n\.resolvedLanguage \?\? i18n\.language/s,
+  );
 });
 
 test("sandboxed preload receives the OS locale without importing main-only APIs", () => {

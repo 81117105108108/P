@@ -12,6 +12,8 @@ export { fr } from "./locales/fr/index.js";
 export { default as frDefault } from "./locales/fr/index.js";
 export { de } from "./locales/de/index.js";
 export { default as deDefault } from "./locales/de/index.js";
+export { ko } from "./locales/ko/index.js";
+export { default as koDefault } from "./locales/ko/index.js";
 
 import { en, type EnglishCatalog } from "./locales/en/index.js";
 import { zhCN } from "./locales/zh-CN/index.js";
@@ -20,6 +22,7 @@ import { tr } from "./locales/tr/index.js";
 import { es } from "./locales/es/index.js";
 import { fr } from "./locales/fr/index.js";
 import { de } from "./locales/de/index.js";
+import { ko } from "./locales/ko/index.js";
 
 export const defaultLocale = "en";
 
@@ -35,6 +38,7 @@ export const supportedLocales = [
   { id: "es", nativeName: "Español", englishName: "Spanish" },
   { id: "tr", nativeName: "Türkçe", englishName: "Turkish" },
   { id: "fr", nativeName: "Français", englishName: "French" },
+  { id: "ko", nativeName: "한국어", englishName: "Korean" },
 ] as const;
 
 export type AppLocale = (typeof supportedLocales)[number]["id"];
@@ -48,6 +52,7 @@ export const catalogs: Record<AppLocale, EnglishCatalog> = {
   de,
   es,
   fr,
+  ko,
 };
 
 export function isAppLocale(value: string | null | undefined): value is AppLocale {
@@ -95,6 +100,7 @@ export function resolveLocale(input?: string | null): AppLocale {
   if (lower === "de" || lower.startsWith("de-")) return "de";
   if (lower === "es" || lower.startsWith("es-")) return "es";
   if (lower === "fr" || lower.startsWith("fr-")) return "fr";
+  if (lower === "ko" || lower.startsWith("ko-")) return "ko";
   const exact = supportedLocales.find((locale) => locale.id.toLowerCase() === lower);
   if (exact) return exact.id;
   const prefix = supportedLocales.find(

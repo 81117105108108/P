@@ -355,9 +355,10 @@ Each scenario is documented in this format:
   one signed-in vendor (OAuth) account; a capture proxy records outbound HTTP
   headers, including Codex and Anthropic adapters.
 - **Steps**: 1) Open the AI service and click the upper-right Advanced settings
-  action. Confirm a separate modal opens without changing the main form layout.
-  Use the common-header preset to add User-Agent, then import a JSON object
-  containing `X-Gateway: alpha` and enough headers to exceed two visible rows.
+  action. Confirm a separate modal opens without changing the main form layout,
+  and that its header close action is the only close control (no footer action
+  row). Use the common-header preset to add User-Agent, then import a JSON object
+  containing `X-Gateway: alpha` and enough headers to exceed five visible rows.
   Copy headers as JSON and confirm the clipboard is the pretty-printed persisted
   record (blank names omitted, last write wins) with localized success feedback.
   Confirm the header list scrolls inside the modal while the underlying model
@@ -373,8 +374,8 @@ Each scenario is documented in this format:
 - **Expected**: Non-empty custom headers are the last writer on that row's
   outbound HTTP (turns, subagents, one-shots, discovery, connection test,
   OAuth refresh). Empty restores pi-ai / `claude-cli` / OpenCode defaults.
-  Advanced keeps the header list in its own bounded scroll area, so additional
-  rows do not compress or hide the model panes. Escape and outside-click close
+  Advanced keeps up to five header rows visible and scrolls additional rows in its
+  own bounded area, so they do not compress or hide the model panes. Escape and outside-click close
   only the Advanced modal while it is open. The preset adds the expected
   User-Agent value, Copy JSON serializes the same `pairsToRecord` map saved on
   the row, JSON import accepts both supported object shapes, and
@@ -1284,8 +1285,8 @@ Each scenario is documented in this format:
 #### E2E-091: Appearance card selects searchable theme and language pickers
 
 - **Preconditions**: App running on macOS; the harness can exercise English,
-  Simplified Chinese, Traditional Chinese, Turkish, German, Spanish, and
-  French system locales.
+  Simplified Chinese, Traditional Chinese, Turkish, German, Spanish, French,
+  and Korean system locales.
 - **Steps**:
   1) Open Settings → General.
   2) In the Appearance card, open the Theme picker. Confirm System, Light, and
@@ -1294,13 +1295,13 @@ Each scenario is documented in this format:
   3) Select Light and confirm the UI switches to light.
   4) In the Language row, open the searchable picker. Confirm Auto is pinned
      at the top with the detected native name and that English, 简体中文,
-     繁體中文, Türkçe, Deutsch, Español, and Français are listed by native name. With Simplified Chinese
+     繁體中文, Türkçe, Deutsch, Español, Français, and 한국어 are listed by native name. With Simplified Chinese
      selected as the OS locale, selecting Auto applies Simplified Chinese;
      with Traditional Chinese selected, Auto applies Traditional Chinese.
-  5) Select English, 简体中文, 繁體中文, Türkçe, Deutsch, Español, and Français
-     in turn and confirm shell chrome switches to each locale without a reload.
-     Confirm `zh-Hant` and `zh-HK` resolve to 繁體中文, `de-DE` to Deutsch,
-     `es-MX` to Español, and `fr-CA` to Français.
+  5) Select English, 简体中文, 繁體中文, Türkçe, Deutsch, Español, Français,
+     and 한국어 in turn and confirm shell chrome switches to each locale without
+     a reload. Confirm `zh-Hant` and `zh-HK` resolve to 繁體中文, `de-DE` to
+     Deutsch, `es-MX` to Español, `fr-CA` to Français, and `ko-KR` to 한국어.
   6) Type a native name or English name into the language search and confirm
      unmatched locales disappear. Type a theme name into the theme search and
      confirm unmatched options disappear.
@@ -1310,9 +1311,9 @@ Each scenario is documented in this format:
   then any plugin themes after a divider. Auto resolves the OS locale through
   the main process (`app.getLocale()`), passes it safely through the sandboxed
   preload bridge, and reflects the detected native name inline in the menu;
-  zh-TW, Turkish, German, Spanish, and French are complete shell catalogs,
-  including release-note copy; switching options updates the live UI without a
-  reload.
+  zh-TW, Turkish, German, Spanish, French, and Korean are complete shell
+  catalogs, including release-note copy; switching options updates the live UI
+  without a reload.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/02-i18n-english-first.md`
 - **Acceptance**: A (core shell), H (localization)
 - **Milestone**: M4
@@ -1618,8 +1619,8 @@ Each scenario is documented in this format:
 #### E2E-024D: Isolated plugin panel host bridge
 
 - **Preconditions**: Plugin with `ui.panel` enabled.
-- **Steps**: 1) Set the app language to English and open a panel whose manifest declares localized `ui.title.en` and `ui.title.zh-CN`; confirm the native window/launcher identity remains available without a host-rendered title. 2) Set the app language to Simplified Chinese and reopen the panel; confirm the panel content remains plugin-owned. 3) Open the panel on macOS, Windows, and Linux; confirm the same frameless 46px drag band, fixed top-right capsule fully contained inside that band, and exactly three accessible controls. 4) Exercise minimize, maximize, restore, close, keyboard focus, light/dark themes, page-defined light/dark backgrounds, and reduced motion on every platform. 5) Render a plugin-owned titlebar/toolbar; verify fixed/sticky UI uses `--pi-plugin-titlebar-height`, its interactive controls use `no-drag`, and clicks outside the capsule in the top 46px are treated as window dragging. 6) On Windows with classic scrollbars, scroll a panel with content overflow and inspect the right edge. 7) Open a development plugin and confirm the localized reminder explains that the top 46px is not clickable outside the capsule. 8) Reopen a minimized panel. 9) Invoke panel bridge APIs (`ui.showToast`, optional fs/net with grants).
-- **Expected**: Panel runs in its sandboxed window/partition; all three platforms use one host-owned frameless chrome contract with no native traffic lights, host-rendered title, or application menu; the top drag band is exactly 46px, and the minimal capsule stays fixed at the top-right without exceeding it. The capsule contains minimize/maximize-or-restore/close, follows the plugin page's surface/text colors, and never forces a black surface onto a light page. A v2 page marked `pi-plugin-chrome` uses `--pi-plugin-titlebar-height` and starts its own content directly below the 46px band without an additive duplicate spacer; a legacy page keeps the compatibility offset. A panel's stable scrollbar gutter is scoped to its actual content scroller; Windows does not show a second root-level empty side rail outside the page surface. The plugin owns its title and toolbar; the host drag strip remains usable, blocks clicks outside the capsule, and development panels alone show the reminder. Reopening restores the existing panel; bridge calls remain permission-checked and the host remains stable on panel close.
+- **Steps**: 1) Set the app language to English and open a panel whose manifest declares localized `ui.title.en` and `ui.title.zh-CN`; confirm the native window/launcher identity remains available without a host-rendered title. 2) Set the app language to Simplified Chinese and reopen the panel; confirm the panel content remains plugin-owned. 3) While the panel stays open, switch the app language to Korean and confirm the live `appearance:changed` event updates the panel controls, safe-area reminder, and accessible labels without reopening it. 4) Open the panel on macOS, Windows, and Linux; confirm the same frameless 46px drag band, fixed top-right capsule fully contained inside that band, and exactly three accessible controls. 5) Exercise minimize, maximize, restore, close, keyboard focus, light/dark themes, page-defined light/dark backgrounds, and reduced motion on every platform. 6) Render a plugin-owned titlebar/toolbar; verify fixed/sticky UI uses `--pi-plugin-titlebar-height`, its interactive controls use `no-drag`, and clicks outside the capsule in the top 46px are treated as window dragging. 7) On Windows with classic scrollbars, scroll a panel with content overflow and inspect the right edge. 8) Open a development plugin and confirm the localized reminder explains that the top 46px is not clickable outside the capsule. 9) Reopen a minimized panel. 10) Invoke panel bridge APIs (`ui.showToast`, optional fs/net with grants).
+- **Expected**: Panel runs in its sandboxed window/partition; all three platforms use one host-owned frameless chrome contract with no native traffic lights, host-rendered title, or application menu; the top drag band is exactly 46px, and the minimal capsule stays fixed at the top-right without exceeding it. The capsule contains minimize/maximize-or-restore/close, follows the plugin page's surface/text colors, and never forces a black surface onto a light page. A v2 page marked `pi-plugin-chrome` uses `--pi-plugin-titlebar-height` and starts its own content directly below the 46px band without an additive duplicate spacer; a legacy page keeps the compatibility offset. A panel's stable scrollbar gutter is scoped to its actual content scroller; Windows does not show a second root-level empty side rail outside the page surface. The plugin owns its title and toolbar; the host drag strip remains usable, blocks clicks outside the capsule, and development panels alone show the reminder. Reopening restores the existing panel; switching to Korean while the panel remains open updates the host capsule, reminder, and accessible labels in place; bridge calls remain permission-checked and the host remains stable on panel close.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`, `04-ux/07-ui-design-system.md`, `07-plugins/01-plugin-system.md`, `07-plugins/03-plugin-api.md`, `07-plugins/04-plugin-security.md`, ADR 0081, ADR 0082, ADR 0092, ADR 0093
 - **Acceptance**: G (isolated panel)
 - **Status**: Documented
@@ -2969,10 +2970,11 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (`auto-update.test.mjs` asserts
   `allowPrerelease = false`); packaged discovery scenario Draft
 
-#### E2E-067B: Shipped-locale update notes and full changelog dialog (D164/D345)
+#### E2E-067B: Shipped-locale update notes and full changelog dialog (D164/D345/D349)
 
 - **Preconditions**: The shipped `packages/shared` CHANGELOG contains aligned
-  `en`, `zh-CN`, and `zh-TW` stable history; product language can be switched.
+  `en`, `zh-CN`, `zh-TW`, and `ko` stable history; product language can be
+  switched.
   For the compact update path, use a packaged or fixture updater state with a
   catalogued `availableVersion`.
 - **Steps**: 1) With no available update, open Settings → Info and open Release
@@ -2980,7 +2982,7 @@ Each scenario is documented in this format:
   and close behavior by close control, Escape, and backdrop. 3) Force or wait
   for update discovery so status is manual `available`, in-app `downloading`,
   or `downloaded`; inspect the ambient banner and Settings Updates row, then
-  reopen Release notes. 4) Switch UI language to zh-CN and then zh-TW and
+  reopen Release notes. 4) Switch UI language to zh-CN, then zh-TW, then ko and
   re-inspect without invoking a new check. 5) Repeat the compact update path
   with a version absent from the catalog.
 - **Expected**: `UpdateState.releaseNotes` is plain multi-line product

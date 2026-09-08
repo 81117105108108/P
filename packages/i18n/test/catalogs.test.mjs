@@ -9,6 +9,7 @@ import {
   supportedLocales,
   zhCN,
   zhTW,
+  ko,
 } from "../src/index.ts";
 
 function placeholders(value) {
@@ -122,22 +123,26 @@ test("locale resolution maps variants onto shipped catalogs and falls back to En
   assert.equal(resolveLocale("es-MX"), "es");
   assert.equal(resolveLocale("fr-CA"), "fr");
   assert.equal(resolveLocale("de-DE"), "de");
+  assert.equal(resolveLocale("ko"), "ko");
+  assert.equal(resolveLocale("ko-KR"), "ko");
+  assert.equal(resolveLocale("ko_KR"), "ko");
   assert.equal(resolveLocale(), "en");
 });
 
 test("the locale registry lists English first, then other locales by English name", () => {
   assert.deepEqual(
     supportedLocales.map((locale) => locale.id),
-    ["en", "zh-CN", "zh-TW", "de", "es", "tr", "fr"],
+    ["en", "zh-CN", "zh-TW", "de", "es", "tr", "fr", "ko"],
   );
   assert.deepEqual(
     listedLocales().map((locale) => locale.id),
-    ["en", "zh-CN", "zh-TW", "fr", "de", "es", "tr"],
+    ["en", "zh-CN", "zh-TW", "fr", "de", "ko", "es", "tr"],
   );
   assert.equal(localeInfoNative("de"), "Deutsch");
   assert.equal(localeInfoNative("es"), "Español");
   assert.equal(localeInfoNative("fr"), "Français");
   assert.equal(localeInfoNative("tr"), "Türkçe");
+  assert.equal(localeInfoNative("ko"), "한국어");
   assert.equal(english["settings.languageSearchPlaceholder"], "Search languages…");
   assert.equal(english["settings.themeSearchPlaceholder"], "Search themes…");
   assert.equal(english["settings.languageAutoDesc"], "Currently {{state}}");
@@ -155,6 +160,11 @@ test("the locale registry lists English first, then other locales by English nam
   assert.equal(flattenCatalog(catalogs.es)["settings.language"], "Idioma");
   assert.equal(flattenCatalog(catalogs.fr)["settings.language"], "Langue");
   assert.equal(flattenCatalog(catalogs.de)["settings.language"], "Sprache");
+  assert.equal(flattenCatalog(ko)["settings.language"], "언어");
+  assert.equal(flattenCatalog(ko)["settings.languageAuto"], "시스템 언어 사용");
+  assert.equal(flattenCatalog(ko)["nav.projects"], "프로젝트");
+  assert.equal(flattenCatalog(ko)["nav.temporarySessions"], "임시 대화");
+  assert.notEqual(flattenCatalog(ko)["app.tagline"], english["app.tagline"]);
 });
 
 function localeInfoNative(id) {

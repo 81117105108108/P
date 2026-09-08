@@ -60,7 +60,7 @@ function hostFromBaseUrl(baseUrl?: string | null): string {
 }
 
 export function ModelConfigPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const providers = useAppStore((s) => s.providers);
   const settings = useAppStore((s) => s.settings);
   const refreshProviders = useAppStore((s) => s.refreshProviders);
@@ -536,7 +536,9 @@ export function ModelConfigPage() {
                 source: catalogSourceLabel,
                 models: catalogStatus.modelCount,
                 fetchedAt: catalogStatus.fetchedAt
-                  ? new Date(catalogStatus.fetchedAt).toLocaleString()
+                  ? new Date(catalogStatus.fetchedAt).toLocaleString(
+                      i18n.resolvedLanguage ?? i18n.language,
+                    )
                   : t("settings.catalogNeverFetched"),
               })
             : t("settings.catalogStatusUnknown")}

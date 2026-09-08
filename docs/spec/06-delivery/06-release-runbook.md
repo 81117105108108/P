@@ -65,8 +65,8 @@ when macOS `iconutil` is available, without overwriting the canonical source.
   runtime-resolved production modules. Renderer libraries are already present
   in Vite output and are not copied again as raw package trees.
 - Chromium locale packs for English, Simplified Chinese, Traditional Chinese,
-  and Turkish. Product catalogs remain bundled independently of Chromium
-  locales.
+  Turkish, German, Spanish, French, and Korean. Product catalogs remain bundled
+  independently of Chromium locales.
 - App icon `build/icon.icns` (derived from canonical `build/icon_1024.png` by
   `scripts/make-icon.py`).
 - macOS menu bar template `build/tray-icon-mac.png`, derived from the dark PI
@@ -221,8 +221,8 @@ The package inventory must confirm:
   tree in ASAR
 - required third-party license and notice files remain in ASAR or
   `Resources/licenses` when their non-runtime package trees are pruned
-- only the configured English, Simplified Chinese, Traditional Chinese, and
-  Turkish Chromium locale packs
+- only the configured English, Simplified Chinese, Traditional Chinese,
+  Turkish, German, Spanish, French, and Korean Chromium locale packs
 
 The first audited optimized package establishes the platform baseline. Keep
 per-platform measurements rather than applying one budget to different

@@ -107,6 +107,10 @@ test("packaging keeps only shipped locales and excludes non-runtime artifacts", 
     "zh-TW",
     "zh_TW",
     "tr",
+    "de",
+    "es",
+    "fr",
+    "ko",
   ]);
   assert.ok(packageJson.build.files.includes("!**/*.map"));
   assert.ok(

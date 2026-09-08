@@ -197,4 +197,5 @@ Each ADR includes:
 | 0182 | Traditional Chinese shell locale | Accepted (amends 0160) |
 | 0183 | P0 international shell locales | Accepted (amends 0160 / 0182) |
 | 0184 | Dock the context usage inspector in the composer toolbar | Accepted (amends 0047 / 0103) |
-| 0185 | Show provider retry causes in the active-turn status | Accepted (amends 0175) |
+ | 0185 | Korean shell locale | Accepted (amends 0160 / 0183) |
+ | 0186 | Show provider retry causes in the active-turn status | Accepted (amends 0175) |

@@ -266,6 +266,8 @@ test("Advanced opens from the dialog header into a separate modal", () => {
   assert.match(vendorDialogSource, /settings\.advancedSettings/);
   assert.match(setupSource, /provider-advanced-dialog/);
   assert.match(vendorDialogSource, /provider-advanced-dialog/);
+  assert.doesNotMatch(setupSource, /provider-advanced-actions/);
+  assert.doesNotMatch(vendorDialogSource, /provider-advanced-actions/);
   assert.doesNotMatch(setupSource, /provider-setup-advanced-toggle/);
   assert.doesNotMatch(vendorDialogSource, /provider-setup-advanced-toggle/);
   assert.match(setupSource, /if \(advancedOpen\)/);
@@ -306,7 +308,7 @@ test("Advanced offers presets plus JSON import and copy without redundant helper
   const toolbar = block(".provider-setup-headers-toolbar");
   assert.match(toolbar, /display: flex/);
   const headersViewport = block(".provider-setup-header-list");
-  assert.match(headersViewport, /max-height: 116px/);
+  assert.match(headersViewport, /max-height: min\(220px, 30vh\)/);
   assert.match(headersViewport, /overflow-y: auto/);
   assert.match(headersViewport, /overscroll-behavior: contain/);
   // Named and custom both expose Advanced; API format stays beside the key.

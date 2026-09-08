@@ -280,8 +280,8 @@ function installPaintThroughDragMap(dragRegion: HTMLElement): void {
   sync();
 }
 
-function chromeLabels(): ChromeLabels {
-  const locale = panelLocale().replaceAll("_", "-").toLowerCase();
+function chromeLabels(input = panelLocale()): ChromeLabels {
+  const locale = input.replaceAll("_", "-").toLowerCase();
   const traditionalChinese =
     locale === "zh-tw" ||
     locale.startsWith("zh-tw-") ||
@@ -299,6 +299,56 @@ function chromeLabels(): ChromeLabels {
       restore: "還原",
       close: "關閉",
       safeArea: "開發提示 · 頂部 46px 為拖曳區",
+    };
+  }
+  if (locale.startsWith("ko")) {
+    return {
+      toolbar: "플러그인 패널 창 컨트롤",
+      minimize: "최소화",
+      maximize: "최대화",
+      restore: "복원",
+      close: "닫기",
+      safeArea: "개발 안내 · 상단 46px는 드래그 전용",
+    };
+  }
+  if (locale.startsWith("tr")) {
+    return {
+      toolbar: "Eklenti paneli pencere denetimleri",
+      minimize: "Küçült",
+      maximize: "Büyüt",
+      restore: "Geri yükle",
+      close: "Kapat",
+      safeArea: "Geliştirici ipucu · üst 46 piksel yalnızca sürükleme alanıdır",
+    };
+  }
+  if (locale.startsWith("de")) {
+    return {
+      toolbar: "Plugin-Panel-Fenstersteuerung",
+      minimize: "Minimieren",
+      maximize: "Maximieren",
+      restore: "Wiederherstellen",
+      close: "Schließen",
+      safeArea: "Entwicklerhinweis · die oberen 46 px dienen nur zum Ziehen",
+    };
+  }
+  if (locale.startsWith("es")) {
+    return {
+      toolbar: "Controles de ventana del panel del complemento",
+      minimize: "Minimizar",
+      maximize: "Maximizar",
+      restore: "Restaurar",
+      close: "Cerrar",
+      safeArea: "Aviso de desarrollo · los 46 px superiores son solo para arrastrar",
+    };
+  }
+  if (locale.startsWith("fr")) {
+    return {
+      toolbar: "Contrôles de fenêtre du panneau du plugin",
+      minimize: "Réduire",
+      maximize: "Agrandir",
+      restore: "Restaurer",
+      close: "Fermer",
+      safeArea: "Indication de développement · les 46 px supérieurs servent uniquement au déplacement",
     };
   }
   if (locale.startsWith("zh")) {
@@ -375,7 +425,7 @@ function installPanelChrome(): void {
     );
   }
 
-  const labels = chromeLabels();
+  let labels = chromeLabels();
   const theme = panelTheme();
   const chromeMode = pluginChromeMode();
   const host = document.createElement("pi-plugin-panel-chrome");
@@ -642,9 +692,29 @@ function installPanelChrome(): void {
   // The plugin receives appearance changes through the same event channel.
   // Re-sample after the page has applied its new data attribute so the capsule
   // remains legible when a plugin switches between light and dark palettes.
-  ipcRenderer.on("pi-plugin-panel-event:appearance:changed", () => {
-    window.setTimeout(syncPageColors, 0);
-  });
+  ipcRenderer.on(
+    "pi-plugin-panel-event:appearance:changed",
+    (_event, appearance: { locale?: string }) => {
+      if (typeof appearance?.locale === "string") {
+        labels = chromeLabels(appearance.locale);
+        host.setAttribute("aria-label", labels.toolbar);
+        controls.setAttribute("aria-label", labels.toolbar);
+        minimize.title = labels.minimize;
+        minimize.setAttribute("aria-label", labels.minimize);
+        close.title = labels.close;
+        close.setAttribute("aria-label", labels.close);
+        const maximized = maximize.firstElementChild?.classList.contains(
+          "glyph-restore",
+        );
+        setMaximized(Boolean(maximized));
+        if (safeAreaHint) {
+          safeAreaHint.textContent = labels.safeArea;
+          safeAreaHint.setAttribute("aria-label", labels.safeArea);
+        }
+      }
+      window.setTimeout(syncPageColors, 0);
+    },
+  );
   void invokeControl("getState");
 
   controls.append(minimize, maximize, close);

@@ -258,12 +258,13 @@ a usage tab.
     Named display names and optional custom headers stay behind Advanced settings.
     The dialog header's upper-right actions include an explicit Advanced settings
     button that opens a separate compact modal, keeping the main form focused on
-    the endpoint and model panes. The modal offers common presets including a
+    the endpoint and model panes. The modal uses the header close action only;
+    it does not render a footer action row. The modal offers common presets including a
     ready-to-use User-Agent, copies the same normalized header record used for
     persistence as pretty-printed JSON (blank names omitted, last write wins),
     and imports either a direct JSON header map or
     `{ "headers": { ... } }`; imported keys merge case-insensitively without
-    duplicating existing rows. The editor keeps at most two header rows visible
+    duplicating existing rows. The editor keeps at most five header rows visible
     and scrolls internally for additional rows. Empty headers keep adapter
     defaults.
     Service is a searchable anchored menu of vendors (filter by localized

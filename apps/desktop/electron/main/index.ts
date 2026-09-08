@@ -2342,7 +2342,7 @@ function applyCloseBehavior(next: CloseBehavior) {
 async function askCloseBehavior(
   window: BrowserWindow,
 ): Promise<"tray" | "quit" | null> {
-  const labels = catalogs[resolveLocale(app.getLocale())];
+  const labels = catalogs[resolveLocale(updaterLocale)];
   const { response } = await dialog.showMessageBox(window, {
     type: "question",
     title: labels.tray.askTitle,
@@ -2363,7 +2363,7 @@ async function askCloseBehavior(
  * Returns `true` when the user confirms, `false` when they cancel.
  */
 async function confirmQuitDialog(): Promise<boolean> {
-  const labels = catalogs[resolveLocale(app.getLocale())];
+  const labels = catalogs[resolveLocale(updaterLocale)];
   const parent =
     mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
   const options = {

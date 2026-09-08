@@ -1102,7 +1102,7 @@ export type AppSettings = {
   defaultPermissionMode?: GlobalPermissionMode;
   theme: ThemePreference;
   /** UI language; `auto` (and absent) follows the OS locale. */
-  language?: "auto" | "en" | "zh-CN" | "zh-TW" | "tr" | "de" | "es" | "fr";
+  language?: "auto" | "en" | "zh-CN" | "zh-TW" | "tr" | "de" | "es" | "fr" | "ko";
   /**
    * Global UI font stack (CSS `font-family` value). Absent means the built-in
    * token stack; bundled open-source families and installed system families
@@ -1146,8 +1146,16 @@ export type AppSettings = {
    * is set. See `network-proxy.ts`.
    */
   networkProxy?: NetworkProxySettings;
+  /**
+   * Preferred destination when clicking HTTP/HTTPS links in chat messages.
+   * `workpanel`: Preview in the Work Panel browser tab (default).
+   * `external`: Open directly in the system's default web browser.
+   */
+  linkOpenTarget?: LinkOpenTarget;
   onboardingDismissed: boolean;
 };
+
+export type LinkOpenTarget = "workpanel" | "external";
 
 export type PluginMarketSource = "official" | "mirror" | "custom";
 

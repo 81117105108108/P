@@ -29,7 +29,7 @@ export function ReleaseNotesDialog({
 
   const dateFormatter = useMemo(
     () =>
-      new Intl.DateTimeFormat(locale.startsWith("zh-") ? locale : "en", {
+      new Intl.DateTimeFormat(locale, {
         year: "numeric",
         month: "short",
         day: "numeric",

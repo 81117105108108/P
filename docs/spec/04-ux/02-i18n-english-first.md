@@ -34,7 +34,8 @@ packages/i18n/src/locales/
 ├── tr/index.ts
 ├── de/index.ts
 ├── es/index.ts
-└── fr/index.ts
+├── fr/index.ts
+└── ko/index.ts
 ```
 
 The English catalog is the source type for translated catalogs. A registry in
