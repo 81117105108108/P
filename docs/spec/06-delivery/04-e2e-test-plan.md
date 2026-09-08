@@ -358,6 +358,8 @@ Each scenario is documented in this format:
   action. Confirm a separate modal opens without changing the main form layout.
   Use the common-header preset to add User-Agent, then import a JSON object
   containing `X-Gateway: alpha` and enough headers to exceed two visible rows.
+  Copy headers as JSON and confirm the clipboard is the pretty-printed persisted
+  record (blank names omitted, last write wins) with localized success feedback.
   Confirm the header list scrolls inside the modal while the underlying model
   panes keep their working area, close the modal, then save. 2) Start an Agent
   turn, a follow-up, prompt enhancement, and a plugin one-shot. 3) Refresh
@@ -374,8 +376,11 @@ Each scenario is documented in this format:
   Advanced keeps the header list in its own bounded scroll area, so additional
   rows do not compress or hide the model panes. Escape and outside-click close
   only the Advanced modal while it is open. The preset adds the expected
-  User-Agent value, JSON import accepts both supported object shapes, and
-  case-insensitive duplicate keys are merged rather than duplicated. OpenCode still sends
+  User-Agent value, Copy JSON serializes the same `pairsToRecord` map saved on
+  the row, JSON import accepts both supported object shapes, and
+  case-insensitive duplicate keys are merged rather than duplicated.
+  Toolbar actions wrap at the narrow dialog breakpoint instead of overflowing.
+  OpenCode still sends
   `x-opencode-session` and `x-opencode-client`. Codex
   and Anthropic still send the custom User-Agent despite adapter last-writes.
   First OAuth login does not collect headers. Reserved keys and CR/LF are
@@ -383,7 +388,7 @@ Each scenario is documented in this format:
   field.
 - **Specs linked**: `03-runtime/12-provider-config-schema.md`,
   `03-runtime/11-provider-model-system.md`, `03-runtime/02-agent-runtime.md`,
-  ADR 0178
+  `04-ux/06-settings-ia.md`, ADR 0178
 - **Acceptance**: B (model configuration), F (runtime provider requests)
 - **Milestone**: M2
 - **Status**: Unit-covered (host persistence, fetch wrapper, discovery,

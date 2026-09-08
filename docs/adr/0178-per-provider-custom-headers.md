@@ -43,9 +43,10 @@ optional `headers` map in `config_json.headers`.
 - Not a secret. No SQLite or host-protocol version bump.
 - UI is an explicit Advanced settings button in the upper-right dialog actions
   (named, custom, and vendor account) that opens a separate compact modal. The
-  modal offers common header presets including `User-Agent`, JSON import for
-  either a direct header object or `{ "headers": { ... } }`, and case-insensitive
-  merge without duplicate rows. At most two header rows are visible; additional
+  modal offers common header presets including `User-Agent`, Copy JSON of the
+  same normalized record used for persistence, JSON import for either a direct
+  header object or `{ "headers": { ... } }`, and case-insensitive merge without
+  duplicate rows. At most two header rows are visible; additional
   rows scroll inside the editor. Named display name stays above the header
   controls. First OAuth login does not collect headers; they are edited after
   the account exists.

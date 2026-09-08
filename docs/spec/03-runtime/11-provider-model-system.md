@@ -427,7 +427,8 @@ type ModelDescriptor = {
 - add custom provider
 - edit base URL/headers
 - set/replace/delete key
-- set optional custom headers in Advanced (empty keeps adapter defaults)
+- set optional custom headers in Advanced (empty keeps adapter defaults);
+  copy the same normalized JSON used for persistence
 - sign in to / out of a vendor account, and see which account a row uses
 - edit a vendor account's non-secret label, custom headers, and default model
 - enable/disable provider
