@@ -1376,6 +1376,16 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Draft
 
+#### E2E-199: WorkBuddy import keeps prompts, tool results, and AI titles
+
+- **Preconditions**: `~/.workbuddy/projects` contains one session whose first user turn is wrapped in `<system-reminder>` context with the real prompt inside `<user_query>`, one session carrying a compaction summary block, and one session whose tool result exceeded the inline limit and was persisted under `<session>/tool-results/call_*.txt`.
+- **Steps**: 1) Open Settings → Import and scan for sessions. 2) Inspect the WorkBuddy candidates. 3) Import a session that has an AI-generated title. 4) Open the imported transcript and inspect user turns, assistant turns, and tool rows. 5) Inspect the tool row whose output was externalized. 6) Re-import the same session.
+- **Expected**: Candidates appear under a WorkBuddy source label and show AI-generated titles rather than truncated first-message text; user turns contain only the prompt, with no injected `<system-reminder>` or compaction block; assistant turns keep their text; every tool row carries a tool name and a result, and an externalized result shows the full persisted output instead of the `<persisted-output>` stub; reasoning and file-history records are not rendered as messages; re-importing adds no duplicate session.
+- **Specs linked**: `03-runtime/04-data-storage.md`, `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: F (session import review)
+- **Milestone**: M2
+- **Status**: Draft
+
 #### E2E-038: Settings owns the project archive destination
 
 - **Preconditions**: App running with at least one configured provider, one supported local session store, one retained project, and one archived project.

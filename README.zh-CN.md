@@ -319,6 +319,7 @@ PI-Desktop 可以从受支持的工具导入本机会话，包括：
 * Codex
 * OpenCode
 * Pi
+* WorkBuddy
 
 打开 **设置 → 导入**，把已有工作带进桌面工作区。
 

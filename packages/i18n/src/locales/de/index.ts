@@ -697,6 +697,7 @@ export const de = {
     "importSourceOpenCode": "OpenCode",
     "importSourceCodex": "Codex",
     "importSourcePi": "Pi",
+    "importSourceWorkBuddy": "WorkBuddy",
     "importSourceCcSwitch": "CC Switch",
     "importModelsTitle": "Modellkonfiguration",
     "importModelsScanDesc": "Lokale Anbieter- und Modelleinstellungen finden. Gespeicherte API-Schlüssel werden kopiert; Abonnement-Logins sind es nicht.",
