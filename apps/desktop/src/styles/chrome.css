@@ -332,7 +332,7 @@
 }
 
 /*
- * macOS supplies the blur through native under-window vibrancy. The renderer
+ * macOS supplies the blur through native sidebar vibrancy. The renderer
  * only adds a thin tint plus sheen on the sidebar, rail, and boot splash —
  * an opaque splash would flash a painted panel before the glass sidebar.
  * The sheen keeps the material reading as glass; a flat tint looks painted.
