@@ -1225,6 +1225,9 @@ export const zhCN = {
   },
   panel: {
     title: "工作面板",
+    subagent: "子智能体",
+    subagentClose: "关闭子智能体详情",
+    subagentEmpty: "子智能体详情已不可用。",
     collapse: "收起工作面板",
     resize: "调整工作面板宽度",
     resizeChat: "调整对话区宽度",

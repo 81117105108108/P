@@ -180,7 +180,14 @@ function AppShell() {
   const handlePlansChanged = useAppStore((s) => s.handlePlansChanged);
   const abort = useAppStore((s) => s.abort);
   const settings = useAppStore((s) => s.settings);
+  const subagentPanel = useAppStore((s) => s.subagentPanel);
+  const closeSubagentPanel = useAppStore((s) => s.closeSubagentPanel);
   const workPanelOpen = useAppStore((s) => s.workPanelOpen);
+  const subagentPanelOpen = Boolean(
+    page === "chat" &&
+      subagentPanel &&
+      subagentPanel.sessionId === activeSessionId,
+  );
   const pluginThemes = useAppStore((s) => s.pluginThemes);
   const refreshPluginThemes = useAppStore((s) => s.refreshPluginThemes);
   const plugins = useAppStore((s) => s.plugins);
@@ -254,6 +261,15 @@ function AppShell() {
   }, [presentedWorkPanelOpen]);
 
   useEffect(() => {
+    if (
+      subagentPanel &&
+      (page !== "chat" || subagentPanel.sessionId !== activeSessionId)
+    ) {
+      closeSubagentPanel();
+    }
+  }, [activeSessionId, closeSubagentPanel, page, subagentPanel]);
+
+  useEffect(() => {
     workPanelExitingRef.current = workPanelExiting;
   }, [workPanelExiting]);
 
@@ -281,7 +297,8 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
-    const shouldPresent = ready && page !== "settings" && workPanelOpen;
+    const shouldPresent =
+      ready && page !== "settings" && (workPanelOpen || subagentPanelOpen);
     const request = ++workPanelReservationRequest.current;
 
     if (shouldPresent) {
@@ -317,7 +334,7 @@ function AppShell() {
       isCurrent: () => request === workPanelReservationRequest.current,
       commit: () => setPresentedWorkPanelOpen(shouldPresent),
     });
-  }, [page, ready, workPanelOpen]);
+  }, [page, ready, subagentPanelOpen, workPanelOpen]);
 
   // Fallback if animationend is skipped (display:none mid-flight, etc.).
   useEffect(() => {
@@ -1907,7 +1924,16 @@ function AppShell() {
               onExitAnimationEnd={() =>
                 finishWorkPanelExit(workPanelExitGeneration.current)
               }
-              onCollapse={() => useAppStore.getState().collapseWorkPanel()}
+              subagentPanel={subagentPanelOpen ? subagentPanel : null}
+              onCloseSubagentPanel={closeSubagentPanel}
+              onCollapse={() => {
+                if (subagentPanelOpen) {
+                  closeSubagentPanel();
+                  useAppStore.getState().collapseWorkPanel();
+                  return;
+                }
+                useAppStore.getState().collapseWorkPanel();
+              }}
             />
           )}
 

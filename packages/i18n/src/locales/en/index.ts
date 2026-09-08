@@ -1233,6 +1233,9 @@ export const en = {
   },
   panel: {
     title: "Work panel",
+    subagent: "Subagent",
+    subagentClose: "Close subagent details",
+    subagentEmpty: "Subagent details are no longer available.",
     collapse: "Hide work panel",
     resize: "Resize work panel",
     resizeChat: "Resize conversation area",

@@ -452,7 +452,7 @@ test("revealing the panel with no tab shows the empty body and its tool list", a
   );
   // `Cmd/Ctrl+J` reveals the panel without creating a tab, so the body must
   // still say something and offer a way forward.
-  assert.match(panelSource, /\{!activeTab && \(/);
+  assert.match(panelSource, /\{!subagentPanel && !activeTab && \(/);
   assert.match(panelSource, /data-testid="work-panel-empty"/);
   assert.match(panelSource, /panel\.empty\.title/);
   assert.match(panelSource, /panel\.empty\.body/);
@@ -461,7 +461,7 @@ test("revealing the panel with no tab shows the empty body and its tool list", a
   assert.match(panelSource, /data-work-panel-plugin-view=\{view\.ref\}/);
   assert.match(panelSource, /onClick=\{\(\) => openPluginView\(view\)\}/);
   // No tab exists to label a tabpanel, so the empty body is a plain group.
-  const emptyBlock = panelSource.match(/\{!activeTab && \([\s\S]*?\n {10}\)\}/)?.[0] ?? "";
+  const emptyBlock = panelSource.match(/\{!subagentPanel && !activeTab && \([\s\S]*?\n {10}\)\}/)?.[0] ?? "";
   assert.ok(emptyBlock, "the empty body branch is a single JSX block");
   assert.doesNotMatch(emptyBlock, /role="tabpanel"/);
   assert.match(emptyBlock, /role="group"/);

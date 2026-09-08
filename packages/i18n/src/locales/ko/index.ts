@@ -1235,6 +1235,9 @@ export const ko = {
   },
   panel: {
     title: "작업 패널",
+    subagent: "서브에이전트",
+    subagentClose: "서브에이전트 세부 정보 닫기",
+    subagentEmpty: "서브에이전트 세부 정보를 더 이상 사용할 수 없습니다.",
     collapse: "작업 패널 숨기기",
     resize: "작업 패널 크기 조절",
     resizeChat: "대화 영역 크기 조절",

@@ -600,6 +600,8 @@ const ToolRow = memo(function ToolRow({
   const detailsId = useId();
   const root = useAppStore((s) => s.workspace?.path);
   const openTarget = useOpenPreviewTarget();
+  const openSubagentPanel = useAppStore((s) => s.openSubagentPanel);
+  const subagentPanel = useAppStore((s) => s.subagentPanel);
   const status = message.toolStatus;
   const action = getToolAction(message.toolName);
   // A run row states what the command did, not what the call around it did: an
@@ -645,7 +647,7 @@ const ToolRow = memo(function ToolRow({
   // Streaming updates replace the message object each tick; only pay the
   // full payload walk once the row is actually expanded.
   const blocks =
-    open && hasDetails
+    variant !== "topology" && open && hasDetails
       ? buildToolPresentation(message, {
           hideSummaryArg: true,
           ...(nestedReport ? { hideDelegateReport: true } : {}),
@@ -686,6 +688,15 @@ const ToolRow = memo(function ToolRow({
     delegationPayload && typeof delegationPayload === "object"
       ? (delegationPayload as { delegationId?: unknown }).delegationId
       : undefined;
+  const panelSelectionId =
+    typeof delegationId === "string" && delegationId
+      ? delegationId
+      : message.toolCallId || message.id;
+  const panelOpen =
+    variant === "topology" &&
+    subagentPanel?.delegationId === panelSelectionId;
+  const renderedOpen = variant === "topology" ? panelOpen : open;
+  const inlineOpen = variant !== "topology" && open;
   const delegationTiming =
     typeof delegationId === "string"
       ? delegationTimings?.get(delegationId)
@@ -733,7 +744,7 @@ const ToolRow = memo(function ToolRow({
   return (
     <div
       className={`tool-row ${variant === "topology" ? "subagent-topology-node" : ""} ${
-        open ? "open" : ""
+        renderedOpen ? "open" : ""
       } status-${run === "failed" ? "error" : status || "success"}${outcome ? ` outcome-${outcome.replaceAll("_", "-")}` : ""}`}
       role={variant === "topology" ? "listitem" : "region"}
       aria-label={`${t("chat.toolCall")}: ${rawName}${agentName ? `, ${agentName}` : ""}${modelId ? `, ${modelId}` : ""}${statusLabel ? `, ${statusLabel}` : ""}`}
@@ -741,11 +752,11 @@ const ToolRow = memo(function ToolRow({
       {variant === "topology" ? (
         <button
           className="subagent-topology-node-header"
-          aria-expanded={open}
-          aria-controls={hasDetails ? detailsId : undefined}
+          aria-expanded={panelOpen}
+          aria-controls={hasDetails ? "subagent-panel" : undefined}
           disabled={!hasDetails}
           title={summary || agentName || rawName}
-          onClick={() => hasDetails && setOpen((value) => !value)}
+          onClick={() => hasDetails && openSubagentPanel(panelSelectionId)}
         >
           <span className="subagent-topology-avatar" aria-hidden>
             <IconBot size={15} />
@@ -916,7 +927,7 @@ const ToolRow = memo(function ToolRow({
           <ToolDetailBlocks blocks={blocks} plain={runHead} />
         </div>
       ) : null}
-      {open && delegate ? (
+      {inlineOpen && delegate ? (
         <SubagentRunRows
           run={delegate}
           agentName={agentName}
@@ -941,17 +952,19 @@ function SubagentRunRows({
 }: {
   run: SubagentRun;
   agentName: string;
-  onCollapse: () => void;
+  onCollapse?: () => void;
 }) {
   const { t } = useTranslation();
   const headingId = useId();
   if (run.items.length === 0) return null;
   return (
     <div className="subagent-run">
-      <DisclosureCollapseRail
-        label={t("chat.collapseDetails")}
-        onCollapse={onCollapse}
-      />
+      {onCollapse ? (
+        <DisclosureCollapseRail
+          label={t("chat.collapseDetails")}
+          onCollapse={onCollapse}
+        />
+      ) : null}
       <div className="subagent-run-heading" id={headingId}>
         <IconBot size={13} aria-hidden />
         <span>
@@ -1046,6 +1059,94 @@ function SubagentRunFollow({
         >
           <IconArrowDown size={14} />
         </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Full detail for the selected delegate. It is shared by the transcript's
+ * inline fallback and the right-side work-panel dock so the two surfaces never
+ * drift in how they render briefs, reports, or nested activity.
+ */
+export function SubagentDetail({
+  message,
+  delegate,
+  delegationStatuses,
+  delegationTimings,
+}: {
+  message: UiMessage;
+  delegate?: SubagentRun;
+  delegationStatuses?: ReadonlyMap<string, SubagentOutcome>;
+  delegationTimings?: ReadonlyMap<string, SubagentTiming>;
+}) {
+  const { t } = useTranslation();
+  const agentName = delegateAgentName(message, delegate);
+  const modelId = delegateModelId(message);
+  const outcome = subagentOutcome(message, delegationStatuses);
+  const payload = toolResultPayload(message);
+  const payloadRecord =
+    payload && typeof payload === "object" && !Array.isArray(payload)
+      ? (payload as { delegationId?: unknown; startedAt?: unknown; completedAt?: unknown })
+      : undefined;
+  const delegationId =
+    typeof payloadRecord?.delegationId === "string"
+      ? payloadRecord.delegationId
+      : message.toolCallId || message.id;
+  const timing = delegationTimings?.get(delegationId);
+  const startedAt =
+    timing?.startedAt ??
+    (typeof payloadRecord?.startedAt === "number" ? payloadRecord.startedAt : undefined);
+  const completedAt =
+    timing?.completedAt ??
+    (typeof payloadRecord?.completedAt === "number" ? payloadRecord.completedAt : undefined);
+  const [now, setNow] = useState(Date.now);
+  const durationMs =
+    startedAt !== undefined
+      ? Math.max(0, (completedAt ?? (outcome === "running" ? now : startedAt)) - startedAt)
+      : message.toolDurationMs;
+  const duration =
+    typeof durationMs === "number" && durationMs > 0
+      ? formatToolDuration(durationMs / 1000)
+      : "";
+  const nestedReport = delegate?.items.some((item) => item.kind === "answer");
+  const blocks = buildToolPresentation(message, {
+    hideSummaryArg: true,
+    ...(nestedReport ? { hideDelegateReport: true } : {}),
+  });
+
+  useEffect(() => {
+    if (outcome !== "running") return;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [outcome]);
+
+  return (
+    <div className="subagent-detail" data-testid="subagent-detail">
+      <div className="subagent-detail-heading">
+        <span className="subagent-detail-avatar" aria-hidden>
+          <IconBot size={17} />
+          <span className={`subagent-detail-status outcome-${outcome.replaceAll("_", "-")}`} />
+        </span>
+        <div className="subagent-detail-heading-copy">
+          <div className="subagent-detail-title-row">
+            <strong>{agentName || t("chat.subagentUnnamed")}</strong>
+            {modelId ? <span title={modelId}>{modelId}</span> : null}
+          </div>
+          <span className="subagent-detail-meta">
+            {t(`chat.subagentStatus.${outcome}`)}
+            {duration ? ` · ${duration}` : ""}
+          </span>
+        </div>
+      </div>
+      {blocks.length > 0 ? (
+        <div className="subagent-detail-blocks">
+          <ToolDetailBlocks blocks={blocks} />
+        </div>
+      ) : null}
+      {delegate ? (
+        <SubagentRunRows run={delegate} agentName={agentName} />
       ) : null}
     </div>
   );

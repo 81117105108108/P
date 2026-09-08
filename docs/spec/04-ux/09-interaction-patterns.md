@@ -1066,6 +1066,15 @@ When drag/drop is implemented, these patterns should apply:
   pinned, the first upward gesture pauses follow and shows a nested
   jump-to-latest control, and a layout clamp or programmatic follow `scrollTo`
   never releases it. Native overflow anchoring is disabled on that scroller.
+- Clicking a delegation topology node opens its details in the right-side
+  work-panel dock instead of expanding the transcript. The node remains a
+  compact summary; the dock re-finds the selected session's live rows so
+  streamed output, status, and elapsed time continue updating. Selecting a
+  different node replaces the dock content, closing it restores the prior
+  resource view when present, and switching sessions or routes hides the
+  selection. `Cmd/Ctrl + J` hides the whole dock, including an active subagent
+  detail. The dock's nested scroller follows independently from the parent
+  transcript.
 
 ### 9.1a Sidebar project path and open folder
 

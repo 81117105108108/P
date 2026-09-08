@@ -916,6 +916,32 @@ workflow while rendering entirely inside the plugin's isolated page:
   Browser is user-driven (no agent control); Files is read-only
 - Single panel instance; no per-tab detach or split
 
+### 5.7 Subagent detail dock
+
+A topology node's detail disclosure opens the selected delegate in the same
+right-side dock as the work panel. It does not expand the transcript or add a
+resource tab. The transcript keeps the coordinator card and compact node
+summary in place, so opening a long delegate run cannot push the parent's next
+message out of view.
+
+- The selection is renderer-local and session-scoped: it stores only the
+  `sessionId` and delegation id, then re-finds the current Task and its
+  `parentToolCallId` rows from the live/retained transcript. Streaming thinking,
+  tool calls, reports, status, and elapsed time therefore update in the dock.
+- The dock header identifies the view as **Subagent** and offers the standard
+  close and collapse controls. Closing the detail returns to the previously
+  selected work-panel resource, if any; otherwise it hides the dock. The
+  `Cmd/Ctrl + J` work-panel toggle hides the subagent dock as a whole. Selecting
+  another topology node replaces the detail in place without changing width or
+  the conversation scroll position.
+- The detail body reuses the Task brief/report blocks and the delegate's bounded
+  `.subagent-run-rows` follow-scroll. Nested tool rows remain expandable inside
+  the dock; parent transcript scrolling and nested delegate scrolling are
+  independent.
+- A session switch or leaving the chat route hides the selection. A stale or
+  deleted delegation shows a localized unavailable state and never displays
+  another session's rows.
+
 ---
 
 ## 6. SessionList

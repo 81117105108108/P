@@ -22,6 +22,7 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconClose,
+  IconBot,
   IconDiff,
   IconFileText,
   IconPanel,
@@ -31,6 +32,8 @@ import { ReviewTab } from "./ReviewTab";
 import { FilesTab } from "./FilesTab";
 import { PluginViewTab } from "./PluginViewTab";
 import { WorkTabEmpty } from "./WorkTabEmpty";
+import { SubagentPanel } from "./SubagentPanel";
+import type { SubagentPanelSelection } from "../../lib/subagent-panel";
 import {
   WORK_PANEL_MAX_WIDTH,
   WORK_PANEL_MIN_WIDTH,
@@ -72,6 +75,8 @@ export function WorkPanel({
   onCollapse,
   exiting = false,
   onExitAnimationEnd,
+  subagentPanel = null,
+  onCloseSubagentPanel,
 }: {
   /**
    * Hides every native surface in the panel. Both the preview browser and a
@@ -83,6 +88,9 @@ export function WorkPanel({
   /** Plays work-panel-out; parent unmounts after animationend. */
   exiting?: boolean;
   onExitAnimationEnd?: () => void;
+  /** Temporarily replaces the resource body with the selected subagent detail. */
+  subagentPanel?: SubagentPanelSelection | null;
+  onCloseSubagentPanel?: () => void;
 }) {
   const { t } = useTranslation();
   const rawTabs = useAppStore((s) => s.workPanelTabs);
@@ -194,6 +202,10 @@ export function WorkPanel({
   useEffect(() => {
     setContextOpen(false);
   }, [activeSessionId]);
+
+  useEffect(() => {
+    if (subagentPanel) setContextOpen(false);
+  }, [subagentPanel]);
 
   /** Close a tab from the menu without dismissing it, keeping focus in place. */
   const closeTabFromMenu = useCallback(
@@ -365,16 +377,22 @@ export function WorkPanel({
     },
     [finishPanelResize, setWidth, width],
   );
-  const activeLabel = activeTab ? tabLabel(activeTab, t, pluginViews) : t("panel.title");
+  const activeLabel = subagentPanel
+    ? t("panel.subagent")
+    : activeTab
+      ? tabLabel(activeTab, t, pluginViews)
+      : t("panel.title");
   const activePluginView =
     activeTab?.kind === "plugin"
       ? pluginViews.find((view) => view.ref === activeTab.resource)
       : undefined;
-  const ActiveIcon = activeTab
-    ? (activeTab.kind === "plugin"
-        ? pluginViewIcon(activePluginView?.icon) ?? TAB_ICONS.plugin
-        : TAB_ICONS[activeTab.kind])
-    : IconDiff;
+  const ActiveIcon = subagentPanel
+    ? IconBot
+    : activeTab
+      ? (activeTab.kind === "plugin"
+          ? pluginViewIcon(activePluginView?.icon) ?? TAB_ICONS.plugin
+          : TAB_ICONS[activeTab.kind])
+      : IconDiff;
   const exitAnimationReady = exiting && nativeSurfaceReadyForExit;
   const panelStyle = {
     width: renderPanelWidth,
@@ -419,32 +437,45 @@ export function WorkPanel({
       <div className="work-panel-main">
         <header className="work-panel-header" data-work-panel-section="current">
           <div className="work-panel-context no-drag" ref={contextRef}>
-            <button
-              ref={contextButtonRef}
-              type="button"
-              className="work-panel-switcher-trigger"
-              aria-haspopup="menu"
-              aria-expanded={contextOpen}
-              aria-controls="work-panel-context-menu"
-              title={activeTab?.resource ?? activeLabel}
-              onClick={() => setContextOpen((open) => !open)}
-              onKeyDown={onTriggerKeyDown}
-            >
-              <span className="work-panel-current-icon" aria-hidden>
-                <ActiveIcon size={15} />
-              </span>
-              <span
-                id={activeTab ? `work-panel-title-${activeTab.id}` : undefined}
-                className="work-panel-current-label"
+            {subagentPanel ? (
+              <div
+                className="work-panel-switcher-trigger subagent-panel-switcher"
+                aria-label={activeLabel}
+                title={activeLabel}
               >
-                {activeLabel}
-              </span>
-              <IconChevronDown
-                size={13}
-                className={cx("work-panel-switcher-chevron", contextOpen && "open")}
-              />
-            </button>
-            {contextOpen && (
+                <span className="work-panel-current-icon" aria-hidden>
+                  <ActiveIcon size={15} />
+                </span>
+                <span className="work-panel-current-label">{activeLabel}</span>
+              </div>
+            ) : (
+              <button
+                ref={contextButtonRef}
+                type="button"
+                className="work-panel-switcher-trigger"
+                aria-haspopup="menu"
+                aria-expanded={contextOpen}
+                aria-controls="work-panel-context-menu"
+                title={activeTab?.resource ?? activeLabel}
+                onClick={() => setContextOpen((open) => !open)}
+                onKeyDown={onTriggerKeyDown}
+              >
+                <span className="work-panel-current-icon" aria-hidden>
+                  <ActiveIcon size={15} />
+                </span>
+                <span
+                  id={activeTab ? `work-panel-title-${activeTab.id}` : undefined}
+                  className="work-panel-current-label"
+                >
+                  {activeLabel}
+                </span>
+                <IconChevronDown
+                  size={13}
+                  className={cx("work-panel-switcher-chevron", contextOpen && "open")}
+                />
+              </button>
+            )}
+            {!subagentPanel && contextOpen && (
               <div
                 id="work-panel-context-menu"
                 className="work-panel-context-menu"
@@ -588,7 +619,7 @@ export function WorkPanel({
             )}
           </div>
           <div className="work-panel-actions no-drag">
-            {activeTab && (
+            {activeTab && !subagentPanel ? (
               <button
                 type="button"
                 className="work-panel-current-close"
@@ -598,7 +629,18 @@ export function WorkPanel({
               >
                 <IconClose size={14} />
               </button>
-            )}
+            ) : null}
+            {subagentPanel && onCloseSubagentPanel ? (
+              <button
+                type="button"
+                className="work-panel-current-close"
+                title={t("panel.subagentClose")}
+                aria-label={t("panel.subagentClose")}
+                onClick={onCloseSubagentPanel}
+              >
+                <IconClose size={14} />
+              </button>
+            ) : null}
             {onCollapse && (
               <button
                 type="button"
@@ -614,7 +656,8 @@ export function WorkPanel({
           </div>
         </header>
         <div className="work-panel-body">
-          {activeTab?.kind === "review" && (
+          {subagentPanel ? <SubagentPanel selection={subagentPanel} /> : null}
+          {!subagentPanel && activeTab?.kind === "review" && (
             <div
               id={`work-panel-surface-${activeTab.id}`}
               className="work-panel-tabpane"
@@ -624,7 +667,7 @@ export function WorkPanel({
               <ReviewTab />
             </div>
           )}
-          {activeTab?.kind === "file" && (
+          {!subagentPanel && activeTab?.kind === "file" && (
             <div
               key={activeTab.id}
               id={`work-panel-surface-${activeTab.id}`}
@@ -639,7 +682,8 @@ export function WorkPanel({
               of the same plugin re-measures rather than reusing a stale rect.
               The host process keeps the page alive across that remount, so the
               plugin does not lose its state. */}
-          {activeTab?.kind === "plugin" &&
+          {!subagentPanel &&
+            activeTab?.kind === "plugin" &&
             (() => {
               const ref = parsePluginViewRef(activeTab.resource);
               if (!ref) return null;
@@ -669,7 +713,7 @@ export function WorkPanel({
               body can be empty. No tab exists to label a tabpanel here; the
               same plugin views the header menu offers are listed inline so the
               revealed panel is not a dead end. */}
-          {!activeTab && (
+          {!subagentPanel && !activeTab && (
             <div className="work-panel-tabpane" data-testid="work-panel-empty">
               <WorkTabEmpty
                 icon={IconPanel}

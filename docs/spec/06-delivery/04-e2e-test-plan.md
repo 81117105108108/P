@@ -7403,6 +7403,32 @@ This test plan spec is accepted when:
 - **Status**: Unit/source-contract covered (`subagent-transcript.test.mjs`,
   `transcript-scroll.test.mjs`); desktop journey pending
 
+#### E2E-180: An expanded subagent opens in the side dock
+
+- **Preconditions**: A project-bound Agent session with a mocked provider stream
+  where one `explorer` delegate has a Task brief, at least one nested tool row,
+  and a streamed answer. The work panel is initially closed.
+- **Steps**: 1) Expand the activity group if needed and click the `explorer`
+  topology node. 2) Observe the right-side dock while the delegate continues
+  streaming. 3) Scroll the delegate's nested rows and the parent transcript
+  independently. 4) Click another topology node, then close the subagent detail.
+  5) Switch sessions and return to the original session.
+- **Expected**: The node remains a compact summary in the transcript; its brief,
+  report, status, elapsed time, and nested activity open in the right-side dock
+  without increasing the transcript height or moving the parent's scroll
+  position. Streaming rows and lifecycle status updates are reflected in the
+  dock, and nested follow-scroll remains independent of the parent transcript.
+  Selecting another node replaces the dock content without changing its width.
+  Closing returns to the prior resource view when one exists, otherwise hides
+  the dock. Session switching hides the selection and returning never shows a
+  different session's delegate. A missing/deleted delegate shows a localized
+  unavailable state rather than stale or cross-session content.
+- **Specs linked**: `04-ux/08-component-spec.md` §5.7,
+  `04-ux/09-interaction-patterns.md` §1.6
+- **Acceptance**: C (conversation), Quality
+- **Milestone**: M6+
+- **Status**: Documented; desktop journey pending
+
 #### E2E-161: A delegation lifecycle row reads as a subagent row
 
 - **Preconditions**: A project-bound Agent session with a mocked provider stream

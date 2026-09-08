@@ -1214,6 +1214,9 @@ export const fr = {
   },
   "panel": {
     "title": "Panneau de travail",
+    "subagent": "Sous-agent",
+    "subagentClose": "Fermer les détails du sous-agent",
+    "subagentEmpty": "Les détails du sous-agent ne sont plus disponibles.",
     "collapse": "Masquer le panneau de travail",
     "resize": "Redimensionner le panneau de travail",
     "resizeChat": "Redimensionner la zone de conversation",

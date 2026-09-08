@@ -160,6 +160,7 @@ import {
   type QueuedPrompts,
 } from "../lib/queued-prompts";
 import { settleBootstrapRequests } from "../lib/bootstrap-result";
+import type { SubagentPanelSelection } from "../lib/subagent-panel";
 
 const ErrorCodes = {
   ...SharedErrorCodes,
@@ -992,6 +993,8 @@ export type AppState = {
   dismissToast: (id: number) => void;
   composerPrefill: ComposerPrefill | null;
   clearComposerPrefill: () => void;
+  /** Renderer-only subagent details selected from the transcript. */
+  subagentPanel: SubagentPanelSelection | null;
   workPanelOpen: boolean;
   workPanelTabs: WorkPanelTab[];
   activeWorkPanelTabId: string | null;
@@ -1000,6 +1003,10 @@ export type AppState = {
   workPanelWidth: number;
   /** Chat-initiated "preview this file" request consumed by the files tab. */
   workPanelFileRequest: { path: string; seq: number; mimeType?: string } | null;
+  /** Open a selected subagent in the session's right-side detail dock. */
+  openSubagentPanel: (delegationId: string) => void;
+  /** Close the selected subagent detail without changing resource tabs. */
+  closeSubagentPanel: () => void;
   /** Reveal the active session's retained work panel without creating a tab. */
   openWorkPanel: () => void;
   /** Flip the work panel between revealed and collapsed for the active session. */
@@ -1285,6 +1292,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       .filter(([, meta]) => meta.collapsed === true)
       .map(([path]) => [path, true]),
   ),
+  subagentPanel: null,
   workPanelOpen: false,
   workPanelTabs: [],
   activeWorkPanelTabId: null,
@@ -4194,6 +4202,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   dismissToast: (id) =>
     set((state) => ({ toasts: state.toasts.filter((item) => item.id !== id) })),
 
+  openSubagentPanel: (delegationId) => {
+    const sessionId = get().activeSessionId;
+    const id = delegationId.trim();
+    if (!sessionId || !id) return;
+    set({ subagentPanel: { sessionId, delegationId: id } });
+  },
+  closeSubagentPanel: () => set({ subagentPanel: null }),
+
   openWorkPanel: () => {
     const state = get();
     const sessionId = state.activeSessionId;
@@ -4209,11 +4225,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   toggleWorkPanel: () => {
-    if (get().workPanelOpen) {
-      get().collapseWorkPanel();
+    const state = get();
+    if (state.subagentPanel) {
+      state.closeSubagentPanel();
+      if (get().workPanelOpen) get().collapseWorkPanel();
       return;
     }
-    get().openWorkPanel();
+    if (state.workPanelOpen) {
+      state.collapseWorkPanel();
+      return;
+    }
+    state.openWorkPanel();
   },
 
   openWorkPanelTabForSession: (sessionId, tab) => {

@@ -1214,6 +1214,9 @@ export const de = {
   },
   "panel": {
     "title": "Arbeitsfenster",
+    "subagent": "Unteragent",
+    "subagentClose": "Unteragent-Details schließen",
+    "subagentEmpty": "Die Unteragent-Details sind nicht mehr verfügbar.",
     "collapse": "Arbeitsfenster ausblenden",
     "resize": "Größe des Arbeitsfensters ändern",
     "resizeChat": "Größe des Konversationsbereichs ändern",

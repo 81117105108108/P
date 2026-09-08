@@ -1235,6 +1235,9 @@ export const tr = {
   },
   panel: {
     title: "Çalışma paneli",
+    subagent: "Alt ajan",
+    subagentClose: "Alt ajan ayrıntılarını kapat",
+    subagentEmpty: "Alt ajan ayrıntıları artık kullanılamıyor.",
     collapse: "Çalışma panelini gizle",
     resize: "Çalışma paneli genişliğini ayarla",
     resizeChat: "Sohbet alanının genişliğini ayarla",

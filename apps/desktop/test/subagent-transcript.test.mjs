@@ -124,16 +124,19 @@ test("a terminal tool event repairs a row lost during renderer reload", () => {
   assert.match(storeSource, /toolName: message\.toolName \?\? completed\.toolName/);
 });
 
-test("delegate rows render under their Task row, one level in", () => {
+test("delegate rows remain available to the shared side-panel detail renderer", () => {
   assert.match(transcriptSource, /delegate\?: SubagentRun/);
+  assert.match(transcriptSource, /const inlineOpen = variant !== "topology" && open;/);
   assert.match(
     transcriptSource,
-    /\{open && delegate \? \([\s\S]*?<SubagentRunRows[\s\S]*?run=\{delegate\}[\s\S]*?agentName=\{agentName\}/,
+    /\{inlineOpen && delegate \? \([\s\S]*?<SubagentRunRows[\s\S]*?run=\{delegate\}[\s\S]*?agentName=\{agentName\}/,
   );
-  assert.match(transcriptSource, /function SubagentRunRows\(/);
+  assert.match(transcriptSource, /export function SubagentDetail\(/);
+  assert.match(transcriptSource, /buildToolPresentation\(message, \{/);
+  assert.match(transcriptSource, /<SubagentRunRows run=\{delegate\} agentName=\{agentName\} \/>/);
   assert.match(transcriptSource, /<div className="subagent-run">/);
   // The nested rows are the same components, so a delegate's tool calls and
-  // reasoning read exactly like the parent's.
+  // reasoning read exactly like the parent's in the side panel.
   assert.match(transcriptSource, /<ToolRow message=\{item\.message\} \/>/);
   assert.match(transcriptSource, /className="subagent-answer"/);
 });
@@ -223,8 +226,10 @@ test("every Task row renders as one accessible delegation topology", () => {
   assert.match(transcriptSource, /role="list"/);
   assert.match(transcriptSource, /variant="topology"/);
   assert.match(transcriptSource, /className="subagent-topology-node-header"/);
-  assert.match(transcriptSource, /aria-expanded=\{open\}/);
-  assert.match(transcriptSource, /aria-controls=\{hasDetails \? detailsId : undefined\}/);
+  assert.match(transcriptSource, /aria-expanded=\{panelOpen\}/);
+  assert.match(transcriptSource, /aria-controls=\{hasDetails \? "subagent-panel" : undefined\}/);
+  assert.match(transcriptSource, /onClick=\{\(\) => hasDetails && openSubagentPanel\(panelSelectionId\)\}/);
+  assert.match(transcriptSource, /const inlineOpen = variant !== "topology" && open;/);
 });
 
 test("the aggregate label counts, so a lone delegation is not called plural", () => {

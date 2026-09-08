@@ -1225,6 +1225,9 @@ export const zhTW = {
   },
   panel: {
     title: "工作面板",
+    subagent: "子智慧體",
+    subagentClose: "關閉子智慧體詳情",
+    subagentEmpty: "子智慧體詳情已不可用。",
     collapse: "收起工作面板",
     resize: "調整工作面板寬度",
     resizeChat: "調整對話區寬度",
