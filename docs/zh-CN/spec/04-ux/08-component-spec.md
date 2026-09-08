@@ -130,9 +130,9 @@
 | Linux | 无框 46px 标题栏；左侧边栏操作，在 minimize/maximize/close 之前的会话窗格右上角打开工作面板折叠 | 窗户里面没有 |
 
 - macOS 启用 Electron 原生 `vibrancy: "sidebar"` source-list 材质，配合
-  `visualEffectState: "followWindow"` 和透明窗口底。`nativeTheme.themeSource`
+  `visualEffectState: "followWindow"` 和透明窗口底（D348）。`nativeTheme.themeSource`
   跟随应用主题偏好（`system` / `light` / `dark` / 插件 base），让毛玻璃底板与
-  渲染器一致。只有 `.sidebar` 和已渲染的 `.sidebar-rail` 半透明；渲染器叠加
+  渲染器一致。仅在该来源变化时重设 vibrancy；缺失的插件主题回落 `system`。只有 `.sidebar` 和已渲染的 `.sidebar-rail` 半透明；渲染器叠加
   一层薄主题 tint（`--ds-sidebar-glass-tint`，深色 40% / 浅色 55%）和上下
   sheen。侧栏与不透明主面板齐平，没有接缝。`.main-pane`、`.main-titlebar` 和
   `.conversation-topbar` 保持不透明 `bg-primary`。Windows/Linux 仍用不透明底。

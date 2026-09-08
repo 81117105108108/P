@@ -30,8 +30,6 @@ test("macOS main window enables native sidebar vibrancy only in its platform bra
   assert.match(macOptions, /visualEffectState:\s*"followWindow"/);
   assert.match(macOptions, /transparent:\s*true/);
   assert.match(macOptions, /backgroundColor:\s*"#00000000"/);
-  assert.match(mainSource, /nativeTheme\.themeSource = next/);
-  assert.match(mainSource, /mainWindow\.setVibrancy\("sidebar"\)/);
 
   // The shared opaque fallback remains in place for Windows/Linux.
   assert.match(
@@ -39,6 +37,45 @@ test("macOS main window enables native sidebar vibrancy only in its platform bra
     /backgroundColor:\s*nativeTheme\.shouldUseDarkColors \? "#181818" : "#ffffff"/,
   );
   assert.match(mainWindowBlock, /frame: false/);
+});
+
+test("nativeTheme.themeSource follows the app theme and only resets darwin vibrancy on change", () => {
+  const nativeThemeFn =
+    mainSource.match(
+      /function applyNativeThemeSource\([\s\S]*?\n\}\n\nfunction notifyPluginChanged/,
+    )?.[0] ?? "";
+  assert.match(nativeThemeFn, /settings\?\.theme \?\? appThemePreference/);
+  assert.match(nativeThemeFn, /let next: "system" \| "light" \| "dark" = "system"/);
+  assert.match(nativeThemeFn, /preference === "light" \|\| preference === "dark"/);
+  assert.match(nativeThemeFn, /preference\.startsWith\("plugin:"\)/);
+  assert.match(
+    nativeThemeFn,
+    /pluginTheme\?\.base === "light" \|\| pluginTheme\?\.base === "dark"/,
+  );
+  assert.match(nativeThemeFn, /const changed = nativeTheme\.themeSource !== next/);
+  assert.match(nativeThemeFn, /if \(!changed\) return/);
+  assert.match(nativeThemeFn, /nativeTheme\.themeSource = next/);
+  assert.match(
+    nativeThemeFn,
+    /process\.platform === "darwin" && mainWindow && !mainWindow\.isDestroyed\(\)/,
+  );
+  assert.match(nativeThemeFn, /mainWindow\.setVibrancy\("sidebar"\)/);
+
+  const menuSettings = mainSource.slice(
+    mainSource.indexOf("function applyApplicationMenuSettings"),
+    mainSource.indexOf("function resolveAppearance"),
+  );
+  assert.match(menuSettings, /applyNativeThemeSource\(settings\)/);
+
+  const notifyFn =
+    mainSource.match(/function notifyPluginChanged\([\s\S]*?\n\}/)?.[0] ?? "";
+  assert.match(notifyFn, /applyNativeThemeSource\(\)/);
+  assert.match(notifyFn, /sendToRenderer\(IPC\.event\.pluginChanged/);
+  assert.match(mainSource, /notifyPluginChanged\(\{/);
+  assert.equal(
+    mainSource.split("sendToRenderer(IPC.event.pluginChanged,").length - 1,
+    1,
+  );
 });
 
 test("the macOS startup splash shares the sidebar glass tint and sheen", () => {

@@ -2727,7 +2727,7 @@ IPC 请求无法关闭。
   - macOS 上启动页与侧边栏使用同一套玻璃 tint/sheen，叠在原生 `sidebar` vibrancy 之上；已挂载的 shell 在退出淡出前保持隐藏，再交叉淡入。其他平台仍为不透明的 `--ds-bg-primary`。
   - 没有简单的无品牌“开始...”居中文本作为唯一的启动 UI。
   - Overlay/dialog 输入动作使用共享令牌；减少的运动可以保持状态变化，而无需装饰持续时间。
-- **链接规格**：`04-ux/07-ui-design-system.md` §8、`04-ux/02-i18n-english-first.md`、决策日志 D146 / D304 / D347
+- **链接规格**：`04-ux/07-ui-design-system.md` §8、`04-ux/02-i18n-english-first.md`、决策日志 D146 / D304 / D348
 - **验收**：A（应用程序启动），质量
 - **里程碑**：M5
 #### E2E-099：品牌标志遵循活跃主题

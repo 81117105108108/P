@@ -66,6 +66,7 @@
 | D307 | 修订载荷跟随实时分支 | **修订 D109：重新生成分支在归档后仍会继续生长（之后的提示、从未到达 `agent_end` 的错误回合），因此每个会丢弃实时分支的操作都先把它写回所属变体。`session.activateRevision` 在切换前从持久转录本重新归档该系列的实时分支，并从那里取前缀；重新生成路径通过 `session.saveRevision { revisionIndex }` 刷新被标记的变体；`session.saveActiveRevision` 对已归档索引做刷新而不是跳过。被刷新的是实时根消息 `activeRevision` 标记所指的变体；已标记但尚无索引行的变体作为新变体单独存储，绝不覆盖之前的变体。切换同时带上每条幸存消息所属的 `turn_id`，并保留锚点仍存在的检查点。** | 归档只写一次、永久复用：从一个自 agent_end 归档后又生长过的分支切走再切回，会恢复陈旧副本，并悄悄地从转录本及其 JSONL 中删掉之后的每一回合。 |
 | D244 | 紧凑的上下文用量摘要 | **修订 D103 / D184 / ADR 0047：保留上下文检查器的剩余容量触发器、已用/窗口计数、回合合计、已完成回合速度、精确的提供商数值、聚合的工具类型/调用数/令牌数以及检查点摘要，但把它们渲染为一段简短摘要。从默认面板中移除逐工具行、占比条、来源徽章、解释性估算段落和已用容量计量条。不改动协议、存储、运行时计费或模型元数据。** *（由 D347 修订：触发器移到输入框工具栏。）* | 之前的诊断式布局让一次例行的容量检查变得又高又密。保留聚合信号、移除下钻装饰，使默认状态界面可以快速浏览，同时不改变底层用量数据。参见 ADR 0103 与 E2E-060d / US-UI-61。 |
 | D347 | 输入框工具栏中的上下文用量检查器 | **修订 D103 / D184 / D244 / ADR 0047 / ADR 0103：紧凑上下文检查器放在输入框右侧工具栏、模型 × 推理芯片左侧，始终对应当前最新一条已报告用量的助手回合。触发器保留剩余容量圆环和百分比，去掉重复的 Context 文字。弹层标题为剩余 tokens + 百分比；下方行用同一套左标签/右数值节奏，只用留白分隔，不画内部分隔线（D297）。答案下方的助理元只保留模型徽章。仅渲染器改动。** | 挂在最新答案下方的检查器会随记录滚出视野。输入框只保留一个入口作为最新快照的权威位置；标题双线通过去掉多余说明文字解决，而不是加分隔线。参见 ADR 0184 与 E2E-060d / US-UI-61。 |
+| D348 | macOS 侧边栏改用 source-list vibrancy | **修订 D304：主窗口改用 Electron `vibrancy: "sidebar"`，不再用 `under-window`。`nativeTheme.themeSource` 跟随应用主题（`system` / `light` / `dark` / 插件 base），进程级生效。仅在 `themeSource` 真变时重设 vibrancy；缺失的插件主题回落 `system`。** | macOS 26 Liquid Glass 让 `under-window` 变成浅色底板，40% tint 压不住，即使应用和系统都是深色也一样。见 `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。 |
 | D243 | 模型感知的图片附件传输 | **修订 D197 / ADR 0059：输入框文件引用保留结构化的 kind/name/MIME 元数据。Electron main 在匹配时从精确的 models.dev 模型记录解析视觉能力，否则用精确的 pi-ai 回退记录（`modalities.input` / `input` 含 `image`），将图片字节存为 `attachments/<sha256>`，把符合条件的图片作为瞬态图片块发送，并对未知/非视觉或超大图片回退为安全的 `@path`。持久消息只存引用和元数据，绝不存 base64；渲染器展示可访问的能力状态。** | 之前只走路径的约定让具备视觉能力的 GPT 模型收到的是一个临时路径而不是图片内容。把能力归属放在所选目录来源上，可以避免提供商发现或未知模型 ID 擅自决定传输方式，而路径回退保留了非视觉的文件工具行为（ADR 0101，由 D266 修订）。 |
 | D245 | OpenCode 风格的有界提供商 429 重试 | **修订 D186 / D233 / ADR 0091：`PROVIDER_RATE_LIMITED` 在首次尝试之后获得五次静默、可中止的重试，请求建立与流中恢复共享同一个计数器。禁用 pi-ai 的嵌套重试；捕获失败响应的状态码/头部；依次遵循 `retry-after-ms`、`retry-after` 秒数、HTTP 日期，然后是 2 秒指数退避，带 25% 正向抖动、上限 30 秒。复用助手气泡，并在主会话与内置子代理中抑制中间的生命周期/错误事件。认证、模型选择、格式错误请求和上下文错误仍然是终止性的；耗尽时记录 `retryAttempt: 5` 与 `providerStatus: 429`。** | 之前拆分的单次重试策略过早暴露瞬时 429，并且允许建立层与流层各自漂移。OpenCode 那套有界、感知头部的策略在不隐藏持续性提供商故障、也不叠加嵌套重试的前提下保留了用户控制权。 |
 | D237 | 提供商的厂商账户（OAuth）登录 | **提供商行可以用厂商订阅账户认证，而不是 API 密钥。pi-ai 的七个 OAuth 流程在启动时静态注册（`registerBunOAuthFlows()`）；Electron 主进程拥有登录/退出编排，并在 host-core 的加密密钥存储之上实现 pi-ai 的 `CredentialStore`，使用新的引用 `secret:provider:<id>:oauth`，并按提供商串行化 `modify` 以满足带锁刷新。`auth_kind` 新增 `oauth`，`has_secret` 放宽为“存在 API 密钥**或** oauth 凭据”，新增的 `has_oauth` 与非敏感的 `oauthAccountLabel` 驱动徽标并隐藏密钥输入框；主机协议与存储架构不变。厂商卡片列表由 `models.getProviders().filter(p => p.auth.oauth)` 派生，登录按 `vendorKey` 幂等 upsert 一行。OAuth 行的 sidecar 启动载荷中 `apiKey: ""`；运行时注入 `resolveAuth` 回调，调用新的宿主代理方法 `provider.resolveAuth`，该方法由 Electron 主进程自行应答 —— 绝不转发给 host-core —— 并先用每次启动重写的绑定表校验 `(sessionId, providerId)`。应答是短时 `ModelAuth`（`apiKey`/`headers`/`baseUrl`），因此刷新令牌永不离开主进程，而 `matches()` 让厂商运行时跨回合保持温热。`providers.listModels` 与连接测试改走已认证的账户，而不是探测 `/models`；apiStyle 跟随所选模型，并新增 `openai_codex_responses` 与 `pi_messages`。交互由 `pi-desktop/providers/oauth/*` 下的五条调用通道与一条事件通道承载。** | Claude Pro/Max、ChatGPT Plus/Pro 与 Copilot 的订阅用户此前必须另买 API 额度才能使用本应用。pi-ai 提供了流程，但明确声明登录编排归宿主应用。厂商令牌约一小时过期，启动时解析一次会让长会话中断，并让 `matches()` 每回合失配；按请求解析既保持运行时稳定，又只把一个可作废的令牌交给运行模型指令的进程，且仅限该会话绑定的提供商 —— 严格少于今天无条件下发的长期 API 密钥（ADR 0095）。 |
@@ -2745,14 +2746,18 @@ D193 和 D194。
 - 决策 D347：检查器放在输入框右侧工具栏、模型 × 推理芯片左侧，始终对应当前最新一条已报告用量的助手回合。触发器是圆环加百分比。弹层标题为剩余 tokens + 百分比；内部分隔线仍然禁止（D297）。答案下方的助理元只保留模型徽章。
 - 见 ADR 0184、`04-ux/08-component-spec.md` §8.3 / §11.3 与 E2E-060d。
 
-## 2026-09-08 —— macOS 侧边栏改用 source-list vibrancy 材质（D347）
+## 2026-09-08 —— macOS 侧边栏改用 source-list vibrancy 材质（D348）
 
 - 深色主题 CSS 叠在 `under-window` vibrancy 上时，macOS 26 Liquid Glass 会画出
-  一块浅色底板。40% 炭黑 tint 压不住，会话行就像浅色侧栏贴在不透明深色主面板
-  旁边。
-- 决策 D347：主窗口改用 Electron `vibrancy: "sidebar"`，不再用 `under-window`。
+  一块浅色底板，即使应用和系统都是深色也一样。40% 炭黑 tint 压不住，会话行
+  就像浅色侧栏贴在不透明深色主面板旁边。
+- 决策 D348：主窗口改用 Electron `vibrancy: "sidebar"`，不再用 `under-window`。
   `nativeTheme.themeSource` 跟随应用主题偏好（`system` / `light` / `dark` /
-  插件 base），让原生菜单和毛玻璃底板与渲染器一致。薄的
+  插件 base），让原生菜单和毛玻璃底板与渲染器一致。该赋值是进程级的：
+  Chromium `prefers-color-scheme` 和非 macOS 窗口创建时的
+  `shouldUseDarkColors` 也跟着走。仅在 `themeSource` 真变时重设 vibrancy。
+  缺失的 `plugin:` 主题回落 `system`，包括插件禁用/卸载之后。薄的
   `--ds-sidebar-glass-tint` 配方不变。修正 D304。
-- `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质和 `themeSource` 赋值。见
+- `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质、`themeSource` 映射、
+  变更门闩的 `setVibrancy`，以及 pluginChanged 后的重应用。见
   `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。

@@ -767,7 +767,7 @@ const plugins: PluginRuntime = new PluginRuntime({
     // the tab is still active and the plugin came back.
     pluginViews.closePlugin(pluginId);
     if (pluginId === BROWSER_PLUGIN_ID) browserHost.disposeGuest();
-    sendToRenderer(IPC.event.pluginChanged, { reason: "crash", pluginId });
+    notifyPluginChanged({ reason: "crash", pluginId });
   },
   // Supervision state is UI-only: the runtime owns restarts, the renderer just
   // reflects what happened.
@@ -776,7 +776,7 @@ const plugins: PluginRuntime = new PluginRuntime({
       pluginId: status.pluginId,
       data: { serviceId: status.serviceId, state: status.state, restarts: status.restarts },
     });
-    sendToRenderer(IPC.event.pluginChanged, {
+    notifyPluginChanged({
       reason: "service",
       pluginId: status.pluginId,
     });
@@ -794,7 +794,7 @@ const plugins: PluginRuntime = new PluginRuntime({
     // Views were loaded from the previous revision of the plugin's files.
     pluginViews.closePlugin(pluginId);
     if (pluginId === BROWSER_PLUGIN_ID) browserHost.disposeGuest();
-    sendToRenderer(IPC.event.pluginChanged, { reason: "reload", pluginId });
+    notifyPluginChanged({ reason: "reload", pluginId });
   },
 });
 const userMcp = new UserMcpRuntime({
@@ -2028,10 +2028,12 @@ function applyDeveloperMode(settings?: { developerMode?: unknown } | null) {
  * Drive Chromium and macOS native chrome (menus, vibrancy) from the same
  * theme preference the renderer paints. `system` keeps following the OS;
  * an explicit or plugin base locks the native appearance so a dark dock
- * cannot sit on a light Liquid Glass plate (D347).
+ * cannot sit on a light Liquid Glass plate (D348). The assignment is
+ * process-wide: native menus, Chromium prefers-color-scheme, and
+ * non-macOS shouldUseDarkColors at window create follow it too.
  */
 function applyNativeThemeSource(settings?: { theme?: unknown } | null) {
-  const preference = settings?.theme;
+  const preference = settings?.theme ?? appThemePreference;
   let next: "system" | "light" | "dark" = "system";
   if (preference === "light" || preference === "dark") {
     next = preference;
@@ -2041,12 +2043,17 @@ function applyNativeThemeSource(settings?: { theme?: unknown } | null) {
       next = pluginTheme.base;
     }
   }
-  if (nativeTheme.themeSource !== next) {
-    nativeTheme.themeSource = next;
-  }
+  const changed = nativeTheme.themeSource !== next;
+  if (!changed) return;
+  nativeTheme.themeSource = next;
   if (process.platform === "darwin" && mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setVibrancy("sidebar");
   }
+}
+
+function notifyPluginChanged(payload: unknown) {
+  applyNativeThemeSource();
+  sendToRenderer(IPC.event.pluginChanged, payload);
 }
 
 /** Keep native labels and accelerators aligned with persisted app settings. */
@@ -4881,7 +4888,7 @@ async function startSidecar(): Promise<void> {
       for (const toast of plugins.drainToasts()) {
         sendToRenderer(IPC.event.toast, { message: toast });
       }
-      sendToRenderer(IPC.event.pluginChanged, { reason: "scaffold" });
+      notifyPluginChanged({ reason: "scaffold" });
     },
   });
   sidecar = s;
@@ -7954,7 +7961,7 @@ function registerIpc() {
         String(payload?.id ?? ""),
         payload?.settings ?? {},
       );
-      sendToRenderer(IPC.event.pluginChanged, {
+      notifyPluginChanged({
         reason: "settings",
         pluginId: String(payload?.id ?? ""),
       });
@@ -7979,7 +7986,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, {
+    notifyPluginChanged({
       reason: "loadDev",
       pluginId: loaded.plugin?.id,
     });
@@ -7998,7 +8005,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, { reason: "reload", pluginId: id });
+    notifyPluginChanged({ reason: "reload", pluginId: id });
     return { plugin };
   });
 
@@ -8061,7 +8068,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, {
+    notifyPluginChanged({
       reason: "install",
       pluginId: installed.result?.plugin?.id,
     });
@@ -8093,7 +8100,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, {
+    notifyPluginChanged({
       reason: "install",
       pluginId: installed.result?.plugin?.id,
     });
@@ -8110,7 +8117,7 @@ function registerIpc() {
       if (res.plugin.source === "dev") plugins.watchDevPlugin(id);
     }
     logger.app("plugin", "info", "plugin enabled", { pluginId: id });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "enable", pluginId: id });
+    notifyPluginChanged({ reason: "enable", pluginId: id });
     return res;
   });
 
@@ -8121,7 +8128,7 @@ function registerIpc() {
     await plugins.unload(id);
     logger.app("plugin", "info", "plugin disabled", { pluginId: id });
     const res = await host.call("plugins.disable", { id });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "disable", pluginId: id });
+    notifyPluginChanged({ reason: "disable", pluginId: id });
     return res;
   });
 
@@ -8131,7 +8138,7 @@ function registerIpc() {
     await plugins.unload(id);
     logger.app("plugin", "info", "plugin uninstalled", { pluginId: id });
     const res = await host.call("plugins.uninstall", { id });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "uninstall", pluginId: id });
+    notifyPluginChanged({ reason: "uninstall", pluginId: id });
     return res;
   });
 
@@ -8159,7 +8166,7 @@ function registerIpc() {
         pluginId: payload.id,
         data: { mode: payload.scope?.mode, projects: payload.scope?.projects?.length ?? 0 },
       });
-      sendToRenderer(IPC.event.pluginChanged, { reason: "scope", pluginId: payload.id });
+      notifyPluginChanged({ reason: "scope", pluginId: payload.id });
       return res;
     },
   );
@@ -8184,7 +8191,7 @@ function registerIpc() {
     if (!host) throw new Error("host unavailable");
     const res = await host.call<{ server: McpServerRecord }>("mcp.upsert", { server });
     await refreshUserMcp(currentWorkspacePath());
-    sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: res.server?.id });
+    notifyPluginChanged({ reason: "mcp", pluginId: res.server?.id });
     return res;
   });
 
@@ -8194,7 +8201,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("mcp.remove", payload);
       await refreshUserMcp(currentWorkspacePath());
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: payload.id });
+      notifyPluginChanged({ reason: "mcp", pluginId: payload.id });
       return res;
     },
   );
@@ -8205,7 +8212,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("mcp.setEnabled", payload);
       await refreshUserMcp(currentWorkspacePath());
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: payload.id });
+      notifyPluginChanged({ reason: "mcp", pluginId: payload.id });
       return res;
     },
   );
@@ -8216,7 +8223,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("mcp.setScope", payload);
       await refreshUserMcp(currentWorkspacePath());
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: payload.id });
+      notifyPluginChanged({ reason: "mcp", pluginId: payload.id });
       return res;
     },
   );
@@ -8239,7 +8246,7 @@ function registerIpc() {
       ]);
       const status = await userMcp.test(payload.id);
       await refreshUserMcp(currentWorkspacePath());
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: payload.id });
+      notifyPluginChanged({ reason: "mcp", pluginId: payload.id });
       return { status };
     },
   );
@@ -8263,7 +8270,7 @@ function registerIpc() {
     }
     await refreshUserMcp(currentWorkspacePath());
     if (imported.length) {
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp" });
+      notifyPluginChanged({ reason: "mcp" });
     }
     return { imported, failed };
   });
@@ -8278,7 +8285,7 @@ function registerIpc() {
   handle(IPC.invoke.skillCreate, async (skill: Record<string, unknown>) => {
     if (!host) throw new Error("host unavailable");
     const res = await host.call("skills.create", { skill });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+    notifyPluginChanged({ reason: "skill" });
     return res;
   });
 
@@ -8295,7 +8302,7 @@ function registerIpc() {
       path: picked.filePaths[0],
       ...query,
     });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+    notifyPluginChanged({ reason: "skill" });
     return res;
   });
 
@@ -8305,7 +8312,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const { id, ...skill } = payload;
       const res = await host.call("skills.update", { id, skill });
-      sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+      notifyPluginChanged({ reason: "skill" });
       return res;
     },
   );
@@ -8325,7 +8332,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const request = typeof payload === "string" ? { id: payload } : payload;
       const res = await host.call("skills.remove", request);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+      notifyPluginChanged({ reason: "skill" });
       return res;
     },
   );
@@ -8335,7 +8342,7 @@ function registerIpc() {
     async (payload: { id: string; enabled: boolean } & Partial<AgentCapabilityQuery>) => {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("skills.setEnabled", payload);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+      notifyPluginChanged({ reason: "skill" });
       return res;
     },
   );
@@ -8345,7 +8352,7 @@ function registerIpc() {
     async (payload: { id: string; scope: ActivationScope }) => {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("skills.setScope", payload);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+      notifyPluginChanged({ reason: "skill" });
       return res;
     },
   );
@@ -8392,7 +8399,7 @@ function registerIpc() {
   handle(IPC.invoke.subagentCreate, async (subagent: Record<string, unknown>) => {
     if (!host) throw new Error("host unavailable");
     const res = await host.call("agents.create", { subagent });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+    notifyPluginChanged({ reason: "subagent" });
     return res;
   });
 
@@ -8402,7 +8409,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const { id, ...subagent } = payload;
       const res = await host.call("agents.update", { id, subagent });
-      sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+      notifyPluginChanged({ reason: "subagent" });
       return res;
     },
   );
@@ -8415,7 +8422,7 @@ function registerIpc() {
   handle(IPC.invoke.subagentRemove, async (id: string) => {
     if (!host) throw new Error("host unavailable");
     const res = await host.call("agents.remove", { id });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+    notifyPluginChanged({ reason: "subagent" });
     return res;
   });
 
@@ -8424,7 +8431,7 @@ function registerIpc() {
     async (payload: { id: string; enabled: boolean }) => {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("agents.setEnabled", payload);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+      notifyPluginChanged({ reason: "subagent" });
       return res;
     },
   );
@@ -8434,7 +8441,7 @@ function registerIpc() {
     async (payload: { id: string; scope: ActivationScope }) => {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("agents.setScope", payload);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+      notifyPluginChanged({ reason: "subagent" });
       return res;
     },
   );
@@ -8657,7 +8664,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, { reason: "market.install", pluginId: payload.id });
+    notifyPluginChanged({ reason: "market.install", pluginId: payload.id });
     return installed;
   });
 
@@ -8682,7 +8689,7 @@ function registerIpc() {
         await plugins.loadFromPath(plugin.path, plugin.permissions ?? []);
       }
     }
-    sendToRenderer(IPC.event.pluginChanged, { reason: "market.applyUpdates" });
+    notifyPluginChanged({ reason: "market.applyUpdates" });
     return applied;
   });
 
