@@ -430,18 +430,19 @@ Each scenario is documented in this format:
 - **Preconditions**: The add-provider or edit-provider dialog is open against a
   reachable service (or vendor account) that publishes a `/models` list.
 - **Steps**: 1) Confirm the left-pane header shows a Fetch list action beside
-  the title, disabled before a valid endpoint is ready. 2) Enter credentials so
-  discovery can run; confirm the action shows the loading label while the first
-  probe is in flight, then enables once rows appear. 3) Click Fetch list.
-  Confirm it does not wait for the 600 ms edit debounce, keeps the current rows
-  on screen, and replaces them with the live answer. 4) Take the service
-  offline and click Fetch list; confirm the classified error appears and the
-  previous rows remain. 5) Restore the service, click Fetch list, and confirm
-  the live list returns. 6) Repeat in the vendor-account editor.
-- **Expected**: The header action probes the service immediately, skipping
-  debounce and the cache-first paint. Automatic discovery on credential edits
-  is unchanged. The same control is present for both credential kinds because
-  both dialogs render the shared picker.
+  the title, disabled before a valid endpoint is ready. 2) Enter a valid
+  endpoint. Confirm Fetch list enables during the 600 ms debounce wait. Click
+  it immediately; confirm it does not wait for that window, shows the loading
+  label while the probe is in flight, and then shows rows. 3) Click Fetch list
+  again. Confirm it keeps the current rows on screen and replaces them with the
+  live answer. 4) Take the service offline and click Fetch list; confirm the
+  classified error appears and the previous rows remain. 5) Restore the
+  service, click Fetch list, and confirm the live list returns. 6) Repeat in
+  the vendor-account editor.
+- **Expected**: The header action probes the service immediately, including
+  during the edit debounce after a URL becomes valid. Automatic discovery on
+  credential edits is unchanged. The same control is present for both
+  credential kinds because both dialogs render the shared picker.
 - **Specs linked**: `03-runtime/13-model-catalog-and-selection.md`,
   `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
 - **Acceptance**: B (multi-model provider configuration)

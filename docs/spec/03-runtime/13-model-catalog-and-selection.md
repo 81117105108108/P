@@ -45,7 +45,9 @@ entitled to it.
 - The same header has a Fetch list action that probes the service immediately,
   skipping the 600 ms edit debounce and the cache-first paint. Existing rows
   stay visible while it loads. Automatic discovery on credential edits is
-  unchanged. The control is disabled while idle, loading, or the form is saving.
+  unchanged. The control is disabled when no discoverable endpoint is ready,
+  while a probe is in flight, or while the form is saving. Idle-with-a-valid-URL
+  (the edit debounce) stays enabled so Fetch list can skip that window.
 - Context window, output limit and initial thinking levels come from
   `bindingFromModelInfo` over the enriched record; per-model overrides live
   behind a per-row **Advanced** disclosure. `publishedThinkingLevels` describes

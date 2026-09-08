@@ -131,6 +131,14 @@ test("a header action probes the live list without waiting for debounce", () => 
   assert.match(hookSource, /reload: \(\) => void/);
   assert.match(hookSource, /skipCache: true/);
   assert.match(hookSource, /skipCache \? modelsRef\.current/);
+  assert.match(hookSource, /canReload/);
+  // Idle-with-a-valid-URL (the edit debounce) must still be reloadable.
+  assert.match(hookSource, /status !== "loading"/);
+  assert.match(pickerSource, /disabled=\{busy \|\| !discovery\.canReload\}/);
+  assert.doesNotMatch(
+    pickerSource,
+    /discovery\.status === "idle" \|\| discovery\.status === "loading"/,
+  );
   // The automatic path still waits; only the header action skips the window.
   assert.match(hookSource, /FETCH_DEBOUNCE_MS/);
   assert.match(pickerSource, /settings\.fetchModelList/);

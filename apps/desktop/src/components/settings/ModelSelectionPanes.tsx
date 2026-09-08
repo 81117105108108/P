@@ -167,7 +167,7 @@ export function applyVisibleModelSelection(
 }
 
 export type ModelSelectionPanesProps = {
-  discovery: ProviderModelsState;
+  discovery: ProviderModelsState & { canReload?: boolean };
   selection: ModelSelection;
   /** Heading of the discovered list: a service's models, or an account's. */
   listTitle: string;
@@ -347,9 +347,7 @@ export function ModelSelectionPanes({
                   "provider-models-reload",
                   discovery.status === "loading" && "is-loading",
                 )}
-                disabled={
-                  busy || discovery.status === "idle" || discovery.status === "loading"
-                }
+                disabled={busy || !discovery.canReload}
                 onClick={onReload}
               >
                 <IconRefresh size={13} aria-hidden />

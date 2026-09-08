@@ -24,6 +24,11 @@ export type ProviderModelsState = {
 export type ProviderModelsDiscovery = ProviderModelsState & {
   /** Probe the live endpoint now. Skips debounce and the cache-first paint. */
   reload: () => void;
+  /**
+   * True when a live probe can start now. Idle-with-a-valid-URL (the edit
+   * debounce) is included so Fetch list can skip that window.
+   */
+  canReload: boolean;
 };
 
 /** Keystroke settling window before the service is contacted. */
@@ -176,5 +181,8 @@ export function useProviderModels(
     void run(requestId, { skipCache: true });
   };
 
-  return { ...state, reload };
+  const canReload =
+    active && canDiscover(baseUrl) && state.status !== "loading";
+
+  return { ...state, reload, canReload };
 }
