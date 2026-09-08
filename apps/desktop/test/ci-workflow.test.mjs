@@ -119,9 +119,36 @@ test("release matrix packages both native macOS architectures", () => {
   );
   assert.match(
     releaseWorkflowSource,
+    /pnpm --filter @pi-desktop\/desktop run dist:mac -- --\$\{\{ matrix\.arch \}\}/,
+  );
+  assert.match(
+    releaseWorkflowSource,
     /latest-mac-\$\{\{ matrix\.arch \}\}\.yml/,
   );
   assert.match(releaseWorkflowSource, /Merge macOS updater metadata[\s\S]*?ruby/);
+});
+
+test("tag releases sign, notarize, and verify each macOS installer before upload", () => {
+  assert.doesNotMatch(releaseWorkflowSource, /CSC_IDENTITY_AUTO_DISCOVERY:\s*'false'/);
+  for (const secret of [
+    "CSC_LINK",
+    "CSC_KEY_PASSWORD",
+    "APPLE_ID",
+    "APPLE_APP_SPECIFIC_PASSWORD",
+    "APPLE_TEAM_ID",
+  ]) {
+    assert.match(
+      releaseWorkflowSource,
+      new RegExp(`${secret}:\\s*\\$\\{\\{\\s*secrets\\.${secret}\\s*\\}\\}`),
+      `${secret} must be available only to the macOS packaging step`,
+    );
+  }
+  assert.match(releaseWorkflowSource, /-c\.mac\.forceCodeSigning=true/);
+  assert.match(releaseWorkflowSource, /-c\.mac\.notarize=true/);
+  assert.match(
+    releaseWorkflowSource,
+    /Verify signed and notarized macOS installer[\s\S]*?scripts\/verify-macos-release\.sh apps\/desktop\/release/,
+  );
 });
 
 test("the signed local macOS lane selects the native runner architecture", () => {

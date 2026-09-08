@@ -10,13 +10,15 @@
 | Lane | Command | Signing | Use |
 |---|---|---|---|
 | Dev | `pnpm dev` | none | daily development |
-| Local package | `pnpm --filter @pi-desktop/desktop pack` | unsigned (`identity: null`) | packaging smoke (`--dir` output) |
-| Local DMG | `pnpm --filter @pi-desktop/desktop dist` | unsigned | local install test |
-| Release | `scripts/release-macos.sh` | Developer ID + optional notarization | distributable artifact |
+| Local package | `pnpm --filter @pi-desktop/desktop pack` | unsigned without a configured certificate | packaging smoke (`--dir` output) |
+| Local DMG | `pnpm --filter @pi-desktop/desktop dist` | unsigned without a configured certificate | local install test |
+| Release | `scripts/release-macos.sh` | Developer ID + mandatory notarization | distributable artifact |
 
-The static electron-builder config stays unsigned-friendly (`identity: null`)
-so contributors without certificates can always package. The release script
-injects the real identity via `-c.mac.identity` at build time.
+The static electron-builder config does not embed a certificate identity, so
+contributors without certificates can still package locally. The release lane
+requires an injected Developer ID identity (local) or `CSC_LINK` certificate
+(CI), and fails before publication if signing or notarization verification does
+not pass.
 
 On macOS, `pnpm dev` creates and reuses a fingerprinted branded Electron host
 bundle under `.cache/electron-dev/`. Its bundle name, executable, identifier,
@@ -46,8 +48,8 @@ when macOS `iconutil` is available, without overwriting the canonical source.
    the login keychain.
 2. Environment variables:
    - `MAC_SIGNING_IDENTITY` — e.g. `Developer ID Application: <Name> (<TEAMID>)`
-   - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` — required only
-     for notarization; the script builds signed-but-unnotarized without them.
+   - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` — required for
+     notarization.
 3. Rust toolchain and pnpm workspace installed. The Rust toolchain must run on
    the native macOS runner: arm64 for Apple Silicon or x86_64 for Intel.
 
@@ -178,8 +180,13 @@ changing the package scripts or release artifacts.
 The macOS matrix uses `macos-15` for arm64 and `macos-15-intel` for Intel x64.
 Each job verifies `uname -m`, passes the matching `--arm64` or `--x64` flag to
 electron-builder, and builds `pi-desktop-host-core` on that same native
-runner. The per-architecture `latest-mac.yml` files are renamed before upload;
-the publish job merges them into one feed after downloading both artifacts.
+runner. The macOS package step receives `CSC_LINK`, `CSC_KEY_PASSWORD`,
+`APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` only from
+GitHub Actions secrets. It forces code signing and notarization, then verifies
+the Developer ID authority, code-signing integrity, Gatekeeper assessment, and
+stapled app and DMG tickets before any artifact upload. The per-architecture
+`latest-mac.yml` files are renamed before upload; the publish job merges them
+into one feed after downloading both artifacts.
 
 DMG, ZIP, NSIS, AppImage, deb, blockmap, and updater feed outputs are already
 compressed or compression-insensitive. The workflow therefore uploads their
@@ -201,6 +208,7 @@ for APP in apps/desktop/release/mac-*/PI-Desktop.app; do
   spctl -a -vv "$APP"                      # Gatekeeper assessment (notarized builds)
   xcrun stapler validate "$APP"             # notarization staple (if notarized)
 done
+xcrun stapler validate apps/desktop/release/*.dmg
 ```
 
 ### 5.1 Package footprint gate
@@ -359,5 +367,6 @@ Shell smoke on each native runner:
   or newer (Ubuntu 22.04, Debian 12, Fedora 36+). The tag job runs
   `scripts/check-linux-host-glibc.mjs` and refuses a binary that needs a
   newer glibc.
-- Signed in-app macOS delivery, rollback, staged rollout, and prerelease
-  channel policy remain open release work.
+- In-app macOS delivery, rollback, staged rollout, and prerelease channel
+  policy remain open release work. Downloaded DMG and ZIP artifacts are
+  Developer ID-signed, notarized, and stapled before publication.

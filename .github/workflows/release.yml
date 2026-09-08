@@ -27,10 +27,6 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  # macOS build is unsigned for now (identity: null); don't look for certs.
-  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-
 jobs:
   build:
     name: Build ${{ matrix.name }}
@@ -136,11 +132,30 @@ jobs:
           trap - EXIT
 
       - name: Package installers (${{ matrix.dist }})
+        if: matrix.platform != 'macos'
         # The dist scripts pass --publish never themselves: electron-builder
         # must not self-publish on tag builds (no token; softprops owns it).
         # The explicit architecture keeps the package and native Rust sidecar
         # aligned with the runner selected by this matrix entry.
         run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --${{ matrix.arch }}
+
+      - name: Package signed and notarized macOS installer
+        if: matrix.platform == 'macos'
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @pi-desktop/desktop run dist:mac -- --${{ matrix.arch }} \
+            -c.mac.forceCodeSigning=true \
+            -c.mac.notarize=true
+
+      - name: Verify signed and notarized macOS installer
+        if: matrix.platform == 'macos'
+        run: scripts/verify-macos-release.sh apps/desktop/release
 
       - name: Verify Linux host-core glibc floor
         if: matrix.platform == 'linux'
@@ -224,7 +239,7 @@ jobs:
           # architectures ship from tag builds — installers, the Linux ASAR,
           # blockmaps, and the latest*.yml feeds that drive
           # electron-updater on each platform (in-app for Windows NSIS and
-          # Linux AppImage; macOS notifies until a signed channel lands).
+          # Linux AppImage; macOS remains manual-delivery by product policy).
           files: dist/*
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}

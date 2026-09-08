@@ -8,7 +8,7 @@
  *  - Windows NSIS / Linux AppImage → full in-app flow: silent background
  *    download, "restart to update" prompt, install-on-quit fallback.
  *  - macOS → manual discovery and a releases-page link. In-app installation
- *    remains disabled until a signed channel is explicitly qualified.
+ *    remains disabled pending a separate delivery-policy qualification.
  *  - Linux deb (no $APPIMAGE in env) → notify + link, like macOS.
  *  - Unpackaged dev runs → disabled (no app-update.yml in resources).
  */
