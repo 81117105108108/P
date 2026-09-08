@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const esEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.2",
+    "date": "2026-09-08",
+    "highlights": [
+      "Añada un inspector de uso del contexto que siga al modelo seleccionado y muestre indicaciones de compactación.",
+      "Mejore la configuración de proveedores y modelos con selección buscable, acciones masivas y errores de obtención más claros.",
+      "Resuma automáticamente los títulos de las sesiones y permita usar nombres de proyecto persistentes.",
+      "Rediseñe el panel lateral de subagentes con estado en vivo, burbujas de tareas compactas, identidad del modelo y navegación a la salida más reciente.",
+      "Envíe notificaciones nativas para preguntas y aprobaciones interactivas, manteniendo las finalizaciones normales fuera de la bandeja.",
+      "Añada la localización de interfaz en coreano y mejore los ajustes localizados, el historial del portapapeles y los enlaces seguros.",
+    ]
+  },
+  {
     "version": "0.14.1",
     "date": "2026-09-08",
     "highlights": [
