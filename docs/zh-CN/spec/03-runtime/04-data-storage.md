@@ -122,13 +122,11 @@ commit 不会删除历史审查证据。
   保持整数毫秒。
 - 读者跳过未知的 `type` 行和撕裂的尾行：新的行类型
   不需要迁移，并且附加过程中的崩溃不会毒害文件。
-- `compaction` 是一个模型上下文检查点，而不是一条消息 — 但它是
-  呈现为分隔行而不是聊天气泡 (D203)。读者归来
-  每条消息均保持不变并单独返回 **every** 仍然有效
-  检查点，最早的在前；最新的是活跃的，整个链是
-  转录本从什么中提取行，因此检查点比
-  产生它的压实。 `throughMessageId` 锚点编号为 1 的记录
-  读取和分叉时，每条记录的较长存在时间都会被删除。
+- `compaction` 是模型上下文检查点，不是消息；它会以分隔行而不是聊天气泡
+  呈现（D203）。读取时，每条消息都会原样返回，同时单独返回所有仍然有效的
+  检查点，并按从旧到新的顺序排列。最新检查点是活动检查点，整条检查点链会
+  参与转录本行的渲染，因此某个检查点的生命周期可以长于创建它的那次压缩。
+  如果某条记录的 `throughMessageId` 锚点已不存在，则在读取和分叉时按记录丢弃。
   `throughMessageId` 是持久转录本边界；
   `firstKeptMessageId` 和 `retainedTail` 重现摘要+适用的
   重启后的上下文。活动回合的 `retainedTail` 最多保存最新的用户消息；
@@ -136,22 +134,21 @@ commit 不会删除历史审查证据。
   `completed_turn`）持久化该边界；没有该字段的旧记录归一化为最新的用户消息。
   活动消息超过保留限制时，将以标记、截断的形式存储；UI/diagnostics 的原始消息行
   保持完整和权威。
-  自动压缩失败可能会存储`details.fallback = "retained_tail"`
-  以及简短的恢复摘要，而不是法学硕士生成的摘要；完整的
-  成绩单仍然具有权威性，后备尾部只是模型上下文
+  自动压缩失败可能会存储 `details.fallback = "retained_tail"`
+  以及简短的恢复摘要，而不是 LLM 生成的摘要；完整的
+  转录本仍然具有权威性，后备尾部只是模型上下文
 恢复视图。 `details` 还携带检查点生成和
   压缩族，两者对主机都是不透明的。
 - 写入者使用flush + fsync追加（消息持久性≈WAL
-  `synchronous=NORMAL`);完整的成绩单重写（regenerate/edit，修订
+  `synchronous=NORMAL`);完整的转录本重写（regenerate/edit，修订
   切换、导入）执行同级临时文件 + 原子重命名。一个正常的
   上下文检查点是一个附加行，并且永远不会重写可见消息。
   重写会延续每个仍然有效的检查点
   重写的消息，而不仅仅是最新的消息。
-- 排序：文件在数据库索引事务**之前**写入。一场车祸
-  两者之间的成本是一个派生索引行（从不满足）和下一个
-  完全重写自我修复；转录读取重复数据删除重复消息 ID
-  保持最后。
-- 成绩单文件是用户数据：仅在删除其会话时删除，
+- 排序：文件在数据库索引事务**之前**写入。两者之间发生崩溃时，最多只会丢失
+  一个派生索引行，不会丢失内容；下一次完整重写会自行修复。读取转录本时，
+  对重复的消息 ID 去重并保留最后一条。
+- 转录本文件是用户数据：仅在删除其会话时删除，
   绝不会被年龄或孤儿横扫（与 `scratch/` 不同）。
 
 ## 3. 连接引导
@@ -659,7 +656,7 @@ CREATE INDEX idx_message_revisions_root
   提示可能会携带新消息 `id`，但 `meta.revisionRootId` 会保留
   指向原始系列，以便稍后重新生成附加到一组。
 - Root 用户 `meta` 还存储 `revisionCount` / `activeRevision`
-  成绩单寻呼机；这些字段是表示元数据，而不是第二源
+  转录本寻呼机；这些字段是表示元数据，而不是第二源
   分支有效负载的真实性。
 - 完成一回合的分支由 `session.saveActiveRevision` 存档，
   它读取转录本，附加修订行，并标记根的
@@ -854,7 +851,7 @@ CREATE INDEX idx_notifications_unread
 | 接受提示 | 附加用户消息行 | `last_seq` 分配（返回）+索引行+触摸 `sessions.updated_at`；然后插入 `turns(running)` |
 | assistant/tool 消息结束 | 附加消息行；id 匹配时移除进行中检查点 | 索引行+触摸会话 |
 | 流式回复检查点（`session.saveInflightMessage`，D299） | 原子替换 `<id>.inflight.json`；空消息或已索引的 id 为空操作 | — |
-| 上下文检查点（`session.appendCompaction`） | 在其引用的消息边界之后附加类型化检查点行 | —（检查点是不可搜索的成绩单内容） |
+| 上下文检查点（`session.appendCompaction`） | 在其引用的消息边界之后附加类型化检查点行 | —（检查点是不可搜索的转录本内容） |
 | 工具成功（Write/Edit） | — | upsert `artifacts` + `audit_log` 行，与结果持久化相同的 tx |
 | 通过 `session.endTurn` 打开终端 | `completed`/`error`：仅当该 id 已索引时才移除进行中检查点，否则留给 outbox 或启动恢复（D327）。`recoverInflight`：最终行从未落盘时，回合已 `completed` 则追加为 `complete`，否则为 `aborted` | 更新 `turns`；对于 completed/error，在同一交易中插入一个通知并修剪至 200 个；中止插入 无；被提升的检查点在该回合下获得一个索引行 |
 | plan/goal 提交 | 主机将准确的 Markdown 字节写入新的唯一 `<workspaceRoot>/.pi/<kind>/*.md` 文件 | 在发出批准请求之前插入一个 `plan_approvals(pending)` 行，其中包含类型、结构化 title/question、工件 path/hash/size 和到期时间 |
@@ -969,7 +966,7 @@ outbox 排空。渲染器侧的停止绝不重写已有已开始回复的转录
      `mode: "chat"` 到 `"plan"`，保持嵌套扩展模式不变；
   4. preserves/migrates 现有 `plan_approvals` 表并添加其
      工件和执行 fields/indexes；
-  5. 保留成绩单、轮次、修订、项目、许可、赠款、
+  5. 保留转录本、轮次、修订、项目、许可、赠款、
      提供商和计划任务历史记录；
   6. 将所有新模式值验证为 `plan | goal | agent`；和
   7. 验证 `defaultCommandShell` 作为已知的当前平台目录 ID，
@@ -1064,7 +1061,7 @@ UI投影损失
    删除其索引条目和两个会话文件
 8. 插件卸载在一条语句中清除 `kv(plugin:<id>)`
 9. 重置侧边栏首选项不会更改 `projects`、`sessions` 或
-   成绩单数据；保留的路径和组织选择在正常情况下生存
+   转录本数据；保留的路径和组织选择在正常情况下生存
    当首选项可用时渲染器重新启动
 10. 会话 A 的工具调用会解析 A 的持久项目根，即使在
     可见工作区切换到项目 B
