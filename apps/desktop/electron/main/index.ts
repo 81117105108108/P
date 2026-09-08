@@ -142,6 +142,7 @@ import {
 import { HostProcess } from "./host-process";
 import {
   shouldCreateTaskNotification as shouldCreateTaskNotificationPolicy,
+  shouldShowNativeNotification as shouldShowNativeNotificationPolicy,
 } from "./notification-policy";
 import { PersistenceOutbox } from "./persistence-outbox";
 import { InflightCheckpointer } from "./inflight-checkpoint";
@@ -5874,6 +5875,7 @@ function registerIpc() {
     sessionId?: string;
     title?: string;
     body?: string;
+    source?: "task" | "interactive";
   } = {}) => {
     if (
       !mainWindow ||
@@ -5888,13 +5890,16 @@ function registerIpc() {
     const body = String(input.body ?? "").trim().slice(0, 240);
     if (!id || !sessionId || !title) return { shown: false };
 
+    const source = input.source === "interactive" ? "interactive" : "task";
     const liveWindow = mainWindow !== null && !mainWindow.isDestroyed();
-    const isVisibleToUser =
-      liveWindow &&
-      mainWindow.isVisible() === true &&
-      mainWindow.isFocused() === true &&
-      notificationViewingSessionId === sessionId;
-    if (isVisibleToUser) {
+    const shouldShow = shouldShowNativeNotificationPolicy({
+      source,
+      finishingSessionId: sessionId,
+      viewingSessionId: notificationViewingSessionId,
+      windowVisible: liveWindow && mainWindow.isVisible() === true,
+      windowFocused: liveWindow && mainWindow.isFocused() === true,
+    });
+    if (!shouldShow) {
       return { shown: false };
     }
 

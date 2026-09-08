@@ -2770,6 +2770,31 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Draft
 
+#### E2E-065a: Native interactive prompts are session-aware
+
+- **Preconditions**: Native notifications are supported; sessions A and B
+  exist; deterministic asktool, tool-permission, and Plan approval prompts can
+  be paused and resolved.
+- **Steps**: 1) Focus and view session A. 2) Trigger an asktool,
+  tool-permission, or Plan approval prompt in background session B. 3) Trigger
+  the same prompt type in the focused current session A. 4) Unfocus or
+  minimize the app and trigger a prompt in A. 5) Click the B or A native
+  notification and inspect the selected session. 6) Resolve each inline card
+  and inspect the durable notification inbox.
+- **Expected**: A focused-background interactive prompt in B produces one
+  localized native banner and does not create a durable task inbox row. A
+  prompt in the focused current A is shown only inline. An unfocused or
+  minimized prompt in A produces one native banner. Clicking a banner restores,
+  shows, and focuses the main window before selecting the prompt's session; it
+  never activates the session that happened to be selected before the click.
+  Resolving a prompt leaves no synthetic task completion/failure row.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `04-ux/08-component-spec.md`, `04-ux/09-interaction-patterns.md`,
+  `08-meta/decisions-log.md` (D117/D350), ADR 0187
+- **Acceptance**: C (conversation & stream), Quality
+- **Milestone**: M5
+- **Status**: Draft
+
 #### E2E-066: Provider model catalog survives restart and offline refresh
 
 - **Preconditions**: A saved provider matches a models.dev provider/API URL and

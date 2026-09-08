@@ -43,6 +43,7 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
 | [ADR 0184：输入框工具栏中的上下文用量检查器](/adr/0184-composer-context-usage-inspector) | 把剩余容量检查器移到模型选择器左侧，答案下方只保留模型徽章 |
  | [ADR 0185：韩语应用程序壳](/adr/0185-korean-shell-locale) | 提供完整韩语外壳、系统语言解析和韩语发版日志目录 |
  | [ADR 0186：显示进行中重试的 provider 原因](/adr/0186-retry-cause-in-active-turn-status) | 悬停或聚焦重试状态行时显示错误摘要、错误码和安全的 provider 消息 |
+ | [ADR 0187：区分任务和交互式本机通知投递](/adr/0187-separate-task-and-interactive-native-notification-delivery) | 终端任务保持仅无焦点投递，交互询问可通知聚焦的其他会话 |
 
 ## 什么时候看 ADR
 

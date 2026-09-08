@@ -274,7 +274,9 @@
 
 | 身份证号 | 主题 | 决定 | 基本原理 |
 |---|---|---|---|
-| D117 | 持久任务通知收件箱 | **Rust host-core 独占拥有 schema-v6 `notifications` 表，并且仅在 Electron 报告结果尚未可见时，当 `session.endTurn` 将运行轮移至 completed/error 时，才会自动插入一个结构化 `task.completed` / `task.failed` 行。 Renderer 通过允许列表查看上下文 IPC 提供当前聊天会话；仅当其窗口为 visible/focused 并且该会话匹配时，Main 才会抑制插入，而未知、背景、隐藏或未聚焦状态无法安全通知。 `turn_id UNIQUE` 可以防止重复，中止是静默的，会话删除级联，并且只保留最新的 200 行。标题栏响铃显示准确的未读计数、All/Unread、行 mark-read/session 激活、标记所有已读以及通过完整的 keyboard/accessibility 行为进行清除。协议 v4 添加了单数 `notification.list/markRead/markAllRead/clear`； `session.endTurn` 返回插入的记录，Electron 发出渲染器 `notification.changed`，并且仅当主窗口未聚焦时，它才会显示本机系统通知，该通知单击 restores/focuses 窗口并发出 `notification.activated`。持久化行包含结构化 kind/session/turn/error 数据以及会话名称快照，从未本地化通知 title/body 散文。任务收件箱没有权限、计划提醒、偏好、云通知或插件通知源；插件本机通知是单独的 D213 表面。 D113 的个人资料页脚保持不变。** | 通知应该恢复用户没有看到的任务结果，而不是重复当前聊天中已经可见的结果。有界主机拥有的收件箱可保持 background/unfocused 结果的持久性和可导航性，而不会侵犯 SQLite 所有权、重复事件或将每个终端事件转变为通知历史记录。 |
+| D117 | 持久任务通知收件箱（本机投递条款由 D350 修订） | **Rust host-core 独占拥有 schema-v6 `notifications` 表，并且仅在 Electron 报告结果尚未可见时，当 `session.endTurn` 将运行轮移至 completed/error 时，才会自动插入一个结构化 `task.completed` / `task.failed` 行。 Renderer 通过允许列表查看上下文 IPC 提供当前聊天会话；仅当其窗口为 visible/focused 并且该会话匹配时，Main 才会抑制插入，而未知、背景、隐藏或未聚焦状态无法安全通知。 `turn_id UNIQUE` 可以防止重复，中止是静默的，会话删除级联，并且只保留最新的 200 行。标题栏响铃显示准确的未读计数、All/Unread、行 mark-read/session 激活、标记所有已读以及通过完整的 keyboard/accessibility 行为进行清除。协议 v4 添加了单数 `notification.list/markRead/markAllRead/clear`； `session.endTurn` 返回插入的记录，Electron 发出渲染器 `notification.changed`，并且仅当主窗口未聚焦时，它才会显示本机系统通知，该通知单击 restores/focuses 窗口并发出 `notification.activated`。持久化行包含结构化 kind/session/turn/error 数据以及会话名称快照，从未本地化通知 title/body 散文。任务收件箱没有权限、计划提醒、偏好、云通知或插件通知源；插件本机通知是单独的 D213 表面。 D113 的个人资料页脚保持不变。** | 通知应该恢复用户没有看到的任务结果，而不是重复当前聊天中已经可见的结果。有界主机拥有的收件箱可保持 background/unfocused 结果的持久性和可导航性，而不会侵犯 SQLite 所有权、重复事件或将每个终端事件转变为通知历史记录。 |
+
+| D350 | 按来源区分本机通知投递 | **修订 D117 / ADR 0107：渲染器在 `notification/showNative` 终端结果调用中标记 `source: "task"`，在 asktool、工具权限和 Plan 审批调用中标记 `source: "interactive"`。缺失或未知来源默认为 `task`。任务本机投递仍然仅在未聚焦时进行，包括聚焦的背景会话；交互投递仅在确切的询问会话已在聚焦窗口中可见时抑制，因此聚焦其他会话时可以收到横幅。交互询问从不创建持久任务收件箱行，插件本机通知仍使用独立的权限门控 API。不改变主机协议或存储架构版本。** | PR #84 扩展共享 handler 的门控时，使聚焦的背景终端完成也显示了本机横幅，同时实现了聚焦背景交互询问通知的目标。显式来源在同一个 Electron 边界隔离这两种用户可见策略。 |
 
 ## O. 桌面 shell 决定
 
@@ -2745,6 +2747,18 @@ D193 和 D194。
 - 紧凑上下文检查器原先挂在最新助手回合下方，会话一滚动就够不着。协作者同意把唯一入口移到模型选择器旁，而不是两处显示同一份数字。
 - 决策 D347：检查器放在输入框右侧工具栏、模型 × 推理芯片左侧，始终对应当前最新一条已报告用量的助手回合。触发器是圆环加百分比。弹层标题为剩余 tokens + 百分比；内部分隔线仍然禁止（D297）。答案下方的助理元只保留模型徽章。
 - 见 ADR 0184、`04-ux/08-component-spec.md` §8.3 / §11.3 与 E2E-060d。
+
+## 2026-09-08 —— 按来源区分本机通知投递（D350）
+
+- PR #84 为 asktool、工具权限和 Plan 审批询问增加本机通知时，扩大了现有
+  `showNative` handler 的范围。这也让聚焦的背景终端完成显示本机横幅，违反了
+  E2E-065。
+- 决策 D350：应用拥有的终端调用使用 `source: "task"`，仍然只在未聚焦时投递。
+  交互询问调用使用 `source: "interactive"`，仅在确切询问会话已在聚焦窗口中可见时
+  抑制，因此聚焦其他会话时可以通知。省略或未知来源默认为 `task`；交互询问仍在
+  持久任务收件箱之外，插件本机通知继续使用独立 API。
+- 决策 D350 记录为 ADR 0187。见 `03-runtime/01-ipc-protocol.md`、
+  `04-ux/08-component-spec.md`、`04-ux/09-interaction-patterns.md` 与 E2E-065a。
 
 ## 2026-09-08 —— macOS 侧边栏改用 source-list vibrancy 材质（D348）
 

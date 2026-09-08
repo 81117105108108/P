@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { shouldCreateTaskNotification } from "../electron/main/notification-policy.ts";
+import {
+  shouldCreateTaskNotification,
+  shouldShowNativeNotification,
+} from "../electron/main/notification-policy.ts";
 
 const focusedCurrent = {
   finishingSessionId: "session-a",
@@ -38,5 +41,37 @@ test("fails safe when the viewing context is unknown", () => {
   assert.equal(
     shouldCreateTaskNotification({ ...focusedCurrent, viewingSessionId: null }),
     true,
+  );
+});
+
+test("keeps focused-background task completions native-silent", () => {
+  assert.equal(
+    shouldShowNativeNotification({
+      ...focusedCurrent,
+      source: "task",
+      finishingSessionId: "session-b",
+    }),
+    false,
+  );
+});
+
+test("shows focused-background interactive prompts", () => {
+  assert.equal(
+    shouldShowNativeNotification({
+      ...focusedCurrent,
+      source: "interactive",
+      finishingSessionId: "session-b",
+    }),
+    true,
+  );
+});
+
+test("suppresses interactive prompts in the focused visible session", () => {
+  assert.equal(
+    shouldShowNativeNotification({
+      ...focusedCurrent,
+      source: "interactive",
+    }),
+    false,
   );
 });

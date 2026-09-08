@@ -333,7 +333,7 @@ may be retained while exactly one workspace supplies the visible shell context.
 - Collapsing the sidebar closes the menu and restores the collapsed rail's
   normal navigation state.
 
-### 1.7 Notification inbox (D117)
+### 1.7 Notification inbox (D117/D350)
 
 #### Event-to-surface flow
 
@@ -346,16 +346,23 @@ may be retained while exactly one workspace supplies the visible shell context.
    An `aborted` turn never creates one.
 3. Electron emits `notification.changed` to every live renderer so the bell
    badge and currently open inbox refresh.
-4. If the main window is focused, no other surface appears. If it is
-   unfocused and native notifications are supported, Electron shows one
-   platform notification derived from the event kind and session title. On
-   Windows, the banner is attributed to the canonical PI-Desktop
-   AppUserModelID shared with the NSIS package and taskbar identity.
+4. For terminal task outcomes, a native notification appears only when the
+   main window is unfocused. A focused background completion still creates its
+   durable row but no native banner. Interactive asktool, tool-permission, and
+   Plan approval prompts use the same Electron surface with `source:
+   "interactive"`: the exact focused current session is silent, while a
+   focused different session can receive a banner. On Windows, every banner
+   is attributed to the canonical PI-Desktop AppUserModelID shared with the
+   NSIS package and taskbar identity.
 5. Clicking the native notification shows/restores and focuses the main
    window, then emits `notification.activated { sessionId }`.
 6. Renderer activation selects the bound project when present, loads the
    session, and focuses the transcript/composer using the same path as an inbox
    row click. Native and in-app activation must not diverge.
+
+Interactive prompt banners are native-only recovery surfaces. They do not
+create durable task inbox rows; the inline ask, permission, or Plan card
+remains the source of truth once the user returns to the session.
 
 #### Popover behavior
 
@@ -1215,8 +1222,10 @@ This does not prevent state changes — it makes them instant.
     aborted turns never appear
 18. All/Unread, mark-all-read, clear, row activation, Escape/focus restore, and
     arrow/Home/End keyboard navigation behave as documented in §1.7
-19. Native notifications appear only while the main window is unfocused and
-    their activation focuses the window and opens the corresponding session
+19. Native task notifications appear only while the main window is unfocused.
+    Interactive prompt notifications suppress only the focused current session,
+    may appear for a focused different session, and their activation focuses
+    the window and opens the corresponding session
 20. Streamed message updates stay within the chat render boundary; shell
     navigation, composer, completed rows, and work-panel content do not rerender
     solely because the current assistant message appended content

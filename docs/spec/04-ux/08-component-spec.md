@@ -280,8 +280,9 @@ combined model × reasoning selection (§11).
 
 - No search field in topbar (deferred)
 - Notification history is the bounded D117 inbox; scheduled reminders,
-  permission-request notifications, and notification preferences remain out of
-  scope
+  durable permission-request history, and notification preferences remain out
+  of scope. Interactive prompt notifications are native-only and do not enter
+  the inbox.
 
 ---
 
@@ -2861,8 +2862,10 @@ Sidebar footer                                        Popover (360px max)
   an unfocused current session enters the inbox and receives a native banner.
   Clicking the banner restores/shows and focuses the main window before
   emitting `notification.activated` for the matching session.
-- Aborted turns, permission requests, scheduled reminders, and plugin
-  notifications do not enter this inbox.
+- Aborted turns, interactive permission/ask/Plan prompts, scheduled reminders,
+  and plugin notifications do not enter this inbox. Interactive prompts may
+  use the source-aware native surface while the app is focused on a different
+  session.
 
 ### 20.5 Accessibility
 
@@ -2886,8 +2889,9 @@ Sidebar footer                                        Popover (360px max)
   from unseen terminal agent turns. Visible-current results and `aborted` turns
   are intentionally silent.
 - At most 200 newest rows are retained globally. There is no pagination,
-  scheduled notification source, permission-notification source, preferences
-  page, notification permission prompt, or cloud sync.
+  scheduled notification source, durable permission-notification source,
+  preferences page, notification permission prompt, or cloud sync. Interactive
+  prompt banners are transient native surfaces outside the inbox.
 
 ---
 

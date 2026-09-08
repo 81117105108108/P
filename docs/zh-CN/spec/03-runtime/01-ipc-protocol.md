@@ -468,9 +468,10 @@ type AgentEvent =
 避免快速完成先于查看上下文更新。Electron 将此提示与 Main 拥有的窗口
 visibility/focus 结合起来，在终态事件边界进行判断。缺失、null 或不匹配的
 上下文都会安全地创建公告。它还调用
-`pi-desktop/notification/showNative({ id, sessionId, title, body })` 之后
-本地化新记录。这个仅限电子的请求永远不会进入主机
-RPC 域。
+`pi-desktop/notification/showNative({ id, sessionId, title, body, source? })` 之后
+本地化新记录。可选的 `source` 对终端任务结果使用 `"task"`，对 asktool、
+工具权限和 Plan 审批询问使用 `"interactive"`；省略或未知值默认为
+`"task"`。这个仅限 Electron 的请求永远不会进入主机 RPC 域。
 
 ```ts
 type AppNotification = {
@@ -512,12 +513,13 @@ Main 发送两个事件：
 
 Electron 拥有本机表面，而渲染器则派生本地化表面
 结构化记录中的 title/body 文本。 Electron 仅接受 `showNative`
-对于有效的 notification/session 对，仅在以下情况下显示本机通知
-主窗口未聚焦且支持平台 API，则
-restores/shows 并在发出 `activated` 之前聚焦窗口。没有
-集中注意力且没有权限时的本机通知、计划提醒或
-本合同中的插件源。本地交付是尽力而为；耐用的
-当操作系统抑制横幅时，收件箱仍然具有权威性。在 Windows 上，
+对于有效的 notification/session 对和受支持的平台 API。`"task"` 源仍然
+只在主窗口未聚焦时投递，以保留“聚焦背景终端任务不弹横幅”的契约。
+`"interactive"` 源仅在其确切会话已在聚焦窗口中可见时抑制，因此聚焦于
+其他会话时仍可收到 ask、权限或 Plan 审批横幅。两种源都会在发出
+`activated` 之前恢复/显示并聚焦窗口。交互询问不会创建持久任务收件箱行；
+计划提醒和插件本机通知仍是独立合约。本机交付是尽力而为；耐用的
+收件箱仍是操作系统抑制横幅时的权威来源。在 Windows 上，
 Electron 主将 `com.pi-desktop.app` 注册为进程 AppUserModelID
 在准备就绪之前和创建任何窗口之前。 ID 与 NSIS 匹配
 包标识所以通知属性、通知设置、任务栏
