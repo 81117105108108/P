@@ -3250,10 +3250,10 @@ Each scenario is documented in this format:
   forward again. 6) Reload the session. 7) Choose Edit on the slash-command
   turn and inspect the seeded text. 8) Try Edit while a turn is running.
 - **Expected**: Every toolbar chip shows its glyph only, with the label
-  appearing as a fully visible tooltip floating above the button on hover
-  and on keyboard focus (#74); no chip renders caption text. The tooltip
-  keeps its elevated surface clear of the icon hover tint so its bottom border
-  never blends into the button highlight. The assistant toolbar offers Copy,
+  appearing as a fully visible tooltip 8px above the chip on hover and on
+  keyboard focus (#74); no chip renders caption text. The tooltip uses the
+  compact raised shadow rather than the composer glow so its surface stays
+  visually separate from `--ds-bg-hover`. The assistant toolbar offers Copy,
   Fork, Regenerate; the user toolbar offers the pager (when variants exist),
   Copy, Edit, Delete. Edit replaces the prompt bubble with a wider inline
   textarea with Retry and Cancel controls; Escape or Cancel restores the

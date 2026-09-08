@@ -1213,7 +1213,8 @@ Single message render — either user (plaintext) or assistant (markdown streami
   Fork and Regenerate on completed assistant turns; Edit and Delete on user
   turns. Assistant rows expose neither Delete nor Edit. Chips render the glyph
   alone: the label is carried by `aria-label` plus a themed hover/focus
-  tooltip above the chip, never as visible caption text (D137). Right-aligned
+  tooltip 8px above the chip (compact raised shadow, not the composer glow),
+  never as visible caption text (D137). Right-aligned
   for user turns, left-aligned for
   assistant turns; visible on hover/focus-within. Regenerate truncates the
   durable transcript to the nearest preceding user prompt and re-runs that turn
