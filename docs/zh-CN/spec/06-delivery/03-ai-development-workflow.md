@@ -363,7 +363,7 @@ git worktree prune
 Cargo 工作区版本与 `host-core` 锁文件条目、`APP_VERSION`，以及 `README.md` +
 `README.zh-CN.md` 中声明的版本线。`node scripts/check-release-docs.mjs` 必须
 通过；`scripts/release.mjs` 会执行它，未通过则拒绝打标签。参见
-[06-release-runbook.md §4.1](/zh-CN/spec/06-delivery/06-release-runbook#4-1-强制发布版本面门禁-d164-d260)、
+[06-release-runbook.md §4.1](/zh-CN/spec/06-delivery/06-release-runbook#_4-1-强制发布版本面门禁-d164-d260)、
 D164 与 D260。 GitHub 发行说明并不能替代。
 
 ---
