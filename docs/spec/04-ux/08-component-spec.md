@@ -632,7 +632,7 @@ Primary chat area containing ChatTranscript and Composer. Scrollable, center of 
 |---|---|
 | Empty | Restrained hero + optional onboarding checklist in a scrollable content region, with a bottom-reserved home composer and no starter-card or contextual quick-action layer (D111/D204/D206) |
 | Streaming | Auto-scroll follows while pinned; new tokens append |
-| Active progress | Immediately after send, before the first assistant or tool event, a compact localized `Working…` status with elapsed time appears inline. It yields to concrete thinking, tool, and answer rows, while a permission card owns the approval state; no large generic progress card is rendered. A retrying row remains compact at rest; hovering or focusing it reveals an error-styled tooltip with the localized error summary, stable code/HTTP status, and bounded provider message. |
+| Active progress | Immediately after send, before the first assistant or tool event, a compact localized `Working…` status with elapsed time appears inline. Its model and subagent elapsed labels use the carried-unit format in §9.1. It yields to concrete thinking, tool, and answer rows, while a permission card owns the approval state; no large generic progress card is rendered. A retrying row remains compact at rest; hovering or focusing it reveals an error-styled tooltip with the localized error summary, stable code/HTTP status, and bounded provider message. |
 | Turn outcome | After a failed turn, a session-scoped recovery card summarizes the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
 | Session switch | A first-opened session paints at its latest record; a revisited pane paints at its own retained position. Bounded first commit and full-history expansion show the same position: no post-paint height correction may shift the visible rows, in either direction |
 | Turn start (send / retry / regenerate) | Re-pins and positions the latest content before paint, even if the user had scrolled up; the later persisted user-message event does not flash the transcript at its top, and the composer collapse / indicator layout clamps during the send never release follow mode |
@@ -1461,6 +1461,10 @@ activity rows and their nested result disclosures. The group reports duration
 and containment, not turn outcome: a failed child remains an error on its own
 ToolCallRow but never changes the group header to a terminal failure. Terminal
 agent errors remain owned by the assistant error and TurnOutcomeCard surfaces.
+Elapsed labels use compact automatically carried units: seconds below one
+minute, minutes plus seconds below one hour, and hours plus minutes (and
+seconds when non-zero) from one hour onward. Zero-value units are omitted, so
+`90m` is rendered as `1h 30m`.
 
 ### 9.2 Anatomy
 
@@ -1735,7 +1739,9 @@ Opening a node reveals the blocks the call carries, then the delegate's own rows
   explicit outcome, runtime duration and step count. The duration uses the
   delegation registry's
   `startedAt`/`completedAt` timestamps (and ticks live while the node is
-  running), not the immediate `Task` tool-call duration. Outcome prefers the
+  running), not the immediate `Task` tool-call duration, and uses the same
+  automatically carried `h`/`m`/`s` format as the processing-group header.
+  Outcome prefers the
   structured `Task` result
   (`completed`, `truncated`, `timed_out`, `aborted`, `stopped`, `failed`) and falls back to transport
   state (`running`, `error`, `denied`, `success`). Clicking the node expands the

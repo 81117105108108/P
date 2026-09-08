@@ -8272,3 +8272,20 @@ are withdrawn with ADR 0165.
 - **Milestone**: M5
 - **Status**: Static/documentation check covered (`pnpm docs:build` and path
   audit); remote GitHub and browser journey pending
+
+#### E2E-194: Model and subagent elapsed time carries into hours
+
+- **Preconditions**: The desktop transcript fixture can render a processing
+  group and a delegation topology with deterministic elapsed timestamps.
+- **Steps**: 1) Render a model processing group with 5,400 elapsed seconds.
+  2) Render a subagent topology with the same elapsed duration. 3) Repeat with
+  sub-minute and sub-hour values to check the lower-unit boundaries.
+- **Expected**: Both the model processing header and the subagent card/node
+  show `1h 30m` for 5,400 seconds, never `90m` or `90m 0s`. Values below one
+  hour keep minute/second precision, and zero-value units are omitted.
+- **Specs linked**: `04-ux/08-component-spec.md` §9.1/§9.9,
+  `04-ux/09-interaction-patterns.md` §4.2
+- **Acceptance**: C (conversation), Quality
+- **Milestone**: M6+
+- **Status**: Unit-covered (`apps/desktop/test/tool-display.test.mjs`); full UI
+  journey pending (do not run E2E locally unless explicitly requested)

@@ -678,7 +678,9 @@ may be retained while exactly one workspace supplies the visible shell context.
   automatically so the error remains local to its invocation.
 - Consecutive tool activity is wrapped in one collapsed processing group. Its
   header updates elapsed time once per second while active, freezes after the
-  next transcript message, and exposes the number of contained steps.
+  next transcript message, and exposes the number of contained steps. The
+  elapsed label carries minutes into hours (`90m` → `1h 30m`) and omits
+  zero-value units.
 - A failed row is invocation-local truth and remains visible immediately. The
   containing group reports processing duration only and settles as processed,
   even when a later call recovers. Terminal turn failure is derived only from
