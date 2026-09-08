@@ -36,6 +36,7 @@
 | `window` | 无框窗口状态、控件和有界工作面板宽度预留 |
 | `menu` | 列入许可名单的应用程序菜单命令和本机 editing/window 操作 |
 | `notification` | 持久收件箱 list/read/clear 和 new/activated 事件 |
+| `stats` | 已完成回合的 token 历史（host RPC；仪表板由插件拥有） |
 
 ## 3. 渠道约定
 
@@ -671,6 +672,15 @@ sidecar 用于显示每秒输出令牌的流时间。 `ToolTokenUsage`
 永远不会将它们合并到确切的提供商总数中。年长的同行可能会忽略所有
 这些可选字段不会破坏 v6 握手。
 
+### stats
+
+- `pi-desktop/stats/getTokenUsageHistory({ startDate?, endDate?, bucket? }) -> TokenUsageHistoryResult`
+
+`bucket` 取 `day` | `week` | `month`。省略日期时使用主机默认窗口
+（53 周 / 52 周 / 24 个月），按主机本地日历计算。`week` 的键使用 ISO 周年
+（`%G-W%V`）。结果会填充范围内的空桶。此通道不是设置页面；面向用户的仪表板
+是插件 `pi.token-insights`（D335 / ADR 0173）。
+
 ## 8. 设置/秘密 API
 
 ### 设置
@@ -1247,6 +1257,36 @@ type FsIndexEntry = { path: string; kind: "file" | "dir" };
 从文件路径派生的目录，8000 个条目上限，`truncated: true`，
 每个根的短 TTL 缓存。无法关闭到空列表而没有
 工作区。模糊过滤发生在渲染器端。
+
+### composer/pickFiles 和 composer/pickPhotos
+
+```ts
+composer/pickFiles() -> { token: string | null; canceled: boolean }
+composer/pickPhotos() -> { token: string | null; canceled: boolean }
+```
+
+两个对话框都在 Electron main 中运行。Composer 以 `pickFiles` 作为其唯一的
+file/image 入口：它接受常规文件且不带类型过滤，由导入器根据 MIME/扩展名元数据
+把每个结果分类为图片或文件。`pickPhotos` 作为兼容通道保留给较旧的渲染器客户端。
+目录不属于 MVP 选择器契约。用户选定文件后，main 会把原生路径存放在一个绑定到
+发起方 `WebContents` 的令牌之下，该令牌存活 60 秒且只能消费一次。渲染器只收到
+该令牌，绝不会收到所选的绝对路径。
+
+### composer/importFiles
+
+```ts
+composer/importFiles({ sessionId, token }) -> {
+  files: ComposerPastedFile[];
+}
+```
+
+Electron main 消费这个与发送方绑定的选择器令牌，通过 `realpath` 解析每条记录的
+路径，要求目标是已存在的常规文件，套用与剪贴板传输相同的 20 个文件 / 单文件
+64 MiB / 合计 128 MiB 限制，并把字节复制到
+`<data_dir>/scratch/<sessionId>/pasted/` 下一个以 UUID 支撑的净化名称。令牌在
+导入开始之前就被删除，因此无法重放。返回的 `ComposerPastedFile` 记录是渲染器
+唯一会保存或派发的路径，所以一次选择器操作不可能把外部来源路径留在提示里，也
+不可能绕过附件根边界。
 
 ### composer/pasteFiles
 
