@@ -346,9 +346,11 @@ may be retained while exactly one workspace supplies the visible shell context.
    An `aborted` turn never creates one.
 3. Electron emits `notification.changed` to every live renderer so the bell
    badge and currently open inbox refresh.
-4. If the main window is focused, no other surface appears. If it is
-   unfocused and native notifications are supported, Electron shows one
-   platform notification derived from the event kind and session title. On
+4. For a task result, a focused main window produces no native banner. If
+   it is unfocused and native notifications are supported, Electron shows one
+   platform notification derived from the event kind and session title. The
+   separate interactive ask/permission/plan path may alert for a focused
+   background session while suppressing the exact visible session. On
    Windows, the banner is attributed to the canonical PI-Desktop
    AppUserModelID shared with the NSIS package and taskbar identity.
 5. Clicking the native notification shows/restores and focuses the main
@@ -1207,8 +1209,9 @@ This does not prevent state changes — it makes them instant.
     aborted turns never appear
 18. All/Unread, mark-all-read, clear, row activation, Escape/focus restore, and
     arrow/Home/End keyboard navigation behave as documented in §1.7
-19. Native notifications appear only while the main window is unfocused and
-    their activation focuses the window and opens the corresponding session
+19. Native task notifications appear only while the main window is unfocused;
+    interactive prompt notifications may alert for a focused background session.
+    Activation focuses the window and opens the corresponding session
 20. Streamed message updates stay within the chat render boundary; shell
     navigation, composer, completed rows, and work-panel content do not rerender
     solely because the current assistant message appended content

@@ -144,6 +144,7 @@ import {
 import { HostProcess } from "./host-process";
 import {
   shouldCreateTaskNotification as shouldCreateTaskNotificationPolicy,
+  shouldShowNativeNotification,
 } from "./notification-policy";
 import { PersistenceOutbox } from "./persistence-outbox";
 import { InflightCheckpointer } from "./inflight-checkpoint";
@@ -5874,6 +5875,7 @@ function registerIpc() {
   handle(IPC.invoke.notificationShowNative, async (input: {
     id?: string;
     sessionId?: string;
+    kind?: "task" | "interactive";
     title?: string;
     body?: string;
   } = {}) => {
@@ -5886,17 +5888,23 @@ function registerIpc() {
     }
     const id = String(input.id ?? "");
     const sessionId = String(input.sessionId ?? "");
+    const kind = input.kind === "interactive" ? "interactive" : "task";
     const title = String(input.title ?? "").trim().slice(0, 100);
     const body = String(input.body ?? "").trim().slice(0, 240);
     if (!id || !sessionId || !title) return { shown: false };
 
     const liveWindow = mainWindow !== null && !mainWindow.isDestroyed();
-    const isVisibleToUser =
-      liveWindow &&
-      mainWindow.isVisible() === true &&
-      mainWindow.isFocused() === true &&
-      notificationViewingSessionId === sessionId;
-    if (isVisibleToUser) {
+    const windowVisible = liveWindow && mainWindow.isVisible() === true;
+    const windowFocused = liveWindow && mainWindow.isFocused() === true;
+    if (
+      !shouldShowNativeNotification({
+        kind,
+        sessionId,
+        viewingSessionId: notificationViewingSessionId,
+        windowVisible,
+        windowFocused,
+      })
+    ) {
       return { shown: false };
     }
 

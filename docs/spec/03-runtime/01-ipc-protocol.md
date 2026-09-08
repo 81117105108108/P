@@ -18,7 +18,7 @@ Principles:
 | `app` | App info, health checks |
 | `agent` | Conversation, queued-send stop/abort, status, and interactive asktool resolution |
 | `plan` | Plan proposal listing, resolution, and change events |
-| `session` | Session CRUD / history |
+| `session` | Session CRUD / history / title metadata and summarization |
 | `settings` | Config read/write |
 | `secrets` | Secret write/delete/exists (never return plaintext to UI logs) |
 | `project` | Workspace selection and query |
@@ -50,6 +50,7 @@ Examples:
 - `pi-desktop/agent/event/message`
 - `pi-desktop/agent/askTool/resolve`
 - `pi-desktop/session/list`
+- `pi-desktop/session/summarizeTitle`
 - `pi-desktop/project/open`
 - `pi-desktop/project/openFolder`
 
@@ -515,9 +516,9 @@ setup so a fast completion cannot beat the viewing-context update. Electron
 combines this hint with Main-owned window visibility/focus at the terminal event
 boundary. Missing, null, or mismatched context fails safe to notification. It
 also invokes
-`pi-desktop/notification/showNative({ id, sessionId, title, body })` after
-localizing a new record. This Electron-only request never crosses into the host
-RPC domain.
+`pi-desktop/notification/showNative({ id, sessionId, kind, title, body })` after
+localizing a new record, where `kind` is `"task" | "interactive"`. This
+Electron-only request never crosses into the host RPC domain.
 
 ```ts
 type AppNotification = {
@@ -559,11 +560,13 @@ Main sends two events:
 
 Electron owns the native surface while the renderer derives localized
 title/body text from the structured record. Electron accepts `showNative` only
-for a valid notification/session pair, shows a native notification only when
-the main window is unfocused and the platform API is supported, then
-restores/shows and focuses the window before emitting `activated`. There is no
-native notification while focused and no permission, scheduled-reminder, or
-plugin source in this contract. Native delivery is best-effort; the durable
+for a valid notification/session pair. For `kind: "task"`, it shows a native
+notification only while the main window is unfocused; for `kind: "interactive"`,
+it preserves the exact-visible-session suppression while allowing a focused
+background session to alert. In both cases the platform API is best-effort,
+and a shown notification restores/shows and focuses the window before emitting
+`activated`. No permission, scheduled-reminder, or plugin source enters the
+task notification contract. Native delivery is best-effort; the durable
 inbox remains authoritative when the OS suppresses a banner. On Windows,
 Electron Main registers `com.pi-desktop.app` as the process AppUserModelID
 before readiness and before any window is created. The ID matches the NSIS
@@ -693,6 +696,12 @@ Minimal interface:
   accepts 1–80 Unicode code points. Blank or overlong titles are rejected as
   `INVALID_PARAMS`; a successful rename changes only session metadata and does
   not alter transcript content, message count, or activity timestamps.
+- `session/summarizeTitle({ sessionId, userPrompt, assistantReply? }) ->
+  { title }` validates the session and prompt in Electron main, resolves that
+  session's provider/model, and runs one `thinkingLevel: "off"` one-shot
+  completion. It never writes the title itself; the renderer applies the
+  result through `session/rename` only while the session still has a default or
+  first-prompt fallback title. A one-shot failure leaves that fallback intact.
 - `session/importScan`
 - `session/importRun(candidates) -> { imported, skipped, failed }`
 - `modelConfig/importScan -> { providers }`

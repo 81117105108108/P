@@ -1298,7 +1298,9 @@ Each scenario is documented in this format:
   recent-activity ordering do not change, and historical notification title
   snapshots are unchanged. Empty and overlong values are rejected. A custom
   title is not replaced by first-prompt auto-title; a still-default session
-  continues to receive its automatic title.
+  continues to receive its automatic title. After its first turn, the default
+  session first shows the prompt fallback and then adopts the concise
+  background LLM summary when the provider returns one.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `03-runtime/04-data-storage.md`, `03-runtime/06-host-rpc-protocol.md`,
   `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`, ADR 0143
@@ -5823,9 +5825,10 @@ This test plan spec is accepted when:
 
 ### US-UI-06 Session auto-title
 - Create a new task and send a first prompt such as "同步代码".
-- Expect its project or temporary session row title to become a truncated form
-  of that prompt instead of remaining "New task".
-- Rename a task from its session menu, then send a first prompt if it was still
+- Expect its project or temporary session row to show the normalized prompt
+  fallback immediately, then adopt a concise LLM summary after the first turn.
+- Restart before/after the summary and confirm the current title is retained;
+  rename a task from its session menu and send a first prompt if it was still
   using a default title. Expect the custom label to remain unchanged while the
   default-title task receives the normal first-prompt title.
 

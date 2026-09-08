@@ -61,6 +61,23 @@ request. It does not cancel an active provider stream or running tool. An idle
 runtime returns `{ requested: false }`; immediate `abort()` remains the
 separate cancellation path.
 
+### 4.1 Session title summarization
+
+The renderer applies a short first-prompt fallback immediately so sending a
+prompt never waits on title generation. After the first turn emits `agent_end`,
+Electron main resolves the session's effective provider/model and invokes the
+runtime's `summarizeSessionTitle` one-shot path with thinking disabled. The
+runtime supplies the initial user prompt and an optional assistant reply,
+returns only sanitized title text, and treats an empty/failing completion as a
+non-fatal result. The renderer persists a successful title through the existing
+`session.rename` path.
+
+The renderer also persists a `manualTitle` marker in its local session metadata.
+Automatic summarization is skipped for that marker and for any persisted title
+that is neither a recognized default nor the deterministic first-prompt
+fallback, which protects manual and already-summarized titles after restart.
+No host RPC or storage schema change is required.
+
 ## 5. Prompt flow
 
 1. load the durable session and reject a missing session

@@ -325,10 +325,12 @@ shared capability contract:
   completions stay in the durable record for the sidebar outcome badge and
   native notification but never appear in the inbox (D295). Selecting a row
   marks it read and activates its bound project/session.
-  Electron additionally presents a native system notification only when the
+  Electron additionally presents a native task notification only when the
   app window is unfocused, and clicking it focuses the window before activating
-  the same session (D117). Receiving either the durable or native notification
-  event never navigates by itself; only explicit activation does.
+  the same session (D117). Interactive ask/permission/plan prompts use their
+  separate native path and may alert for a focused background session. Receiving
+  either durable or native notification events never navigates by itself; only
+  explicit activation does.
 - Backend degraded → status capsule (restarting) or fatal banner with Open
   logs (D080); composer submits are rejected with readable errors while down.
   - Plan/Goal checkpoint → the originating session shows only the structured title

@@ -198,3 +198,5 @@ Each ADR includes:
 | 0183 | P0 international shell locales | Accepted (amends 0160 / 0182) |
 | 0184 | Dock the context usage inspector in the composer toolbar | Accepted (amends 0047 / 0103) |
 | 0185 | Korean shell locale | Accepted (amends 0160 / 0183) |
+| 0186 | Summarize first-turn session titles with a main-owned one-shot | Accepted |
+| 0187 | Focus-aware native task notifications | Accepted (amends 0107 / D117) |

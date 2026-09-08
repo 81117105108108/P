@@ -303,6 +303,7 @@ export const api = {
   showNativeNotification: (input: {
     id: string;
     sessionId: string;
+    kind: "task" | "interactive";
     title: string;
     body: string;
   }) => invoke<{ shown: boolean }>(IPC.invoke.notificationShowNative, input),

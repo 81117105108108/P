@@ -3860,3 +3860,24 @@ D193, and D194.
 - `macos-sidebar-vibrancy.test.mjs` asserts the sidebar material, preference
   mapping, settings/pluginChanged apply path, and the darwin live-window
   vibrancy guard. See `04-ux/08-component-spec.md` §1.7 and US-UI-74 / E2E-076.
+
+## 2026-09-08 — Session title summaries and focus-aware native task notifications (D349/D350)
+
+- The initial prompt remains visible immediately as a normalized 48-character
+  fallback. After the first turn, Electron resolves the session's effective
+  provider/model and runs the main-owned `session/summarizeTitle` one-shot with
+  thinking disabled; the renderer persists a successful result through
+  `session.rename`.
+- Renderer-local session metadata persists `manualTitle`. Automatic title
+  generation skips that marker and any persisted title that is neither a known
+  default nor the first-prompt fallback, so manual and already-summarized titles
+  survive renderer restart without a host schema change.
+- Native task completion and interactive prompt alerts share an Electron IPC
+  entry but have explicit `kind` values. Task banners are suppressed whenever
+  the main window is visible and focused, including focused background sessions;
+  interactive prompts retain exact-visible-session suppression so a focused
+  background request still alerts. Durable task insertion remains D117's
+  visibility decision and plugin notifications remain separate.
+- See ADR 0186 / ADR 0187, `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/02-agent-runtime.md`, `04-ux/08-component-spec.md`, and
+  E2E-021a / E2E-065.

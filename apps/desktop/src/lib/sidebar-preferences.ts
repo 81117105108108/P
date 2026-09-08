@@ -16,7 +16,13 @@ export function normalizeProjectPath(projectPath?: string | null): string | null
 
 export type SessionSort = "recent" | "created" | "oldest" | "name" | "manual";
 export type ProjectSort = "recent" | "created" | "oldest" | "name" | "manual";
-export type SessionMeta = { pinned?: boolean; archived?: boolean; order?: number };
+export type SessionMeta = {
+  pinned?: boolean;
+  archived?: boolean;
+  order?: number;
+  /** Survives renderer restarts so automatic titles never replace a manual one. */
+  manualTitle?: boolean;
+};
 export type ProjectMeta = {
   pinned?: boolean;
   archived?: boolean;
@@ -88,9 +94,11 @@ function cleanSessionMeta(value: unknown): Record<string, SessionMeta> {
     const pinned = bool(raw.pinned);
     const archived = bool(raw.archived);
     const order = number(raw.order);
+    const manualTitle = bool(raw.manualTitle);
     if (pinned !== undefined) item.pinned = pinned;
     if (archived !== undefined) item.archived = archived;
     if (order !== undefined) item.order = order;
+    if (manualTitle !== undefined) item.manualTitle = manualTitle;
     if (Object.keys(item).length) output[id] = item;
   }
   return output;
