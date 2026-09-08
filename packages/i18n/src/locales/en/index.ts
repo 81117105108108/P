@@ -705,7 +705,6 @@ export const en = {
     importSourceOpenCode: "OpenCode",
     importSourceCodex: "Codex",
     importSourcePi: "Pi",
-    importSourceWorkBuddy: "WorkBuddy",
     importSourceCcSwitch: "CC Switch",
     importModelsTitle: "Model configuration",
     importModelsScanDesc:

@@ -320,7 +320,6 @@ PI-Desktop can import local sessions from supported tools including:
 * Codex
 * OpenCode
 * Pi
-* WorkBuddy
 
 Open **Settings → Import** to bring existing work into the desktop workspace.
 
