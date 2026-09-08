@@ -3533,7 +3533,7 @@ Each scenario is documented in this format:
 - **Expected**:
   - Before ready: full-window splash with brand mark, shell name, tagline, and accessible starting status (`data-testid="startup-splash"`).
   - After ready: splash exits with a short fade (or instantly under reduced motion) and the main shell (or settings page) is interactive underneath.
-  - On macOS the splash uses the same glass tint and sheen as the sidebar over native `under-window` vibrancy; the mounted shell stays hidden until the splash exit fade, then cross-fades in. Other platforms keep the opaque `--ds-bg-primary` fill.
+  - On macOS the splash uses the same glass tint and sheen as the sidebar over native `sidebar` vibrancy; the mounted shell stays hidden until the splash exit fade, then cross-fades in. Other platforms keep the opaque `--ds-bg-primary` fill.
   - No plain unbranded “Starting…” centered text as the only boot UI.
   - Overlay/dialog enter motion uses shared tokens; reduced motion keeps state changes without decorative duration.
   - If a non-settings bootstrap request fails while the settings read is still
@@ -3541,7 +3541,7 @@ Each scenario is documented in this format:
     settings request itself fails, the active section shows a loading/failure
     state and retry action rather than a blank content pane; retrying after the
     local service recovers restores the controls without leaving Settings.
-- **Specs linked**: `04-ux/07-ui-design-system.md` §8, `04-ux/02-i18n-english-first.md`, decisions-log D146 / D304
+- **Specs linked**: `04-ux/07-ui-design-system.md` §8, `04-ux/02-i18n-english-first.md`, decisions-log D146 / D304 / D348
 - **Acceptance**: A (app startup), Quality
 - **Milestone**: M5
 #### E2E-099: Brand logo follows the active theme
@@ -6432,17 +6432,19 @@ This test plan spec is accepted when:
 ### US-UI-74 macOS native sidebar vibrancy
 - Open the desktop app on macOS in both light and dark appearances with the
   sidebar expanded, then exercise the existing collapse/expand path.
-- Expect the main window to use native `under-window` vibrancy with a thin
-  theme tint behind `.sidebar` and any rendered `.sidebar-rail`: desktop
-  content stays perceptible through the material and the surface carries a
-  top-to-bottom sheen rather than a flat fill. The dock carries no seam or
-  hairline — the glass meets the opaque main pane flush, so no hard divider
-  separates the two panes.
+- Expect the main window to use native `sidebar` vibrancy with a thin
+  theme tint behind `.sidebar` and any rendered `.sidebar-rail`: the material
+  follows the app theme (`nativeTheme.themeSource`), so a dark shell stays on a
+  dark plate and a light shell stays on a light plate. Desktop content stays
+  perceptible through the material and the surface carries a top-to-bottom
+  sheen rather than a flat fill. The dock carries no seam or hairline — the
+  glass meets the opaque main pane flush, so no hard divider separates the two
+  panes.
 - Expect `.main-pane`, `.main-titlebar`, and `.conversation-topbar` to remain
   solid theme surfaces without whole-window transparency or a strong artificial
   blur/card treatment. Sidebar collapse/expand, resize, traffic-light placement,
   and drag/no-drag hit regions remain unchanged.
-- **Specs linked**: `04-ux/08-component-spec.md` §1.7, §3.4
+- **Specs linked**: `04-ux/08-component-spec.md` §1.7, §3.4; decisions-log D304 / D348
 - **Milestone**: M6
 - **Status**: Partially automated (`macos-sidebar-vibrancy.test.mjs` source contract); native visual verification Draft
 

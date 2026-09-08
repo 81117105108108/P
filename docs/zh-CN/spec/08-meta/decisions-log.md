@@ -2744,3 +2744,19 @@ D193 和 D194。
 - 紧凑上下文检查器原先挂在最新助手回合下方，会话一滚动就够不着。协作者同意把唯一入口移到模型选择器旁，而不是两处显示同一份数字。
 - 决策 D347：检查器放在输入框右侧工具栏、模型 × 推理芯片左侧，始终对应当前最新一条已报告用量的助手回合。触发器是圆环加百分比。弹层标题为剩余 tokens + 百分比；内部分隔线仍然禁止（D297）。答案下方的助理元只保留模型徽章。
 - 见 ADR 0184、`04-ux/08-component-spec.md` §8.3 / §11.3 与 E2E-060d。
+
+## 2026-09-08 —— macOS 侧边栏改用 source-list vibrancy 材质（D348）
+
+- 洗灰侧栏在 **深色应用主题 + 深色系统外观** 的 macOS 26 上也能复现。只同步
+  `nativeTheme.themeSource` 能修深色应用 + 浅色系统；当 Liquid Glass 在深色外观
+  下仍画出浅色底板时，压不住 D304 的 `under-window`。所以材质改为 `sidebar`。
+- 决策 D348：主窗口改用 Electron `vibrancy: "sidebar"`。
+  `nativeTheme.themeSource` 跟随应用主题偏好（`system` / `light` / `dark` /
+  插件 base），让原生菜单和毛玻璃底板与渲染器一致。该赋值是进程级的，因此
+  Windows/Linux 创建窗口时的 `shouldUseDarkColors` 也会跟随应用偏好，与
+  `windowSetBackgroundColor` 一致。`plugin:` 主题消失时重新 apply。只有
+  `themeSource` 真正变化时才 `setVibrancy`。薄的 `--ds-sidebar-glass-tint`
+  配方不变。修正 D304。
+- `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质、偏好映射、设置/
+  pluginChanged 路径，以及 darwin 存活窗口守卫。见
+  `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。

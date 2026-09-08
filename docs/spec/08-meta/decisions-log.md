@@ -3839,3 +3839,22 @@ D193, and D194.
   heading is remaining tokens plus percentage; inner section rules stay
   forbidden (D297). Assistant meta keeps the model badge.
 - See ADR 0184, `04-ux/08-component-spec.md` §8.3 / §11.3, and E2E-060d.
+
+## 2026-09-08 — macOS sidebar uses the source-list vibrancy material (D348)
+
+- The washed-gray dock reproduced with a **dark app theme and a dark OS** on
+  macOS 26. Syncing `nativeTheme.themeSource` alone would fix dark-app +
+  light-OS; it does not keep `under-window` charcoal when Liquid Glass still
+  paints a light plate under dark appearance. That is why the material changes
+  from D304's `under-window` to `sidebar`.
+- Decision D348: the main window uses Electron `vibrancy: "sidebar"`.
+  `nativeTheme.themeSource` follows the app theme preference (`system` /
+  `light` / `dark` / plugin base) so native menus and the vibrancy plate match
+  the renderer. The assignment is process-wide, so Windows/Linux
+  `shouldUseDarkColors` at window creation also follows the app preference
+  next to `windowSetBackgroundColor`. Re-apply when a `plugin:` theme
+  disappears. Only re-set vibrancy when `themeSource` actually changes. The
+  thin `--ds-sidebar-glass-tint` recipe is unchanged. Amends D304.
+- `macos-sidebar-vibrancy.test.mjs` asserts the sidebar material, preference
+  mapping, settings/pluginChanged apply path, and the darwin live-window
+  vibrancy guard. See `04-ux/08-component-spec.md` §1.7 and US-UI-74 / E2E-076.

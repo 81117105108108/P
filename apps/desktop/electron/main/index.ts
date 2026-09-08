@@ -1842,6 +1842,9 @@ function createTray() {
 
 
 function sendToRenderer(channel: string, payload: unknown) {
+  if (channel === IPC.event.pluginChanged) {
+    applyNativeThemeSource({ theme: appThemePreference });
+  }
   if (!IPC_WHITELIST.has(channel)) return;
   const window = mainWindow;
   if (
@@ -2024,6 +2027,31 @@ function applyDeveloperMode(settings?: { developerMode?: unknown } | null) {
   }
 }
 
+/**
+ * Drive Chromium and macOS native chrome (menus, vibrancy) from the same
+ * theme preference the renderer paints. `system` keeps following the OS;
+ * an explicit or plugin base locks the native appearance so a dark dock
+ * cannot sit on a light Liquid Glass plate (D348). Missing `plugin:` themes
+ * fall back to `system`, matching the renderer.
+ */
+function applyNativeThemeSource(settings?: { theme?: unknown } | null) {
+  const preference = settings?.theme;
+  let next: "system" | "light" | "dark" = "system";
+  if (preference === "light" || preference === "dark") {
+    next = preference;
+  } else if (typeof preference === "string" && preference.startsWith("plugin:")) {
+    const pluginTheme = plugins.getThemes().find((theme) => theme.id === preference);
+    if (pluginTheme?.base === "light" || pluginTheme?.base === "dark") {
+      next = pluginTheme.base;
+    }
+  }
+  if (nativeTheme.themeSource === next) return;
+  nativeTheme.themeSource = next;
+  if (process.platform === "darwin" && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setVibrancy("sidebar");
+  }
+}
+
 /** Keep native labels and accelerators aligned with persisted app settings. */
 function applyApplicationMenuSettings(settings?: {
   language?: unknown;
@@ -2048,6 +2076,7 @@ function applyApplicationMenuSettings(settings?: {
       : typeof preference === "string" && preference.startsWith("plugin:")
         ? preference
         : "system";
+  applyNativeThemeSource(settings);
   if (preference === "light" || preference === "dark") {
     pluginPanelTheme = preference;
   } else if (typeof preference === "string" && preference.startsWith("plugin:")) {
@@ -2650,7 +2679,7 @@ async function createWindow() {
       ? {
           titleBarStyle: "hiddenInset" as const,
           trafficLightPosition: { x: 16, y: 16 },
-          vibrancy: "under-window" as const,
+          vibrancy: "sidebar" as const,
           visualEffectState: "followWindow" as const,
           transparent: true,
           backgroundColor: "#00000000",
@@ -6280,6 +6309,7 @@ function registerIpc() {
     applyApplicationMenuSettings(
       validatedSettings as {
         language?: unknown;
+        theme?: unknown;
         keybindings?: unknown;
         developerMode?: unknown;
       } | null,
@@ -7224,7 +7254,7 @@ function registerIpc() {
         errorCode: ErrorCodes.INVALID_ARGUMENT,
       });
     }
-    // macOS uses a transparent under-window with native vibrancy. Do not make
+    // macOS uses a transparent window with native sidebar vibrancy. Do not make
     // this renderer-driven fallback opaque on that platform.
     if (process.platform === "darwin") return { applied: false, theme };
     if (!mainWindow || mainWindow.isDestroyed()) {
@@ -8779,6 +8809,7 @@ app.whenReady().then(async () => {
     try {
       const stored = (await host.call("settings.get")) as {
         language?: unknown;
+        theme?: unknown;
         keybindings?: unknown;
         developerMode?: unknown;
       } | null;
