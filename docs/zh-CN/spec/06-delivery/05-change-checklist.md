@@ -21,7 +21,7 @@
 - [ ] 未评论或关闭无关 issue。
 - [ ] 未从 issue 链接推断 git push。
 
-参见 [R5 — 先核实链接的 GitHub issue](/zh-CN/spec/06-delivery/03-ai-development-workflow#r5--先核实链接的-github-issue再回复并关闭)。
+参见 [R5 — 先核实链接的 GitHub issue](/zh-CN/spec/06-delivery/03-ai-development-workflow#r5-—-先核实链接的-github-issue-再回复并关闭)。
 
 ---
 
@@ -40,7 +40,7 @@
 - [ ] 未评论或合入无关 pull request。
 - [ ] 未对贡献者分支 force-push。未从 pull request 链接推断无关的远程发布。
 
-参见 [R6 — 原则没问题的链接 PR 先合入，再完善](/zh-CN/spec/06-delivery/03-ai-development-workflow#r6--原则没问题的链接-pr-先合入再完善)。
+参见 [R6 — 原则没问题的链接 PR 先合入，再完善](/zh-CN/spec/06-delivery/03-ai-development-workflow#r6-—-原则没问题的链接-pr-先合入-再完善)。
 
 ---
 
@@ -73,7 +73,7 @@
   范围？如果是，最小的目标检查集是多少？
 - [ ] 这与哪个里程碑交付成果相关？ （M1–M6，或无）
 
-参考[规范更新矩阵](/zh-CN/spec/06-delivery/03-ai-development-workflow#3-spec-update-matrix) 以确定所需的文档更新。
+参考[规范更新矩阵](/zh-CN/spec/06-delivery/03-ai-development-workflow#_3-规格更新矩阵) 以确定所需的文档更新。
 
 ---
 
@@ -175,7 +175,7 @@
 - [ ] 文档提交位于发布分支**之前**
       `node scripts/release.mjs <version> --tag` / `git tag v<version>`。
 - [ ] GitHub 自动生成的发布正文被视为仅限 Web，而不是
-      应用内源（[06-release-runbook.md §4.1](/zh-CN/spec/06-delivery/06-release-runbook#4-1-强制发布版本面门禁-d164-d260)）。
+      应用内源（[06-release-runbook.md §4.1](/zh-CN/spec/06-delivery/06-release-runbook#_4-1-强制发布版本面门禁-d164-d260)）。
 
 ---
 
@@ -185,17 +185,17 @@
 
 | # | 门 | 来源 |
 |---|---|---|
-| 1 | 请求从最新的 `main` 创建的分支和工作树；在安全的情况下重复使用主要环境 | [R4 — 请求分支 + 工作树 + 合并门](/zh-CN/spec/06-delivery/03-ai-development-workflow#r4--request-branch--worktree--merge-gate) |
+| 1 | 请求从最新的 `main` 创建的分支和工作树；在安全的情况下重复使用主要环境 | [R4 — 请求分支 + 工作树 + 合并门](/zh-CN/spec/06-delivery/03-ai-development-workflow#r4-—-请求分支-工作树-合并门) |
 | 2 | Code/doc 实施计划的变更 | [开发循环]的第 4 步(03-ai-development-workflow.md#2-development-loop) |
-| 3 | 所有受影响的规格均已更新 | [R1 — 规格同步](/zh-CN/spec/06-delivery/03-ai-development-workflow#r1--spec-first--spec-sync) |
-| 4 | 记录 E2E 场景（或确认不需要） | [R3 — E2E 覆盖文档](/zh-CN/spec/06-delivery/03-ai-development-workflow#r3--e2e-coverage-doc) |
+| 3 | 所有受影响的规格均已更新 | [R1 — 规格同步](/zh-CN/spec/06-delivery/03-ai-development-workflow#r1-—-规格优先-规格同步) |
+| 4 | 记录 E2E 场景（或确认不需要） | [R3 — E2E 覆盖文档](/zh-CN/spec/06-delivery/03-ai-development-workflow#r3-—-e2e-覆盖文档) |
 | 5 | 通过必要的针对性本地验证，或被评估为不必要；自动触发远程闸门通过；仅当明确请求时，代理才会运行或调度 E2E | 开发循环的步骤 7 和 11 |
-| 6 | 通过常规消息提交的更改 | [R2 — 每次更改提交](/zh-CN/spec/06-delivery/03-ai-development-workflow#r2--commit-per-change) |
+| 6 | 通过常规消息提交的更改 | [R2 — 每次更改提交](/zh-CN/spec/06-delivery/03-ai-development-workflow#r2-—-每次更改提交) |
 | 7 | 如果里程碑交付完成，则更新董事会 | 开发循环的第 9 步 |
-| 8 | 提交中没有秘密或本地数据 | [§4.4 永不提交](/zh-CN/spec/06-delivery/03-ai-development-workflow#44-never-commit) |
-| 9 | PR/MR 合并为 `main`；请求删除工作树和分支 | [R4 — 请求分支 + 工作树 + 合并门](/zh-CN/spec/06-delivery/03-ai-development-workflow#r4--request-branch--worktree--merge-gate) |
-| 10 | 磁盘上没有留下合并的工作树； `git worktree list` 没有该请求的过时条目 | [§6.1 合并清理清单](#61-merge-cleanup-checklist) |
-| 11 | 若链接了 GitHub issue：实现前已核实；以其原文语言评论；结论明确时已关闭 | [R5 — 先核实链接的 GitHub issue](/zh-CN/spec/06-delivery/03-ai-development-workflow#r5--先核实链接的-github-issue再回复并关闭) |
-| 12 | 若链接了 GitHub pull request：已审查原则；原则成立时已先合入；后续完善在合入之后；未丢掉贡献者工作 | [R6 — 原则没问题的链接 PR 先合入，再完善](/zh-CN/spec/06-delivery/03-ai-development-workflow#r6--原则没问题的链接-pr-先合入再完善) |
+| 8 | 提交中没有秘密或本地数据 | [§4.4 永不提交](/zh-CN/spec/06-delivery/03-ai-development-workflow#_4-4-永不提交) |
+| 9 | PR/MR 合并为 `main`；请求删除工作树和分支 | [R4 — 请求分支 + 工作树 + 合并门](/zh-CN/spec/06-delivery/03-ai-development-workflow#r4-—-请求分支-工作树-合并门) |
+| 10 | 磁盘上没有留下合并的工作树； `git worktree list` 没有该请求的过时条目 | [§6.1 合并清理清单](#_6-1-合并清理清单) |
+| 11 | 若链接了 GitHub issue：实现前已核实；以其原文语言评论；结论明确时已关闭 | [R5 — 先核实链接的 GitHub issue](/zh-CN/spec/06-delivery/03-ai-development-workflow#r5-—-先核实链接的-github-issue-再回复并关闭) |
+| 12 | 若链接了 GitHub pull request：已审查原则；原则成立时已先合入；后续完善在合入之后；未丢掉贡献者工作 | [R6 — 原则没问题的链接 PR 先合入，再完善](/zh-CN/spec/06-delivery/03-ai-development-workflow#r6-—-原则没问题的链接-pr-先合入-再完善) |
 
 如果任何一个门失败，则更改**未完成**。
