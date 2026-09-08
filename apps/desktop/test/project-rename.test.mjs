@@ -24,7 +24,7 @@ test("project rows expose a rename action in both project surfaces", () => {
 
 test("project rename reuses the accessible, bounded rename dialog", () => {
   assert.match(dialogSource, /export function ProjectRenameDialog/);
-  assert.match(dialogSource, /maxLength=\{MAX_SESSION_TITLE_LENGTH\}/);
+  assert.match(dialogSource, /maxLength=\{MAX_PROJECT_NAME_CHARS\}/);
   assert.match(dialogSource, /aria-modal="true"/);
   assert.match(dialogSource, /event\.key === "Escape"/);
   assert.match(dialogSource, /Array\.from\(event\.target\.value\)/);
