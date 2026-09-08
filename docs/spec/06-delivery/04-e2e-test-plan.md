@@ -1741,20 +1741,22 @@ Each scenario is documented in this format:
 #### E2E-024W: Plugin clipboard history captures bounded text and images
 
 - **Preconditions**: The app is running; a test plugin declares and is granted
-  `clipboard.read`; the system clipboard can provide one text value and one
-  image value.
-- **Steps**: 1) Copy text, then copy an image, then invoke
-  `pi.clipboard.getHistory()`. 2) Invoke it again and mutate the returned image
-  bytes. 3) Copy the same text consecutively and invoke the API. 4) Revoke
-  `clipboard.read` and invoke it again. 5) Add fixtures over the text/image
-  caps and older than the retention window.
+  `clipboard.read`; the Composer can receive one text paste and one image paste.
+- **Steps**: 1) Paste text into the Composer, paste an image into the Composer,
+  then invoke `pi.clipboard.getHistory()`. 2) Invoke it again and mutate the
+  returned image bytes. 3) Paste the same text consecutively and invoke the API.
+  4) Leave the app idle with an image on the OS clipboard and verify no
+  clipboard sampling occurs. 5) Revoke `clipboard.read` and invoke it again.
+  6) Add fixtures over the text/image caps and older than the retention window.
 - **Expected**: The result is newest-first with text and image entries
   interleaved, ISO timestamps, PNG bytes, and image dimensions; mutating the
   result does not mutate host state. Consecutive duplicates collapse with a
   refreshed timestamp. Entries over the per-entry caps and expired entries are
-  absent, and the host total/entry caps are enforced. The API reuses the
-  `clipboard.read` grant, denied calls fail with `PERMISSION_DENIED`, and a
-  successful call emits an audit entry containing the returned entry count.
+  absent, and the host total/entry caps are enforced. A paste causes only the
+  event's already-read content to be recorded; the host does not reread the OS
+  clipboard or sample it while idle. The API reuses the `clipboard.read` grant,
+  denied calls fail with `PERMISSION_DENIED`, and a successful call emits an
+  audit entry containing the returned entry count.
 - **Specs linked**: `07-plugins/03-plugin-api.md`,
   `07-plugins/04-plugin-security.md`,
   `07-plugins/13-plugin-permissions-matrix.md`, ADR 0115
@@ -7357,14 +7359,20 @@ This test plan spec is accepted when:
   topology node. 2) Observe the right-side dock while the delegate streams.
   3) Scroll the task/process conversation upward and then return to the latest
   output. 4) Switch sessions and return to the original session.
-- **Expected**: The right dock shows one compact header, the Task call's
-  description, and the delegate's live thinking/tool/answer process using the
-  same row components as the main conversation. New rows appear without a
-  reload and follow the bottom while pinned. The panel has one body scrollbar;
-  the process does not create a nested scrollbar or an empty tail. A real
-  upward gesture pauses follow and exposes jump-to-latest. The transcript
-  remains the same height and keeps its own scroll state. Session switching
-  hides the selection and returning never shows another session's task.
+- **Expected**: The right dock shows a sticky identity header (avatar, name,
+  and model caption on the left; status capsule and elapsed time trailing on
+  the same row without wrapping), the Task call's description
+  as a full-width inset grouped card under a Task section label, capped at four
+  lines with an inline Show more / Show less control for longer tasks, and
+  the delegate's live thinking/tool/answer process under an Activity section
+  on one subtle vertical timeline using the same row components as the main
+  conversation.
+  New rows appear without a reload and follow the bottom while pinned. The
+  panel has one body scrollbar; the process does not create a nested scrollbar
+  or a second elevated card. A real upward gesture pauses follow and exposes
+  jump-to-latest. The transcript remains the same height and keeps its own
+  scroll state. Session switching hides the selection and returning never
+  shows another session's task.
 - **Specs linked**: `04-ux/08-component-spec.md` §5.7,
   `04-ux/09-interaction-patterns.md` §9.1
 - **Acceptance**: C (conversation), Quality
@@ -7411,17 +7419,21 @@ This test plan spec is accepted when:
   while the delegate is still running and read the heartbeat the parent
   receives. 4) `TaskList` a running delegate and confirm elapsed / last-tool
   fields. 5) `TaskStop` and user Stop still abort. 6) Explicit `maxTurns`
-  still returns `truncated`; `maxTurns: none` is unlimited.
+  still returns `truncated`; `maxTurns: none` is unlimited. 7) Start a
+  delegate on another model, exhaust the parent HTTP 429 budget, and click
+  Continue; confirm leftover delegates abort, the session is idle, Continue
+  is accepted, and the failed TurnOutcomeCard stays visible.
 - **Expected**: Idle and duration watchdogs never fire. Parent idle does not
   abort delegates. Completion reports are delivered into the same durable
   turn. `TaskWait` expiry reports “Still running after Ns”, includes a
   heartbeat, and states that this is not a failure. Builtin turn backstops
   (`explorer` 60, `code-reviewer` 50, `test-runner` 40, `fixer` 80) still end
   a non-converging delegate as `truncated`. Explorer's catalog includes
-  `Bash` while code-reviewer remains read-only.
+  `Bash` while code-reviewer remains read-only. A terminal parent 429 aborts
+  leftover delegates and Continue is not `AGENT_BUSY` (D352).
 - **Specs linked**: `03-runtime/02-agent-runtime.md` §5f,
   `03-runtime/08-error-codes.md`, `03-runtime/09-logging-and-observability.md`,
-  ADR 0166, decisions-log D328
+  ADR 0166, ADR 0189, decisions-log D328 / D352
 - **Acceptance**: C (conversation), E (tools & permissions), H (diagnostics), Quality
 - **Milestone**: M6+
 - **Status**: Covered by unit tests; full desktop journey pending
@@ -8323,23 +8335,27 @@ are withdrawn with ADR 0165.
 - **Preconditions**: At least one supported local config exists among
   `~/.claude/settings.json`, `~/.codex/config.toml` `[model_providers.*]`,
   `~/.config/opencode/opencode.json`, `~/.pi/agent/models.json`, or
-  `~/.cc-switch/cc-switch.db`, including one API-key provider and optionally
-  one OAuth-only vendor. PI-Desktop may already have an equivalent endpoint.
+  `~/.cc-switch/cc-switch.db`, including two API-key profiles with the same
+  endpoint and different keys, and optionally one OAuth-only vendor.
+  PI-Desktop may already have an equivalent provider.
 - **Steps**:
   1. Open Settings → Import. Confirm a Sessions card and a Model
      configuration card, each with its own Scan.
   2. Scan model configuration. Confirm groups start collapsed, rows show
      name, model count, host, and an API key / No API key badge, and that
      no secret value appears in the UI or in the scan IPC payload.
-  3. Import the selected providers. Confirm new rows appear under Settings
-     → Models. Re-import the same selection and confirm they are skipped.
+  3. Import the selected providers. Confirm both same-endpoint profiles appear
+     as separate rows under Settings → Models and remain selectable in the
+     Composer model menu. Re-import the same selection and confirm those
+     unchanged credentials are skipped.
   4. If the app had no default model, confirm the first imported provider
      becomes the default. If a default already existed, confirm it is
      unchanged.
   5. Confirm an OAuth-only source account is absent from the candidate
      list and that session import still works independently.
 - **Expected**: Explicit scan only (D007). Stored API keys land in the host
-  secret store. Equivalent endpoints (normalized URL + API style) skip.
+  secret store. Only equivalent providers (normalized URL + API style + same
+  credential) skip; different credentials at one endpoint remain separate.
   No protocol or schema version bump.
 - **Specs linked**: `04-ux/06-settings-ia.md`,
   `04-ux/08-component-spec.md` §18.5, `03-runtime/01-ipc-protocol.md`,

@@ -138,7 +138,7 @@ test("transcript density and hover actions are quiet", () => {
   assert.match(stylesSource, /\.message-row \{[\s\S]*?padding:\s*12px 0;/);
   assert.match(
     stylesSource,
-    /\.thread-content \{[\s\S]*?padding:\s*20px 28px calc\(var\(--composer-dock-height, 228px\) \+ 16px\);/,
+    /\.thread-content \{[\s\S]*?padding:\s*20px 32px calc\(var\(--composer-dock-height, 228px\) \+ 16px\);/,
   );
   assert.match(
     stylesSource,
@@ -442,7 +442,7 @@ test("conversation minimap hides until content overflows one viewport", () => {
 test("thread scroll reserves stable gutters before overflow appears", () => {
   assert.match(
     stylesSource,
-    /\.thread-scroll\s*\{[\s\S]*?overflow:\s*auto;[\s\S]*?scrollbar-gutter:\s*stable both-edges;/,
+    /\.thread-scroll\s*\{[\s\S]*?overflow:\s*auto;[\s\S]*?scrollbar-gutter:\s*stable;/,
   );
 });
 

@@ -573,7 +573,8 @@ account, subscription, or collaboration backend.
 
 ### 4.1 Purpose
 
-Primary chat area containing ChatTranscript and Composer. Scrollable, center of the workstation.
+Primary chat area containing ChatTranscript and Composer. Scrollable, focused
+reading surface of the workstation.
 
 ### 4.2 Anatomy
 
@@ -596,10 +597,16 @@ Primary chat area containing ChatTranscript and Composer. Scrollable, center of 
 
 - Background: bg-primary
 - Max content width: 720px (messages), centered
+- The transcript keeps one stable scrollbar gutter on the trailing edge. It
+  never reserves a matching left gutter, so the minimap and first message do
+  not leave a decorative blank strip beside the session.
 - A failed TurnOutcomeCard exposes one primary **Continue** action and no
   regenerate action. It appends the current locale's continuation prompt to the
   same session and starts a new turn, preserving the failed turn and completed
-  work in the transcript.
+  work in the transcript. Continue remains available after a terminal parent
+  error (including HTTP 429) even if leftover subagents were still running;
+  those delegates are aborted and must not leave the session `AGENT_BUSY`
+  (D352). A later `agent_end` must not hide the failed card.
 - Scroll behavior: auto-scroll to bottom on new message while pinned; the first
   upward manual movement pauses auto-scroll without a snap-back; send / retry /
   regenerate re-pins and positions the latest content during the layout phase,
@@ -919,8 +926,8 @@ workflow while rendering entirely inside the plugin's isolated page:
 ### 5.7 Subagent task conversation
 
 A topology node opens the selected delegate in the same right-side dock as the
-work panel. The dock intentionally mirrors a conversation surface: one compact
-header, the task description sent to the AI, and the delegate's live process.
+work panel. The dock is an inset grouped side sheet: a sticky identity header,
+the task description as a full-width card, and the delegate's live process.
 It does not render separate Details or Output tabs.
 
 - The selection is renderer-local and session-scoped: it stores only the
@@ -929,15 +936,29 @@ It does not render separate Details or Output tabs.
   process therefore update as thinking, tool calls, and answer fragments stream
   in.
 - The task description is the Task call's `task` argument, rendered as one
-  selectable conversation-like message. The delegate's thinking, tool rows,
+  selectable inset grouped card. The delegate's thinking, tool rows,
   and answer fragments reuse the same components and styling as the main
   conversation. Reports and counters remain omitted from this compact surface.
-- The dock has one scroll owner, the panel body. The live process is rendered
-  in normal content flow without a nested `.subagent-run-rows` scrollbar, so a
-  long process cannot create a second scrollbar or leave a long empty tail.
+- The dock has one scroll owner, the panel body. The scroll owner is
+  keyboard-focusable and exposed as a polite `role="log"` so streamed rows
+  remain discoverable without forcing focus changes. The live process is
+  rendered in normal content flow without a nested `.subagent-run-rows`
+  scrollbar, so a long process cannot create a second scrollbar or leave a long
+  empty tail.
   While pinned to the latest output, the panel body follows new process rows;
   a real upward gesture pauses follow and exposes the standard jump-to-latest
   control.
+- The selected delegate uses a sticky identity header: a 36px avatar with a
+  status dot, the agent name as the title, and the model as a caption. A
+  tinted status capsule and elapsed time sit on the same row, trailing the
+  identity, and never wrap onto a second line; the name ellipsizes first.
+  The task is an inset grouped card
+  under a **Task** section label, left-aligned and full-width, not a transcript
+  bubble. The card shows at most four lines by default; longer tasks expose an
+  inline Show more / Show less control with a disclosure chevron. The live
+  process uses an **Activity** section label (it does not repeat the agent
+  name), a trailing step count, and one subtle vertical timeline with no nested
+  card, so unused panel space reads as one continuous work surface.
 - The dock header identifies the view as **Subagent** and offers close and
   collapse controls. Closing returns to the previously selected work-panel
   resource, if any; `Cmd/Ctrl + J` hides the whole dock. Selecting another node
@@ -1678,24 +1699,34 @@ never summarizes from its own arguments:
   └────────────────┘    └───────────────────────────────────────────┘
 ```
 
-Clicking a topology node opens a conversation-like task view in the right-side
+Clicking a topology node opens an inset grouped side sheet in the right-side
 work-panel dock rather than expanding the transcript:
 
 ```text
 ┌──────────────────────────────────────────────┐
-│ [bot] code-reviewer             Completed · 32s│
-├──────────────────────────────────────────────┤
-│ Task                                         │
-│ Review the changes in src/stores for …       │
+│ [bot] code-reviewer         [Completed]  32s │
+│       claude-sonnet-4-5                      │
+│                                              │
+│ TASK                                         │
+│ ┌──────────────────────────────────────────┐ │
+│ │ Review the changes in src/stores for …   │ │
+│ │                               Show more  │ │
+│ └──────────────────────────────────────────┘ │
+│                                              │
+│ ACTIVITY                            3 steps  │
+│ ● Thinking …                                 │
+│ ● Read store.ts                              │
 └──────────────────────────────────────────────┘
 ```
 
-- The dock renders one compact header with the delegate name, model, status, and
-  elapsed time, followed by the Task call's `task` argument as selectable
-  conversation-like text.
-- Reports, counters, nested tool rows, and workflow output are intentionally
-  not rendered in this surface. The topology card remains a compact summary in
-  the transcript and does not gain height when the dock opens.
+- The dock renders a sticky identity header with the delegate name and model
+  on the left and the status capsule plus elapsed time trailing on the same
+  row, followed by the Task call's `task` argument as a selectable inset
+  grouped card and the live process timeline.
+- Reports and counters remain omitted from this surface. The live thinking,
+  tool, and answer process is shown on the dock timeline. The topology card
+  remains a compact summary in the transcript and does not gain height when
+  the dock opens.
 - The selected task is re-found from the session's live/retained messages, so
   the header status and elapsed time stay current while the delegate runs.
 - A missing or deleted task renders a localized unavailable state. Delegation
@@ -2031,9 +2062,9 @@ reasoning-level control.
   `.composer-toolbar` spacing, minimum heights, theme surfaces, and controls.
   Only the parent placement and the localized placeholder copy differ between
   the empty home and a recorded conversation.
-- Scroll stability: The thread scrollport reserves stable gutters on both
-  inline edges, so the centered transcript does not shift when overflow and
-  the minimap first appear.
+- Scroll stability: The thread scrollport reserves one stable trailing gutter,
+  so the transcript does not shift when overflow appears while the minimap
+  does not create a matching blank strip on the left.
 - Bottom-anchored: fixed at bottom of MainChat area
 - Placeholder guidance: home uses `chat.placeholderHome`,
   `chat.placeholderHomeHint`, and `chat.placeholderShortcut`; a session
@@ -2704,10 +2735,12 @@ candidates grouped by source, select them, and start an explicit import.
 - Each row shows the provider name, model count, host, an API key / No API
   key badge, and the source. The raw secret never reaches the renderer.
 - Import creates one `providers.create` row per selected candidate. An
-  existing provider with the same normalized base URL and API style is
-  skipped. OAuth-only source accounts are omitted from the scan.
+  existing provider with the same normalized base URL, API style, and
+  credential is skipped; different credentials at one endpoint create
+  independent rows. OAuth-only source accounts are omitted from the scan.
   CC Switch is a fifth source (`~/.cc-switch/cc-switch.db`); a live tool
-  file that matches a CC Switch endpoint is not listed twice.
+  file that matches a CC Switch endpoint and credential is not listed twice;
+  a different credential remains visible.
 - If `settings.defaultProviderId` is empty after a successful create, the
   first new provider becomes the global default.
 
@@ -2950,7 +2983,7 @@ Sidebar footer                                        Popover (360px max)
 13. Toasts stack top-center with variant icon + dismiss, auto-dismiss 4s/8s, pause on hover, and announce via `role="status"`/`role="alert"` per §17
 14. Session import defaults to source grouping, offers project-path grouping, collapses all groups after scan/group changes, and exposes accessible group disclosure state per §18
 15. Imported project paths materialize exactly once in the durable Projects index; path-less imports remain Temporary sessions and no filesystem directory is created
-15a. Model-configuration import scans the same local stores independently, never sends secrets to the renderer, skips equivalent endpoints, and does not copy OAuth/subscription logins per §18.5
+15a. Model-configuration import scans the same local stores independently, never sends secrets to the renderer, skips only equivalent providers (normalized endpoint, API style, and credential), preserves different credentials at one endpoint, and does not copy OAuth/subscription logins per §18.5
 16. ProviderStudio shows compact defaults, vendor-account rows with edit/test/delete actions, add/edit dialogs, and AI service cards; secrets never render raw; every action remains keyboard reachable
 17. NotificationInbox exposes All/Unread views, exact unread badge semantics,
     row activation, mark-all-read and clear actions; it is keyboard-operable

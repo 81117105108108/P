@@ -1830,6 +1830,7 @@ export function Composer({
                 {
                   name: `pasted-text-${crypto.randomUUID().slice(0, 8)}.txt`,
                   mimeType: "text/plain",
+                  recordHistory: true,
                   data: bytes.buffer.slice(
                     bytes.byteOffset,
                     bytes.byteOffset + bytes.byteLength,
@@ -1918,6 +1919,9 @@ export function Composer({
     // contenteditable insertion would paste rich HTML markup).
     event.preventDefault();
     if (!text) return;
+    // The paste event already supplied the text; do not read the OS clipboard
+    // again just to make it available to host-owned history.
+    void api.recordClipboardPaste(text).catch(() => undefined);
     if (!document.execCommand("insertText", false, text)) {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return;

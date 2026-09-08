@@ -715,8 +715,9 @@ Switch config files from the user home directory and returns public provider dra
 (`source`, `externalId`, `name`, `baseUrl`, `apiStyle`, `modelIds`,
 `hasSecret`). Secrets stay in the main-process scan cache and are written
 through `providers.create` on `modelConfig/importRun`. Re-importing a
-matching endpoint is skipped. OAuth tokens from those tools are never
-copied. No host protocol or storage schema version bump.
+matching endpoint, API style, and credential is skipped; a different
+credential at the same endpoint remains independent. OAuth tokens from those
+tools are never copied. No host protocol or storage schema version bump.
 
 A regenerate or edit-resend truncates the durable transcript before appending
 its new user turn. `agent/prompt` accepts `truncateFromMessageId` — the identity
@@ -1438,6 +1439,8 @@ composer/pasteFiles({ sessionId, files }) -> {
 type ComposerPasteFile = {
   name?: string;
   mimeType?: string;
+  /** Set for generated large-text pastes so host-owned clipboard history can retain the text. */
+  recordHistory?: boolean;
   data: ArrayBuffer;
 };
 
@@ -1461,6 +1464,17 @@ selected model cannot receive that image as a visual block. Clipboard bytes
 never enter the persisted prompt or host agent message as base64.
 Invalid sessions and malformed/oversized payloads fail with an IPC error, and
 the operation cannot write to the workspace.
+
+### clipboard/recordPaste
+
+```ts
+clipboard/recordPaste({ text }) -> { ok: true }
+```
+
+This renderer-to-main channel is accepted only from the main application window
+and records text already supplied by that window's user-initiated Composer paste
+event. It never reads the OS clipboard. Empty text is ignored by the bounded
+history store.
 
 ### prompt/enhance
 

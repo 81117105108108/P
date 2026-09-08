@@ -1067,10 +1067,14 @@ When drag/drop is implemented, these patterns should apply:
   new process rows stay in view; a real upward gesture pauses follow and shows
   the standard jump-to-latest control. This keeps the process readable without
   a second scrollbar or an empty tail.
-- Clicking a delegation topology node opens a conversation-like task view in the
+- Clicking a delegation topology node opens an inset grouped side sheet in the
   right-side work-panel dock instead of expanding the transcript. The dock has
-  one compact header, the Task call's selectable description, and its live
-  process; it does not render separate details, output, or workflow tabs.
+  a sticky identity header (avatar, name, and model caption on the left; status
+  capsule and elapsed time trailing on the same row), the Task call's selectable description as a full-width grouped
+  card under a Task section label, capped at four lines with an inline Show
+  more / Show less control for longer tasks, and its live process under an
+  Activity section on one subtle vertical timeline; it does not render separate
+  details, output, or workflow tabs.
   Selecting another node replaces the task in place, closing it restores the
   prior resource view when present, and switching sessions or routes hides the
   selection. `Cmd/Ctrl + J` hides the whole dock.

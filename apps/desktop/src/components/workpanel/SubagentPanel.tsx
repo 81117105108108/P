@@ -114,6 +114,9 @@ export function SubagentPanel({ selection }: { selection: SubagentPanelSelection
         ref={scrollRef}
         className="subagent-panel-scroll"
         onScroll={handleScroll}
+        role="log"
+        aria-live="polite"
+        tabIndex={0}
       >
         <div ref={contentRef}>
           {selected ? (

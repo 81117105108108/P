@@ -64,7 +64,7 @@ stdio 与 Tokio 的动态阻塞池隔离，因此后一种情况
 
 | 代码 | 可重审的 | 意义 |
 |---|---|---|
-| `AGENT_BUSY` | 不 | 会话已经有活动轮次 |
+| `AGENT_BUSY` | 不 | 会话已经有活动轮次；父级终态错误后的残留子智能体不会让会话保持忙碌（D352） |
 | `AGENT_NOT_FOUND` | 不 | 会话丢失 |
 | `TURN_NOT_FOUND` | 不 | 使 id 无效 |
 | `TURN_ABORTED` | 不 | 回合被 user/system 中止 |

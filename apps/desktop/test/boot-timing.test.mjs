@@ -10,10 +10,7 @@ register(pathToFileURL(join(here, "helpers/ts-import-hooks.mjs")));
 
 const {
   BootTiming,
-  CLIPBOARD_SAMPLE_ALWAYS_MS,
-  CLIPBOARD_SAMPLE_SLOW_MS,
   raceWithTimeout,
-  shouldLogClipboardSample,
   timingMessage,
   UPDATE_CHECK_TIMEOUT_CODE,
 } = await import("../electron/main/boot-timing.ts");
@@ -54,47 +51,6 @@ test("BootTiming marks failed spans without swallowing the error", async () => {
   assert.match(lines[0], /phase=sidecar .*ok=false/);
 });
 
-test("clipboard sample logging keeps the first poll and slow polls only", () => {
-  assert.equal(
-    shouldLogClipboardSample({ sampleIndex: 0, durationMs: 1, lastLoggedAt: 0 }),
-    true,
-  );
-  assert.equal(
-    shouldLogClipboardSample({
-      sampleIndex: 3,
-      durationMs: CLIPBOARD_SAMPLE_SLOW_MS - 1,
-      lastLoggedAt: 0,
-    }),
-    false,
-  );
-  assert.equal(
-    shouldLogClipboardSample({
-      sampleIndex: 3,
-      durationMs: CLIPBOARD_SAMPLE_SLOW_MS,
-      lastLoggedAt: 10_000,
-      now: 12_000,
-    }),
-    false,
-  );
-  assert.equal(
-    shouldLogClipboardSample({
-      sampleIndex: 3,
-      durationMs: CLIPBOARD_SAMPLE_SLOW_MS,
-      lastLoggedAt: 10_000,
-      now: 15_000,
-    }),
-    true,
-  );
-  assert.equal(
-    shouldLogClipboardSample({
-      sampleIndex: 8,
-      durationMs: CLIPBOARD_SAMPLE_ALWAYS_MS,
-      lastLoggedAt: Date.now(),
-    }),
-    true,
-  );
-});
-
 test("raceWithTimeout settles without cancelling the slower work", async () => {
   let finished = false;
   const slow = new Promise((resolve) => {
@@ -130,8 +86,8 @@ test("main boot path records the spans needed to diagnose a blank first window",
   ]) {
     assert.match(mainSource, new RegExp(`"${phase}"`), phase);
   }
-  assert.match(mainSource, /timingMessage\("clipboard"/);
-  assert.match(mainSource, /toPngMs/);
+  assert.doesNotMatch(mainSource, /readSystemClipboard|clipboardHistory\.start|clipboardHistory\.stop/);
+  assert.doesNotMatch(mainSource, /phase=clipboard|availableFormats\(\)|clipboard\.readImage\(\)/);
   assert.match(
     mainSource,
     /const pluginStarted = Date.now\(\);\s*try \{/,

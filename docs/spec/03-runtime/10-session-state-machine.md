@@ -134,6 +134,9 @@ accept_prompt
     rejected/expired/interrupted checkpoint and
     must create a new immutable artifact rather than overwrite the earlier
     snapshot.
+17. A terminal parent provider/stream error aborts leftover delegates and
+    returns the session to idle so Continue is accepted. Parent idle with
+    running delegates still keeps the turn open (D328 / D352).
 
 ## 4. Persistence points
 

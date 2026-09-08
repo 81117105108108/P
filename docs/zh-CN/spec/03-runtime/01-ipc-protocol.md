@@ -1300,27 +1300,35 @@ composer/pasteFiles({ sessionId, files }) -> {
 type ComposerPasteFile = {
   name?: string;
   mimeType?: string;
+  /** 对生成的大文本粘贴设为 true，使主机拥有的剪贴板历史可以保留文本。 */
+  recordHistory?: boolean;
   data: ArrayBuffer;
 };
 
 type ComposerPastedFile = {
   path: string;     // UUID-backed absolute storage path
   name: string;     // sanitized original leaf display name
+  kind: "image" | "file";
   mimeType: string;
   size: number;
 };
 ```
 
-Electron main 验证 `sessionId` 是否解析为持久主机会话，
-将请求限制为 20 个文件，每个文件 64 MiB，总共 128 MiB，条带
-渲染器提供的目录组件，并在下面写上唯一的名称
-具有独占创建语义的 `<data_dir>/scratch/<sessionId>/pasted/`。的
-渲染器将返回的路径保存在瞬态参考状态，显示 `name`，
-并将每个精确路径序列化为文本提示作为 `@` 参考
-派遣。剪贴板字节永远不会进入持久提示或主机代理
-消息。
-无效会话和 malformed/oversized 负载失败并出现 IPC 错误，并且
-该操作无法写入工作区。
+Electron main 验证 `sessionId` 是否解析为持久主机会话，将请求限制为 20 个文件、每个文件
+64 MiB、总共 128 MiB，剥离渲染器提供的目录组件，并在具有独占创建语义的
+`<data_dir>/scratch/<sessionId>/pasted/` 下写入唯一名称。渲染器只保存返回的路径和元数据，
+显示 `name`，并通过 `AgentPromptRequest.attachments` 提交它们。剪贴板字节不会以 base64
+进入持久提示或主机代理。无效会话以及格式错误或超限负载会失败并返回 IPC 错误，操作不能
+写入工作区。
+
+### clipboard/recordPaste
+
+```ts
+clipboard/recordPaste({ text }) -> { ok: true }
+```
+
+此渲染器到主进程的通道只接受主应用窗口的调用，并记录该窗口用户主动在 Composer
+粘贴事件中已经取得的文本；它不会读取系统剪贴板。空文本会被有界历史存储忽略。
 
 ### prompt/enhance
 

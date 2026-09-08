@@ -103,10 +103,12 @@ test("settings import and protocol expose model-config import independently of s
   assert.match(apiSource, /modelConfigImportScan/);
   assert.match(protocol, /pi-desktop\/modelConfig\/importScan/);
   assert.match(mainSource, /providers\.create/);
+  assert.match(mainSource, /providers\.getSecret/);
+  assert.match(mainSource, /secretValue: draft\.secretValue/);
   assert.match(mainSource, /publicModelConfigCandidate/);
 });
 
-test("scanModelConfigs reads CC Switch sqlite profiles and does not duplicate the live Claude file", async () => {
+test("scanModelConfigs keeps same-endpoint CC Switch profiles with different keys", async () => {
   const home = await mkdtemp(join(tmpdir(), "pi-cc-switch-import-"));
   await mkdir(join(home, ".claude"), { recursive: true });
   await mkdir(join(home, ".cc-switch"), { recursive: true });
@@ -114,7 +116,7 @@ test("scanModelConfigs reads CC Switch sqlite profiles and does not duplicate th
     join(home, ".claude", "settings.json"),
     JSON.stringify({
       env: {
-        ANTHROPIC_API_KEY: "sk-live",
+        ANTHROPIC_API_KEY: "sk-cc",
         ANTHROPIC_BASE_URL: "https://cc.example/v1",
       },
       model: "claude-sonnet",
@@ -144,7 +146,7 @@ test("scanModelConfigs reads CC Switch sqlite profiles and does not duplicate th
     JSON.stringify({
       env: {
         ANTHROPIC_API_KEY: "sk-other",
-        ANTHROPIC_BASE_URL: "https://other.example",
+        ANTHROPIC_BASE_URL: "https://cc.example/v1",
         ANTHROPIC_MODEL: "claude-haiku",
       },
     }),
@@ -158,4 +160,5 @@ test("scanModelConfigs reads CC Switch sqlite profiles and does not duplicate th
   );
   assert.equal(drafts.find((d) => d.externalId === "claude:packy")?.name, "Packy");
   assert.equal(drafts.find((d) => d.externalId === "claude:packy")?.secretValue, "sk-cc");
+  assert.equal(drafts.find((d) => d.externalId === "claude:other")?.secretValue, "sk-other");
 });

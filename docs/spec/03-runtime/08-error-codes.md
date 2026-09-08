@@ -65,7 +65,7 @@ does not turn temporary thread pressure into a host process exit.
 
 | code | retriable | meaning |
 |---|---|---|
-| `AGENT_BUSY` | no | session already has active turn |
+| `AGENT_BUSY` | no | session already has active turn; leftover subagents after a terminal parent error do not keep the session busy (D352) |
 | `AGENT_NOT_FOUND` | no | session missing |
 | `TURN_NOT_FOUND` | no | turn id invalid |
 | `TURN_ABORTED` | no | turn aborted by user/system |
