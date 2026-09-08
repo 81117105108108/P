@@ -121,20 +121,25 @@ export function ProviderHeadersEditor({
           <Button
             variant="ghost"
             size="sm"
-            onClick={copyHeaders}
-            aria-label={copied ? t("chat.copied") : t("chat.copy")}
-            title={copied ? t("chat.copied") : t("chat.copy")}
-          >
-            {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
-            {copied ? t("chat.copied") : t("chat.copy")}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
             className="provider-setup-header-import"
             onClick={() => fileInputRef.current?.click()}
           >
             {t("settings.importHeadersJson")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`provider-setup-header-copy${copied ? " is-copied" : ""}`}
+            onClick={copyHeaders}
+            aria-label={
+              copied ? t("settings.headersJsonCopied") : t("settings.copyHeadersJson")
+            }
+            title={
+              copied ? t("settings.headersJsonCopied") : t("settings.copyHeadersJson")
+            }
+          >
+            {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+            {copied ? t("settings.headersJsonCopied") : t("settings.copyHeadersJson")}
           </Button>
           <input
             ref={fileInputRef}

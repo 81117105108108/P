@@ -292,8 +292,9 @@ test("Advanced offers presets plus JSON import and copy without redundant helper
   assert.match(headerEditorSource, /JSON\.stringify\(pairsToRecord\(pairs\), null, 2\)/);
   assert.match(headerEditorSource, /navigator\.clipboard\.writeText/);
   assert.match(headerEditorSource, /setCopied\(true\)/);
-  assert.match(headerEditorSource, /t\("chat\.copy"\)/);
-  assert.match(headerEditorSource, /t\("chat\.copied"\)/);
+  assert.match(headerEditorSource, /settings\.copyHeadersJson/);
+  assert.match(headerEditorSource, /settings\.headersJsonCopied/);
+  assert.match(headerEditorSource, /provider-setup-header-copy/);
   assert.doesNotMatch(headerEditorSource, /provider-setup-headers-hint/);
   const advanced = block(".provider-setup-advanced");
   assert.match(advanced, /flex-direction: column/);

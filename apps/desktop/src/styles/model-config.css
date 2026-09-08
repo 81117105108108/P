@@ -454,8 +454,7 @@
 }
 
 /* Copy feedback stays compact while making the successful state distinct. */
-.provider-setup-header-copy.is-copied,
-.provider-setup-header-copy.is-success {
+.provider-setup-header-copy.is-copied {
   background: color-mix(in oklab, var(--ds-accent) 12%, transparent);
   color: var(--ds-accent);
 }
