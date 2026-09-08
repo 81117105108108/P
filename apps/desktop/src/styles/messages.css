@@ -297,6 +297,74 @@
   color: inherit;
 }
 
+.run-activity-retry-reason {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  cursor: help;
+  outline: none;
+}
+
+.run-activity-retry-reason:focus-visible {
+  border-radius: var(--radius-2xs);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ds-accent) 80%, transparent);
+}
+
+/* The retry reason borrows the assistant error card's hierarchy without
+   adding a second transcript row. It is hover/focus-only so the active row
+   remains compact at rest. */
+.run-activity-error-popover.message-error {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 8;
+  display: block;
+  width: min(360px, calc(100vw - 32px));
+  padding: 10px 12px;
+  box-shadow: var(--ds-shadow-dialog);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  visibility: hidden;
+  transition:
+    opacity var(--motion-duration-fast) var(--motion-ease-out),
+    transform var(--motion-duration-fast) var(--motion-ease-out),
+    visibility 0s linear var(--motion-duration-fast);
+}
+
+.run-activity-retry-reason:hover .run-activity-error-popover,
+.run-activity-retry-reason:focus-visible .run-activity-error-popover {
+  opacity: 1;
+  pointer-events: none;
+  transform: translateY(0);
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.run-activity-error-message {
+  display: block;
+  margin: 9px 0 0 24px;
+  color: var(--ds-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .run-activity-error-popover.message-error {
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .run-activity-error-popover.message-error {
+    left: auto;
+    right: 0;
+  }
+}
+
 .working-indicator-mark {
   display: inline-flex;
   width: 18px;

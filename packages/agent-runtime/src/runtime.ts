@@ -41,6 +41,7 @@ import {
 import { DEFAULT_COMMAND_TIMEOUT_MS, OAUTH_AUTH_KIND } from "@pi-desktop/shared";
 import type {
   AgentActivity,
+  AgentActivityError,
   AgentEventEnvelope,
   AgentStatus,
   AgentPromptAttachment,
@@ -1444,6 +1445,7 @@ Delegation rules:
                 since: Date.now(),
                 attempt,
                 retryDelayMs: delayMs,
+                error: this.retryActivityError(error),
               });
               logTiming("model", {
                 model: this.provider.modelId,
@@ -3764,6 +3766,23 @@ Delegation rules:
     this.emit({ type: "status", status: this.getStatus() });
   }
 
+  private retryActivityError(
+    error: ReturnType<typeof classifyAgentError>,
+  ): AgentActivityError {
+    const detailStatus = isRecord(error.details)
+      ? error.details.providerStatus
+      : undefined;
+    const providerStatus =
+      typeof detailStatus === "number"
+        ? detailStatus
+        : this.providerResponseStatus;
+    return {
+      code: error.code,
+      message: error.message,
+      ...(typeof providerStatus === "number" ? { providerStatus } : {}),
+    };
+  }
+
   private clearAgentActivity(): void {
     if (!this.agentActivity) return;
     this.agentActivity = undefined;
@@ -3903,6 +3922,13 @@ Delegation rules:
               undefined,
               this.providerRetryHeaders,
             );
+      this.setAgentActivity({
+        phase: "retrying",
+        since: Date.now(),
+        attempt: retryAttempt,
+        retryDelayMs: delayMs,
+        error: this.retryActivityError(retryError),
+      });
       await delayWithAbort(delayMs, this.providerRetryAbort.signal);
       if (this.disposed) throw new Error("runtime disposed");
       // The failed attempt has already finished. Only its lifecycle events

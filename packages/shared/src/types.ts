@@ -525,6 +525,13 @@ export type AgentStatus = {
   activity?: AgentActivity;
 };
 
+/** Bounded provider diagnostics shown while the runtime waits before retrying. */
+export type AgentActivityError = {
+  code: string;
+  message: string;
+  providerStatus?: number;
+};
+
 /** The runtime phase that explains a quiet interval in an active turn. */
 export type AgentActivity =
   | { phase: "starting"; since: number }
@@ -534,6 +541,7 @@ export type AgentActivity =
       since: number;
       attempt: number;
       retryDelayMs?: number;
+      error?: AgentActivityError;
     }
   | {
       phase: "waiting-subagents";

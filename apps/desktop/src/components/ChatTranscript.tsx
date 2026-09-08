@@ -1496,6 +1496,7 @@ type VisibleAgentActivity = Exclude<AgentActivity, { phase: "starting" }>;
 function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now);
+  const retryErrorDetailsId = useId();
 
   useEffect(() => {
     setNow(Date.now());
@@ -1514,6 +1515,52 @@ function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) 
         : t("chat.waitingForSubagents", {
             count: activity.subagentCount,
           });
+  const retryError = activity.phase === "retrying" ? activity.error : undefined;
+  const retryErrorSummary = retryError
+    ? (() => {
+        const key = `errors.${retryError.code}`;
+        const localized = t(key);
+        return localized === key ? t("chat.responseFailed") : localized;
+      })()
+    : undefined;
+  const retryLabel = retryError
+    ? `${label}: ${retryErrorSummary}: ${retryError.message}`
+    : label;
+  const labelContent = retryError ? (
+    <span
+      className="run-activity-retry-reason"
+      tabIndex={0}
+      aria-describedby={retryErrorDetailsId}
+      aria-label={retryLabel}
+    >
+      <span className="working-indicator-label">{label}</span>
+      <span
+        id={retryErrorDetailsId}
+        className="run-activity-error-popover message-error"
+        role="tooltip"
+      >
+        <span className="message-error-heading">
+          <span className="message-error-icon" aria-hidden>
+            <IconCircleAlert size={16} />
+          </span>
+          <span className="message-error-copy">
+            <strong>{retryErrorSummary}</strong>
+            <code>
+              {retryError.code}
+              {retryError.providerStatus !== undefined
+                ? ` · HTTP ${retryError.providerStatus}`
+                : ""}
+            </code>
+          </span>
+        </span>
+        <span className="run-activity-error-message selectable">
+          {retryError.message}
+        </span>
+      </span>
+    </span>
+  ) : (
+    <span className="working-indicator-label">{label}</span>
+  );
 
   return (
     <div
@@ -1528,7 +1575,7 @@ function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) 
         <span />
         <span />
       </span>
-      <span className="working-indicator-label">{label}</span>
+      {labelContent}
       <span className="working-elapsed" aria-hidden="true">
         {elapsed}
       </span>

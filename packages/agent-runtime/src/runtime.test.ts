@@ -1239,6 +1239,25 @@ describe("DesktopAgentRuntime configuration matching", () => {
 });
 
 describe("DesktopAgentRuntime live activity", () => {
+  it("keeps retry diagnostics bounded and falls back to captured HTTP status", async () => {
+    const runtime = createRuntime({ onEvent: vi.fn() });
+    (runtime as any).providerResponseStatus = 503;
+
+    expect(
+      (runtime as any).retryActivityError({
+        code: "PROVIDER_ERROR",
+        message: "503: upstream unavailable",
+        retriable: true,
+      }),
+    ).toEqual({
+      code: "PROVIDER_ERROR",
+      message: "503: upstream unavailable",
+      providerStatus: 503,
+    });
+
+    await runtime.dispose();
+  });
+
   it("emits status phases for quiet provider and delegation intervals", async () => {
     const onEvent = vi.fn();
     const runtime = createRuntime({ onEvent });
@@ -1250,6 +1269,11 @@ describe("DesktopAgentRuntime live activity", () => {
       since: 200,
       attempt: 2,
       retryDelayMs: 4000,
+      error: {
+        code: "PROVIDER_RATE_LIMITED",
+        message: "429: too many requests",
+        providerStatus: 429,
+      },
     });
     setActivity({
       phase: "waiting-subagents",
@@ -1263,7 +1287,17 @@ describe("DesktopAgentRuntime live activity", () => {
       .map((event) => event.status.activity);
     expect(statuses).toEqual([
       { phase: "waiting-model", since: 100 },
-      { phase: "retrying", since: 200, attempt: 2, retryDelayMs: 4000 },
+      {
+        phase: "retrying",
+        since: 200,
+        attempt: 2,
+        retryDelayMs: 4000,
+        error: {
+          code: "PROVIDER_RATE_LIMITED",
+          message: "429: too many requests",
+          providerStatus: 429,
+        },
+      },
       { phase: "waiting-subagents", since: 300, subagentCount: 2 },
     ]);
     expect(runtime.getStatus().activity).toEqual({
