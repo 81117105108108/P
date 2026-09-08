@@ -915,7 +915,10 @@
 }
 
 /* Message toolbars stay glyphs-only: the label rides in a hover/focus tooltip
-   so a row of actions reads as icons instead of a sentence of chips. */
+   so a row of actions reads as icons instead of a sentence of chips. The
+   tooltip sits 8px above the button so its bottom border clears the
+   icon hover tint; a 5px gap lets the elevated surface and the button
+   highlight blend into one bar and the label looks clipped (#74). */
 .copy-btn.icon {
   position: relative;
   min-width: 26px;
@@ -925,7 +928,7 @@
 .copy-btn[data-tip]::after {
   content: attr(data-tip);
   position: absolute;
-  bottom: calc(100% + 5px);
+  bottom: calc(100% + 8px);
   left: 50%;
   z-index: 8;
   transform: translateX(-50%);
