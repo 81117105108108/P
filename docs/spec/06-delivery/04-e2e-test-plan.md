@@ -157,7 +157,8 @@ Each scenario is documented in this format:
 - **Specs linked**: `06-delivery/06-release-runbook.md`
 - **Acceptance**: Quality (temporary release recovery)
 - **Milestone**: M6+
-- **Status**: Temporary for `v0.14.2`; do not reuse for later stable releases
+- **Status**: Completed for `v0.14.2` only; superseded by the restored signed
+  macOS lane before `v0.14.3`
 
 #### E2E-196: macOS tag artifacts pass Gatekeeper without a quarantine bypass
 

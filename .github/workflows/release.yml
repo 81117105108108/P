@@ -27,11 +27,6 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  # Temporary v0.14.2 exception: macOS signing credentials are being repaired.
-  # Restore the signed/notarized macOS lane before the next stable release.
-  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-
 jobs:
   build:
     name: Build ${{ matrix.name }}
@@ -137,12 +132,21 @@ jobs:
           trap - EXIT
 
       - name: Package installers (${{ matrix.dist }})
-        # Temporary v0.14.2 exception: CSC_IDENTITY_AUTO_DISCOVERY=false above
-        # keeps macOS packages unsigned while the signing secrets are repaired.
+        if: matrix.platform != 'macos'
         # The dist scripts pass --publish never themselves: electron-builder
         # must not self-publish on tag builds (no token; softprops owns it).
         # The explicit architecture keeps the package and native Rust sidecar
         # aligned with the runner selected by this matrix entry.
+        run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --${{ matrix.arch }}
+
+      - name: Package signed and notarized macOS installer
+        if: matrix.platform == 'macos'
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
           package_args=(--${{ matrix.arch }})
@@ -156,7 +160,17 @@ jobs:
               '-c.zip.artifactName=PI-Desktop-${version}-Intel-mac.${ext}'
             )
           fi
-          pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- "${package_args[@]}"
+          pnpm --filter @pi-desktop/desktop run dist:mac -- "${package_args[@]}" \
+            -c.mac.forceCodeSigning=true \
+            -c.mac.notarize=true
+
+      - name: Staple macOS installer ticket
+        if: matrix.platform == 'macos'
+        run: scripts/staple-macos-release-dmg.sh apps/desktop/release
+
+      - name: Verify signed and notarized macOS installer
+        if: matrix.platform == 'macos'
+        run: scripts/verify-macos-release.sh apps/desktop/release
 
       - name: Verify Linux host-core glibc floor
         if: matrix.platform == 'linux'
