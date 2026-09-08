@@ -12,13 +12,13 @@
 | 通道 | 命令 | 签名 | 用途 |
 |---|---|---|---|
 | 开发 | `pnpm dev` | 无 | 日常开发 |
-| 本地打包 | `pnpm --filter @pi-desktop/desktop pack` | 未签名（`identity: null`） | 打包冒烟测试（`--dir` 输出） |
-| 本地 DMG | `pnpm --filter @pi-desktop/desktop dist` | 未签名 | 本地安装测试 |
-| 发布 | `scripts/release-macos.sh` | Developer ID + 可选公证 | 可分发产物 |
+| 本地打包 | `pnpm --filter @pi-desktop/desktop pack` | 未配置证书时未签名 | 打包冒烟测试（`--dir` 输出） |
+| 本地 DMG | `pnpm --filter @pi-desktop/desktop dist` | 未配置证书时未签名 | 本地安装测试 |
+| 发布 | `scripts/release-macos.sh` | Developer ID + 强制公证 | 可分发产物 |
 
-静态 electron-builder 配置保持未签名友好（`identity: null`）
-因此没有证书的贡献者可以随时打包。发布脚本
-在构建时通过 `-c.mac.identity` 注入真实身份。
+静态 electron-builder 配置不嵌入证书身份，因此没有证书的贡献者仍可在本地打包。
+发布通道需要注入 Developer ID 身份（本地）或 `CSC_LINK` 证书（CI）；签名或公证验证
+失败时，发布会在上传前失败。
 
 在 macOS 上，`pnpm dev` 创建并重用带有指纹的品牌 Electron 主机
 捆绑在 `.cache/electron-dev/` 下。它的包名称、可执行文件、标识符、
@@ -48,8 +48,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
    登录钥匙串。
 2、环境变量：
    - `MAC_SIGNING_IDENTITY` — 例如`Developer ID Application: <Name> (<TEAMID>)`
-   - `APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD`、`APPLE_TEAM_ID` — 仅必需
-     办理公证；该脚本在没有它们的情况下构建签名但未公证的。
+   - `APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD`、`APPLE_TEAM_ID` — 公证所必需。
 3. 安装 Rust 工具链和 pnpm 工作区。Rust 必须在 macOS 本机运行器上运行：
    Apple Silicon 使用 arm64，Intel 使用 x86_64。
 
@@ -171,6 +170,12 @@ macOS 矩阵使用 arm64 的 `macos-15` 和 Intel x64 的
 `pi-desktop-host-core`。每个架构的 `latest-mac.yml` 会在上传前重命名，
 发布作业下载两个工件后再合并为一个更新源。
 
+macOS 打包步骤仅从 GitHub Actions 密钥接收 `CSC_LINK`、
+`CSC_KEY_PASSWORD`、`APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD` 和
+`APPLE_TEAM_ID`。该步骤强制执行代码签名和公证，然后验证 Developer ID
+权限、代码签名完整性、Gatekeeper 评估以及已装订的应用票据。生成的 DMG
+也会在任何工件上传前显式装订并验证。
+
 DMG、ZIP、NSIS、AppImage、deb、块图和更新程序提要输出已
 压缩或压缩不敏感。因此，工作流程会上传它们的
 发布作业之前压缩级别为零的临时操作工件
@@ -184,9 +189,10 @@ DMG、ZIP、NSIS、AppImage、deb、块图和更新程序提要输出已
 for APP in apps/desktop/release/mac-*/PI-Desktop.app; do
   codesign -dv --verbose=2 "$APP"          # identity + hardened runtime flags
   codesign --verify --deep --strict "$APP" # signature integrity
-  spctl -a -vv "$APP"                      # Gatekeeper assessment (notarized builds)
-  xcrun stapler validate "$APP"             # notarization staple (if notarized)
+  spctl -a -vv "$APP"                      # Gatekeeper assessment (notarized Developer ID)
+  xcrun stapler validate "$APP"             # notarization staple
 done
+xcrun stapler validate apps/desktop/release/*.dmg
 ```
 
 ### 5.1 安装包体积门禁

@@ -132,7 +132,7 @@ Gold source: local Codex electron captures; latest row wins where rows conflict.
 
 | ID | Topic | Decision | Rationale |
 |---|---|---|---|
-| D078 | macOS signing lanes | **Static config stays unsigned (`identity: null`) for local builds; `scripts/release-macos.sh` injects Developer ID + hardened runtime + optional notarization from env** | Contributors build without certs; releases sign per 06-delivery/06-release-runbook |
+| D078 | macOS signing lanes | **Static configuration does not embed a certificate identity, so local builds without a configured certificate remain unsigned. Release lanes require Developer ID signing and Apple notarization; CI receives certificate material through Actions secrets and rejects unstapled artifacts.** | Contributors can package without credentials while published macOS artifacts satisfy Gatekeeper. See 06-delivery/06-release-runbook. |
 | D079 | App icon / brand mark v1 | *(renderer asset path refined by D221)* **`build/icon_1024.png` is the canonical PI-Desktop logo; `scripts/make-icon.py` derives `build/icon.icns` without overwriting the PNG; packaged macOS builds, `pnpm dev`, and renderer chrome reuse those assets** | Keep one visual identity across development, renderer, and packaged lanes while preventing the derivation script from restoring the obsolete generated mark |
 | D080 | Backend supervision | **Child exit rejects in-flight RPCs immediately; backoff restarts (0.5s→4s, max 3 per 2min); `hostStatus` events drive renderer degradation UI** | Crash recovery without hangs; fail visible, not silent |
 | D081 | Renderer sandbox | **`sandbox: true` with fully bundled CJS preload; production CSP drops `unsafe-eval` and localhost connect-src** | Electron security baseline; verified by `test:e2e:boot` |
