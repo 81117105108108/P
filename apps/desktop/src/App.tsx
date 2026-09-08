@@ -538,6 +538,7 @@ function AppShell() {
         .showNativeNotification({
           id: notification.id,
           sessionId: notification.sessionId,
+          kind: "task",
           title,
           body,
           source: "task",

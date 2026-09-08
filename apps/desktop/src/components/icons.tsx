@@ -143,6 +143,7 @@ export const IconArchiveRestore = icon(ArchiveRestore);
 export const IconActivity = icon(Activity);
 export const IconArrowUpDown = icon(ArrowUpDown);
 export const IconSearch = icon(Search);
+export const IconRefresh = icon(RefreshCcw);
 export const IconChat = icon(MessageSquare);
 /** Session creation affordance. Keep it distinct from generic add actions. */
 export const IconNewSession = icon(MessageSquarePlus);

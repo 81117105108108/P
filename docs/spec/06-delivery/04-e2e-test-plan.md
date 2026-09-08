@@ -395,6 +395,61 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (host persistence, fetch wrapper, discovery,
   form Advanced); rendered UI scenario pending
 
+#### E2E-005H: Select every visible model from a long service list
+
+- **Preconditions**: App running; the add-provider or edit-provider dialog is
+  open against a service (or vendor account) that returns a long model list,
+  including at least one model whose id would not match a later search.
+- **Steps**: 1) Wait until the left pane lists the service's models. Confirm
+  the list header shows a checkbox beside the pane title, unchecked while no
+  rows are chosen. 2) Tick that header checkbox. Confirm every listed row is
+  checked and the right pane lists a chosen binding for each, keeping any
+  already-configured advanced overrides. 3) Untick one row, then confirm the
+  header checkbox is indeterminate. Tick it again and confirm the remaining
+  visible rows are chosen without duplicating already-chosen ones. 4) Type a
+  filter that matches a subset. Untick the header checkbox and confirm only
+  the matching chosen rows disappear; a model hidden by the filter stays on
+  the right. 5) Tick the header checkbox again and confirm only the matching
+  rows are added back. Clear the filter and confirm the previously hidden
+  chosen model is still present. 6) Save.
+- **Expected**: One header checkbox selects or clears the currently visible
+  list. A search filter narrows which rows "all" means. Models already chosen
+  outside the filter stay chosen. Newly added rows adopt published limits and
+  thinking levels; existing bindings are not rebuilt. The same control is
+  present in the vendor-account editor because both dialogs render the shared
+  picker.
+- **Specs linked**: `03-runtime/13-model-catalog-and-selection.md`,
+  `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: B (multi-model provider configuration)
+- **Milestone**: M2
+- **Status**: Unit-covered (shared picker source contract); rendered UI
+  scenario pending
+
+#### E2E-005I: Fetch the service model list from the picker header
+
+- **Preconditions**: The add-provider or edit-provider dialog is open against a
+  reachable service (or vendor account) that publishes a `/models` list.
+- **Steps**: 1) Confirm the left-pane header shows a Fetch list action beside
+  the title, disabled before a valid endpoint is ready. 2) Enter a valid
+  endpoint. Confirm Fetch list enables during the 600 ms debounce wait. Click
+  it immediately; confirm it does not wait for that window, shows the loading
+  label while the probe is in flight, and then shows rows. 3) Click Fetch list
+  again. Confirm it keeps the current rows on screen and replaces them with the
+  live answer. 4) Take the service offline and click Fetch list; confirm the
+  classified error appears and the previous rows remain. 5) Restore the
+  service, click Fetch list, and confirm the live list returns. 6) Repeat in
+  the vendor-account editor.
+- **Expected**: The header action probes the service immediately, including
+  during the edit debounce after a URL becomes valid. Automatic discovery on
+  credential edits is unchanged. The same control is present for both
+  credential kinds because both dialogs render the shared picker.
+- **Specs linked**: `03-runtime/13-model-catalog-and-selection.md`,
+  `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: B (multi-model provider configuration)
+- **Milestone**: M2
+- **Status**: Unit-covered (discovery hook + picker source contract); rendered
+  UI scenario pending
+
 #### E2E-005D: Configure a Zhipu / Z.AI named endpoint preset
 
 - **Preconditions**: App running; no Zhipu provider configured; the models.dev
@@ -1243,7 +1298,9 @@ Each scenario is documented in this format:
   recent-activity ordering do not change, and historical notification title
   snapshots are unchanged. Empty and overlong values are rejected. A custom
   title is not replaced by first-prompt auto-title; a still-default session
-  continues to receive its automatic title.
+  continues to receive its automatic title. After its first turn, the default
+  session first shows the prompt fallback and then adopts the concise
+  background LLM summary when the provider returns one.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `03-runtime/04-data-storage.md`, `03-runtime/06-host-rpc-protocol.md`,
   `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`, ADR 0143
@@ -2767,31 +2824,6 @@ Each scenario is documented in this format:
   `04-ux/07-ui-design-system.md`, `04-ux/09-interaction-patterns.md`,
   `08-meta/decisions-log.md` (D117/D141)
 - **Acceptance**: C (turn completion), Quality
-- **Milestone**: M5
-- **Status**: Draft
-
-#### E2E-065a: Native interactive prompts are session-aware
-
-- **Preconditions**: Native notifications are supported; sessions A and B
-  exist; deterministic asktool, tool-permission, and Plan approval prompts can
-  be paused and resolved.
-- **Steps**: 1) Focus and view session A. 2) Trigger an asktool,
-  tool-permission, or Plan approval prompt in background session B. 3) Trigger
-  the same prompt type in the focused current session A. 4) Unfocus or
-  minimize the app and trigger a prompt in A. 5) Click the B or A native
-  notification and inspect the selected session. 6) Resolve each inline card
-  and inspect the durable notification inbox.
-- **Expected**: A focused-background interactive prompt in B produces one
-  localized native banner and does not create a durable task inbox row. A
-  prompt in the focused current A is shown only inline. An unfocused or
-  minimized prompt in A produces one native banner. Clicking a banner restores,
-  shows, and focuses the main window before selecting the prompt's session; it
-  never activates the session that happened to be selected before the click.
-  Resolving a prompt leaves no synthetic task completion/failure row.
-- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
-  `04-ux/08-component-spec.md`, `04-ux/09-interaction-patterns.md`,
-  `08-meta/decisions-log.md` (D117/D350), ADR 0187
-- **Acceptance**: C (conversation & stream), Quality
 - **Milestone**: M5
 - **Status**: Draft
 
@@ -5793,9 +5825,10 @@ This test plan spec is accepted when:
 
 ### US-UI-06 Session auto-title
 - Create a new task and send a first prompt such as "同步代码".
-- Expect its project or temporary session row title to become a truncated form
-  of that prompt instead of remaining "New task".
-- Rename a task from its session menu, then send a first prompt if it was still
+- Expect its project or temporary session row to show the normalized prompt
+  fallback immediately, then adopt a concise LLM summary after the first turn.
+- Restart before/after the summary and confirm the current title is retained;
+  rename a task from its session menu and send a first prompt if it was still
   using a default title. Expect the custom label to remain unchanged while the
   default-title task receives the normal first-prompt title.
 
@@ -6287,21 +6320,6 @@ This test plan spec is accepted when:
 - Expect the compact assistant error card itself to expose one localized **Continue** action beside the details disclosure. Click it and expect the app to append the localized continuation prompt (`Continue the current task` / `继续当前任务`) to the same session and start the next turn without truncating the failed turn.
 - For a terminal `PROVIDER_RATE_LIMITED` (including HTTP 429), expect the TurnOutcomeCard to expose exactly one localized **Continue** action and no **Regenerate** action.
 - Click **Continue** and expect the app to append the localized continuation prompt (`Continue the user's unfinished task.` / `继续用户未完成的任务`) to the same session and start the next turn without truncating the failed turn.
-
-### US-UI-60d Retry reason tooltip
-- Start a provider request that enters a bounded retry in light and dark themes,
-  using both a rate-limit fixture with an HTTP status and a network/stream
-  fixture without one.
-- Expect the compact retrying status row to keep its existing localized label
-  and elapsed timer. Hover the retry label and expect an error-styled tooltip
-  matching the assistant error card hierarchy: localized error summary, stable
-  error code, optional HTTP status, and the bounded/redacted provider message.
-- Move the pointer away and expect the tooltip to close without adding an
-  intermediate assistant error row. Focus the retry label with the keyboard and
-  expect the same tooltip and an accessible name containing the retry reason.
-- After the retry succeeds or reaches terminal failure, expect the activity
-  tooltip to disappear and the existing assistant error/outcome surface to
-  remain the only terminal error presentation.
 
 
 ### US-UI-61 Assistant context summary + retry (D103, D184, D244, D347)
@@ -8298,19 +8316,33 @@ are withdrawn with ADR 0165.
 - **Status**: Static/documentation check covered (`pnpm docs:build` and path
   audit); remote GitHub and browser journey pending
 
-#### E2E-194: Model and subagent elapsed time carries into hours
+#### E2E-196: Chat links honor destination settings and context menu actions
 
-- **Preconditions**: The desktop transcript fixture can render a processing
-  group and a delegation topology with deterministic elapsed timestamps.
-- **Steps**: 1) Render a model processing group with 5,400 elapsed seconds.
-  2) Render a subagent topology with the same elapsed duration. 3) Repeat with
-  sub-minute and sub-hour values to check the lower-unit boundaries.
-- **Expected**: Both the model processing header and the subagent card/node
-  show `1h 30m` for 5,400 seconds, never `90m` or `90m 0s`. Values below one
-  hour keep minute/second precision, and zero-value units are omitted.
-- **Specs linked**: `04-ux/08-component-spec.md` §9.1/§9.9,
-  `04-ux/09-interaction-patterns.md` §4.2
-- **Acceptance**: C (conversation), Quality
-- **Milestone**: M6+
-- **Status**: Unit-covered (`apps/desktop/test/tool-display.test.mjs`); full UI
-  journey pending (do not run E2E locally unless explicitly requested)
+- **Preconditions**: A chat transcript can render an HTTP(S) Markdown link. The
+  work-panel Browser view and the system browser opener are available. The
+  clipboard can be observed or stubbed for the copy action.
+- **Steps**:
+  1. In Settings → AI → Defaults, select **Work panel browser** and click the
+     link from a chat reply.
+  2. Select **Default OS browser** and click the same link again.
+  3. Right-click the link and activate each context-menu item with the pointer:
+     Open in default browser, Open in work panel, and Copy link address. Repeat
+     the menu actions with keyboard focus and Arrow/Home/End navigation.
+  4. Repeat a link click with Ctrl/Cmd, Shift, and Alt held.
+- **Expected**:
+  - The Work panel browser is the default plain-click destination.
+  - The Default OS browser setting routes plain HTTP(S) clicks through the
+    main-owned external opener; changing the setting persists after reload.
+  - The body-level context menu remains interactive when clicked. Its external
+    and work-panel actions open the requested destination, and Copy link address
+    updates the clipboard before showing the success toast. A rejected clipboard
+    write shows an error toast instead of a success toast.
+  - Modifier clicks continue to open links externally regardless of the setting.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §8.3, `03-runtime/01-ipc-protocol.md`,
+  `08-meta/decisions-log.md` (D330)
+- **Acceptance**: B (settings), C (conversation & stream), Security, Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`apps/desktop/test/markdown-link-menu.test.mjs` and
+  locale catalog tests); full UI journey Draft (do not run E2E locally unless
+  explicitly requested)

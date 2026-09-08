@@ -746,6 +746,7 @@ export const en = {
     linkContextMenuOpenWorkpanel: "Open in work panel",
     linkContextMenuCopy: "Copy link address",
     linkCopied: "Link copied to clipboard",
+    linkCopyFailed: "Couldn't copy link address",
     largePasteThreshold: "Large paste threshold",
     largePasteThresholdDesc:
       "Text-only pastes longer than this many characters become a temporary session file.",
@@ -985,6 +986,9 @@ export const en = {
     availableForSubagentsHint: "Allow AI to use this model when delegating tasks to subagents",
     notSupported: "Not supported",
     searchModelId: "Search model ID…",
+    selectAllVisibleModels: "Select all",
+    deselectAllVisibleModels: "Deselect all",
+    fetchModelList: "Fetch list",
     reasoning: "reasoning",
     vision: "Vision",
     textOnly: "Text",

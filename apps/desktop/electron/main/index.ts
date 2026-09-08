@@ -69,6 +69,7 @@ import {
   type AgentEventEnvelope,
   type AgentPromptRequest,
   type PromptEnhancementRequest,
+  type SessionSummarizeTitleRequest,
   type AgentStopRequest,
   type AskToolResolution,
   type AppMenuCommand,
@@ -110,6 +111,7 @@ import {
   visionFromModelConfig,
   expandSlashInvocation,
   enhancePromptDraft,
+  summarizeSessionTitle,
   completeOneShot,
   loadComposerTemplates,
   globalInstructionPath,
@@ -142,7 +144,7 @@ import {
 import { HostProcess } from "./host-process";
 import {
   shouldCreateTaskNotification as shouldCreateTaskNotificationPolicy,
-  shouldShowNativeNotification as shouldShowNativeNotificationPolicy,
+  shouldShowNativeNotification,
 } from "./notification-policy";
 import { PersistenceOutbox } from "./persistence-outbox";
 import { InflightCheckpointer } from "./inflight-checkpoint";
@@ -5873,9 +5875,9 @@ function registerIpc() {
   handle(IPC.invoke.notificationShowNative, async (input: {
     id?: string;
     sessionId?: string;
+    kind?: "task" | "interactive";
     title?: string;
     body?: string;
-    source?: "task" | "interactive";
   } = {}) => {
     if (
       !mainWindow ||
@@ -5886,20 +5888,23 @@ function registerIpc() {
     }
     const id = String(input.id ?? "");
     const sessionId = String(input.sessionId ?? "");
+    const kind = input.kind === "interactive" ? "interactive" : "task";
     const title = String(input.title ?? "").trim().slice(0, 100);
     const body = String(input.body ?? "").trim().slice(0, 240);
     if (!id || !sessionId || !title) return { shown: false };
 
-    const source = input.source === "interactive" ? "interactive" : "task";
     const liveWindow = mainWindow !== null && !mainWindow.isDestroyed();
-    const shouldShow = shouldShowNativeNotificationPolicy({
-      source,
-      finishingSessionId: sessionId,
-      viewingSessionId: notificationViewingSessionId,
-      windowVisible: liveWindow && mainWindow.isVisible() === true,
-      windowFocused: liveWindow && mainWindow.isFocused() === true,
-    });
-    if (!shouldShow) {
+    const windowVisible = liveWindow && mainWindow.isVisible() === true;
+    const windowFocused = liveWindow && mainWindow.isFocused() === true;
+    if (
+      !shouldShowNativeNotification({
+        kind,
+        sessionId,
+        viewingSessionId: notificationViewingSessionId,
+        windowVisible,
+        windowFocused,
+      })
+    ) {
       return { shown: false };
     }
 
@@ -7504,6 +7509,54 @@ function registerIpc() {
       data: { providerId: launch.providerId, modelId: launch.modelId },
     });
     return { enhancedDraft };
+  });
+
+  handle(IPC.invoke.sessionSummarizeTitle, async (req: SessionSummarizeTitleRequest) => {
+    if (!host) throw new Error("backend unavailable");
+    const sessionId = typeof req?.sessionId === "string" ? req.sessionId.trim() : "";
+    const userPrompt = typeof req?.userPrompt === "string" ? req.userPrompt.trim() : "";
+    if (!sessionId || !userPrompt) {
+      throw Object.assign(new Error("sessionId and userPrompt required"), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    const session = (await host.call<{ session?: any }>("session.get", { id: sessionId })).session;
+    if (!session) {
+      throw Object.assign(new Error("Session not found"), {
+        errorCode: ErrorCodes.NOT_FOUND,
+      });
+    }
+    const settings = await host.call<any>("settings.get");
+    const launch = await resolveAgentRuntimeLaunch(
+      `title-summary:${sessionId}`,
+      session,
+      settings,
+      {
+        mode: "agent",
+        providerId: typeof req.providerId === "string" ? req.providerId.trim() : undefined,
+        modelId: typeof req.modelId === "string" ? req.modelId.trim() : undefined,
+        thinkingLevel: "off",
+      },
+    );
+    const runtimeProvider = {
+      ...launch.sidecarParams.provider,
+      ...(launch.sidecarParams.provider.authKind === OAUTH_AUTH_KIND
+        ? { resolveAuth: () => vendorOAuth.resolveAuth(launch.providerId) }
+        : {}),
+    } as RuntimeProviderConfig;
+
+    const title = await summarizeSessionTitle(
+      runtimeProvider,
+      userPrompt,
+      req.assistantReply,
+      "off",
+      { sessionId },
+    );
+    logger.app("session", "info", "session title summarized", {
+      sessionId,
+      data: { title, providerId: launch.providerId, modelId: launch.modelId },
+    });
+    return { title };
   });
 
   handle(IPC.invoke.agentPrompt, async (req: AgentPromptRequest) => {

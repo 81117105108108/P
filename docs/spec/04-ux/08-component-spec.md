@@ -369,6 +369,9 @@ visually distinct from list content.
 | Archived row | Hidden by default; visible in the explicit archived view |
 | No retained project | Compact Open project entry; standalone Sessions rows remain available |
 | Empty group | Muted one-line empty state; group create action remains available |
+| Default session title | New task/New chat (localized where applicable) until the first prompt |
+| First prompt title | A normalized 48-character prompt fallback appears immediately; after the first turn, a successful background summary replaces it |
+| Manual session title | User-defined title remains stable across refresh and renderer restart; automatic summary never overwrites it |
 | Footer idle | Transparent 58px band; build and action controls remain visually quiet |
 | Footer hover/focus | Only the targeted control receives the semantic hover/focus treatment |
 | Profile menu open | Profile trigger is active; 280px menu opens 8px above the footer |
@@ -1196,10 +1199,13 @@ Single message render — either user (plaintext) or assistant (markdown streami
   workspace HTML chip previews it in the side browser; clicking a resolved
   image thumbnail opens the host files viewer on that ref; clicking any other
   allowed file opens it with the OS default application for that suffix.
-  HTTP(S) URLs remain inline text links
-  that open in the side browser; long URL links wrap within the plate and
-  keep logical-start alignment instead of inheriting the browser's centered
-  button text.
+  HTTP(S) URLs remain inline text links. Plain clicks follow the persisted
+  Link open destination setting (Work panel browser by default, or the system
+  default browser). Right-clicking a link opens a body-level context menu with
+  Open in default browser, Open in work panel, and Copy link address. Modifier
+  clicks (Ctrl/Cmd/Shift/Alt) continue to open externally. Long URL links wrap
+  within the plate and keep logical-start alignment instead of inheriting the
+  browser's centered button text.
 - Assistant: transparent surface, left-aligned, markdown rendered at full
   content width. Workspace file paths in that markdown are previewable:
   inline code, markdown links, and bare path tokens (with a known
@@ -2340,7 +2346,8 @@ Anatomy:
   leaf-name chip as the draft. Clicking a workspace `.html`/`.htm` file opens
   the work-panel browser; clicking any other allowed file (workspace, session
   scratch, or attachments) opens it with the OS default application. HTTP(S)
-  URLs stay text links into the side browser.
+  URLs stay text links. Plain clicks follow the Link open destination setting,
+  and right-clicking exposes the same external, work-panel, and copy actions.
 - States: keyboard-active row uses the shared `kb-active` treatment; empty
   query lists everything (slash) / recently indexed order (file); zero
   matches renders the localized empty row and the menu counts as closed for
@@ -2758,6 +2765,16 @@ compatibility remains owned by pi-ai.
   and resize; model selection immediately adds or removes its configuration
   row. Configuration rows stay compact until expanded; expanding one row does
   not expand or collapse any other row.
+- The left-pane list header carries a checkbox that selects or clears every
+  currently visible row. A search filter narrows which rows "all" means;
+  already-chosen bindings keep their advanced overrides. The checkbox is
+  checked when every visible row is chosen, unchecked when none are, and
+  indeterminate when the visible set is mixed.
+- The same header has a compact Fetch list action that re-probes the service
+  immediately. It stays disabled when no discoverable endpoint is ready, while
+  a probe is in flight, or while saving. Idle-with-a-valid-URL (the edit
+  debounce) stays enabled so the action can skip that window. Current rows
+  stay on screen until the live answer replaces them.
 - Adding a custom model validates non-empty and duplicate IDs, adds it to the
   top-level option list, selects it, and applies 128,000 context / 8,192 max
   output / no thinking defaults. Removing its selection does not delete the
@@ -2780,6 +2797,9 @@ compatibility remains owned by pi-ai.
 
 ### 19.5 Accessibility
 - Segmented controls expose `aria-pressed`
+- The discovered-list header checkbox has a localized accessible name
+  (Select all / Deselect all) and an indeterminate state when only some
+  visible rows are chosen
 - Enter-to-send uses `role="switch"` + `aria-checked`
 - Model configuration rows expose `aria-expanded` and reference their details
   with `aria-controls`; collapsed details are removed from the tab order

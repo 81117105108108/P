@@ -316,3 +316,29 @@ test("clamps and persists the expanded sidebar width", () => {
     globalThis.localStorage = previousStorage;
   }
 });
+
+
+test("manual title metadata survives a renderer restart", () => {
+  const values = new Map();
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+    },
+  });
+  try {
+    saveSidebarPreferences({
+      sessionMeta: { custom: { manualTitle: true } },
+      projectMeta: {},
+      projectSort: "recent",
+      sessionView: { sort: "recent", archived: false },
+      openProjectPaths: [],
+    });
+    assert.equal(loadSidebarPreferences().sessionMeta.custom.manualTitle, true);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "localStorage", previous);
+    else delete globalThis.localStorage;
+  }
+});

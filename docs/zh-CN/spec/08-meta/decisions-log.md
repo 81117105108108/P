@@ -2775,3 +2775,10 @@ D193 和 D194。
 - `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质、偏好映射、设置/
   pluginChanged 路径，以及 darwin 存活窗口守卫。见
   `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。
+
+## 2026-09-08 —— 会话标题摘要与按焦点区分的原生任务通知（D349/D350）
+
+- 首条提示会立即显示规范化的 48 字符回退标题。首轮完成后，Electron 根据会话的有效提供商/模型运行关闭推理的 `session/summarizeTitle` 单次请求；渲染器通过 `session.rename` 持久化成功结果。
+- 渲染器本地会话元数据持久化 `manualTitle`。自动标题会跳过该标记，也会跳过既不是已知默认标题、也不是首条提示回退标题的持久化标题，因此手动标题和已有摘要在重启后不会被覆盖。
+- 原生任务完成通知和交互式提示共用 Electron IPC 入口，但使用明确的 `kind`。主窗口可见且聚焦时（包括聚焦在后台会话时）抑制任务横幅；交互式提示仍只抑制当前可见会话，因此聚焦的后台请求仍会提醒。持久任务插入仍遵循 D117，插件通知保持独立。
+- 见 ADR 0186 / ADR 0187、`03-runtime/01-ipc-protocol.md`、`03-runtime/02-agent-runtime.md`、`04-ux/08-component-spec.md` 与 E2E-021a / E2E-065。

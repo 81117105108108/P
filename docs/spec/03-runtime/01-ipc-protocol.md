@@ -18,7 +18,7 @@ Principles:
 | `app` | App info, health checks |
 | `agent` | Conversation, queued-send stop/abort, status, and interactive asktool resolution |
 | `plan` | Plan proposal listing, resolution, and change events |
-| `session` | Session CRUD / history |
+| `session` | Session CRUD / history / title metadata and summarization |
 | `settings` | Config read/write |
 | `secrets` | Secret write/delete/exists (never return plaintext to UI logs) |
 | `project` | Workspace selection and query |
@@ -50,6 +50,7 @@ Examples:
 - `pi-desktop/agent/event/message`
 - `pi-desktop/agent/askTool/resolve`
 - `pi-desktop/session/list`
+- `pi-desktop/session/summarizeTitle`
 - `pi-desktop/project/open`
 - `pi-desktop/project/openFolder`
 
@@ -386,8 +387,7 @@ request-changes action.
 type AgentActivity =
  | { phase: "starting"; since: number }
  | { phase: "waiting-model"; since: number }
- | { phase: "retrying"; since: number; attempt: number; retryDelayMs?: number;
-     error?: { code: string; message: string; providerStatus?: number } }
+ | { phase: "retrying"; since: number; attempt: number; retryDelayMs?: number }
  | { phase: "waiting-subagents"; since: number; subagentCount: number };
 
 type AgentStatus = {
@@ -451,13 +451,9 @@ type AgentEvent =
 `status` events include an optional runtime-owned `activity` phase while a turn
 is active. `waiting-model` marks the interval after the runtime has started a
 provider request and before the first assistant event arrives; `retrying` marks
-an abortable provider backoff and includes the retry attempt plus bounded,
-redacted error details (`code`, provider message, and HTTP status when known);
-and `waiting-subagents` marks a parent turn waiting for delegated work. The
+an abortable provider backoff and includes the retry attempt; and
+`waiting-subagents` marks a parent turn waiting for delegated work. The
 renderer keeps this status per session and renders it as a compact inline row.
-While the retry row is hovered or focused, the renderer exposes those details
-in an error-styled tooltip; it does not create an intermediate transcript error
-row.
 The phase is cleared when assistant or tool activity starts, or when the turn
 reaches a terminal event. These phases explain quiet intervals; they do not
 replace message/tool lifecycle events or imply a percentage of completion.
@@ -520,11 +516,9 @@ setup so a fast completion cannot beat the viewing-context update. Electron
 combines this hint with Main-owned window visibility/focus at the terminal event
 boundary. Missing, null, or mismatched context fails safe to notification. It
 also invokes
-`pi-desktop/notification/showNative({ id, sessionId, title, body, source? })` after
-localizing a new record. The optional `source` is `"task"` for terminal task
-outcomes and `"interactive"` for asktool, tool-permission, and Plan approval
-prompts; omitted or unknown values default to `"task"`. This Electron-only
-request never crosses into the host RPC domain.
+`pi-desktop/notification/showNative({ id, sessionId, kind, title, body })` after
+localizing a new record, where `kind` is `"task" | "interactive"`. This
+Electron-only request never crosses into the host RPC domain.
 
 ```ts
 type AppNotification = {
@@ -566,15 +560,14 @@ Main sends two events:
 
 Electron owns the native surface while the renderer derives localized
 title/body text from the structured record. Electron accepts `showNative` only
-for a valid notification/session pair and a supported platform API. The
-`"task"` source remains unfocused-only, preserving the focused-background
-terminal contract. The `"interactive"` source is suppressed only when its
-exact session is visible in the focused window, so a focused different session
-can receive an ask, permission, or Plan approval banner. Both sources restore,
-show, and focus the window before emitting `activated`. Interactive prompts do
-not create durable task inbox rows; scheduled reminders and plugin-native
-notifications remain separate contracts. Native delivery is best-effort; the
-durable inbox remains authoritative when the OS suppresses a banner. On Windows,
+for a valid notification/session pair. For `kind: "task"`, it shows a native
+notification only while the main window is unfocused; for `kind: "interactive"`,
+it preserves the exact-visible-session suppression while allowing a focused
+background session to alert. In both cases the platform API is best-effort,
+and a shown notification restores/shows and focuses the window before emitting
+`activated`. No permission, scheduled-reminder, or plugin source enters the
+task notification contract. Native delivery is best-effort; the durable
+inbox remains authoritative when the OS suppresses a banner. On Windows,
 Electron Main registers `com.pi-desktop.app` as the process AppUserModelID
 before readiness and before any window is created. The ID matches the NSIS
 package identity so notification attribution, notification settings, taskbar
@@ -703,6 +696,12 @@ Minimal interface:
   accepts 1–80 Unicode code points. Blank or overlong titles are rejected as
   `INVALID_PARAMS`; a successful rename changes only session metadata and does
   not alter transcript content, message count, or activity timestamps.
+- `session/summarizeTitle({ sessionId, userPrompt, assistantReply? }) ->
+  { title }` validates the session and prompt in Electron main, resolves that
+  session's provider/model, and runs one `thinkingLevel: "off"` one-shot
+  completion. It never writes the title itself; the renderer applies the
+  result through `session/rename` only while the session still has a default or
+  first-prompt fallback title. A one-shot failure leaves that fallback intact.
 - `session/importScan`
 - `session/importRun(candidates) -> { imported, skipped, failed }`
 - `modelConfig/importScan -> { providers }`

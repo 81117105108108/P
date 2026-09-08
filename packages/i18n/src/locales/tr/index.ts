@@ -748,6 +748,7 @@ export const tr = {
     linkContextMenuOpenWorkpanel: "Çalışma panelinde aç",
     linkContextMenuCopy: "Bağlantı adresini kopyala",
     linkCopied: "Bağlantı panoya kopyalandı",
+    linkCopyFailed: "Bağlantı adresi kopyalanamadı",
     largePasteThreshold: "Uzun yapıştırma eşiği",
     largePasteThresholdDesc:
       "Bu karakter sayısından uzun salt metin yapıştırmalar geçici bir oturum dosyası olur.",
@@ -987,6 +988,9 @@ export const tr = {
     availableForSubagentsHint: "Görevler alt ajanlara devredilirken AI’nin bu modeli kullanmasına izin ver",
     notSupported: "Desteklenmiyor",
     searchModelId: "Model kimliği ara…",
+    selectAllVisibleModels: "Tümünü seç",
+    deselectAllVisibleModels: "Tümünün seçimini kaldır",
+    fetchModelList: "Listeyi al",
     reasoning: "akıl yürütme",
     vision: "Görüntü",
     textOnly: "Metin",

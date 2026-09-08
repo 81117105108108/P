@@ -117,10 +117,46 @@ test("one picker component serves the service dialog and the account dialog", ()
     assert.doesNotMatch(source, /visibleRows/);
     assert.doesNotMatch(source, /addCustomModel/);
     assert.doesNotMatch(source, /toggleModel/);
+    assert.doesNotMatch(source, /applyVisibleModelSelection/);
+    assert.doesNotMatch(source, /selectAllVisibleModels/);
+    assert.doesNotMatch(source, /fetchModelList/);
+    assert.match(source, /onReload=\{discovery\.reload\}/);
   }
   // Only the heading of the discovered list differs between them.
   assert.match(setupSource, /listTitle=\{t\("settings\.serviceModels"\)\}/);
   assert.match(vendorDialogSource, /listTitle=\{t\("settings\.accountModels"\)\}/);
+});
+
+test("a header action probes the live list without waiting for debounce", () => {
+  assert.match(hookSource, /reload: \(\) => void/);
+  assert.match(hookSource, /skipCache: true/);
+  assert.match(hookSource, /skipCache \? modelsRef\.current/);
+  assert.match(hookSource, /canReload/);
+  // Idle-with-a-valid-URL (the edit debounce) must still be reloadable.
+  assert.match(hookSource, /status !== "loading"/);
+  assert.match(pickerSource, /disabled=\{busy \|\| !discovery\.canReload\}/);
+  assert.doesNotMatch(
+    pickerSource,
+    /discovery\.status === "idle" \|\| discovery\.status === "loading"/,
+  );
+  // The automatic path still waits; only the header action skips the window.
+  assert.match(hookSource, /FETCH_DEBOUNCE_MS/);
+  assert.match(pickerSource, /settings\.fetchModelList/);
+  assert.match(pickerSource, /provider-models-reload/);
+  assert.match(pickerSource, /onReload/);
+  assert.doesNotMatch(pickerSource, /provider-models-state/);
+});
+
+test("the shared picker can select or clear every visible model at once", () => {
+  assert.match(pickerSource, /export function applyVisibleModelSelection/);
+  assert.match(pickerSource, /provider-models-select-all/);
+  assert.match(pickerSource, /toggleVisibleModels/);
+  assert.match(pickerSource, /settings\.selectAllVisibleModels/);
+  assert.match(pickerSource, /settings\.deselectAllVisibleModels/);
+  assert.match(pickerSource, /el\.indeterminate/);
+  // A filtered select-all must not drop models the filter is hiding.
+  assert.match(pickerSource, /a filtered select-all does not touch hidden matches/);
+  assert.match(pickerSource, /visibleRows\.length > 0/);
 });
 
 test("the shared picker owns the advanced per-model controls for both kinds", () => {

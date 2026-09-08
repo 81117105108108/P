@@ -522,6 +522,7 @@ export function ProviderSetupDialog({
             selection={selection}
             listTitle={t("settings.serviceModels")}
             busy={saving}
+            onReload={discovery.reload}
           />
         </div>
       </div>

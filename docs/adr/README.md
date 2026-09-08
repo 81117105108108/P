@@ -197,6 +197,6 @@ Each ADR includes:
 | 0182 | Traditional Chinese shell locale | Accepted (amends 0160) |
 | 0183 | P0 international shell locales | Accepted (amends 0160 / 0182) |
 | 0184 | Dock the context usage inspector in the composer toolbar | Accepted (amends 0047 / 0103) |
- | 0185 | Korean shell locale | Accepted (amends 0160 / 0183) |
- | 0186 | Show provider retry causes in the active-turn status | Accepted (amends 0175) |
- | 0187 | Separate task and interactive native notification delivery | Accepted (amends 0107) |
+| 0185 | Korean shell locale | Accepted (amends 0160 / 0183) |
+| 0186 | Summarize first-turn session titles with a main-owned one-shot | Accepted |
+| 0187 | Focus-aware native task notifications | Accepted (amends 0107 / D117) |

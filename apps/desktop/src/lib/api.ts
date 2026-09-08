@@ -10,6 +10,8 @@ import type {
   AgentPromptResponse,
   PromptEnhancementRequest,
   PromptEnhancementResponse,
+  SessionSummarizeTitleRequest,
+  SessionSummarizeTitleResponse,
   AgentStopResponse,
   AgentStatus,
   AskToolResolution,
@@ -301,6 +303,7 @@ export const api = {
   showNativeNotification: (input: {
     id: string;
     sessionId: string;
+    kind: "task" | "interactive";
     title: string;
     body: string;
     source?: "task" | "interactive";
@@ -339,6 +342,8 @@ export const api = {
     invoke<{ ok: boolean; path: string }>(IPC.invoke.projectOpenFolder, path),
   renameSession: (id: string, title: string) =>
     invoke<{ ok: boolean }>(IPC.invoke.sessionRename, id, title),
+  summarizeSessionTitle: (req: SessionSummarizeTitleRequest) =>
+    invoke<SessionSummarizeTitleResponse>(IPC.invoke.sessionSummarizeTitle, req),
   configureSession: (
     id: string,
     config: Pick<SessionSummary, "mode" | "providerId" | "modelId"> &

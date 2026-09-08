@@ -44,33 +44,61 @@ test("fails safe when the viewing context is unknown", () => {
   );
 });
 
-test("keeps focused-background task completions native-silent", () => {
+
+test("suppresses focused task banners for background sessions", () => {
   assert.equal(
     shouldShowNativeNotification({
-      ...focusedCurrent,
-      source: "task",
-      finishingSessionId: "session-b",
+      kind: "task",
+      sessionId: "session-b",
+      viewingSessionId: "session-a",
+      windowVisible: true,
+      windowFocused: true,
     }),
     false,
   );
 });
 
-test("shows focused-background interactive prompts", () => {
+test("shows task banners only when the window is unfocused", () => {
   assert.equal(
     shouldShowNativeNotification({
-      ...focusedCurrent,
-      source: "interactive",
-      finishingSessionId: "session-b",
+      kind: "task",
+      sessionId: "session-a",
+      viewingSessionId: "session-a",
+      windowVisible: true,
+      windowFocused: false,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldShowNativeNotification({
+      kind: "task",
+      sessionId: "session-a",
+      viewingSessionId: "session-a",
+      windowVisible: false,
+      windowFocused: true,
     }),
     true,
   );
 });
 
-test("suppresses interactive prompts in the focused visible session", () => {
+test("preserves focused background banners for interactive prompts", () => {
   assert.equal(
     shouldShowNativeNotification({
-      ...focusedCurrent,
-      source: "interactive",
+      kind: "interactive",
+      sessionId: "session-b",
+      viewingSessionId: "session-a",
+      windowVisible: true,
+      windowFocused: true,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldShowNativeNotification({
+      kind: "interactive",
+      sessionId: "session-a",
+      viewingSessionId: "session-a",
+      windowVisible: true,
+      windowFocused: true,
     }),
     false,
   );

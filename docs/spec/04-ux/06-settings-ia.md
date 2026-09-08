@@ -109,8 +109,10 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 - **Permissions** card: the global permission-mode control
   (ask / accept-edits / auto) that governs how autonomously the agent acts.
 - **Defaults** card: the host-backed default operating mode (Agent / Plan / Goal),
-  command shell selection, Enter-to-send control, and the large text paste
-  threshold. The threshold controls when a text-only paste becomes a temporary
+  command shell selection, Link open destination, Enter-to-send control, and the
+  large text paste threshold. Link open destination uses the Work panel browser
+  by default and can route plain HTTP(S) link clicks to the system browser.
+  The threshold controls when a text-only paste becomes a temporary
   session-scratch file; it defaults to 600 characters and accepts integer values
   from 1 through 1,000,000.
 - The **Command shell** row in Defaults uses the host-discovered catalog of native PowerShell,
@@ -207,7 +209,10 @@ a usage tab.
     style, and secret). It shrinks to the overlay on a narrow window, and a
     focused credential field keeps its 2px accent ring inside the dialog
     instead of clipping against the scrolling body. It then selects one or
-    more models from a searchable multi-select catalog. Each selected model has an independent, compact
+    more models from a searchable multi-select catalog. The discovered-list
+    header has a checkbox that selects or clears every currently visible row,
+    including when a search filter is narrowing the list, and a Fetch list
+    action that re-probes the service immediately. Each selected model has an independent, compact
     configuration row for context window, max output, supported thinking
     levels, and the default thinking level. The row keeps the model ID,
     source, capabilities, and token limits visible at a glance, and expands

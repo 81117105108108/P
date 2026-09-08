@@ -203,6 +203,11 @@ function promptAttachmentsFromMessage(
 // match against every locale's defaults (case-insensitive), not just the
 // active locale's.
 const LEGACY_DEFAULT_TITLES = new Set(["new task", "new chat", "新建任务", "新对话"]);
+const SESSION_TITLE_FALLBACK_LENGTH = 48;
+
+function promptFallbackSessionTitle(userPrompt: string, emptyTitle: string): string {
+  return userPrompt.trim().replace(/\s+/g, " ").slice(0, SESSION_TITLE_FALLBACK_LENGTH) || emptyTitle;
+}
 
 function withoutRecordKey<T>(record: Record<string, T>, key: string): Record<string, T> {
   const next = { ...record };
@@ -244,11 +249,65 @@ function notifyInteractivePrompt(
     .showNativeNotification({
       id: crypto.randomUUID(),
       sessionId,
+      kind: "interactive",
       title,
       body,
       source: "interactive",
     })
     .catch(() => undefined);
+}
+
+const manuallyRenamedSessionIds = new Set<string>();
+const summarizedSessionIds = new Set<string>();
+
+async function triggerAutoTitleSummarization(sessionId: string) {
+  if (!sessionId) return;
+  if (manuallyRenamedSessionIds.has(sessionId)) return;
+  if (summarizedSessionIds.has(sessionId)) return;
+
+  const state = useAppStore.getState();
+  const session = state.sessions.find((s) => s.id === sessionId);
+  if (!session) return;
+
+  const messages =
+    sessionId === state.activeSessionId
+      ? state.messages
+      : sessionTranscriptCache.get(sessionId) ?? [];
+
+  const firstUser = messages.find((m) => m.role === "user");
+  if (!firstUser?.content) return;
+  // The marker covers renames made in this renderer and survives restart.
+  // The title check also protects custom titles created before the marker was
+  // introduced, while retaining the prompt fallback until its summary lands.
+  if (
+    state.sessionMeta[sessionId]?.manualTitle ||
+    (!isDefaultSessionTitle(session.title) &&
+      session.title.trim() !== promptFallbackSessionTitle(firstUser.content, ""))
+  ) {
+    return;
+  }
+
+  const firstAssistant = messages.find(
+    (m) => m.role === "assistant" && typeof m.content === "string" && m.content.trim(),
+  );
+
+  summarizedSessionIds.add(sessionId);
+
+  try {
+    const res = await api.summarizeSessionTitle({
+      sessionId,
+      userPrompt: firstUser.content,
+      assistantReply:
+        typeof firstAssistant?.content === "string" ? firstAssistant.content : undefined,
+    });
+    const nextTitle = res?.title?.trim();
+    if (nextTitle && !manuallyRenamedSessionIds.has(sessionId)) {
+      await api.renameSession(sessionId, nextTitle);
+      await useAppStore.getState().refreshSessions();
+    }
+  } catch {
+    // Non-fatal: keep current truncated prompt title as fallback
+  }
 }
 
 export type ToastVariant = "info" | "success" | "warning" | "error";
@@ -966,6 +1025,9 @@ function openPlanArtifact(
 }
 
 const initialSidebarPreferences = loadSidebarPreferences();
+for (const [sessionId, meta] of Object.entries(initialSidebarPreferences.sessionMeta)) {
+  if (meta.manualTitle) manuallyRenamedSessionIds.add(sessionId);
+}
 const initialWorkPanelWidth = loadWorkPanelWidth();
 
 function currentWorkPanelContext(state: AppState): WorkPanelContext {
@@ -2115,8 +2177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const current = get().sessions.find((s) => s.id === sessionId);
       if (isDefaultSessionTitle(current?.title)) {
-        const nextTitle =
-          content.trim().replace(/\s+/g, " ").slice(0, 48) || untitledTaskTitle();
+        const nextTitle = promptFallbackSessionTitle(content, untitledTaskTitle());
         // Fire-and-forget: renaming the sidebar title must not delay the prompt
         // reaching the agent runtime — removes visible lag after pressing Enter.
         api.renameSession(sessionId, nextTitle)
@@ -2928,18 +2989,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!id) return;
     const nextTitle = title.trim();
     if (!nextTitle) throw new Error("Session title must not be empty");
+    manuallyRenamedSessionIds.add(id);
     const result = await api.renameSession(id, nextTitle);
     if (!result.ok) throw new Error("Session not found");
     set((state) => ({
+      sessionMeta: {
+        ...state.sessionMeta,
+        [id]: { ...(state.sessionMeta[id] || {}), manualTitle: true },
+      },
       sessions: state.sessions.map((session) =>
         session.id === id ? { ...session, title: nextTitle } : session,
       ),
     }));
+    persistCurrentSidebar(get);
   },
 
   deleteSession: async (id) => {
     if (!id) return;
     await api.deleteSession(id);
+    manuallyRenamedSessionIds.delete(id);
     pendingSessionConfigurations.delete(id);
     sessionTranscriptCache.delete(id);
     sessionHistoryCache.delete(id);
@@ -3653,6 +3721,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         });
       } else if (event.type === "agent_end") {
         void get().refreshSessions();
+        void triggerAutoTitleSummarization(envelope.sessionId);
       } else if (event.type === "planning_state") {
         void get().refreshSessions();
       }
@@ -3700,6 +3769,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       case "agent_end":
         set({ isRunning: false });
         void get().refreshSessions();
+        void triggerAutoTitleSummarization(envelope.sessionId);
         break;
       case "turn_end":
         break;
