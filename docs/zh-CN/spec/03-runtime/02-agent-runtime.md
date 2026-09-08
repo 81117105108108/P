@@ -464,16 +464,26 @@ Frontmatter 新增 `permission: inherit | ask | accept-edits | auto`（默认
 一起到来，声明会在解析时被丢弃并留下警告，其委托仍在会话的有效模式下运行 ——
 想要该作用域的用户把文档复制到自己的 agents 目录。唯一可写的内置 `fixer` 也
 默认继承父会话：`auto` 下跟随父会话自动放行，而 `ask` 和 `accept-edits` 仍保留
-各自的审批边界。
+各自的审批边界。显式声明的内置或用户作用域仍然是一次有意的覆盖。
 
 **工具（ADR 0089）。** 委托是四个工具的生命周期，仅在 Agent 模式下且目录
 非空时构建，四个工具都属于 Agent 核心集而不是第 7.1 节的按需目录：
 
-- `Task(agent, task, description?)` — 验证其参数（未知的 `agent`、空的
+- `Task(agent, task, description?, model?)` — 验证其参数（未知的 `agent`、空的
   `task`、无法解析的模型引脚以及工具全部不可用的定义，各自返回一个工具
   错误解释失败而不是抛出），**在后台**启动委托，并立即返回一个
   `delegationId`。当会话已经在运行 `MAX_SUBAGENT_CONCURRENCY`（10）个
   委托时，启动会以工具错误失败。
+
+  `Task` 工具接受一个可选的 `model` 参数（`"provider/modelId"`），用于在本次
+  运行中覆盖该委托的模型。解析优先级：Task.model 参数 → 定义 frontmatter 的
+  引脚 → 会话模型。父 agent 会在系统提示中看到一份模型摘要，列出提供商设置里
+  所有标记为 `availableForSubagents` 的模型。若委托目录为空，提示会告诉模型
+  省略 `model` 并继承会话模型；显式给出的键如果正好就是当前会话的
+  provider/model，同样按继承处理。其他显式模型键必须已配置并已为委托启用。
+  当某个模型键没有被预先解析时，运行时会请求 Electron main 通过
+  `provider.resolveSubagentModel` RPC 按需解析。已启动的 `Task` 结果详情会记录
+  本次运行实际使用的 `modelId`。
 - `TaskWait(delegationIds?, mode?, minCompleted?, timeoutSeconds?)` — 收敛
   正在运行的委托（默认全部）并返回它们的报告；`mode: "any"` 配合
   `minCompleted` 可以在前 N 个完成时提前收敛。已结算的委托立即返回，
@@ -494,11 +504,15 @@ Frontmatter 新增 `permission: inherit | ask | accept-edits | auto`（默认
 `maxTurns` 是可选的按定义兜底（最大 80）；省略、`none` 或 `0` 表示不限轮数。
 内置委托各自声明与其工作量相称的值 —— `explorer` 60、`code-reviewer` 50、
 `test-runner` 40、`fixer` 80 —— 因此始终无法收敛的委托会以 `truncated`
-连同其部分报告结束，而不是一直跑到时长上限。其状态为 `completed`、
+连同其部分报告结束，而不是一直跑到时长上限。内置的 `explorer` 声明 `Read`、
+`Glob`、`Grep` 和 `Bash`，而 `code-reviewer` 保持只读。其状态为 `completed`、
 `truncated`、`failed`、`aborted`、`timed_out` 以及仅存在于注册表的
 `stopped`；终态通过 `TaskWait` 呈现，其文本是报告（上限为
 `MAX_SUBAGENT_REPORT_CHARS`，12k），其 details 携带 `delegationId`、`agent`、
-`status`、`turns`、`toolCalls`，以及失败或超时时的 `error`。
+`status`、`startedAt`、结算后的 `completedAt`、`turns`、`toolCalls`，以及失败或
+超时时的 `error`。`startedAt` 与 `completedAt` 是以毫秒计的运行时时间戳，也是
+渲染器展示委托时长的事实来源；`Task` 那次立即返回的工具调用时长只覆盖启动
+后台工作这一段。
 
 **委托生命周期（D328）。** 运行时不再用空闲或总时长掐死委托。
 `idle-timeout` / `max-duration` 仍会解析以便旧文档能加载，但不会被武装。
@@ -509,21 +523,21 @@ Stop / 运行时销毁。主 Agent 用 `TaskStop` 判断要不要取消；运行
 当父级在委托仍在跑时停止调用工具，运行时吞掉这次 `agent_end`，保持持久
 回合打开，等委托完成后再把报告塞回父级。父级收工不会中止它们。
 
-**模型引脚。** Frontmatter 中的 `model: <provider>/<model>` 已解决一次
-每次在 Electron main 中启动，其中凭证和 pi 目录都存在，针对
-提供商 ID、供应商密钥或显示名称，上限为
-`MAX_SUBAGENT_PROVIDERS` (8) 不同的提供商。省略了无法解析的引脚
-故意从绑定地图中提取；运行时将缺失的条目变成一个工具
-命名引脚时出错，并且永远不会回退到会话模型。一个定义的
-`thinkingLevel` 被固定在具有相同的解析模型上
-最近支持的规则如§5c。
+致命的 provider/stream 错误、父级中止以及显式的 `maxTurns`，仍分别保留它们
+既有的 `failed`、`aborted` 和 `truncated` 结果。
 
-**事件和上下文。**委托发出的每个事件都携带
-信封上印有 `parentToolCallId` 和 `agentName`，Electron 主副本均印有
-到持久化的行上。当运行时重建模型上下文时，它会跳过每个
-`parentToolCallId` 行：父级只通过 `TaskWait` 或运行时的完成提示（D328）
-看到报告，并且重播代表行既会与此相矛盾，也会重新引入上下文成本
-委托的存在是为了避免。
+**模型引脚。** Frontmatter 中的 `model: <provider>/<model>` 在每次启动时于
+Electron main 里解析一次——凭据与 models.dev 快照都在那里——匹配提供商 id、
+厂商键或显示名称，且最多 `MAX_SUBAGENT_PROVIDERS`（8）个不同的提供商。无法
+解析的引脚会被有意地排除在绑定映射之外；运行时把这个缺失的条目转成一个点名
+该引脚的工具错误，绝不回退到会话模型。定义中的 `thinkingLevel` 会按第 5c 节
+同样的"就近支持"规则，对照解析出的模型做钳制。
+
+**事件与上下文。** 委托发出的每个事件都在信封上携带 `parentToolCallId` 和
+`agentName`，Electron main 会把这两者一并复制到持久化的行上。运行时重建模型
+上下文时会跳过每一条带 `parentToolCallId` 的行：父级从始至终只通过 `TaskWait`
+或运行时的完成提示（D328）看到报告，重放委托的行既与这一点相矛盾，也会重新
+引入委托机制本就是为了避免的上下文开销。
 
 **回合所有权。** 委托的生命周期永远不会轮到 Electron main
 处理。父级可以在 `Task` 之后继续自己的主线或对用户说话。如果它在委托仍在
