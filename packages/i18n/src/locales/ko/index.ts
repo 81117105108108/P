@@ -707,6 +707,7 @@ export const ko = {
     importSourceOpenCode: "OpenCode",
     importSourceCodex: "Codex",
     importSourcePi: "Pi",
+    importSourceWorkBuddy: "WorkBuddy",
     importSourceCcSwitch: "CC Switch",
     importModelsTitle: "모델 구성",
     importModelsScanDesc:

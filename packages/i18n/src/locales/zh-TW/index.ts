@@ -703,6 +703,7 @@ export const zhTW = {
     importSourceOpenCode: "OpenCode",
     importSourceCodex: "Codex",
     importSourcePi: "Pi",
+    importSourceWorkBuddy: "WorkBuddy",
     importSourceCcSwitch: "CC Switch",
     importModelsTitle: "模型配置",
     importModelsScanDesc:
