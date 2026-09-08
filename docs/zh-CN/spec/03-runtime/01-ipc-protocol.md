@@ -36,8 +36,9 @@
 | `window` | 无框窗口状态、控件和有界工作面板宽度预留 |
 | `menu` | 列入许可名单的应用程序菜单命令和本机 editing/window 操作 |
 | `notification` | 持久收件箱 list/read/clear 和 new/activated 事件 |
+| `stats` | 已完成回合的 token 历史（host RPC；仪表板由插件拥有） |
 
-## 3. 渠道约定
+## 3. 通道约定
 
 ```text
 invoke: pi-desktop/<domain>/<action>
@@ -71,7 +72,7 @@ type AppError = {
 
 ## 5. Agent API
 
-### 5.1 提示
+### 5.1 prompt
 
 ```ts
 type AgentPromptRequest = {
@@ -168,7 +169,7 @@ type AgentStopResponse = {
 **立即发送** 操作时调用该渠道，并在终止事件之后通过常规的 `agent/prompt`
 流程释放该项。
 
-### 5.3 中止
+### 5.3 abort
 
 ```ts
 type AgentAbortRequest = {
@@ -187,7 +188,7 @@ type AgentAbortRequest = {
 错误），不做任何转录重写；持久副本是运行时自己的中止最终行，若它始终未到，则是
 主机提升的进行中检查点。
 
-### 5.4 紧凑型（协议 v10）
+### 5.4 compact（协议 v10）
 
 ```ts
 type AgentCompactRequest = { sessionId: string };
@@ -351,7 +352,7 @@ Electron 将每个主机 `plans.changed` 通知原封不动地转发到
 主机拥有的截止日期失败，并出现稳定的 Plan/Goal 批准错误。没有
 请求更改操作。
 
-### 5.5 获取状态
+### 5.5 getStatus
 
 ```ts
 type AgentStatus = {
@@ -363,7 +364,7 @@ type AgentStatus = {
 };
 ```
 
-## 6. Agent 活动
+## 6. Agent 事件
 
 从主→渲染器推送：
 
@@ -450,7 +451,7 @@ type AgentEvent =
 同一回合，没有终端 `error` 事件或重复的辅助消息。
 第二次失败会发出终端标准化 `STREAM_FAILED` 错误。
 
-## 6a。通知 API（D117，协议 v4）
+## 6a. 通知 API（D117，协议 v4）
 
 持久收件箱请求已列入允许名单 preload 调用 Electron 转发
 到单一主机 RPC 域，无需渲染器访问 SQLite：
@@ -673,9 +674,18 @@ sidecar 用于显示每秒输出令牌的流时间。 `ToolTokenUsage`
 永远不会将它们合并到确切的提供商总数中。年长的同行可能会忽略所有
 这些可选字段不会破坏 v6 握手。
 
+### stats
+
+- `pi-desktop/stats/getTokenUsageHistory({ startDate?, endDate?, bucket? }) -> TokenUsageHistoryResult`
+
+`bucket` 取 `day` | `week` | `month`。省略日期时使用主机默认窗口
+（53 周 / 52 周 / 24 个月），按主机本地日历计算。`week` 的键使用 ISO 周年
+（`%G-W%V`）。结果会填充范围内的空桶。此通道不是设置页面；面向用户的仪表板
+是插件 `pi.token-insights`（D335 / ADR 0173）。
+
 ## 8. 设置/秘密 API
 
-### 设置
+### settings
 可以返回到UI的非敏感配置：
 
 - 提供商列表（无秘密明文）
@@ -700,7 +710,7 @@ sidecar 用于显示每秒输出令牌的流时间。 `ToolTokenUsage`
 `planApprovalPermissionMode` 被忽略并从当前读取中剥离，
 写道；它不会被暴露或重新创建。
 
-### 外壳
+### shell
 
 ```ts
 type CommandShellId = "windows-powershell" | "cmd" | "git-bash" | "bash";
@@ -736,7 +746,7 @@ type CommandShellCatalog = {
 主机在权限评估之前和生成之前拒绝更改的引脚
 `COMMAND_SHELL_CHANGED`。
 
-### 秘密
+### secrets
 - `secrets/set(providerId, apiKey)`
 - `secrets/delete(providerId)`
 - `secrets/has(providerId) -> boolean`
@@ -745,7 +755,7 @@ type CommandShellCatalog = {
 - 将完整的 API 密钥写入普通日志
 - 在渲染器中长期保留 API 密钥明文
 
-### 厂商账户（OAuth，D237）
+### 厂商账户（OAuth，D237/D240）
 
 用厂商订阅账户登录是 Electron 主进程内的会话，因此只走 IPC —— 主机协议
 版本不变。五条调用通道加一条事件通道：
@@ -794,7 +804,7 @@ StrictMode 会在挂载时把 effect 跑两遍，第二次尝试会再开一个�
 同样禁止：任何事件都不携带令牌、刷新令牌或授权码。`accountLabel` 只是
 展示字符串。
 
-## 9. API 项目
+## 9. 项目 API
 
 - `project/open()`：系统目录选择器
 - `project/openFolder(path)`：打开系统文件中已知的项目目录
@@ -822,7 +832,7 @@ type ProjectRecord = {
 };
 ```
 
-## 10. 工具权限API
+## 10. 工具权限 API
 
 当工具需要确认时：
 
@@ -920,7 +930,7 @@ type PluginSummary = {
 }
 ```
 
-## 12a。用户 MCP 服务器 API (D193)
+## 12a. 用户 MCP 服务器 API (D193)
 
 用户拥有的 MCP 配置按 ID 写入以下目录中的单个 JSON 文件：
 `~/.agents/servers/<id>.json` 或 `<project>/.agents/servers/<id>.json`。
@@ -953,7 +963,7 @@ type McpServerStatus = {
 工具以 `mcp_<serverId>_<toolName>` 的形式到达代理，与插件桥的
 `plugin_` 命名空间分离 (D015)。
 
-## 12b。用户技能 API (D194)
+## 12b. 用户技能 API (D194)
 
 用户技能是从 `~/.agents/skills` 和 `<project>/.agents/skills` 扫描的 Markdown
 文档，同时接受直接 Markdown 文件和约定的 `<skill>/SKILL.md` 形状。启用状态
@@ -976,7 +986,7 @@ ASCII slug：frontmatter `name` 能 slugify 时用它，否则 `SKILL.md` 用技
 进入提示，模型调用 `Skill` 时才读取正文 (D174)。缺失文件会在下一次扫描时
 从列表移除，并清理其本地状态。
 
-## 12c。子代理 API (D202)
+## 12c. 子代理 API (D202)
 
 用户拥有的子代理仅是全局 Markdown 文档：`~/.agents/subagents/<id>.md`。
 没有项目级子代理目录。启用状态写在
@@ -994,7 +1004,7 @@ Electron 的 `subagent/list` IPC 通道向设置 > 智能体 > 子代理暴露�
 列表。运行时目录把这些全局用户文档与内置定义合并；不会扫描 `.pi/agents`
 或任何项目能力目录。
 
-## 12d。能力级别与本地启用状态
+## 12d. 能力级别与本地启用状态
 
 技能和 MCP 管理调用使用：
 
@@ -1018,7 +1028,7 @@ type AgentCapabilityQuery = {
 - 内置命令
 - 插件贡献.命令
 
-## 13a。工作面板 API
+## 13a. 工作面板 API
 
 工作面板通道是 Electron 主要的实现。用户驱动的工作区
 操作从 `workspace.get` 解析可见根并失败关闭
@@ -1026,7 +1036,7 @@ type AgentCapabilityQuery = {
 通过 `session.get` 进行对话，因此后台预览永远不会继承
 可见会话的工作区。
 
-### 工作区
+### workspace
 
 - `workspace/diff()` → `WorkspaceDiff { repo, clean, files: DiffFile[], truncated? }`。
   此遗留诊断通道可以检查当前工作树，但它
@@ -1038,7 +1048,7 @@ type AgentCapabilityQuery = {
   恢复快照；它返回 `rolledBack`、`alreadyRolledBack`、
   `conflict` 或 `unavailable` 并且永远不会覆盖冲突的后续编辑。
 
-### 浏览器 (D100, D333)
+### browser (D100, D333)
 
 Chrome 和代理 CDP 位于随应用打包的 `pi.browser` 插件中，通过 `pi.browser.*` 访问。
 渲染器 IPC 仅保留给 Plan 安全的预览门面和 URL 回退：
@@ -1062,7 +1072,7 @@ Chrome 和代理 CDP 位于随应用打包的 `pi.browser` 插件中，通过 `p
 - `fs/open({path})` → 用系统默认应用打开。词法包含范围与 `fs/read` 相同（读取额外做 realpath）。
 - `fs/list` 仍只限工作区；外面的遍历被拒绝（`INVALID_ARGUMENT`）。
 
-## 13b。桌面菜单和窗口 API
+## 13b. 桌面菜单和窗口 API
 
 preload 公开同步、只读 `platform: NodeJS.Platform`
 值，以便渲染器选择本机 macOS chrome 或无菜单 Windows/Linux
@@ -1206,7 +1216,7 @@ Electron 报告的右侧角）改变的是面板目标。Main 通过
 仅针对当前可见的会话设置此目标：背景工件
 无法更改可见的保留几何形状。
 
-## 13c。 Composer 输入 API（D123/D124/D197、ADR 0024/0059）
+## 13c. Composer 输入 API（D123/D124/D197、ADR 0024/0059）
 
 仅电子通道支持输入框自动完成和剪贴板文件
 参考。 `composer/commands` 和 `fs/index` 是只读且软故障；
@@ -1249,6 +1259,36 @@ type FsIndexEntry = { path: string; kind: "file" | "dir" };
 从文件路径派生的目录，8000 个条目上限，`truncated: true`，
 每个根的短 TTL 缓存。无法关闭到空列表而没有
 工作区。模糊过滤发生在渲染器端。
+
+### composer/pickFiles 和 composer/pickPhotos
+
+```ts
+composer/pickFiles() -> { token: string | null; canceled: boolean }
+composer/pickPhotos() -> { token: string | null; canceled: boolean }
+```
+
+两个对话框都在 Electron main 中运行。Composer 以 `pickFiles` 作为其唯一的
+file/image 入口：它接受常规文件且不带类型过滤，由导入器根据 MIME/扩展名元数据
+把每个结果分类为图片或文件。`pickPhotos` 作为兼容通道保留给较旧的渲染器客户端。
+目录不属于 MVP 选择器契约。用户选定文件后，main 会把原生路径存放在一个绑定到
+发起方 `WebContents` 的令牌之下，该令牌存活 60 秒且只能消费一次。渲染器只收到
+该令牌，绝不会收到所选的绝对路径。
+
+### composer/importFiles
+
+```ts
+composer/importFiles({ sessionId, token }) -> {
+  files: ComposerPastedFile[];
+}
+```
+
+Electron main 消费这个与发送方绑定的选择器令牌，通过 `realpath` 解析每条记录的
+路径，要求目标是已存在的常规文件，套用与剪贴板传输相同的 20 个文件 / 单文件
+64 MiB / 合计 128 MiB 限制，并把字节复制到
+`<data_dir>/scratch/<sessionId>/pasted/` 下一个以 UUID 支撑的净化名称。令牌在
+导入开始之前就被删除，因此无法重放。返回的 `ComposerPastedFile` 记录是渲染器
+唯一会保存或派发的路径，所以一次选择器操作不可能把外部来源路径留在提示里，也
+不可能绕过附件根边界。
 
 ### composer/pasteFiles
 
