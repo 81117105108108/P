@@ -69,7 +69,7 @@
 [16-tool-result-limits](/zh-CN/spec/03-runtime/16-tool-result-limits) 存在于磁盘上，已引用
 由 path/hash 提供。
 
-### 2. 0 消息拥有的评论快照 (ADR 0043)
+### 2.0 消息拥有的评论快照 (ADR 0043)
 
 成功的工作区 `PRAGMA user_version`/Plan/Goal 工具结果携带有界
 [03-工具和权限](/zh-CN/spec/03-runtime/03-tools-and-permissions) 中描述的 `details.review` 记录。
@@ -80,7 +80,7 @@
 启动时不再存在。快照永远不会从 Git 推断出来，所以稍后
 commit 不会删除历史审查证据。
 
-### 2. 1 成绩单文件 (D119)
+### 2.1 转录文件 (D119)
 
 `sessions/<sessionId>.jsonl` — 第一行是会话标头，然后是一行
 每条消息； `seq` 由行顺序隐含：
@@ -183,7 +183,7 @@ PRAGMA auto_vacuum = INCREMENTAL; -- set at creation, before any table
 
 ## 4. 架构
 
-### 4. 1 kv — 命名空间配置
+### 4.1 kv — 命名空间配置
 
 替换 v1 `settings` + `meta`，并托管插件设置（规范 07-11 §5）。
 
@@ -249,7 +249,7 @@ type SidebarPreferences = {
   主机拥有的 `kv(app, currentProjectId)` 并通过以下方式恢复
   `workspace.get`；渲染器不会保留竞争的活动路径。
 
-### 4. 2 项目——工作发生的地方
+### 4.2 projects — 工作发生的地方
 
 替换 v1 `workspace` 单例。提供设置项目存档索引
 (D066/D133)、侧边栏按项目分组（基准§3.8）以及未来的每个项目
@@ -280,7 +280,7 @@ CREATE TABLE projects (
   表，没有部分唯一标志。保留的选项卡不会添加更多当前项目
   字段。
 
-### 4. 3 提供商
+### 4.3 providers
 
 与v1作用相同； `headers_json` + `compatibility_json` 合二为一
 可扩展的 `config_json`（形状符合 [12-provider-config-schema](/zh-CN/spec/03-runtime/12-provider-config-schema)）。
@@ -304,7 +304,7 @@ CREATE TABLE providers (
 );
 ```
 
-### 4. 4 模型 — 目录缓存
+### 4.4 models — 目录缓存
 
 实现 [13 模型目录和选择](/zh-CN/spec/03-runtime/13-model-catalog-and-selection)
 （v1 已死，`provider_models` 从未死过）。
@@ -328,7 +328,7 @@ CREATE TABLE models (
 `source='user'`** 行。最新模型的 MRU 保留在 `kv(cache)` — 这是一个
 有界显示列表，而不是关系数据。
 
-### 4. 5 节课
+### 4.5 sessions
 
 ```sql
 CREATE TABLE sessions (
@@ -400,7 +400,7 @@ CREATE INDEX idx_sessions_project ON sessions(project_id) WHERE project_id IS NO
   子级现有 `message_revisions` 存储中的响应尾部；来源
   抄本和源版本的修订永远不会被重写。
 
-### 4. 6 圈 — 每个代理运行一行
+### 4.6 turns — 每次 agent 运行一行
 
 [10-session-state-machine](/zh-CN/spec/03-runtime/10-session-state-machine) 的持久性一半
 （旧逻辑模型中的 `turn_runs`）以及 usage/cost 的汇总点。
@@ -422,7 +422,7 @@ CREATE TABLE turns (
 CREATE INDEX idx_turns_session ON turns(session_id, started_at DESC);
 ```
 
-### 4. 6a plan_approvals — 不可变的检查点和执行字段（模式 v11）
+### 4.6a plan_approvals — 不可变的检查点和执行字段（模式 v11）
 
 主机将每个提交的 Markdown 快照写入到一个新的唯一文件中
 提案类型的目录：`<workspaceRoot>/.pi/plan/` 用于计划和
@@ -506,7 +506,7 @@ Renderer 重新加载
 每条消息成本芯片的会话汇总（基准§3.2），failed/aborted 徽章
 （§3.8），并重试谱系。
 
-### 4. 7 消息 — 文字记录索引
+### 4.7 messages — 转录索引
 
 脚本本身是每个会话的 JSONL 文件（第 2.1 节）；这张表是它的
 派生索引：每条消息一行携带排序、提升的过滤列，
@@ -564,7 +564,7 @@ type Block =
 - `mid`（显式整数主键）在 `VACUUM` 上引脚 rowid，其中
   FTS 外部内容映射取决于； `id` 保留有线格式 uuid。
 
-### 4. 7a 子代理归属（D201、ADR 0062）
+### 4.7a 子代理归属（D201、ADR 0062）
 
 子代理生成的行存储在相同的转录文件和相同的记录文件中
 作为父级的索引；标记它们的是文件行 `meta` 中的两个字段
@@ -593,7 +593,7 @@ meta.agentName?: string         // the definition name, e.g. "code-reviewer"
 用它委托行，并使用它们所属的分支重新生成存档
 到。
 
-### 4. 8 messages_fts — 全文搜索
+### 4.8 messages_fts — 全文搜索
 
 跨记录的全局搜索（WorkBuddy-基准搜索、命令
 调色板）。 Trigram 分词器涵盖 CJK 和子字符串匹配；查询更短
@@ -626,7 +626,7 @@ CREATE TRIGGER messages_au AFTER UPDATE OF text ON messages
 经过验证的端到端（insert/update/delete/cascade + CJK trigram match）
 `sqlite3` 3.43+。
 
-### 4. 9 message_revisions — 重新生成历史索引
+### 4.9 message_revisions — 重新生成历史索引
 
 归档丢弃的重新生成分支，以便用户可以分页以前的变体
 而不将它们堆叠在实时转录中（D105/D109）。一排就是一排
@@ -679,7 +679,7 @@ CREATE INDEX idx_message_revisions_root
   索引行的变体（其回合在归档前失败）作为新变体单独存储，绝不覆盖之前的
   变体。
 
-### 4. 10 工件 — 会话生成的文件
+### 4.10 artifacts — 会话生成的文件
 
 支持工件表面（基准§3.7）。 v1 计划从中得出这个
 `audit_log`，但审计有效负载从未记录文件路径；明确的
@@ -703,7 +703,7 @@ CREATE INDEX idx_artifacts_time ON artifacts(updated_at DESC);
 写入会话暂存目录 (D114) 被排除：工件列表
 仅工作区可交付成果。
 
-### 4. 11 Scheduled_tasks + task_runs — 自动化
+### 4.11 scheduled_tasks + task_runs — 自动化
 
 将计划任务移出 Electron 的 `scheduled-tasks.json`（D002 修复）并
 添加自动化页面所需的运行历史记录（定时任务/运行记录选项卡）。
@@ -750,7 +750,7 @@ JSON 值。
 背景。用户必须先将 task/session 显式切换为 Agent
 可以执行无人值守的运行。
 
-### 4. 12 Secrets_meta
+### 4.12 secrets_meta
 
 存在秘密的注册表（blob 文件以 sha256 命名，否则
 不可数）。 `owner_kind/owner_id` 将 v1 的仅提供商列概括为
@@ -770,7 +770,7 @@ CREATE TABLE secrets_meta (
 秘密*值*永远不会进入数据库（D028/D031）：操作系统安全存储主，
 `secrets/` 下的 AES-GCM 文件回退。
 
-### 4. 13 审计日志
+### 4.13 audit_log
 
 仅追加；现在已编入索引并可修剪。整数自动增量 PK 取代 v1 的
 随机 uuid（更便宜的插入，自然顺序）。
@@ -788,7 +788,7 @@ CREATE INDEX idx_audit_session ON audit_log(session_id, ts)
   WHERE session_id IS NOT NULL;
 ```
 
-### 4. 14 通知 — 持久本地收件箱 (D117)
+### 4.14 notifications — 持久本地收件箱 (D117)
 
 一行记录了一个终端代理轮转结果，该结果在
 当前聊天的焦点。它仅存储结构化源数据；渲染器和
@@ -864,7 +864,7 @@ CREATE INDEX idx_notifications_unread
 | 重新生成分支保存 | 追加修订行（带 `revisionIndex` 时为该已有变体的刷新行） | 带有 `message_count` 的索引行（+ `is_active` 翻转）；刷新只更新 `message_count` |
 | 回合完成分支存档 (`session.saveActiveRevision`) | 附加修订行（活动变体已归档时为刷新行），然后仅重写寻呼机标记的根用户的转录行 | 带有 `message_count` 的索引行（+ `is_active` 翻转）；其他消息的索引行未受影响 |
 | 修订版开关 | 先为实时分支自身的变体追加刷新行，读取目标分支，原子转录重写并保留锚点仍存在的检查点 | 翻转 `is_active`，重建索引行并带上每条幸存消息所属的 `turn_id`，重置 `last_seq` |
-| 进口 | 写入成绩单文件 | 每个会话一笔交易：会话行 + 索引行；失败时文件将被删除 |
+| 导入 | 写入转录文件 | 每个会话一笔交易：会话行 + 索引行；失败时文件将被删除 |
 | 会话删除 | 行删除后删除两个会话文件 | `DELETE FROM sessions`（级联）；Electron 主进程会丢弃该会话的 outbox 条目（D318） |
 | 孤立会话恢复（启动 / `session.appendMessage`，D318） | 保留现有的 JSONL 文件 | 重新插入缺失的 `sessions` 行，并依据该文件重建索引行；若文件也已不存在，追加操作会在现有 id 下插入一个占位行，使 outbox 能够排空 |
 
