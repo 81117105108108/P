@@ -2276,6 +2276,33 @@ dismissToast(id: number); // ToastHost internal / tests
 - 项目行公开和操作菜单按钮公开本地化、
 项目特定的可访问名称。
 
+### 18.5 ModelConfigImportPanel
+
+扫描同样那些本地 agent 存储中的提供商与模型设置，按来源分组查看候选项，
+选中它们，然后发起一次显式导入。
+
+```text
+[Found N providers]                         [Import selected (N)]
+──────────────────────────────────────────────────────────────────
+[ ] [›] Claude Code                                      N providers
+[ ] [›] OpenCode                                         N providers
+[ ] [›] CC Switch                                        N providers
+```
+
+- 该卡片独立于会话导入：它有自己的扫描、选择和"导入所选"操作。会话扫描
+  绝不会触发模型配置扫描。
+- 按来源分组是唯一的分组方式。一次成功的扫描会替换先前的候选集合、清空
+  选择，并让所有分组保持折叠。
+- 每一行显示提供商名称、模型数量、主机、"有 API key / 无 API key"徽章，
+  以及来源。原始密钥绝不会到达渲染器。
+- 导入会为每个选中的候选项创建一条 `providers.create` 记录。若已存在
+  base URL 归一化结果与 API 风格都相同的提供商，则跳过。仅支持 OAuth 的
+  来源账户不会出现在扫描结果中。CC Switch 是第五个来源
+  （`~/.cc-switch/cc-switch.db`）；与某个 CC Switch 端点匹配的实时工具文件
+  不会被列出两次。
+- 若一次成功创建之后 `settings.defaultProviderId` 仍为空，则第一个新建的
+  提供商成为全局默认。
+
 ---
 
 ## 19. ProviderStudio（设置 → Agent）
