@@ -1069,8 +1069,8 @@ When drag/drop is implemented, these patterns should apply:
   a second scrollbar or an empty tail.
 - Clicking a delegation topology node opens an inset grouped side sheet in the
   right-side work-panel dock instead of expanding the transcript. The dock has
-  a sticky identity header (avatar, name, model caption, status capsule, and
-  elapsed time), the Task call's selectable description as a full-width grouped
+  a sticky identity header (avatar, name, and model caption on the left; status
+  capsule and elapsed time trailing on the same row), the Task call's selectable description as a full-width grouped
   card under a Task section label, capped at four lines with an inline Show
   more / Show less control for longer tasks, and its live process under an
   Activity section on one subtle vertical timeline; it does not render separate

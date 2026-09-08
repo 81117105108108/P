@@ -946,8 +946,10 @@ It does not render separate Details or Output tabs.
   a real upward gesture pauses follow and exposes the standard jump-to-latest
   control.
 - The selected delegate uses a sticky identity header: a 36px avatar with a
-  status dot, the agent name as the title, the model as a caption, and a
-  tinted status capsule beside elapsed time. The task is an inset grouped card
+  status dot, the agent name as the title, and the model as a caption. A
+  tinted status capsule and elapsed time sit on the same row, trailing the
+  identity, and never wrap onto a second line; the name ellipsizes first.
+  The task is an inset grouped card
   under a **Task** section label, left-aligned and full-width, not a transcript
   bubble. The card shows at most four lines by default; longer tasks expose an
   inline Show more / Show less control with a disclosure chevron. The live
@@ -1699,9 +1701,8 @@ work-panel dock rather than expanding the transcript:
 
 ```text
 ┌──────────────────────────────────────────────┐
-│ [bot] code-reviewer                          │
+│ [bot] code-reviewer         [Completed]  32s │
 │       claude-sonnet-4-5                      │
-│ [Completed]  32s                             │
 │                                              │
 │ TASK                                         │
 │ ┌──────────────────────────────────────────┐ │
@@ -1715,9 +1716,10 @@ work-panel dock rather than expanding the transcript:
 └──────────────────────────────────────────────┘
 ```
 
-- The dock renders a sticky identity header with the delegate name, model,
-  status capsule, and elapsed time, followed by the Task call's `task` argument
-  as a selectable inset grouped card and the live process timeline.
+- The dock renders a sticky identity header with the delegate name and model
+  on the left and the status capsule plus elapsed time trailing on the same
+  row, followed by the Task call's `task` argument as a selectable inset
+  grouped card and the live process timeline.
 - Reports and counters remain omitted from this surface. The live thinking,
   tool, and answer process is shown on the dock timeline. The topology card
   remains a compact summary in the transcript and does not gain height when
