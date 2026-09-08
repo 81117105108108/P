@@ -429,6 +429,8 @@
   justify-content: flex-end;
   gap: 6px;
   min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
 }
 
 .provider-setup-header-preset {
@@ -440,10 +442,22 @@
   font-size: var(--text-2xs);
 }
 
-.provider-setup-header-import {
+.provider-setup-header-import,
+.provider-setup-header-copy {
   flex: none;
+  max-width: 100%;
   padding: 4px 8px;
+  overflow: hidden;
   font-size: var(--text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Copy feedback stays compact while making the successful state distinct. */
+.provider-setup-header-copy.is-copied,
+.provider-setup-header-copy.is-success {
+  background: color-mix(in oklab, var(--ds-accent) 12%, transparent);
+  color: var(--ds-accent);
 }
 
 .provider-setup-header-file {
@@ -1507,6 +1521,21 @@
   .provider-setup-head-actions {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  .provider-setup-headers-toolbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .provider-setup-headers-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .provider-setup-header-preset {
+    flex: 1 1 120px;
+    min-width: 0;
   }
 
   .model-provider-row {
