@@ -22,15 +22,15 @@
 - 开发者：`debug`
 - 发布：`info`
 
-## 3. 渠道
+## 3. 通道
 
-| 频道 | 内容 | 位置 |
+| 通道 | 内容 | 位置 |
 |---|---|---|
-| 应用程序 | 启动、ipc、窗口、进程监控 | `~/.pi-desktop/logs/app/<category>.log` |
-| 主机 | rust host-core 事件（stderr 捕获） | `~/.pi-desktop/logs/host/<category>.log` |
-| 代理人 | pi sidecar turn/provider 事件（stderr 捕获） | `~/.pi-desktop/logs/agent/<category>.log` |
-| 审计 | permissions/tools/plugins 敏感操作 | host-core SQLite `audit_log` 表 |
-| 插件 | 每个插件的日志 | `~/.pi-desktop/plugins/logs/<id>.log` |
+| app | 启动、ipc、窗口、进程监控 | `~/.pi-desktop/logs/app/<category>.log` |
+| host | rust host-core 事件（stderr 捕获） | `~/.pi-desktop/logs/host/<category>.log` |
+| agent | pi sidecar turn/provider 事件（stderr 捕获） | `~/.pi-desktop/logs/agent/<category>.log` |
+| audit | permissions/tools/plugins 敏感操作 | host-core SQLite `audit_log` 表 |
+| plugin | 每个插件的日志 | `~/.pi-desktop/plugins/logs/<id>.log` |
 
 注意事项：
 
@@ -41,7 +41,7 @@
   平面文件：它需要可查询性和比调试日志更长的保留时间。
   `logs folder` 诊断仍然适用于三个文件通道。
 
-### 3a。类别路由
+### 3a. 类别路由
 
 三个进程通道是目录，而不是聚合文件。主要
 进程将每条记录写入 `<channel>/<category>.log`，因此大容量
@@ -95,7 +95,7 @@ type LogRecord = {
 
 ## 5. 必须记录的内容
 
-### 总是
+### 始终记录
 - 应用程序 boot/shutdown
 - host/agent 生成 + 握手结果
 - 会话 create/delete
@@ -110,20 +110,20 @@ type LogRecord = {
 - 工具准入拒绝、队列深度、活动类预算和 shell 生成
   资源耗尽
 
-### 从来没有
+### 绝不记录
 - API 密钥/原始秘密
 - 完全安全的存储有效负载
 - 审计中大量读取不必要的完整文件内容（使用 hashes/previews）
 
-## 6. 编辑规则
+## 6. 脱敏规则
 
-1. 与 `/token|secret|password|api[_-]?key/i` 匹配的密钥经过编辑
-2. 编辑授权标头
+1. 与 `/token|secret|password|api[_-]?key/i` 匹配的键名做脱敏处理
+2. Authorization 标头做脱敏处理
 3. 工具参数预览被截断（例如 2KB）
-4、审计时长命令输出为counted/truncated； stdout/stderr 块是
-   从未在正规渠道批发过
+4. 审计中对长命令输出做计数/截断；stdout/stderr 数据块绝不整体写入
+   常规通道
 
-## 7. 迹线相关性
+## 7. 追踪关联
 
 尽可能为每个用户可见的操作使用一个 `traceId`：
 
@@ -133,7 +133,7 @@ type LogRecord = {
 
 Renderer、Electron、主机、代理应传播这些 ID。
 
-## 7a。延迟分段 (D183)
+## 7a. 延迟分段 (D183)
 
 缓慢的代理转动在该工具内几乎从不慢。等待属于
 三个阶段之一，每个阶段都单独记录，以便可以告诉他们
