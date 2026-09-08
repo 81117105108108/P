@@ -311,8 +311,17 @@ Native-runner 输出矩阵：
 - macOS Intel x64：DMG 和 ZIP
 - Windows x64：NSIS 安装程序
 - Linux x64：AppImage 和 deb
+- Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`
 
-每个本地跑步者身上都冒着贝壳烟：
+该 ASAR 产物包含的是 Electron 应用归档，而不是完整的 Linux 发行包。
+若要重新打包，请把它作为应用归档放入目标 Electron 的 resources 布局中，
+与目标软件包内的本机主机及其他资源放在一起，然后用以下命令启动：
+
+```bash
+electron PI-Desktop-<version>-linux-x64.asar
+```
+
+每个本机运行器上的外壳冒烟测试：
 
 1. 确认窗口中没有出现 File/Edit/View/Window/Help 菜单。
 2. 验证 F10 和 Shift+F10 对焦点内容仍然可用。
