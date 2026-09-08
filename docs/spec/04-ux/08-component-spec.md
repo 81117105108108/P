@@ -596,10 +596,7 @@ reading surface of the workstation.
 ### 4.3 Layout
 
 - Background: bg-primary
-- Max content width: 920px for the thread and composer envelope, centered with
-  32px inner breathing room. The wider band keeps a short session from reading
-  as a narrow island when the work-panel dock opens; the collapsed-sidebar
-  ceiling is 820px.
+- Max content width: 720px (messages), centered
 - The transcript keeps one stable scrollbar gutter on the trailing edge. It
   never reserves a matching left gutter, so the minimap and first message do
   not leave a decorative blank strip beside the session.
@@ -1221,9 +1218,9 @@ Single message render — either user (plaintext) or assistant (markdown streami
 
 ### 8.3 Layout
 
-- Max content band: 920px thread column; assistant body max 720px
+- Max content band: 760px thread column; assistant body max 720px
 - When the sidebar is collapsed, the centered thread column and composer band
-  use an 820px ceiling. The outer main pane remains fluid and the width
+  use a 640px ceiling. The outer main pane remains fluid and the width
   transition follows the sidebar dock transition.
 - User: right-aligned, theme-neutral soft plate (`color-mix` on primary ink,
   never a fixed accent tint), borderless, `radius-lg-plus` with a tighter
@@ -2034,10 +2031,9 @@ reasoning-level control.
   headings remove uppercase transformation and wide tracking so localized labels
   remain readable.
 - Width: Home and thread-docked composers share one `24px` horizontal gutter
-  and a `920px` maximum content envelope (`820px` with the sidebar collapsed).
-  The left-edge conversation minimap is absolutely positioned outside that
-  envelope, so its appearance or disappearance never changes the composer
-  shell width.
+  and a `768px` maximum content envelope. The left-edge conversation minimap
+  is absolutely positioned outside that envelope, so its appearance or
+  disappearance never changes the composer shell width.
 - Visual parity: Home and thread-docked composers use the same
   `.composer-shell`, `.composer-input-wrap`, `.composer-input`, and
   `.composer-toolbar` spacing, minimum heights, theme surfaces, and controls.

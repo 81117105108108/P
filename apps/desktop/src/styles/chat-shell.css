@@ -43,10 +43,8 @@
   flex: 1;
   flex-direction: column;
   background: var(--ds-bg-primary);
-  /* Keep the conversation wide enough to meet the work-panel dock without
-     leaving a decorative gutter on either side of a short turn. */
-  --chat-content-max-width: 920px;
-  --chat-composer-max-width: 920px;
+  --chat-content-max-width: 760px;
+  --chat-composer-max-width: 768px;
   --chat-width-transition: var(--motion-duration-normal) var(--motion-ease-out);
 }
 
@@ -56,8 +54,8 @@
  * while tightening the centered content band to preserve focus.
  */
 .app-shell.sidebar-collapsed .main-pane {
-  --chat-content-max-width: 820px;
-  --chat-composer-max-width: 820px;
+  --chat-content-max-width: 640px;
+  --chat-composer-max-width: 640px;
   --chat-width-transition: var(--motion-duration-fast) var(--motion-ease-in);
 }
 

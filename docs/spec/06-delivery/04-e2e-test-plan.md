@@ -7357,9 +7357,7 @@ This test plan spec is accepted when:
   topology node. 2) Observe the right-side dock while the delegate streams.
   3) Scroll the task/process conversation upward and then return to the latest
   output. 4) Switch sessions and return to the original session.
-- **Expected**: The conversation uses the wider desktop reading band so the
-  session does not leave a decorative blank gutter beside the minimap when the
-  dock opens. The right dock shows one compact header, the Task call's
+- **Expected**: The right dock shows one compact header, the Task call's
   description in one quiet tile, and the delegate's live
   thinking/tool/answer process as a continuous timeline using the same row
   components as the main conversation. New rows appear without a reload and
