@@ -174,8 +174,10 @@ state are untouched: the failed assistant is removed from the next model context
 and the same visible message id is reused, so a retry never restarts the turn or
 re-runs a completed tool call.
 Each retry is abortable and reports its current backoff through the normalized
-status event. The main session, builtin subagents, and one-shot composer
-enhancement use the same codes, budget size, and precedence.
+status event. The `retrying` activity carries the classified error code, the
+bounded/redacted provider message, and the HTTP status when known. The main
+session, builtin subagents, and one-shot composer enhancement use the same
+codes, budget size, and precedence.
 
 When the 429 budget is exhausted, the final assistant error and lifecycle
 `error` are emitted once. Provider failures carry bounded diagnostics in

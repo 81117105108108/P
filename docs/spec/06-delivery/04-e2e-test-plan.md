@@ -6261,6 +6261,21 @@ This test plan spec is accepted when:
 - For a terminal `PROVIDER_RATE_LIMITED` (including HTTP 429), expect the TurnOutcomeCard to expose exactly one localized **Continue** action and no **Regenerate** action.
 - Click **Continue** and expect the app to append the localized continuation prompt (`Continue the user's unfinished task.` / `继续用户未完成的任务`) to the same session and start the next turn without truncating the failed turn.
 
+### US-UI-60d Retry reason tooltip
+- Start a provider request that enters a bounded retry in light and dark themes,
+  using both a rate-limit fixture with an HTTP status and a network/stream
+  fixture without one.
+- Expect the compact retrying status row to keep its existing localized label
+  and elapsed timer. Hover the retry label and expect an error-styled tooltip
+  matching the assistant error card hierarchy: localized error summary, stable
+  error code, optional HTTP status, and the bounded/redacted provider message.
+- Move the pointer away and expect the tooltip to close without adding an
+  intermediate assistant error row. Focus the retry label with the keyboard and
+  expect the same tooltip and an accessible name containing the retry reason.
+- After the retry succeeds or reaches terminal failure, expect the activity
+  tooltip to disappear and the existing assistant error/outcome surface to
+  remain the only terminal error presentation.
+
 
 ### US-UI-61 Assistant context summary + retry (D103, D184, D244, D347)
 - Complete an assistant turn that reports usage.

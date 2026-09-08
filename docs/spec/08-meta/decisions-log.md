@@ -3859,3 +3859,19 @@ D193, and D194.
 - `macos-sidebar-vibrancy.test.mjs` asserts the sidebar material, preference
   mapping, settings/pluginChanged apply path, and the darwin live-window
   vibrancy guard. See `04-ux/08-component-spec.md` §1.7 and US-UI-74 / E2E-076.
+
+## 2026-09-08 — Explain provider causes during bounded retry (D349)
+
+- The live `retrying` activity row said that the model request was being
+  retried, but did not identify the current classified failure. The eventual
+  assistant error already had the useful bounded diagnostics.
+- Decision D349: extend `AgentActivity.retrying` with optional redacted error
+  code/message and provider HTTP status. The renderer keeps the compact row and
+  reveals an assistant-error-styled tooltip on hover/focus, including the
+  localized summary, stable code/status, and provider message. No intermediate
+  transcript error row is added; the terminal assistant error/outcome remains
+  authoritative. Older status payloads without the optional field still render
+  the ordinary retry label.
+- Decision D349 is recorded as ADR 0185. See `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/02-agent-runtime.md`, `04-ux/08-component-spec.md`,
+  `04-ux/09-interaction-patterns.md`, and US-UI-60d.

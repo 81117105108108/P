@@ -386,7 +386,8 @@ request-changes action.
 type AgentActivity =
  | { phase: "starting"; since: number }
  | { phase: "waiting-model"; since: number }
- | { phase: "retrying"; since: number; attempt: number; retryDelayMs?: number }
+ | { phase: "retrying"; since: number; attempt: number; retryDelayMs?: number;
+     error?: { code: string; message: string; providerStatus?: number } }
  | { phase: "waiting-subagents"; since: number; subagentCount: number };
 
 type AgentStatus = {
@@ -450,9 +451,13 @@ type AgentEvent =
 `status` events include an optional runtime-owned `activity` phase while a turn
 is active. `waiting-model` marks the interval after the runtime has started a
 provider request and before the first assistant event arrives; `retrying` marks
-an abortable provider backoff and includes the retry attempt; and
-`waiting-subagents` marks a parent turn waiting for delegated work. The
+an abortable provider backoff and includes the retry attempt plus bounded,
+redacted error details (`code`, provider message, and HTTP status when known);
+and `waiting-subagents` marks a parent turn waiting for delegated work. The
 renderer keeps this status per session and renders it as a compact inline row.
+While the retry row is hovered or focused, the renderer exposes those details
+in an error-styled tooltip; it does not create an intermediate transcript error
+row.
 The phase is cleared when assistant or tool activity starts, or when the turn
 reaches a terminal event. These phases explain quiet intervals; they do not
 replace message/tool lifecycle events or imply a percentage of completion.

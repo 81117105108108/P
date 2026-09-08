@@ -512,6 +512,12 @@ may be retained while exactly one workspace supplies the visible shell context.
   model, retrying a provider request, or waiting for delegated work. It is
   replaced by concrete thinking/tool/answer feedback or the inline permission
   card as soon as one of those states exists.
+- A `retrying` status row carries the classified error that caused the current
+  backoff. Hovering or focusing the row's retry label reveals a compact
+  error-styled tooltip matching the assistant error card's icon, localized
+  summary, stable code/HTTP status, and bounded provider message. The tooltip
+  is informational, keyboard-reachable, and does not add a transcript row or
+  duplicate the eventual terminal error.
 - When stream completes: cursor indicator replaced by success state (2s fade)
 
 ### 2.2 Auto-scroll
