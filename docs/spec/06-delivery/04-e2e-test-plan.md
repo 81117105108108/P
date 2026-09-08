@@ -5574,6 +5574,27 @@ Each scenario is documented in this format:
   needs live vendor accounts (do not run E2E locally unless explicitly
   requested)
 
+#### E2E-197: GitHub Copilot accepts the default Enterprise domain
+
+- **Preconditions**: A build with the GitHub Copilot OAuth flow registered;
+  the device-code login can reach the GitHub endpoint.
+- **Steps**: 1) Open Settings -> Model configuration -> Add account and choose
+  GitHub Copilot. 2) Leave the Enterprise URL/domain field empty. 3) Confirm
+  Continue is enabled and submit the empty value. 4) Complete the device-code
+  login and inspect the resulting account row.
+- **Expected**: The empty text prompt is submitted as an empty string, the
+  provider uses github.com, and the device-code flow completes normally. Secret
+  and manual-code prompts remain disabled while empty. No OAuth token or device
+  credential is rendered or logged.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §19, `03-runtime/12-provider-config-schema.md`
+  §3, `08-meta/decisions-log.md` (D237/D240)
+- **Acceptance**: B (model config), Security, Quality
+- **Milestone**: M6+
+- **Status**: Unit-covered (`apps/desktop/test/oauth-login-prompt.test.mjs`);
+  live device-code journey Draft (do not run E2E locally unless explicitly
+  requested)
+
 #### E2E-152: A plugin contributes a work panel view
 
 - **Preconditions**: A development plugin declaring `ui.view` and one
@@ -5716,7 +5737,7 @@ Each scenario is documented in this format:
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004, E2E-067, E2E-076, E2E-079, E2E-092, E2E-097, E2E-143, E2E-150, E2E-168 |
-| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-005G |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-197, E2E-005G |
 | C — Conversation & stream | E2E-008, E2E-008a, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-031, E2E-040, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-059a, E2E-060c, E2E-060d, E2E-061, E2E-061a, E2E-062, E2E-064, E2E-065, E2E-068, E2E-071, E2E-073, E2E-074, E2E-075, E2E-081, E2E-083, E2E-084, E2E-086, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-106, E2E-109, E2E-111, E2E-114, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-121, E2E-AGENTS-001, E2E-142, E2E-144, E2E-145, E2E-146, E2E-147, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-161, E2E-162, E2E-166, E2E-172, E2E-173, E2E-174, E2E-177, E2E-178, E2E-179, E2E-180, E2E-182, E2E-183, E2E-187 |
 | D — Workspace | E2E-012, E2E-013, E2E-022B, E2E-024I, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060, E2E-068, E2E-075, E2E-078, E2E-153, E2E-158, E2E-182, E2E-187 |
 | E — Tools & permissions | E2E-008a, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-024I, E2E-024K, E2E-040, E2E-049, E2E-074, E2E-093, E2E-097, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102d, E2E-102e, E2E-102g, E2E-103, E2E-105, E2E-106, E2E-107, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-119, E2E-121, E2E-122, E2E-142, E2E-145, E2E-147, E2E-155, E2E-158, E2E-166, E2E-181 |

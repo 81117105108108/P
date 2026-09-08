@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { OAuthPromptRequest, OAuthVendor } from "@pi-desktop/shared";
 import type { OAuthLoginSession } from "../../lib/oauth-login-session";
+import { canSubmitOAuthPrompt } from "../../lib/oauth-login-prompt";
 import { Button, Input, cx } from "../ui";
 import { IconCheck, IconCopy, IconExternal } from "../icons";
 
@@ -141,6 +142,7 @@ export function OAuthLoginDialog({
       .respond(promptId, value)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   };
+  const canSubmitAnswer = canSubmitOAuthPrompt(prompt, answer);
 
   return (
     <div className="overlay provider-dialog-overlay" role="presentation">
@@ -248,7 +250,7 @@ export function OAuthLoginDialog({
                     className="oauth-answer"
                     onSubmit={(event) => {
                       event.preventDefault();
-                      if (answer.trim()) submitAnswer(answer.trim());
+                      if (canSubmitAnswer) submitAnswer(answer.trim());
                     }}
                   >
                     <Input
@@ -262,7 +264,7 @@ export function OAuthLoginDialog({
                       autoComplete="off"
                       autoFocus
                     />
-                    <Button type="submit" variant="primary" disabled={!answer.trim()}>
+                    <Button type="submit" variant="primary" disabled={!canSubmitAnswer}>
                       {t("settings.vendorSubmit")}
                     </Button>
                   </form>

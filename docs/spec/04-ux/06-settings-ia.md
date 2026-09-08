@@ -184,7 +184,9 @@ a usage tab.
   - picking a vendor opens a single dialog that renders whatever the flow asks
     for — an opened browser with a copyable link, a device code, a choice, or a
     text field — with a cancel action that aborts the local callback server or
-    the polling loop
+    the polling loop. Plain text prompts submit their trimmed value, including
+    an empty string when the vendor defines it as the default (for example,
+    GitHub Copilot's blank Enterprise URL means github.com).
   - Remove account is a destructive, two-step action. It deletes that account's
     OAuth credential and provider row, clears or repairs the global default when
     needed, and leaves other accounts from the same vendor untouched

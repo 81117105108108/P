@@ -946,6 +946,7 @@ export type OAuthPromptOption = {
 export type OAuthPromptRequest = {
   promptId: string;
   type: "text" | "secret" | "select" | "manual_code";
+  /** Plain text prompts may accept an empty value as a vendor-defined default. */
   message: string;
   placeholder?: string;
   options?: OAuthPromptOption[];

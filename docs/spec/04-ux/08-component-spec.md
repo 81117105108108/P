@@ -2789,6 +2789,9 @@ compatibility remains owned by pi-ai.
   model remains the head binding, and when the account is the global default,
   its model selection updates with it
 - Test connection on an account resolves that account's OAuth authorization and toasts success/failure
+- Optional OAuth text prompts keep Continue enabled for an empty value and
+  submit the trimmed value so vendor-defined defaults remain usable; secret and
+  manual-code prompts still require non-empty input
 - Context, output, thinking-level, and default-thinking edits persist per model
   through `providers.create` / `providers.update`; runtime callers continue to
   use the first configured model until multi-model conversation selection is
