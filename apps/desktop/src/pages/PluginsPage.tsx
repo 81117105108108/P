@@ -108,6 +108,7 @@ const PERMISSION_RISK: Record<string, RiskTier> = {
 /** Display order for capability badges: what it adds before what it runs. */
 const CAPABILITY_ORDER: PluginCapability[] = [
   "panel",
+  "views",
   "commands",
   "tools",
   "skills",
