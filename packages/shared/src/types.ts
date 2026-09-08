@@ -1138,8 +1138,16 @@ export type AppSettings = {
    * is set. See `network-proxy.ts`.
    */
   networkProxy?: NetworkProxySettings;
+  /**
+   * Preferred destination when clicking HTTP/HTTPS links in chat messages.
+   * `workpanel`: Preview in the Work Panel browser tab (default).
+   * `external`: Open directly in the system's default web browser.
+   */
+  linkOpenTarget?: LinkOpenTarget;
   onboardingDismissed: boolean;
 };
+
+export type LinkOpenTarget = "workpanel" | "external";
 
 export type PluginMarketSource = "official" | "mirror" | "custom";
 
