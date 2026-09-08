@@ -489,20 +489,35 @@ function Anchor({
   const linkOpenTarget = useAppStore((s) => s.settings?.linkOpenTarget ?? "workpanel");
 
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const anchorRef = useRef<HTMLAnchorElement | null>(null);
 
   useEffect(() => {
     if (!menuPosition) return;
     const close = () => setMenuPosition(null);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuPosition(null);
+    const onPointerDown = (event: PointerEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      close();
     };
-    window.addEventListener("pointerdown", close);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      close();
+      requestAnimationFrame(() => anchorRef.current?.focus());
+    };
+    window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("scroll", close, true);
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKeyDown);
+    const focusFrame = requestAnimationFrame(() => {
+      menuRef.current
+        ?.querySelector<HTMLButtonElement>('[role="menuitem"]')
+        ?.focus();
+    });
     return () => {
-      window.removeEventListener("pointerdown", close);
+      cancelAnimationFrame(focusFrame);
+      window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("scroll", close, true);
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKeyDown);
     };
   }, [menuPosition]);
 
@@ -513,6 +528,42 @@ function Anchor({
     const x = Math.min(e.clientX, window.innerWidth - 200);
     const y = Math.min(e.clientY + 4, window.innerHeight - 150);
     setMenuPosition({ top: y, left: x });
+  };
+
+  const onMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    const items = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]:not(:disabled)',
+      ),
+    );
+    if (!items.length) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? items.length - 1
+          : (current + (event.key === "ArrowDown" ? 1 : -1) + items.length) %
+            items.length;
+    items[next]?.focus();
+  };
+
+  const copyLink = async () => {
+    setMenuPosition(null);
+    if (!href) return;
+    try {
+      await navigator.clipboard.writeText(href);
+      showToast(t("settings.linkCopied", { defaultValue: "Link copied to clipboard" }), {
+        variant: "success",
+      });
+    } catch {
+      showToast(
+        t("settings.linkCopyFailed", { defaultValue: "Couldn't copy link address" }),
+        { variant: "error" },
+      );
+    }
   };
 
   // Plain click previews in the work panel (or external browser based on setting).
@@ -538,6 +589,7 @@ function Anchor({
   return (
     <>
       <a
+        ref={anchorRef}
         {...rest}
         href={href}
         onClick={onClick}
@@ -550,8 +602,10 @@ function Anchor({
       {menuPosition &&
         createPortal(
           <div
+            ref={menuRef}
             className="sidebar-row-menu sidebar-floating-menu"
             role="menu"
+            onKeyDown={onMenuKeyDown}
             style={{
               top: menuPosition.top,
               left: menuPosition.left,
@@ -583,15 +637,7 @@ function Anchor({
             <button
               type="button"
               role="menuitem"
-              onClick={() => {
-                setMenuPosition(null);
-                if (href) {
-                  void navigator.clipboard.writeText(href);
-                  showToast(t("settings.linkCopied", { defaultValue: "Link copied to clipboard" }), {
-                    variant: "success",
-                  });
-                }
-              }}
+              onClick={() => void copyLink()}
             >
               <IconCopy size={14} />
               {t("settings.linkContextMenuCopy", { defaultValue: "Copy link address" })}
