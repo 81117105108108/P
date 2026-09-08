@@ -305,17 +305,8 @@ Ubuntu 20.04, Debian 11, Fedora 35, and older releases cannot load the bundled h
 
 ### macOS
 
-macOS builds are not yet code-signed or notarized.
-
-If macOS blocks the application, right-click **PI-Desktop.app** and choose **Open**.
-
-If necessary, you can also clear the quarantine attribute:
-
-```bash
-xattr -cr /Applications/PI-Desktop.app
-```
-
-Signing and notarization are on the roadmap.
+The tagged-release workflow signs, notarizes, and staples macOS artifacts with
+Developer ID credentials before publication.
 
 ---
 
@@ -369,7 +360,7 @@ The current **0.14.x** line includes the desktop shell, streaming agent runtime,
 
 Current priorities include:
 
-* macOS code signing and notarization
+* macOS tagged-release qualification
 * installer upgrade and rollback qualification
 * continued runtime and session-recovery hardening
 * stronger plugin sandboxing and publisher verification

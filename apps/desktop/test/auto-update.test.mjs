@@ -84,9 +84,9 @@ test("main process registers update handlers and the auto-check lifecycle", () =
   assert.match(mainSource, /updater\.dispose\(\)/);
 });
 
-test("updater gates delivery mode by platform, packaging and signature reality", () => {
-  // Unsigned macOS builds must not attempt in-app installs (Squirrel.Mac
-  // rejects them); dev builds are disabled outright.
+test("updater gates delivery mode by platform and delivery policy", () => {
+  // macOS stays manual-delivery even for notarized artifacts; dev builds are
+  // disabled outright.
   assert.match(updaterSource, /if \(!isPackaged\) return "disabled"/);
   assert.match(updaterSource, /win32.*in-app|in-app.*win32/s);
   assert.match(updaterSource, /APPIMAGE/);

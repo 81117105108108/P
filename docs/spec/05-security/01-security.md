@@ -135,8 +135,9 @@ replace an artifact.
   releases page, but never downloads or installs it in-app. Enabling a signed
   macOS in-app channel requires a later explicit decision and qualification.
 - D126 tag releases publish Windows NSIS and Linux AppImage installers plus
-  their update manifests, activating those in-app lanes. Platform signing,
-  rollback, and staged-rollout qualification remain release follow-ups.
+  their update manifests, activating those in-app lanes. macOS tag artifacts
+  are Developer ID-signed, notarized, and stapled before upload; rollback and
+  staged-rollout qualification remain release follow-ups.
 - The client carries no GitHub token. A private or otherwise unreachable feed
   fails closed; automatic failures stay ambient and explicit checks expose the
   error.
