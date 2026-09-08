@@ -90,7 +90,7 @@ import {
   validateNetworkProxy,
 } from "@pi-desktop/shared";
 
-export type ImportSource = "claude-code" | "opencode" | "codex" | "pi";
+export type ImportSource = "claude-code" | "opencode" | "codex" | "pi" | "workbuddy";
 export type ModelConfigImportSource = ImportSource | "cc-switch";
 
 export interface ImportCandidate {

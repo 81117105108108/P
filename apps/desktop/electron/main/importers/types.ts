@@ -1,4 +1,9 @@
-export type ExternalSource = "claude-code" | "opencode" | "codex" | "pi";
+export type ExternalSource =
+  | "claude-code"
+  | "opencode"
+  | "codex"
+  | "pi"
+  | "workbuddy";
 
 export interface ExternalSessionSummary {
   source: ExternalSource;

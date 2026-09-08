@@ -707,6 +707,7 @@ export const tr = {
     importSourceOpenCode: "OpenCode",
     importSourceCodex: "Codex",
     importSourcePi: "Pi",
+    importSourceWorkBuddy: "WorkBuddy",
     importSourceCcSwitch: "CC Switch",
     importModelsTitle: "Model yapılandırması",
     importModelsScanDesc:
