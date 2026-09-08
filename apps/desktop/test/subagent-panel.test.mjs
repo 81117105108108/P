@@ -123,7 +123,7 @@ test("the subagent dock uses one task anchor and a continuous process timeline",
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail-task-row\s*\{[\s\S]*?margin-right:\s*-10px;[\s\S]*?padding:\s*8px 0 12px;/,
+    /\.subagent-detail-task-row\s*\{[\s\S]*?margin-right:\s*-16px;[\s\S]*?padding:\s*8px 0 12px;/,
   );
   assert.match(
     workPanelCss,

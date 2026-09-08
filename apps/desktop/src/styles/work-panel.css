@@ -590,7 +590,8 @@
 
 /* The Task call is a user turn in this conversation, not a metadata card. */
 .subagent-detail-task-row {
-  margin-right: -10px;
+  /* Leave only a small hover-safe gap before the panel edge. */
+  margin-right: -16px;
   padding: 8px 0 12px;
 }
 
