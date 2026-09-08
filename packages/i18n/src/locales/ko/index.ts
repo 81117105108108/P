@@ -405,6 +405,8 @@ export const ko = {
     processingSteps: "{{count}}단계",
     processingSteps_other: "{{count}}단계",
     collapseDetails: "세부 정보 접기",
+    subagentTaskExpand: "작업 펼치기",
+    subagentTaskCollapse: "작업 접기",
     tool: "도구",
     userMessage: "사용자 메시지",
     assistantMessage: "어시스턴트 메시지",

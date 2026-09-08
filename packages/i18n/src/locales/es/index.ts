@@ -394,6 +394,8 @@ export const es = {
     "processingSteps": "{{count}} paso",
     "processingSteps_other": "{{count}} pasos",
     "collapseDetails": "Contraer detalles",
+    "subagentTaskExpand": "Mostrar tarea",
+    "subagentTaskCollapse": "Contraer tarea",
     "tool": "Herramienta",
     "userMessage": "Mensaje de usuario",
     "assistantMessage": "Mensaje del asistente",

@@ -394,6 +394,8 @@ export const de = {
     "processingSteps": "{{count}} Schritt",
     "processingSteps_other": "{{count}} Schritte",
     "collapseDetails": "Details ausblenden",
+    "subagentTaskExpand": "Aufgabe anzeigen",
+    "subagentTaskCollapse": "Aufgabe ausblenden",
     "tool": "Tool",
     "userMessage": "Benutzernachricht",
     "assistantMessage": "Assistentennachricht",

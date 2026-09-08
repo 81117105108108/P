@@ -403,6 +403,8 @@ export const en = {
     processingSteps: "{{count}} step",
     processingSteps_other: "{{count}} steps",
     collapseDetails: "Collapse details",
+    subagentTaskExpand: "Show task",
+    subagentTaskCollapse: "Collapse task",
     tool: "Tool",
     userMessage: "User message",
     assistantMessage: "Assistant message",
