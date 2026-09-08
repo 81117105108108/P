@@ -291,7 +291,7 @@ Requirements:
 Before creating a stable application version tag, update every place that states a version, not only the changelog:
 
 ```text
-packages/shared/src/changelog.ts        # newest-first EN + zh-CN entries
+packages/shared/src/changelog*.ts       # newest-first entries for all shipped locales
 packages/shared/src/changelog.test.ts   # newest-first version list
 package.json, apps/*, packages/*, docs/ # workspace package versions
 Cargo.toml, Cargo.lock                  # workspace + host-core versions

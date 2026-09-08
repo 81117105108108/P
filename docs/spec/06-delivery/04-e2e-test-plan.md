@@ -1285,8 +1285,8 @@ Each scenario is documented in this format:
 #### E2E-091: Appearance card selects searchable theme and language pickers
 
 - **Preconditions**: App running on macOS; the harness can exercise English,
-  Simplified Chinese, Traditional Chinese, Turkish, German, Spanish, and
-  French system locales.
+  Simplified Chinese, Traditional Chinese, Turkish, German, Spanish, French,
+  and Korean system locales.
 - **Steps**:
   1) Open Settings → General.
   2) In the Appearance card, open the Theme picker. Confirm System, Light, and
@@ -1295,13 +1295,13 @@ Each scenario is documented in this format:
   3) Select Light and confirm the UI switches to light.
   4) In the Language row, open the searchable picker. Confirm Auto is pinned
      at the top with the detected native name and that English, 简体中文,
-     繁體中文, Türkçe, Deutsch, Español, and Français are listed by native name. With Simplified Chinese
+     繁體中文, Türkçe, Deutsch, Español, Français, and 한국어 are listed by native name. With Simplified Chinese
      selected as the OS locale, selecting Auto applies Simplified Chinese;
      with Traditional Chinese selected, Auto applies Traditional Chinese.
-  5) Select English, 简体中文, 繁體中文, Türkçe, Deutsch, Español, and Français
-     in turn and confirm shell chrome switches to each locale without a reload.
-     Confirm `zh-Hant` and `zh-HK` resolve to 繁體中文, `de-DE` to Deutsch,
-     `es-MX` to Español, and `fr-CA` to Français.
+  5) Select English, 简体中文, 繁體中文, Türkçe, Deutsch, Español, Français,
+     and 한국어 in turn and confirm shell chrome switches to each locale without
+     a reload. Confirm `zh-Hant` and `zh-HK` resolve to 繁體中文, `de-DE` to
+     Deutsch, `es-MX` to Español, `fr-CA` to Français, and `ko-KR` to 한국어.
   6) Type a native name or English name into the language search and confirm
      unmatched locales disappear. Type a theme name into the theme search and
      confirm unmatched options disappear.
@@ -1311,9 +1311,9 @@ Each scenario is documented in this format:
   then any plugin themes after a divider. Auto resolves the OS locale through
   the main process (`app.getLocale()`), passes it safely through the sandboxed
   preload bridge, and reflects the detected native name inline in the menu;
-  zh-TW, Turkish, German, Spanish, and French are complete shell catalogs,
-  including release-note copy; switching options updates the live UI without a
-  reload.
+  zh-TW, Turkish, German, Spanish, French, and Korean are complete shell
+  catalogs, including release-note copy; switching options updates the live UI
+  without a reload.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/02-i18n-english-first.md`
 - **Acceptance**: A (core shell), H (localization)
 - **Milestone**: M4
@@ -2970,10 +2970,11 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (`auto-update.test.mjs` asserts
   `allowPrerelease = false`); packaged discovery scenario Draft
 
-#### E2E-067B: Shipped-locale update notes and full changelog dialog (D164/D345)
+#### E2E-067B: Shipped-locale update notes and full changelog dialog (D164/D345/D347)
 
 - **Preconditions**: The shipped `packages/shared` CHANGELOG contains aligned
-  `en`, `zh-CN`, and `zh-TW` stable history; product language can be switched.
+  `en`, `zh-CN`, `zh-TW`, and `ko` stable history; product language can be
+  switched.
   For the compact update path, use a packaged or fixture updater state with a
   catalogued `availableVersion`.
 - **Steps**: 1) With no available update, open Settings → Info and open Release
@@ -2981,7 +2982,7 @@ Each scenario is documented in this format:
   and close behavior by close control, Escape, and backdrop. 3) Force or wait
   for update discovery so status is manual `available`, in-app `downloading`,
   or `downloaded`; inspect the ambient banner and Settings Updates row, then
-  reopen Release notes. 4) Switch UI language to zh-CN and then zh-TW and
+  reopen Release notes. 4) Switch UI language to zh-CN, then zh-TW, then ko and
   re-inspect without invoking a new check. 5) Repeat the compact update path
   with a version absent from the catalog.
 - **Expected**: `UpdateState.releaseNotes` is plain multi-line product

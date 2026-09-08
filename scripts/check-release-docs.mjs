@@ -83,7 +83,7 @@ try {
   fail(modelsDevCatalogPath, `could not parse bundled catalog: ${error.message}`);
 }
 
-// 3. Dual-locale in-app changelog. Compile the source catalog in a temporary
+// 3. Shipped-locale in-app changelog. Compile the source catalog in a temporary
 // directory so this preflight does not depend on a prior workspace build or on
 // Node's experimental TypeScript module resolution.
 async function loadChangelogCatalog() {
@@ -96,6 +96,7 @@ async function loadChangelogCatalog() {
     "packages/shared/src/changelog-de.ts",
     "packages/shared/src/changelog-es.ts",
     "packages/shared/src/changelog-fr.ts",
+    "packages/shared/src/changelog-ko.ts",
     "packages/shared/src/changelog-tr.ts",
   ];
   try {
@@ -127,8 +128,15 @@ try {
 }
 
 if (catalogs) {
-  for (const locale of ["en", "zh-CN"]) {
-    const entries = catalogs[locale];
+  const enEntries = catalogs.en;
+  const expectedVersions = enEntries?.map((entry) => entry.version) ?? [];
+  const requiredLocales = ["en", "zh-CN", "zh-TW", "tr", "de", "es", "fr", "ko"];
+  for (const locale of requiredLocales) {
+    if (!catalogs[locale]) {
+      fail("packages/shared/src/changelog.ts", `missing shipped locale catalog: ${locale}`);
+    }
+  }
+  for (const [locale, entries] of Object.entries(catalogs)) {
     if (!entries?.length) {
       fail("packages/shared/src/changelog.ts", `the ${locale} catalog is empty`);
       continue;
@@ -143,15 +151,23 @@ if (catalogs) {
         `${locale} lists ${entries[0].version} first; ${version} must be newest-first`,
       );
     }
-  }
-
-  const en = catalogs.en?.find((entry) => entry.version === version);
-  const zh = catalogs["zh-CN"]?.find((entry) => entry.version === version);
-  if (en && zh && en.highlights.length !== zh.highlights.length) {
-    fail(
-      "packages/shared/src/changelog.ts",
-      `${version} has ${en.highlights.length} en highlights and ${zh.highlights.length} zh-CN highlights`,
-    );
+    if (entries.map((entry) => entry.version).join("\u0000") !== expectedVersions.join("\u0000")) {
+      fail(
+        "packages/shared/src/changelog.ts",
+        `${locale} does not match the English release version set`,
+      );
+    }
+    if (enEntries) {
+      for (let index = 0; index < enEntries.length; index += 1) {
+        if (entries[index]?.highlights.length !== enEntries[index]?.highlights.length) {
+          fail(
+            "packages/shared/src/changelog.ts",
+            `${locale} highlight count differs from English at ${entries[index]?.version ?? "unknown"}`,
+          );
+          break;
+        }
+      }
+    }
   }
 }
 

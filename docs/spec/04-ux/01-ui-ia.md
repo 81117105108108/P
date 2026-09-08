@@ -350,7 +350,6 @@ shared capability contract:
 
 ## 8. i18n
 
-English is the source locale. Shipped translations (zh-CN, zh-TW, Turkish,
-German, Spanish, and French) cover shell chrome; labels are asserted by US-UI
-e2e scenarios.
+English is the source locale. Shipped translations (zh-CN, zh-TW, Turkish, German, Spanish, French, and
+Korean) cover shell chrome; labels are asserted by US-UI e2e scenarios.
 Copy rules live in [02-i18n-english-first](02-i18n-english-first.md).
