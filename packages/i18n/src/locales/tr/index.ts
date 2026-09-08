@@ -894,6 +894,8 @@ export const tr = {
     headerValue: "Değer",
     addHeader: "Başlık ekle",
     addCommonHeader: "Yaygın başlık ekle",
+    copyHeadersJson: "Başlıkları JSON olarak kopyala",
+    headersJsonCopied: "Başlıklar JSON olarak kopyalandı",
     importHeadersJson: "JSON içe aktar",
     headersImportError: "JSON, başlık adları ve metin değerlerinden oluşan bir nesne olmalıdır.",
     next: "İleri",

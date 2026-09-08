@@ -277,7 +277,7 @@ test("Advanced opens from the dialog header into a separate modal", () => {
   assert.match(modalBody, /overflow-y: auto/);
 });
 
-test("Advanced offers presets and JSON import without redundant helper rows", () => {
+test("Advanced offers presets plus JSON import and copy without redundant helper rows", () => {
   assert.match(setupSource, /ProviderHeadersEditor/);
   assert.match(vendorDialogSource, /ProviderHeadersEditor/);
   assert.match(headerEditorSource, /HEADER_PRESETS/);
@@ -286,6 +286,15 @@ test("Advanced offers presets and JSON import without redundant helper rows", ()
   assert.match(headerEditorSource, /JSON\.parse/);
   assert.match(headerEditorSource, /file\.text\(\)/);
   assert.match(headerEditorSource, /accept="application\/json,\.json"/);
+  // Copy serializes the same normalized record used when headers are persisted,
+  // rather than exposing blank or duplicate editor rows.
+  assert.match(headerEditorSource, /pairsToRecord/);
+  assert.match(headerEditorSource, /JSON\.stringify\(pairsToRecord\(pairs\), null, 2\)/);
+  assert.match(headerEditorSource, /navigator\.clipboard\.writeText/);
+  assert.match(headerEditorSource, /setCopied\(true\)/);
+  assert.match(headerEditorSource, /settings\.copyHeadersJson/);
+  assert.match(headerEditorSource, /settings\.headersJsonCopied/);
+  assert.match(headerEditorSource, /provider-setup-header-copy/);
   assert.doesNotMatch(headerEditorSource, /provider-setup-headers-hint/);
   const advanced = block(".provider-setup-advanced");
   assert.match(advanced, /flex-direction: column/);

@@ -873,6 +873,8 @@ export const es = {
     "headerValue": "Valor",
     "addHeader": "Agregar encabezado",
     "addCommonHeader": "Agregar encabezado común",
+    "copyHeadersJson": "Copiar encabezados como JSON",
+    "headersJsonCopied": "Encabezados JSON copiados",
     "importHeadersJson": "Importar JSON",
     "headersImportError": "Utilice un objeto JSON con nombres de encabezado y valores de cadena.",
     "next": "Siguiente",

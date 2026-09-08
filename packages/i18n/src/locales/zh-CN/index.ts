@@ -884,6 +884,8 @@ export const zhCN = {
     headerValue: "值",
     addHeader: "添加请求头",
     addCommonHeader: "添加常用请求头",
+    copyHeadersJson: "复制请求头 JSON",
+    headersJsonCopied: "请求头 JSON 已复制",
     importHeadersJson: "导入 JSON",
     headersImportError: "JSON 须是由请求头名称和字符串值组成的对象。",
     next: "下一步",
