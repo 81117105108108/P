@@ -209,7 +209,10 @@ a usage tab.
     style, and secret). It shrinks to the overlay on a narrow window, and a
     focused credential field keeps its 2px accent ring inside the dialog
     instead of clipping against the scrolling body. It then selects one or
-    more models from a searchable multi-select catalog. Each selected model has an independent, compact
+    more models from a searchable multi-select catalog. The discovered-list
+    header has a checkbox that selects or clears every currently visible row,
+    including when a search filter is narrowing the list, and a Fetch list
+    action that re-probes the service immediately. Each selected model has an independent, compact
     configuration row for context window, max output, supported thinking
     levels, and the default thinking level. The row keeps the model ID,
     source, capabilities, and token limits visible at a glance, and expands

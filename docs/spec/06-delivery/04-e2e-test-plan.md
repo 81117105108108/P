@@ -395,6 +395,60 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (host persistence, fetch wrapper, discovery,
   form Advanced); rendered UI scenario pending
 
+#### E2E-005H: Select every visible model from a long service list
+
+- **Preconditions**: App running; the add-provider or edit-provider dialog is
+  open against a service (or vendor account) that returns a long model list,
+  including at least one model whose id would not match a later search.
+- **Steps**: 1) Wait until the left pane lists the service's models. Confirm
+  the list header shows a checkbox beside the pane title, unchecked while no
+  rows are chosen. 2) Tick that header checkbox. Confirm every listed row is
+  checked and the right pane lists a chosen binding for each, keeping any
+  already-configured advanced overrides. 3) Untick one row, then confirm the
+  header checkbox is indeterminate. Tick it again and confirm the remaining
+  visible rows are chosen without duplicating already-chosen ones. 4) Type a
+  filter that matches a subset. Untick the header checkbox and confirm only
+  the matching chosen rows disappear; a model hidden by the filter stays on
+  the right. 5) Tick the header checkbox again and confirm only the matching
+  rows are added back. Clear the filter and confirm the previously hidden
+  chosen model is still present. 6) Save.
+- **Expected**: One header checkbox selects or clears the currently visible
+  list. A search filter narrows which rows "all" means. Models already chosen
+  outside the filter stay chosen. Newly added rows adopt published limits and
+  thinking levels; existing bindings are not rebuilt. The same control is
+  present in the vendor-account editor because both dialogs render the shared
+  picker.
+- **Specs linked**: `03-runtime/13-model-catalog-and-selection.md`,
+  `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: B (multi-model provider configuration)
+- **Milestone**: M2
+- **Status**: Unit-covered (shared picker source contract); rendered UI
+  scenario pending
+
+#### E2E-005I: Fetch the service model list from the picker header
+
+- **Preconditions**: The add-provider or edit-provider dialog is open against a
+  reachable service (or vendor account) that publishes a `/models` list.
+- **Steps**: 1) Confirm the left-pane header shows a Fetch list action beside
+  the title, disabled before a valid endpoint is ready. 2) Enter credentials so
+  discovery can run; confirm the action shows the loading label while the first
+  probe is in flight, then enables once rows appear. 3) Click Fetch list.
+  Confirm it does not wait for the 600 ms edit debounce, keeps the current rows
+  on screen, and replaces them with the live answer. 4) Take the service
+  offline and click Fetch list; confirm the classified error appears and the
+  previous rows remain. 5) Restore the service, click Fetch list, and confirm
+  the live list returns. 6) Repeat in the vendor-account editor.
+- **Expected**: The header action probes the service immediately, skipping
+  debounce and the cache-first paint. Automatic discovery on credential edits
+  is unchanged. The same control is present for both credential kinds because
+  both dialogs render the shared picker.
+- **Specs linked**: `03-runtime/13-model-catalog-and-selection.md`,
+  `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: B (multi-model provider configuration)
+- **Milestone**: M2
+- **Status**: Unit-covered (discovery hook + picker source contract); rendered
+  UI scenario pending
+
 #### E2E-005D: Configure a Zhipu / Z.AI named endpoint preset
 
 - **Preconditions**: App running; no Zhipu provider configured; the models.dev

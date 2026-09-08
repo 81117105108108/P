@@ -2755,6 +2755,14 @@ compatibility remains owned by pi-ai.
   and resize; model selection immediately adds or removes its configuration
   row. Configuration rows stay compact until expanded; expanding one row does
   not expand or collapse any other row.
+- The left-pane list header carries a checkbox that selects or clears every
+  currently visible row. A search filter narrows which rows "all" means;
+  already-chosen bindings keep their advanced overrides. The checkbox is
+  checked when every visible row is chosen, unchecked when none are, and
+  indeterminate when the visible set is mixed.
+- The same header has a compact Fetch list action that re-probes the service
+  immediately. It stays disabled while idle, loading, or saving, and keeps
+  the current rows on screen until the live answer replaces them.
 - Adding a custom model validates non-empty and duplicate IDs, adds it to the
   top-level option list, selects it, and applies 128,000 context / 8,192 max
   output / no thinking defaults. Removing its selection does not delete the
@@ -2777,6 +2785,9 @@ compatibility remains owned by pi-ai.
 
 ### 19.5 Accessibility
 - Segmented controls expose `aria-pressed`
+- The discovered-list header checkbox has a localized accessible name
+  (Select all / Deselect all) and an indeterminate state when only some
+  visible rows are chosen
 - Enter-to-send uses `role="switch"` + `aria-checked`
 - Model configuration rows expose `aria-expanded` and reference their details
   with `aria-controls`; collapsed details are removed from the tab order

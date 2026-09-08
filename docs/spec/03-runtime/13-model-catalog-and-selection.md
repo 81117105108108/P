@@ -34,6 +34,18 @@ entitled to it.
   and then replaces it with the live answer.
 - Filtering that list is client-side: it is a short live list, not a catalog, so
   no host search is involved.
+- The list header has a checkbox that selects or clears every currently visible
+  row in one step, so a long service list does not have to be ticked one by one.
+  While a search filter is active, "all" means the matching rows only; models
+  already chosen outside the filter stay chosen. Newly added rows adopt
+  `bindingFromModelInfo` (or the custom-model defaults); existing bindings keep
+  their advanced overrides. The checkbox is checked when every visible row is
+  chosen, unchecked when none are, and indeterminate when the visible set is
+  mixed.
+- The same header has a Fetch list action that probes the service immediately,
+  skipping the 600 ms edit debounce and the cache-first paint. Existing rows
+  stay visible while it loads. Automatic discovery on credential edits is
+  unchanged. The control is disabled while idle, loading, or the form is saving.
 - Context window, output limit and initial thinking levels come from
   `bindingFromModelInfo` over the enriched record; per-model overrides live
   behind a per-row **Advanced** disclosure. `publishedThinkingLevels` describes
