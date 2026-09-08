@@ -377,8 +377,13 @@ token, and holds an access token only for the provider its session is bound to.
 Model discovery for such a row reads the authenticated catalog
 (`models.getAvailable`, which applies the vendor's own `filterModels`) rather
 than probing `/models`, and the connection test proves the account by resolving
-auth. A vendor may span wire APIs — Copilot serves Anthropic, Chat Completions
-and Responses models — so the row's `apiStyle` follows the selected model.
+auth. For static OAuth vendors such as ChatGPT Plus/Pro (`openai-codex`), that
+catalog is the pinned pi-ai model list rather than a live vendor `/models`
+probe, so a newly published account model such as `gpt-6-astra` appears only
+after the pin includes it. models.dev still supplies metadata once the ID is
+available, but it cannot add the ID to the authenticated list. A vendor may
+span wire APIs — Copilot serves Anthropic, Chat Completions and Responses
+models — so the row's `apiStyle` follows the selected model.
 Deleting a row calls the normal host `providers.delete` path, which removes its
 OAuth secret and metadata; it never logs out or deletes another row with the
 same vendor key.

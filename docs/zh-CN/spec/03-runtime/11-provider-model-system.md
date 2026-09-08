@@ -264,8 +264,12 @@ sidecar 请求
 
 这类行的模型发现读取已认证的目录（`models.getAvailable`，它已应用厂商
 自己的 `filterModels`），而不是探测 `/models`；连接测试通过解析认证来
-证明账户。一个厂商可以跨越多种线路 API —— Copilot 同时提供 Anthropic、
-Chat Completions 与 Responses 模型 —— 因此行的 `apiStyle` 跟随所选模型。
+证明账户。对 ChatGPT Plus/Pro（`openai-codex`）这类静态 OAuth 厂商，该
+目录是已固定的 pi-ai 模型列表，而不是实时 `/models` 探测，因此 `gpt-6-astra`
+这类新账户模型只有在 pin 包含它之后才会出现。models.dev 在 ID 可用后仍
+提供元数据，但不能把 ID 加进已认证列表。一个厂商可以跨越多种线路 API ——
+Copilot 同时提供 Anthropic、Chat Completions 与 Responses 模型 —— 因此行
+的 `apiStyle` 跟随所选模型。
 
 ## 9. 模型目录服务
 

@@ -405,7 +405,9 @@ The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary
 - for an `authKind: "oauth"` row Electron main reads the authenticated catalog
   (`models.getAvailable`, which applies the vendor's own `filterModels`, so a
   Copilot account lists what its subscription includes) instead of calling
-  `/models`; each returned model carries the apiStyle its wire API implies
+  `/models`; each returned model carries the apiStyle its wire API implies.
+  Static vendors such as `openai-codex` use the pinned pi-ai catalog (0.85.1
+  includes `gpt-6-astra`); models.dev does not invent those IDs.
 - out: `{ models: ModelCatalogItem[] }`; each known model carries the complete
   models.dev metadata including `reasoning`, `supportedThinkingLevels`, limits,
   modalities, output types, and capability tags. Cached/provider claims cannot

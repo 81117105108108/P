@@ -2814,7 +2814,9 @@ Each scenario is documented in this format:
   references until the selected transport exposes a native PDF block. A
   provider-discovered or explicitly configured ID absent from models.dev remains
   runnable with the generic text-only, non-reasoning shape; pi-ai supplies only
-  the selected wire adapter, OAuth flow, and account model availability.
+  the selected wire adapter, OAuth flow, and account model availability. A
+  ChatGPT Plus/Pro or GitHub Copilot account lists `gpt-6-astra` from the
+  pinned pi-ai 0.85.1 catalog; models.dev then supplies its published metadata.
 - **Specs linked**: `02-architecture/02-tech-stack.md`,
   `03-runtime/11-provider-model-system.md`,
   `03-runtime/13-model-catalog-and-selection.md`, ADR 0134
@@ -7515,7 +7517,7 @@ This test plan spec is accepted when:
   output and thinking chips; cancel. 3) Edit the vendor account and do the same
   on one of its chosen models. 4) Toggle a thinking level on a reasoning-capable
   account model and save. 5) Reopen the account editor and read that model's
-  chips. 6) For an OpenAI Codex account, inspect `gpt-5.6-sol` (or another
+  chips. 6) For an OpenAI Codex account, inspect `gpt-6-astra` (or another
   account model also published under models.dev's `openai` provider) and confirm
   its published context/output limits and reasoning levels are present. 7) In
   the account editor, hand-type a custom model ID the catalog does not publish,
@@ -7526,8 +7528,10 @@ This test plan spec is accepted when:
   longer missing the advanced controls. A level enabled on an account model
   persists and reappears when the editor is reopened, including a level the
   catalog does not publish. OpenAI Codex's `openai-codex` adapter key resolves
-  the matching `openai` models.dev record, so `gpt-5.6-sol` is not shown with
-  generic 128,000 / 8,192 / no-reasoning defaults. A model with no published
+  the matching `openai` models.dev record, so `gpt-6-astra` is not shown with
+  generic 128,000 / 8,192 / no-reasoning defaults. The authenticated ChatGPT
+  list itself comes from the pinned pi-ai catalog (0.85.1 includes
+  `gpt-6-astra`); models.dev cannot add a missing OAuth ID. A model with no published
   record keeps its explicit levels and starts with all choices available for
   manual opt-in. The account's default model stays the head binding.
 - **Specs linked**: `04-ux/06-settings-ia.md`,

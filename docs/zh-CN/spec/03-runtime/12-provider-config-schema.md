@@ -272,7 +272,8 @@ Advanced 控件中设置的非默认值仍优先。未知模型继续使用 128k
 - 对 `authKind: "oauth"` 行，Electron 主进程读取已认证的目录
   （`models.getAvailable`，它已应用厂商自己的 `filterModels`，因此 Copilot
   账户列出的是其订阅包含的模型），而不是调用 `/models`；返回的每个模型都
-  带着其线路 API 所隐含的 apiStyle
+  带着其线路 API 所隐含的 apiStyle。`openai-codex` 这类静态厂商使用已固定
+  的 pi-ai 目录（0.85.1 包含 `gpt-6-astra`）；models.dev 不会发明这些 ID。
 - 输出：`{ models: ModelCatalogItem[] }`；每个模型都带有 pi-resolved
   `reasoning` 功能和 `supportedThinkingLevels`。缓存的功能标签
   旧提供程序字段无法覆盖 pi 模型记录。
