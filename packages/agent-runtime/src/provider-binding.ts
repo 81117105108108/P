@@ -25,6 +25,7 @@ import { piMessagesApi } from "@earendil-works/pi-ai/api/pi-messages.lazy";
 import {
   OPENCODE_GO_API_STYLE,
   OPENCODE_GO_BASE_URL,
+  resolveApiStyle,
   zhipuRequestCompat,
   type ThinkingLevel,
 } from "@pi-desktop/shared";
@@ -141,10 +142,21 @@ export function providerRequestKey(provider: RuntimeProviderConfig): string {
   );
 }
 
+/**
+ * Resolve the wire API for one provider row. A catalog entry may pin a wire
+ * API that differs from the provider-wide style (e.g. responses-only models
+ * under an opencode_go provider, which defaults to Chat Completions). Honor
+ * the model-level api when present so such models are not sent through the
+ * wrong adapter (the gateway answers 500, see #105).
+ */
+export function apiBindingForProviderModel(provider: RuntimeProviderConfig): ApiBinding {
+  return apiBindingForStyle(resolveApiStyle(provider.modelConfig?.api) ?? provider.apiStyle);
+}
+
 export function buildProviderModel(
   provider: RuntimeProviderConfig,
 ): Model<Api> {
-  const binding = apiBindingForStyle(provider.apiStyle);
+  const binding = apiBindingForProviderModel(provider);
   const catalog = provider.modelConfig;
   const catalogModel = catalog
     ? (({ source: _source, ...model }) => model)(catalog)
@@ -212,7 +224,7 @@ export function createProviderModels(
         },
       },
       models: [model],
-      api: apiBindingForStyle(provider.apiStyle).adapter(),
+      api: apiBindingForProviderModel(provider).adapter(),
     }),
   );
   return models;

@@ -93,7 +93,7 @@ import {
 } from "./agent-messages.js";
 import { buildSessionContext } from "./session-context.js";
 import {
-  apiBindingForStyle,
+  apiBindingForProviderModel,
   buildProviderModel,
   createProviderModels,
   DEFAULT_CONTEXT_WINDOW,
@@ -1668,7 +1668,7 @@ Delegation rules:
    * "answer" without visible tool use, stopped calling tools altogether.
    * Failed assistant turns stay transcript-only. */
   private historyToEntries(history: UiMessage[]): MessageEntry[] {
-    const api = apiBindingForStyle(this.provider.apiStyle).api;
+    const api = apiBindingForProviderModel(this.provider).api;
     const entries: MessageEntry[] = [];
     const append = (id: string, message: AgentMessage): MessageEntry => {
       const entry: MessageEntry = {
