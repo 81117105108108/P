@@ -892,6 +892,8 @@ export const en = {
     headerValue: "Value",
     addHeader: "Add header",
     addCommonHeader: "Add common header",
+    copyHeadersJson: "Copy headers as JSON",
+    headersJsonCopied: "Headers JSON copied",
     importHeadersJson: "Import JSON",
     headersImportError: "Use a JSON object with header names and string values.",
     next: "Next",

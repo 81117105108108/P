@@ -884,6 +884,8 @@ export const zhTW = {
     headerValue: "值",
     addHeader: "新增請求頭",
     addCommonHeader: "新增常用請求頭",
+    copyHeadersJson: "複製請求頭 JSON",
+    headersJsonCopied: "已複製請求頭 JSON",
     importHeadersJson: "匯入 JSON",
     headersImportError: "JSON 須是由請求頭名稱和字串值組成的物件。",
     next: "下一步",

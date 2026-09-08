@@ -873,6 +873,8 @@ export const fr = {
     "headerValue": "Valeur",
     "addHeader": "Ajouter un en-tête",
     "addCommonHeader": "Ajouter un en-tête commun",
+    "copyHeadersJson": "Copier les en-têtes au format JSON",
+    "headersJsonCopied": "En-têtes JSON copiés",
     "importHeadersJson": "Importer JSON",
     "headersImportError": "Utilisez un objet JSON avec des noms d'en-tête et des valeurs de chaîne.",
     "next": "Suivant",

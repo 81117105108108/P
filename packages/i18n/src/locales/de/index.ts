@@ -873,6 +873,8 @@ export const de = {
     "headerValue": "Wert",
     "addHeader": "Header hinzufügen",
     "addCommonHeader": "Gemeinsamen Header hinzufügen",
+    "copyHeadersJson": "Header als JSON kopieren",
+    "headersJsonCopied": "Header-JSON kopiert",
     "importHeadersJson": "JSON importieren",
     "headersImportError": "Verwenden Sie ein JSON-Objekt mit Header-Namen und Zeichenfolgenwerten.",
     "next": "Weiter",
