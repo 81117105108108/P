@@ -196,7 +196,7 @@ type AgentCompactResponse = { accepted: boolean };
 ```
 
 `pi-desktop/agent/compact` 为空闲创建模型上下文检查点
-会议。即使自动上下文保护被禁用，它也可用。
+会话。即使自动上下文保护被禁用，它也可用。
 缺少 provider/session 配置无法通过正常的 `AppError`
 信封；主动转向或压实返回 `AGENT_BUSY`。
 
@@ -431,7 +431,7 @@ type AgentEvent =
 
 只要安装了检查点，`compaction_end.mark` 就会出现。它是
 渲染器对该压缩的整体视图：`id`，`throughMessageId` 锚定
-成绩单行位于 `generation` 之后（此会话有多少个检查点
+转录本行位于 `generation` 之后（此会话有多少个检查点
 已安装）、`summaryTokens`（摘要的估计上下文成本）以及
 `summarized`（当窗口滚动且未向模型询问时，`false`
 总结）。记录本身不被携带——它的摘要和保留尾部被携带
