@@ -69,6 +69,7 @@ import {
   type AgentEventEnvelope,
   type AgentPromptRequest,
   type PromptEnhancementRequest,
+  type SessionSummarizeTitleRequest,
   type AgentStopRequest,
   type AskToolResolution,
   type AppMenuCommand,
@@ -110,6 +111,7 @@ import {
   visionFromModelConfig,
   expandSlashInvocation,
   enhancePromptDraft,
+  summarizeSessionTitle,
   completeOneShot,
   loadComposerTemplates,
   globalInstructionPath,
@@ -7499,6 +7501,54 @@ function registerIpc() {
       data: { providerId: launch.providerId, modelId: launch.modelId },
     });
     return { enhancedDraft };
+  });
+
+  handle(IPC.invoke.sessionSummarizeTitle, async (req: SessionSummarizeTitleRequest) => {
+    if (!host) throw new Error("backend unavailable");
+    const sessionId = typeof req?.sessionId === "string" ? req.sessionId.trim() : "";
+    const userPrompt = typeof req?.userPrompt === "string" ? req.userPrompt.trim() : "";
+    if (!sessionId || !userPrompt) {
+      throw Object.assign(new Error("sessionId and userPrompt required"), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    const session = (await host.call<{ session?: any }>("session.get", { id: sessionId })).session;
+    if (!session) {
+      throw Object.assign(new Error("Session not found"), {
+        errorCode: ErrorCodes.NOT_FOUND,
+      });
+    }
+    const settings = await host.call<any>("settings.get");
+    const launch = await resolveAgentRuntimeLaunch(
+      `title-summary:${sessionId}`,
+      session,
+      settings,
+      {
+        mode: "agent",
+        providerId: typeof req.providerId === "string" ? req.providerId.trim() : undefined,
+        modelId: typeof req.modelId === "string" ? req.modelId.trim() : undefined,
+        thinkingLevel: "off",
+      },
+    );
+    const runtimeProvider = {
+      ...launch.sidecarParams.provider,
+      ...(launch.sidecarParams.provider.authKind === OAUTH_AUTH_KIND
+        ? { resolveAuth: () => vendorOAuth.resolveAuth(launch.providerId) }
+        : {}),
+    } as RuntimeProviderConfig;
+
+    const title = await summarizeSessionTitle(
+      runtimeProvider,
+      userPrompt,
+      req.assistantReply,
+      "off",
+      { sessionId },
+    );
+    logger.app("session", "info", "session title summarized", {
+      sessionId,
+      data: { title, providerId: launch.providerId, modelId: launch.modelId },
+    });
+    return { title };
   });
 
   handle(IPC.invoke.agentPrompt, async (req: AgentPromptRequest) => {

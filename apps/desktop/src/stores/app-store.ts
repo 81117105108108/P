@@ -250,6 +250,49 @@ function notifyInteractivePrompt(
     .catch(() => undefined);
 }
 
+const manuallyRenamedSessionIds = new Set<string>();
+const summarizedSessionIds = new Set<string>();
+
+async function triggerAutoTitleSummarization(sessionId: string) {
+  if (!sessionId) return;
+  if (manuallyRenamedSessionIds.has(sessionId)) return;
+  if (summarizedSessionIds.has(sessionId)) return;
+
+  const state = useAppStore.getState();
+  const session = state.sessions.find((s) => s.id === sessionId);
+  if (!session) return;
+
+  const messages =
+    sessionId === state.activeSessionId
+      ? state.messages
+      : sessionTranscriptCache.get(sessionId) ?? [];
+
+  const firstUser = messages.find((m) => m.role === "user");
+  if (!firstUser?.content) return;
+
+  const firstAssistant = messages.find(
+    (m) => m.role === "assistant" && typeof m.content === "string" && m.content.trim(),
+  );
+
+  summarizedSessionIds.add(sessionId);
+
+  try {
+    const res = await api.summarizeSessionTitle({
+      sessionId,
+      userPrompt: firstUser.content,
+      assistantReply:
+        typeof firstAssistant?.content === "string" ? firstAssistant.content : undefined,
+    });
+    const nextTitle = res?.title?.trim();
+    if (nextTitle && !manuallyRenamedSessionIds.has(sessionId)) {
+      await api.renameSession(sessionId, nextTitle);
+      await useAppStore.getState().refreshSessions();
+    }
+  } catch {
+    // Non-fatal: keep current truncated prompt title as fallback
+  }
+}
+
 export type ToastVariant = "info" | "success" | "warning" | "error";
 
 export type ToastItem = {
@@ -2927,6 +2970,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!id) return;
     const nextTitle = title.trim();
     if (!nextTitle) throw new Error("Session title must not be empty");
+    manuallyRenamedSessionIds.add(id);
     const result = await api.renameSession(id, nextTitle);
     if (!result.ok) throw new Error("Session not found");
     set((state) => ({
@@ -3652,6 +3696,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         });
       } else if (event.type === "agent_end") {
         void get().refreshSessions();
+        void triggerAutoTitleSummarization(envelope.sessionId);
       } else if (event.type === "planning_state") {
         void get().refreshSessions();
       }
@@ -3699,6 +3744,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       case "agent_end":
         set({ isRunning: false });
         void get().refreshSessions();
+        void triggerAutoTitleSummarization(envelope.sessionId);
         break;
       case "turn_end":
         break;
