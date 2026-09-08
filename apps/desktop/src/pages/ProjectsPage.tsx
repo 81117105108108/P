@@ -215,6 +215,7 @@ export function ProjectsPage() {
       const meta = projectMeta[normalizeProjectPath(project.path) || project.path] ?? {};
       return {
         ...project,
+        name: meta.name ?? project.name,
         pinned: meta.pinned ?? project.pinned,
         archived: meta.archived === true,
       };
