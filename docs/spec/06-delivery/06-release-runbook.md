@@ -206,8 +206,8 @@ Run after every release build:
 for APP in apps/desktop/release/mac-*/PI-Desktop.app; do
   codesign -dv --verbose=2 "$APP"          # identity + hardened runtime flags
   codesign --verify --deep --strict "$APP" # signature integrity
-  spctl -a -vv "$APP"                      # Gatekeeper assessment (notarized builds)
-  xcrun stapler validate "$APP"             # notarization staple (if notarized)
+  spctl -a -vv "$APP"                      # Gatekeeper assessment (notarized Developer ID)
+  xcrun stapler validate "$APP"             # notarization staple
 done
 xcrun stapler validate apps/desktop/release/*.dmg
 ```
