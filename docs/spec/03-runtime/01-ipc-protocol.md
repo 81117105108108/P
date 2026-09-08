@@ -520,9 +520,11 @@ setup so a fast completion cannot beat the viewing-context update. Electron
 combines this hint with Main-owned window visibility/focus at the terminal event
 boundary. Missing, null, or mismatched context fails safe to notification. It
 also invokes
-`pi-desktop/notification/showNative({ id, sessionId, title, body })` after
-localizing a new record. This Electron-only request never crosses into the host
-RPC domain.
+`pi-desktop/notification/showNative({ id, sessionId, title, body, source? })` after
+localizing a new record. The optional `source` is `"task"` for terminal task
+outcomes and `"interactive"` for asktool, tool-permission, and Plan approval
+prompts; omitted or unknown values default to `"task"`. This Electron-only
+request never crosses into the host RPC domain.
 
 ```ts
 type AppNotification = {
@@ -564,12 +566,15 @@ Main sends two events:
 
 Electron owns the native surface while the renderer derives localized
 title/body text from the structured record. Electron accepts `showNative` only
-for a valid notification/session pair, shows a native notification only when
-the main window is unfocused and the platform API is supported, then
-restores/shows and focuses the window before emitting `activated`. There is no
-native notification while focused and no permission, scheduled-reminder, or
-plugin source in this contract. Native delivery is best-effort; the durable
-inbox remains authoritative when the OS suppresses a banner. On Windows,
+for a valid notification/session pair and a supported platform API. The
+`"task"` source remains unfocused-only, preserving the focused-background
+terminal contract. The `"interactive"` source is suppressed only when its
+exact session is visible in the focused window, so a focused different session
+can receive an ask, permission, or Plan approval banner. Both sources restore,
+show, and focus the window before emitting `activated`. Interactive prompts do
+not create durable task inbox rows; scheduled reminders and plugin-native
+notifications remain separate contracts. Native delivery is best-effort; the
+durable inbox remains authoritative when the OS suppresses a banner. On Windows,
 Electron Main registers `com.pi-desktop.app` as the process AppUserModelID
 before readiness and before any window is created. The ID matches the NSIS
 package identity so notification attribution, notification settings, taskbar
