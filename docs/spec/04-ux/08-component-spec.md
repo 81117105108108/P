@@ -2756,6 +2756,9 @@ compatibility remains owned by pi-ai.
   already-chosen bindings keep their advanced overrides. The checkbox is
   checked when every visible row is chosen, unchecked when none are, and
   indeterminate when the visible set is mixed.
+- The same header has a compact Fetch list action that re-probes the service
+  immediately. It stays disabled while idle, loading, or saving, and keeps
+  the current rows on screen until the live answer replaces them.
 - Adding a custom model validates non-empty and duplicate IDs, adds it to the
   top-level option list, selects it, and applies 128,000 context / 8,192 max
   output / no thinking defaults. Removing its selection does not delete the

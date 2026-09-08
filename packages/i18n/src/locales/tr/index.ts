@@ -981,6 +981,7 @@ export const tr = {
     searchModelId: "Model kimliği ara…",
     selectAllVisibleModels: "Tümünü seç",
     deselectAllVisibleModels: "Tümünün seçimini kaldır",
+    fetchModelList: "Listeyi al",
     reasoning: "akıl yürütme",
     vision: "Görüntü",
     textOnly: "Metin",

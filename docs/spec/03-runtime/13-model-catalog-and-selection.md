@@ -42,6 +42,10 @@ entitled to it.
   their advanced overrides. The checkbox is checked when every visible row is
   chosen, unchecked when none are, and indeterminate when the visible set is
   mixed.
+- The same header has a Fetch list action that probes the service immediately,
+  skipping the 600 ms edit debounce and the cache-first paint. Existing rows
+  stay visible while it loads. Automatic discovery on credential edits is
+  unchanged. The control is disabled while idle, loading, or the form is saving.
 - Context window, output limit and initial thinking levels come from
   `bindingFromModelInfo` over the enriched record; per-model overrides live
   behind a per-row **Advanced** disclosure. `publishedThinkingLevels` describes

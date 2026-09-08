@@ -979,6 +979,7 @@ export const en = {
     searchModelId: "Search model ID…",
     selectAllVisibleModels: "Select all",
     deselectAllVisibleModels: "Deselect all",
+    fetchModelList: "Fetch list",
     reasoning: "reasoning",
     vision: "Vision",
     textOnly: "Text",

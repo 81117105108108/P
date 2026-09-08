@@ -161,6 +161,18 @@ test("the discovered list header hosts a select-all checkbox beside the title", 
   assert.match(selectAll, /flex: none/);
 });
 
+test("the discovered list header hosts a compact fetch-list action beside the title", () => {
+  assert.match(pickerSource, /provider-models-reload/);
+  assert.match(pickerSource, /settings\.fetchModelList/);
+  const reload = block(".provider-models-reload");
+  assert.match(reload, /display: inline-flex/);
+  assert.match(reload, /min-height: 24px/);
+  assert.match(reload, /background: var\(--ds-bg-chip\)/);
+  assert.match(reload, /border: 0/);
+  assert.doesNotMatch(reload, /box-shadow/);
+  assert.doesNotMatch(styles, /\.provider-models-state\s*\{/);
+});
+
 test("the dialog's actions live in the header, not in a footer bar", () => {
   assert.match(setupSource, /className="provider-setup-head-actions"/);
   // The bare X is replaced by a labelled Cancel.

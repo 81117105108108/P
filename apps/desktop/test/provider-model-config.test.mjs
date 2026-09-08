@@ -119,10 +119,24 @@ test("one picker component serves the service dialog and the account dialog", ()
     assert.doesNotMatch(source, /toggleModel/);
     assert.doesNotMatch(source, /applyVisibleModelSelection/);
     assert.doesNotMatch(source, /selectAllVisibleModels/);
+    assert.doesNotMatch(source, /fetchModelList/);
+    assert.match(source, /onReload=\{discovery\.reload\}/);
   }
   // Only the heading of the discovered list differs between them.
   assert.match(setupSource, /listTitle=\{t\("settings\.serviceModels"\)\}/);
   assert.match(vendorDialogSource, /listTitle=\{t\("settings\.accountModels"\)\}/);
+});
+
+test("a header action probes the live list without waiting for debounce", () => {
+  assert.match(hookSource, /reload: \(\) => void/);
+  assert.match(hookSource, /skipCache: true/);
+  assert.match(hookSource, /skipCache \? modelsRef\.current/);
+  // The automatic path still waits; only the header action skips the window.
+  assert.match(hookSource, /FETCH_DEBOUNCE_MS/);
+  assert.match(pickerSource, /settings\.fetchModelList/);
+  assert.match(pickerSource, /provider-models-reload/);
+  assert.match(pickerSource, /onReload/);
+  assert.doesNotMatch(pickerSource, /provider-models-state/);
 });
 
 test("the shared picker can select or clear every visible model at once", () => {

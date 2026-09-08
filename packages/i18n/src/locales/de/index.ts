@@ -960,6 +960,7 @@ export const de = {
     "searchModelId": "Modell-ID suchen…",
     "selectAllVisibleModels": "Alle auswählen",
     "deselectAllVisibleModels": "Auswahl aufheben",
+    "fetchModelList": "Liste laden",
     "reasoning": "Begründung",
     "vision": "Vision",
     "textOnly": "Text",

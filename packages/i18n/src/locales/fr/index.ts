@@ -960,6 +960,7 @@ export const fr = {
     "searchModelId": "ID de modèle de recherche…",
     "selectAllVisibleModels": "Tout sélectionner",
     "deselectAllVisibleModels": "Tout désélectionner",
+    "fetchModelList": "Récupérer la liste",
     "reasoning": "raisonnement",
     "vision": "Vision",
     "textOnly": "Texte",

@@ -960,6 +960,7 @@ export const es = {
     "searchModelId": "ID de modelo de búsqueda…",
     "selectAllVisibleModels": "Seleccionar todo",
     "deselectAllVisibleModels": "Deseleccionar todo",
+    "fetchModelList": "Obtener lista",
     "reasoning": "razonamiento",
     "vision": "Visión",
     "textOnly": "Texto",

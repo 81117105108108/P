@@ -23,7 +23,7 @@ import {
   type ThinkingLevel,
 } from "@pi-desktop/shared";
 import { Button, Field, Input, cx } from "../ui";
-import { IconClose, IconHelp, IconPlus, IconSearch } from "../icons";
+import { IconClose, IconHelp, IconPlus, IconRefresh, IconSearch } from "../icons";
 import { describeModelsFetchError } from "./model-fetch-error";
 import type { ProviderModelsState } from "./useProviderModels";
 
@@ -173,6 +173,8 @@ export type ModelSelectionPanesProps = {
   listTitle: string;
   /** True while the caller saves, so the picker stops accepting input. */
   busy?: boolean;
+  /** Probe the service's model list now, skipping the edit debounce. */
+  onReload?: () => void;
 };
 
 /**
@@ -185,6 +187,7 @@ export function ModelSelectionPanes({
   selection,
   listTitle,
   busy = false,
+  onReload,
 }: ModelSelectionPanesProps) {
   const { t } = useTranslation();
   const { rows, models, publishedLevelsById, setModels } = selection;
@@ -337,10 +340,25 @@ export function ModelSelectionPanes({
               />
             ) : null}
             <h4 className="provider-models-title">{listTitle}</h4>
+            {onReload ? (
+              <button
+                type="button"
+                className={cx(
+                  "provider-models-reload",
+                  discovery.status === "loading" && "is-loading",
+                )}
+                disabled={
+                  busy || discovery.status === "idle" || discovery.status === "loading"
+                }
+                onClick={onReload}
+              >
+                <IconRefresh size={13} aria-hidden />
+                {discovery.status === "loading"
+                  ? t("settings.modelsLoading")
+                  : t("settings.fetchModelList")}
+              </button>
+            ) : null}
           </div>
-          {discovery.status === "loading" ? (
-            <span className="provider-models-state">{t("settings.modelsLoading")}</span>
-          ) : null}
           <div className="provider-models-search-wrap">
             <IconSearch size={13} aria-hidden />
             <input

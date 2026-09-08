@@ -559,10 +559,52 @@
   text-transform: uppercase;
 }
 
-.provider-models-state {
-  color: var(--ds-text-faint);
-  font-size: var(--text-3xs);
+.provider-models-reload {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  margin: 0;
+  padding: 0 7px;
+  min-height: 24px;
+  border: 0;
+  border-radius: var(--radius-2xs);
+  background: var(--ds-bg-chip);
+  color: var(--ds-text-secondary);
+  font-size: var(--text-2xs);
   line-height: var(--leading-normal);
+  cursor: pointer;
+}
+
+.provider-models-reload:hover:not(:disabled) {
+  background: var(--ds-bg-hover);
+  color: var(--ds-text-primary);
+}
+
+.provider-models-reload:disabled {
+  cursor: default;
+  color: var(--ds-text-faint);
+}
+
+.provider-models-reload:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ds-accent) 24%, transparent);
+}
+
+.provider-models-reload.is-loading svg {
+  animation: provider-models-reload-spin 700ms linear infinite;
+}
+
+@keyframes provider-models-reload-spin {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .provider-models-reload.is-loading svg {
+    animation: none;
+  }
 }
 
 .provider-models-search-wrap {

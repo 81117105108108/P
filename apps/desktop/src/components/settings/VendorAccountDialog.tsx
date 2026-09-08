@@ -137,6 +137,7 @@ export function VendorAccountDialog({
             selection={selection}
             listTitle={t("settings.accountModels")}
             busy={saving}
+            onReload={discovery.reload}
           />
         </div>
 

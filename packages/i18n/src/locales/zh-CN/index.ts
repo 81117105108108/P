@@ -971,6 +971,7 @@ export const zhCN = {
     searchModelId: "搜索模型 ID…",
     selectAllVisibleModels: "全选",
     deselectAllVisibleModels: "取消全选",
+    fetchModelList: "获取列表",
     reasoning: "思考",
     vision: "视觉",
     textOnly: "文本",

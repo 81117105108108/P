@@ -971,6 +971,7 @@ export const zhTW = {
     searchModelId: "搜尋模型 ID…",
     selectAllVisibleModels: "全選",
     deselectAllVisibleModels: "取消全選",
+    fetchModelList: "取得列表",
     reasoning: "思考",
     vision: "視覺",
     textOnly: "文本",
