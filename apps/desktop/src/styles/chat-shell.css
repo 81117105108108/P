@@ -43,8 +43,10 @@
   flex: 1;
   flex-direction: column;
   background: var(--ds-bg-primary);
-  --chat-content-max-width: 760px;
-  --chat-composer-max-width: 768px;
+  /* Keep the conversation wide enough to meet the work-panel dock without
+     leaving a decorative gutter on either side of a short turn. */
+  --chat-content-max-width: 920px;
+  --chat-composer-max-width: 920px;
   --chat-width-transition: var(--motion-duration-normal) var(--motion-ease-out);
 }
 
@@ -54,8 +56,8 @@
  * while tightening the centered content band to preserve focus.
  */
 .app-shell.sidebar-collapsed .main-pane {
-  --chat-content-max-width: 640px;
-  --chat-composer-max-width: 640px;
+  --chat-content-max-width: 820px;
+  --chat-composer-max-width: 820px;
   --chat-width-transition: var(--motion-duration-fast) var(--motion-ease-in);
 }
 
@@ -193,9 +195,9 @@
   min-height: 0;
   flex: 1;
   overflow: auto;
-  /* Keep the centered transcript on one x-axis when overflow and the minimap
-   * appear together; native scrollbars must not steal inline space mid-turn. */
-  scrollbar-gutter: stable both-edges;
+  /* Keep the content axis stable when the scrollbar appears, but do not reserve
+   * a second empty gutter on the left of the conversation. */
+  scrollbar-gutter: stable;
   /* Pinned-follow drives the scroll position; native anchoring fights it. */
   overflow-anchor: none;
 }
@@ -248,7 +250,7 @@
   /* Reserve exactly the composer's real height (+ a small gap) so the last
    * message sits just above the box instead of far below it. The variable is
    * published by Composer.tsx from the docked composer's measured height. */
-  padding: 20px 28px calc(var(--composer-dock-height, 228px) + 16px);
+  padding: 20px 32px calc(var(--composer-dock-height, 228px) + 16px);
 }
 
 /* Holds enough scroll height for the bounded first commit of a session switch to

@@ -721,8 +721,8 @@ model):
 - Column `flex: 1; min-height: 0; overflow: hidden`
 - Inner scroller (`.home-scroll`) is the only vertical overflow surface for
   the hero and optional checklist
-- Stack (`.home-stack-inner`) uses content width **`min(100%, 768px)`** in the
-  expanded shell and **`min(100%, 640px)`** while the sidebar is collapsed,
+- Stack (`.home-stack-inner`) uses content width **`min(100%, 920px)`** in the
+  expanded shell and **`min(100%, 820px)`** while the sidebar is collapsed,
   with **`gap: 16px`** (workstation ceiling), and auto margins to center the
   column when the viewport is tall
 - The content order is **hero → optional onboarding checklist**. Task entry
@@ -914,6 +914,7 @@ Codex parity decisions (D034/D070) supersede any older value here.
 | Main pane minimum readable width | 360px | Target when the panel is closed; an open internal panel may reduce MainChat below this target on small windows |
 | Work panel width (closed) | 0px | Hidden by default |
 | Work panel width (open) | `244px–720px` (default 280px), fixed at the committed width | the panel is an in-flow column whose width is taken from the existing client area; the renderer owns its divider (ADR 0151) |
+| Thread/composer envelope | `920px` (expanded) / `820px` (sidebar collapsed) | Centered for wide windows; keeps a 32px inner gutter and does not reserve a decorative left scrollbar gutter |
 | Composer shell minimum | ~80px | One-line draft + toolbar padding |
 | Composer draft height | 1–7 text lines | Auto-grow; internal scroll beyond line 7 |
 | Chat message max width | 720px assistant / 560px user plate | Prevent eye-span over-stretch; user turns stay compact |
@@ -1080,7 +1081,7 @@ Full component contract and usage rules: [08-component-spec.md §17](08-componen
 | **Compact list rows 28px height** | Sidebar session items, settings list rows |
 | **Button rows 32px height** | Standard buttons |
 | **Never exceed 24px vertical gap** | Even for "breathing room" — this is a workstation |
-| **Max content width 720px** | Chat messages, tool disclosure rows — prevent over-wide eye-span |
+| **Max content width 720px** | Assistant prose and tool disclosure bodies — prevent over-wide eye-span inside the wider thread envelope |
 
 ## 14. Do / Don't
 

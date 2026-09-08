@@ -99,3 +99,18 @@ test("the task dock keeps one body scroll owner while the process streams", () =
   assert.match(panelSource, /onClick=\{jumpToLatest\}/);
   assert.match(panelSource, /\[jumpToLatest, selection\.delegationId\]/);
 });
+
+test("the subagent dock uses one task anchor and a continuous process timeline", () => {
+  assert.match(
+    workPanelCss,
+    /\.subagent-detail-meta\s*\{[\s\S]*?background:\s*var\(--ds-tile\)/,
+  );
+  assert.match(
+    workPanelCss,
+    /\.subagent-task-message::before\s*\{[\s\S]*?width:\s*2px;[\s\S]*?background:\s*var\(--ds-text-secondary\)/,
+  );
+  assert.match(
+    workPanelCss,
+    /\.subagent-detail > \.subagent-run\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?padding:\s*16px 0 0;/,
+  );
+});

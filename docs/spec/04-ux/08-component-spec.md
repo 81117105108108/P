@@ -573,7 +573,8 @@ account, subscription, or collaboration backend.
 
 ### 4.1 Purpose
 
-Primary chat area containing ChatTranscript and Composer. Scrollable, center of the workstation.
+Primary chat area containing ChatTranscript and Composer. Scrollable, focused
+reading surface of the workstation.
 
 ### 4.2 Anatomy
 
@@ -595,7 +596,13 @@ Primary chat area containing ChatTranscript and Composer. Scrollable, center of 
 ### 4.3 Layout
 
 - Background: bg-primary
-- Max content width: 720px (messages), centered
+- Max content width: 920px for the thread and composer envelope, centered with
+  32px inner breathing room. The wider band keeps a short session from reading
+  as a narrow island when the work-panel dock opens; the collapsed-sidebar
+  ceiling is 820px.
+- The transcript keeps one stable scrollbar gutter on the trailing edge. It
+  never reserves a matching left gutter, so the minimap and first message do
+  not leave a decorative blank strip beside the session.
 - A failed TurnOutcomeCard exposes one primary **Continue** action and no
   regenerate action. It appends the current locale's continuation prompt to the
   same session and starts a new turn, preserving the failed turn and completed
@@ -938,6 +945,10 @@ It does not render separate Details or Output tabs.
   While pinned to the latest output, the panel body follows new process rows;
   a real upward gesture pauses follow and exposes the standard jump-to-latest
   control.
+- The selected delegate uses a compact status summary, a single task tile with
+  a quiet leading rail, and a continuous process timeline. The task tile is
+  the only elevated anchor; the live rows do not nest another card inside the
+  dock.
 - The dock header identifies the view as **Subagent** and offers close and
   collapse controls. Closing returns to the previously selected work-panel
   resource, if any; `Cmd/Ctrl + J` hides the whole dock. Selecting another node
@@ -1210,9 +1221,9 @@ Single message render — either user (plaintext) or assistant (markdown streami
 
 ### 8.3 Layout
 
-- Max content band: 760px thread column; assistant body max 720px
+- Max content band: 920px thread column; assistant body max 720px
 - When the sidebar is collapsed, the centered thread column and composer band
-  use a 640px ceiling. The outer main pane remains fluid and the width
+  use an 820px ceiling. The outer main pane remains fluid and the width
   transition follows the sidebar dock transition.
 - User: right-aligned, theme-neutral soft plate (`color-mix` on primary ink,
   never a fixed accent tint), borderless, `radius-lg-plus` with a tighter
@@ -2023,17 +2034,18 @@ reasoning-level control.
   headings remove uppercase transformation and wide tracking so localized labels
   remain readable.
 - Width: Home and thread-docked composers share one `24px` horizontal gutter
-  and a `768px` maximum content envelope. The left-edge conversation minimap
-  is absolutely positioned outside that envelope, so its appearance or
-  disappearance never changes the composer shell width.
+  and a `920px` maximum content envelope (`820px` with the sidebar collapsed).
+  The left-edge conversation minimap is absolutely positioned outside that
+  envelope, so its appearance or disappearance never changes the composer
+  shell width.
 - Visual parity: Home and thread-docked composers use the same
   `.composer-shell`, `.composer-input-wrap`, `.composer-input`, and
   `.composer-toolbar` spacing, minimum heights, theme surfaces, and controls.
   Only the parent placement and the localized placeholder copy differ between
   the empty home and a recorded conversation.
-- Scroll stability: The thread scrollport reserves stable gutters on both
-  inline edges, so the centered transcript does not shift when overflow and
-  the minimap first appear.
+- Scroll stability: The thread scrollport reserves one stable trailing gutter,
+  so the transcript does not shift when overflow appears while the minimap
+  does not create a matching blank strip on the left.
 - Bottom-anchored: fixed at bottom of MainChat area
 - Placeholder guidance: home uses `chat.placeholderHome`,
   `chat.placeholderHomeHint`, and `chat.placeholderShortcut`; a session
