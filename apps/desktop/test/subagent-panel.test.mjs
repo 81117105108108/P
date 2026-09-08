@@ -30,6 +30,10 @@ const workPanelCss = await readFile(
   new URL("../src/styles/work-panel.css", import.meta.url),
   "utf8",
 );
+const messagesCss = await readFile(
+  new URL("../src/styles/messages.css", import.meta.url),
+  "utf8",
+);
 
 
 test("a topology node opens a session-scoped side-panel selection", () => {
@@ -48,17 +52,15 @@ test("a topology node opens a session-scoped side-panel selection", () => {
   assert.match(storeSource, /if \(get\(\)\.workPanelOpen\) get\(\)\.collapseWorkPanel\(\)/);
 });
 
-test("the side panel renders only a conversation-like task", () => {
+test("the side panel renders the live conversation process", () => {
   assert.match(panelSource, /<SubagentDetail/);
   assert.match(panelSource, /data-testid="subagent-panel"/);
+  assert.match(panelSource, /selected\.item\.delegate/);
   assert.doesNotMatch(panelSource, /role="tablist"|aria-selected|subagent-panel-tabs/);
   assert.match(transcriptSource, /function delegateTaskDescription\(message: UiMessage\)/);
-  assert.match(transcriptSource, /const task = \(args as \{ task\?: unknown \}\)\.task/);
-  assert.match(detailSource, /className="subagent-task-message"/);
-  assert.match(detailSource, /panel\.subagentTask/);
-  assert.match(detailSource, /panel\.subagentTaskEmpty/);
-  assert.doesNotMatch(detailSource, /<ToolDetailBlocks blocks=\{blocks\}/);
-  assert.doesNotMatch(detailSource, /<SubagentRunRows run=\{delegate\} agentName=\{agentName\} \/>/);
+  assert.match(transcriptSource, /className="subagent-task-message"/);
+  assert.match(detailSource, /<SubagentRunRows/);
+  assert.match(detailSource, /scrollable=\{false\}/);
 });
 
 test("the side panel re-finds live rows instead of storing a stale render snapshot", () => {
@@ -87,11 +89,13 @@ test("the work-panel dock hosts subagent details without creating a resource tab
   assert.match(workPanelSource, /if \(subagentPanel\) setContextOpen\(false\)/);
 });
 
-test("the task dock has one body scroll owner", () => {
+test("the task dock keeps one body scroll owner while the process streams", () => {
   assert.match(workPanelCss, /\.subagent-panel \{[^}]*flex: 1/);
   assert.match(workPanelCss, /\.subagent-panel-scroll \{[^}]*overflow-y: auto/);
-  assert.match(workPanelCss, /\.subagent-task-message \{/);
-  assert.match(workPanelCss, /\.subagent-task-message-body \{[^}]*white-space: pre-wrap/);
-  assert.doesNotMatch(workPanelCss, /\.subagent-detail \.subagent-run/);
-  assert.doesNotMatch(workPanelCss, /\.subagent-detail \.subagent-run-rows/);
+  assert.match(messagesCss, /\.subagent-run-rows\.is-panel-flow \{[\s\S]*?overflow: visible/);
+  assert.match(panelSource, /useFollowScroll\(\)/);
+  assert.match(panelSource, /ref=\{scrollRef\}/);
+  assert.match(panelSource, /onScroll=\{handleScroll\}/);
+  assert.match(panelSource, /onClick=\{jumpToLatest\}/);
+  assert.match(panelSource, /\[jumpToLatest, selection\.delegationId\]/);
 });

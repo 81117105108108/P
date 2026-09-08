@@ -128,14 +128,17 @@ test("a terminal tool event repairs a row lost during renderer reload", () => {
   assert.match(storeSource, /toolName: message\.toolName \?\? completed\.toolName/);
 });
 
-test("the shared side-panel detail is a conversation-like task view", () => {
+test("the shared side-panel detail keeps the live conversation process", () => {
   assert.match(transcriptSource, /delegate\?: SubagentRun/);
   assert.match(detailSource, /function delegateTaskDescription\(message: UiMessage\)/);
   assert.match(detailSource, /className="subagent-task-message"/);
   assert.match(detailSource, /panel\.subagentTask/);
-  assert.match(detailSource, /panel\.subagentTaskEmpty/);
+  assert.match(detailSource, /<SubagentRunRows/);
+  assert.match(detailSource, /scrollable=\{false\}/);
+  assert.match(transcriptSource, /className=\{`subagent-run-rows\$\{scrollable \? "" : " is-panel-flow"\}`\}/);
+  assert.match(transcriptSource, /onScroll=\{scrollable \? handleScroll : undefined\}/);
+  assert.match(transcriptSource, /\{scrollable && showJump \?/);
   assert.doesNotMatch(detailSource, /<ToolDetailBlocks blocks=\{blocks\}/);
-  assert.doesNotMatch(detailSource, /<SubagentRunRows run=\{delegate\} agentName=\{agentName\} \/>/);
 });
 
 test("a Task row is expandable and names the delegate it used", () => {
@@ -286,12 +289,12 @@ test("a delegate's rows scroll in place instead of growing the page (D271)", () 
   // The rows live in their own scroll container, not on `.subagent-run`: the
   // collapse rail is absolutely positioned outside that element's padding box,
   // so an overflow there would clip the rail away.
-  assert.match(transcriptSource, /className="subagent-run-rows"/);
+  assert.match(transcriptSource, /subagent-run-rows/);
   // The scroll area is named by the run heading beside it rather than by a
   // duplicated label string.
   assert.match(
     transcriptSource,
-    /className="subagent-run-rows"[\s\S]*?role="group"[\s\S]*?tabIndex=\{0\}[\s\S]*?aria-labelledby=\{headingId\}/,
+    /className=\{`subagent-run-rows\$\{scrollable \? "" : " is-panel-flow"\}`\}[\s\S]*?role="group"[\s\S]*?tabIndex=\{scrollable \? 0 : undefined\}[\s\S]*?aria-labelledby=\{headingId\}/,
   );
   assert.match(
     transcriptSource,
@@ -324,10 +327,13 @@ test("an expanded delegate run follows the latest output while pinned (D302)", (
   // veil, and pane-visibility machinery stay out of the run scroller.
   assert.match(transcriptSource, /function SubagentRunFollow\(/);
   assert.match(transcriptSource, /const \{[^}]*scrollRef,[^}]*\} = useFollowScroll\(\)/);
-  assert.match(transcriptSource, /<SubagentRunFollow headingId=\{headingId\} items=\{run\.items\} \/>/);
   assert.match(
     transcriptSource,
-    /className="subagent-run-rows"[\s\S]*?onScroll=\{handleScroll\}/,
+    /<SubagentRunFollow[\s\S]*?headingId=\{headingId\}[\s\S]*?items=\{run\.items\}/,
+  );
+  assert.match(
+    transcriptSource,
+    /className=\{`subagent-run-rows\$\{scrollable \? "" : " is-panel-flow"\}`\}[\s\S]*?onScroll=\{scrollable \? handleScroll : undefined\}/,
   );
   assert.match(transcriptSource, /className="subagent-run-follow"/);
   assert.match(

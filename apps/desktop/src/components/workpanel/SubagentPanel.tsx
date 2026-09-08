@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { UiMessage } from "@pi-desktop/shared";
 import {
@@ -16,6 +16,8 @@ import {
 import { toolResultPayload } from "../../lib/tool-presentation";
 import type { SubagentPanelSelection } from "../../lib/subagent-panel";
 import { useAppStore } from "../../stores/app-store";
+import { useFollowScroll } from "../../hooks/use-follow-scroll";
+import { IconArrowDown } from "../icons";
 import { SubagentDetail } from "../ChatTranscript";
 
 function delegationIdForMessage(message: UiMessage): string {
@@ -83,6 +85,22 @@ export function SubagentPanel({ selection }: { selection: SubagentPanelSelection
         : new Map(),
     [selected],
   );
+  const {
+    scrollRef,
+    contentRef,
+    showJump,
+    handleScroll,
+    jumpToLatest,
+    scheduleFollowScroll,
+  } = useFollowScroll();
+
+  useLayoutEffect(() => {
+    jumpToLatest();
+  }, [jumpToLatest, selection.delegationId]);
+
+  useLayoutEffect(() => {
+    scheduleFollowScroll();
+  }, [messages, scheduleFollowScroll]);
 
   return (
     <section
@@ -92,19 +110,39 @@ export function SubagentPanel({ selection }: { selection: SubagentPanelSelection
       aria-labelledby="subagent-panel-title"
       data-testid="subagent-panel"
     >
-      <div className="subagent-panel-scroll">
-        {selected ? (
-          <SubagentDetail
-            message={selected.item.message}
-            delegationStatuses={delegationStatuses}
-            delegationTimings={delegationTimings}
-          />
-        ) : (
-          <div className="subagent-panel-empty" role="status">
-            {t("panel.subagentEmpty")}
-          </div>
-        )}
+      <div
+        ref={scrollRef}
+        className="subagent-panel-scroll"
+        onScroll={handleScroll}
+      >
+        <div ref={contentRef}>
+          {selected ? (
+            <SubagentDetail
+              message={selected.item.message}
+              {...(selected.item.delegate
+                ? { delegate: selected.item.delegate }
+                : {})}
+              delegationStatuses={delegationStatuses}
+              delegationTimings={delegationTimings}
+            />
+          ) : (
+            <div className="subagent-panel-empty" role="status">
+              {t("panel.subagentEmpty")}
+            </div>
+          )}
+        </div>
       </div>
+      {showJump ? (
+        <button
+          type="button"
+          className="jump-latest-btn subagent-panel-jump"
+          aria-label={t("chat.scrollToBottom")}
+          title={t("chat.scrollToBottom")}
+          onClick={jumpToLatest}
+        >
+          <IconArrowDown size={14} />
+        </button>
+      ) : null}
       <span id="subagent-panel-title" className="sr-only">
         {activeSessionId === selection.sessionId
           ? t("panel.subagent")

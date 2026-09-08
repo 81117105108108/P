@@ -1061,18 +1061,19 @@ When drag/drop is implemented, these patterns should apply:
 - Click button: scrolls to bottom, resumes auto-scroll
 - Button disappears when at bottom
 - The subagent task dock uses the same single-body scroll owner as the work
-  panel. It does not mount a nested `.subagent-run-rows` workflow scroller;
-  therefore a long task description can scroll in the dock body without a
-  second scrollbar or an empty tail.
+  panel. It renders the task description followed by the delegate's live
+  thinking, tool, and answer rows in normal content flow; it does not mount a
+  nested `.subagent-run-rows` workflow scrollbar. While the panel is pinned,
+  new process rows stay in view; a real upward gesture pauses follow and shows
+  the standard jump-to-latest control. This keeps the process readable without
+  a second scrollbar or an empty tail.
 - Clicking a delegation topology node opens a conversation-like task view in the
   right-side work-panel dock instead of expanding the transcript. The dock has
-  one compact header and the Task call's selectable description; it does not
-  render separate details, output, or workflow tabs. The panel body is the only
-  scroll owner, so a long task description cannot create a second workflow
-  scrollbar or an empty tail. Selecting another node replaces the task in
-  place, closing it restores the prior resource view when present, and
-  switching sessions or routes hides the selection. `Cmd/Ctrl + J` hides the
-  whole dock.
+  one compact header, the Task call's selectable description, and its live
+  process; it does not render separate details, output, or workflow tabs.
+  Selecting another node replaces the task in place, closing it restores the
+  prior resource view when present, and switching sessions or routes hides the
+  selection. `Cmd/Ctrl + J` hides the whole dock.
 
 ### 9.1a Sidebar project path and open folder
 

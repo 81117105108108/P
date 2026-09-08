@@ -949,10 +949,13 @@ function SubagentRunRows({
   run,
   agentName,
   onCollapse,
+  scrollable = true,
 }: {
   run: SubagentRun;
   agentName: string;
   onCollapse?: () => void;
+  /** Side-panel mode lets the parent panel own the only scrollbar. */
+  scrollable?: boolean;
 }) {
   const { t } = useTranslation();
   const headingId = useId();
@@ -976,7 +979,11 @@ function SubagentRunRows({
           {t("chat.processingSteps", { count: run.items.length })}
         </span>
       </div>
-      <SubagentRunFollow headingId={headingId} items={run.items} />
+      <SubagentRunFollow
+        headingId={headingId}
+        items={run.items}
+        scrollable={scrollable}
+      />
     </div>
   );
 }
@@ -989,9 +996,11 @@ function SubagentRunRows({
 function SubagentRunFollow({
   headingId,
   items,
+  scrollable = true,
 }: {
   headingId: string;
   items: SubagentRunItem[];
+  scrollable?: boolean;
 }) {
   const { t } = useTranslation();
   const {
@@ -1004,8 +1013,9 @@ function SubagentRunFollow({
   } = useFollowScroll();
 
   useLayoutEffect(() => {
+    if (!scrollable) return;
     scheduleFollowScroll();
-  }, [items, scheduleFollowScroll]);
+  }, [items, scheduleFollowScroll, scrollable]);
 
   return (
     <div className="subagent-run-follow">
@@ -1015,11 +1025,11 @@ function SubagentRunFollow({
         * area the pointer can already use. */}
       <div
         ref={scrollRef}
-        className="subagent-run-rows"
+        className={`subagent-run-rows${scrollable ? "" : " is-panel-flow"}`}
         role="group"
-        tabIndex={0}
+        tabIndex={scrollable ? 0 : undefined}
         aria-labelledby={headingId}
-        onScroll={handleScroll}
+        onScroll={scrollable ? handleScroll : undefined}
       >
         <div ref={contentRef}>
           {items.map((item) =>
@@ -1049,7 +1059,7 @@ function SubagentRunFollow({
           )}
         </div>
       </div>
-      {showJump ? (
+      {scrollable && showJump ? (
         <button
           type="button"
           className="jump-latest-btn"
@@ -1073,21 +1083,23 @@ function delegateTaskDescription(message: UiMessage): string {
 }
 
 /**
- * The compact conversation-like view for a selected delegate. It intentionally
- * shows only the header and the task sent to the AI; reports and tool traces
- * remain out of this surface.
+ * The conversation-like view for a selected delegate. It shows the header, the
+ * task sent to the AI, and the delegate's live thinking/tool/answer process.
+ * Reports and counters remain omitted from this compact surface.
  */
 export function SubagentDetail({
   message,
+  delegate,
   delegationStatuses,
   delegationTimings,
 }: {
   message: UiMessage;
+  delegate?: SubagentRun;
   delegationStatuses?: ReadonlyMap<string, SubagentOutcome>;
   delegationTimings?: ReadonlyMap<string, SubagentTiming>;
 }) {
   const { t } = useTranslation();
-  const agentName = delegateAgentName(message);
+  const agentName = delegateAgentName(message, delegate);
   const modelId = delegateModelId(message);
   const outcome = subagentOutcome(message, delegationStatuses);
   const payload = toolResultPayload(message);
@@ -1148,6 +1160,13 @@ export function SubagentDetail({
           {taskDescription || t("panel.subagentTaskEmpty")}
         </div>
       </div>
+      {delegate ? (
+        <SubagentRunRows
+          run={delegate}
+          agentName={agentName}
+          scrollable={false}
+        />
+      ) : null}
     </div>
   );
 }

@@ -2434,6 +2434,14 @@
   z-index: 1;
 }
 
+.subagent-run-rows.is-panel-flow {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+  scrollbar-gutter: auto;
+  overflow-anchor: auto;
+}
+
 .subagent-run-rows:focus-visible {
   outline: 2px solid color-mix(in oklab, var(--ds-accent) 58%, transparent);
   outline-offset: 2px;

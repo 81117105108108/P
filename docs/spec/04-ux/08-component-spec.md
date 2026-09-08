@@ -920,24 +920,29 @@ workflow while rendering entirely inside the plugin's isolated page:
 
 A topology node opens the selected delegate in the same right-side dock as the
 work panel. The dock intentionally mirrors a conversation surface: one compact
-header followed by the task description sent to the AI. It does not render
-separate Details, Output, or Workflow tabs.
+header, the task description sent to the AI, and the delegate's live process.
+It does not render separate Details or Output tabs.
 
 - The selection is renderer-local and session-scoped: it stores only the
-  `sessionId` and delegation id, then re-finds the current Task from the
-  live/retained transcript. The header can therefore update its status, model,
-  and elapsed time while the task is running.
+  `sessionId` and delegation id, then re-finds the current Task and its
+  `parentToolCallId` rows from the live/retained transcript. The header and
+  process therefore update as thinking, tool calls, and answer fragments stream
+  in.
 - The task description is the Task call's `task` argument, rendered as one
-  selectable conversation-like message. Reports, counters, and nested tool
-  traces are deliberately omitted from this surface.
-- The dock has one scroll owner, the panel body. The subagent task view does
-  not mount a second workflow scroller or a fixed-height nested run, so it
-  cannot leave a long empty tail below an inner scrollbar.
+  selectable conversation-like message. The delegate's thinking, tool rows,
+  and answer fragments reuse the same components and styling as the main
+  conversation. Reports and counters remain omitted from this compact surface.
+- The dock has one scroll owner, the panel body. The live process is rendered
+  in normal content flow without a nested `.subagent-run-rows` scrollbar, so a
+  long process cannot create a second scrollbar or leave a long empty tail.
+  While pinned to the latest output, the panel body follows new process rows;
+  a real upward gesture pauses follow and exposes the standard jump-to-latest
+  control.
 - The dock header identifies the view as **Subagent** and offers close and
   collapse controls. Closing returns to the previously selected work-panel
   resource, if any; `Cmd/Ctrl + J` hides the whole dock. Selecting another node
-  replaces the task in place without changing panel width or conversation
-  scroll position.
+  replaces the task and process in place without changing panel width or the
+  conversation scroll position.
 - A session switch or leaving the chat route hides the selection. A stale or
   deleted delegation shows a localized unavailable state and never displays
   another session's rows.
