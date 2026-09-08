@@ -296,6 +296,12 @@ test("message toolbars are icon-only with hover tooltips", () => {
     stylesSource,
     /\.copy-btn\[data-tip\]:hover::after,\s*\.copy-btn\[data-tip\]:focus-visible::after \{\s*opacity:\s*1;/,
   );
+  // Tooltip floats 8px above the button; 5px left the elevated surface and
+  // the icon hover tint merged into one bar so the label looked clipped (#74).
+  assert.match(
+    stylesSource,
+    /\.copy-btn\[data-tip\]::after \{[\s\S]*?bottom:\s*calc\(100%\s*\+\s*8px\)/,
+  );
   // Worded surfaces (error details) keep their label.
   assert.match(transcriptSource, /withLabel/);
 });
