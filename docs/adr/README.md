@@ -178,7 +178,7 @@ Each ADR includes:
 | 0163 | Transcript file references render as previewable chips | Accepted |
 | 0164 | Parent agents collaborate across conversations | Superseded by 0165 |
 | 0165 | Withdraw the A2A / Peer coordination stack | Accepted (supersedes 0147 / 0162 / 0164) |
-| 0166 | Parent-judged subagent lifetime | Accepted (amends 0089 / 0119 / 0129) |
+| 0166 | Parent-judged subagent lifetime | Accepted (amends 0089 / 0119 / 0129; fatal-error path amended by 0189) |
 | 0167 | Agent-chosen Bash timeout | Accepted (amends 0054 / D190 / D273) |
 | 0168 | Main-owned http(s)/mailto allowlist for `openExternal` | Accepted (amends 0109) |
 | 0169 | Classified file preview and live workspace events for plugin views | Accepted (amends 0104 / 0105 / 0109 / 0111) |
@@ -201,3 +201,4 @@ Each ADR includes:
 | 0186 | Summarize first-turn session titles with a main-owned one-shot | Accepted |
 | 0187 | Focus-aware native task notifications | Accepted (amends 0107 / D117) |
 | 0188 | Preserve distinct credentials during model configuration import | Accepted (amends 0179 / D342) |
+| 0189 | Parent fatal error aborts leftover delegates | Accepted (amends 0166 / D328) |

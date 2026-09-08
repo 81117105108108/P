@@ -3642,18 +3642,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         latestTurnResults:
           event.type === "error" && event.error.code === "TURN_ABORTED"
             ? withoutRecordKey(s.latestTurnResults, envelope.sessionId)
-            : {
-                ...s.latestTurnResults,
-                [envelope.sessionId]: {
-                  status: event.type === "error" ? "failed" : "completed",
-                  turnId:
-                    envelope.turnId ?? `${envelope.sessionId}:${envelope.ts}`,
-                  finishedAt: envelope.ts,
-                  ...(event.type === "error"
-                    ? { errorCode: event.error.code }
-                    : {}),
+            : event.type === "agent_end" &&
+                s.latestTurnResults[envelope.sessionId]?.status === "failed"
+              ? s.latestTurnResults
+              : {
+                  ...s.latestTurnResults,
+                  [envelope.sessionId]: {
+                    status: event.type === "error" ? "failed" : "completed",
+                    turnId:
+                      envelope.turnId ?? `${envelope.sessionId}:${envelope.ts}`,
+                    finishedAt: envelope.ts,
+                    ...(event.type === "error"
+                      ? { errorCode: event.error.code }
+                      : {}),
+                  },
                 },
-              },
       }));
       void flushPendingSessionConfiguration(envelope.sessionId);
       if (event.type === "agent_end") {

@@ -603,7 +603,10 @@ reading surface of the workstation.
 - A failed TurnOutcomeCard exposes one primary **Continue** action and no
   regenerate action. It appends the current locale's continuation prompt to the
   same session and starts a new turn, preserving the failed turn and completed
-  work in the transcript.
+  work in the transcript. Continue remains available after a terminal parent
+  error (including HTTP 429) even if leftover subagents were still running;
+  those delegates are aborted and must not leave the session `AGENT_BUSY`
+  (D352). A later `agent_end` must not hide the failed card.
 - Scroll behavior: auto-scroll to bottom on new message while pinned; the first
   upward manual movement pauses auto-scroll without a snap-back; send / retry /
   regenerate re-pins and positions the latest content during the layout phase,

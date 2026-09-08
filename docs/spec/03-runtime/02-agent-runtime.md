@@ -637,8 +637,11 @@ runtime swallows that `agent_end`, keeps the durable turn open, waits for the
 delegates, and prompts the parent with their reports. Ending the parent loop
 does not abort them.
 
-Fatal provider/stream errors, parent aborts, and explicit `maxTurns` retain
-their existing `failed`, `aborted`, and `truncated` outcomes.
+Fatal provider/stream errors (including exhausted HTTP 429), parent aborts,
+and explicit `maxTurns` retain their existing `failed`, `aborted`, and
+`truncated` outcomes. A terminal parent error also aborts leftover delegates,
+skips the resume prompt, and returns the session to idle so Continue is not
+`AGENT_BUSY` (D352).
 
 **Model pins.** `model: <provider>/<model>` in the frontmatter is resolved once
 per launch in Electron main, where credentials and the models.dev snapshot live, against
@@ -660,8 +663,9 @@ exists to avoid.
 **Turn ownership.** A delegate's lifecycle never reaches Electron main's turn
 handling. The parent may keep working or talk to the user after `Task`. If it
 stops calling tools while delegates still run, the runtime keeps the durable
-turn open and delivers the reports when they finish. Only user Stop, `TaskStop`,
-or runtime dispose aborts a still-running delegate.
+turn open and delivers the reports when they finish. User Stop, `TaskStop`,
+runtime dispose, or a parent fatal error (D352) abort a still-running
+delegate.
 
 ### 5f.1 Delegate permission scope (ADR 0089)
 

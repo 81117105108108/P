@@ -7419,17 +7419,21 @@ This test plan spec is accepted when:
   while the delegate is still running and read the heartbeat the parent
   receives. 4) `TaskList` a running delegate and confirm elapsed / last-tool
   fields. 5) `TaskStop` and user Stop still abort. 6) Explicit `maxTurns`
-  still returns `truncated`; `maxTurns: none` is unlimited.
+  still returns `truncated`; `maxTurns: none` is unlimited. 7) Start a
+  delegate on another model, exhaust the parent HTTP 429 budget, and click
+  Continue; confirm leftover delegates abort, the session is idle, Continue
+  is accepted, and the failed TurnOutcomeCard stays visible.
 - **Expected**: Idle and duration watchdogs never fire. Parent idle does not
   abort delegates. Completion reports are delivered into the same durable
   turn. `TaskWait` expiry reports “Still running after Ns”, includes a
   heartbeat, and states that this is not a failure. Builtin turn backstops
   (`explorer` 60, `code-reviewer` 50, `test-runner` 40, `fixer` 80) still end
   a non-converging delegate as `truncated`. Explorer's catalog includes
-  `Bash` while code-reviewer remains read-only.
+  `Bash` while code-reviewer remains read-only. A terminal parent 429 aborts
+  leftover delegates and Continue is not `AGENT_BUSY` (D352).
 - **Specs linked**: `03-runtime/02-agent-runtime.md` §5f,
   `03-runtime/08-error-codes.md`, `03-runtime/09-logging-and-observability.md`,
-  ADR 0166, decisions-log D328
+  ADR 0166, ADR 0189, decisions-log D328 / D352
 - **Acceptance**: C (conversation), E (tools & permissions), H (diagnostics), Quality
 - **Milestone**: M6+
 - **Status**: Covered by unit tests; full desktop journey pending

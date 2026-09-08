@@ -553,8 +553,10 @@ Stop / 运行时销毁。主 Agent 用 `TaskStop` 判断要不要取消；运行
 当父级在委托仍在跑时停止调用工具，运行时吞掉这次 `agent_end`，保持持久
 回合打开，等委托完成后再把报告塞回父级。父级收工不会中止它们。
 
-致命的 provider/stream 错误、父级中止以及显式的 `maxTurns`，仍分别保留它们
-既有的 `failed`、`aborted` 和 `truncated` 结果。
+致命的 provider/stream 错误（包括耗尽的 HTTP 429）、父级中止以及显式的
+`maxTurns`，仍分别保留它们既有的 `failed`、`aborted` 和 `truncated` 结果。
+父级终态错误还会中止残留委托、跳过续跑提示，并把会话恢复为空闲，这样
+“继续”不会变成 `AGENT_BUSY`（D352）。
 
 **模型引脚。** Frontmatter 中的 `model: <provider>/<model>` 在每次启动时于
 Electron main 里解析一次——凭据与 models.dev 快照都在那里——匹配提供商 id、
@@ -571,8 +573,8 @@ Electron main 里解析一次——凭据与 models.dev 快照都在那里——
 
 **回合所有权。** 委托的生命周期永远不会轮到 Electron main
 处理。父级可以在 `Task` 之后继续自己的主线或对用户说话。如果它在委托仍在
-跑时停止调用工具，运行时保持持久回合打开，并在它们完成时交回报告。只有
-用户 Stop、`TaskStop` 或运行时销毁才会中止仍在运行的委托。
+跑时停止调用工具，运行时保持持久回合打开，并在它们完成时交回报告。用户
+Stop、`TaskStop`、运行时销毁或父级终态错误（D352）会中止仍在运行的委托。
 
 ### 5f.1 委托权限作用域（ADR 0089）
 

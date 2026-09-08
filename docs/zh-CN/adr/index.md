@@ -45,6 +45,7 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
  | [ADR 0186：显示进行中重试的 provider 原因](/adr/0186-retry-cause-in-active-turn-status) | 悬停或聚焦重试状态行时显示错误摘要、错误码和安全的 provider 消息 |
  | [ADR 0187：区分任务和交互式本机通知投递](/adr/0187-separate-task-and-interactive-native-notification-delivery) | 终端任务保持仅无焦点投递，交互询问可通知聚焦的其他会话 |
  | [ADR 0188：模型配置导入保留不同凭据](/adr/0188-preserve-distinct-import-credentials) | 同一端点的不同 API 密钥作为独立提供商导入，相同凭据仍保持幂等跳过 |
+ | [ADR 0189：父级终态错误中止残留委托](/adr/0189-parent-fatal-error-aborts-leftover-delegates) | 父级空闲仍不中止委托；429 等终态错误会中止残留子智能体，让“继续”不再 AGENT_BUSY |
 
 ## 什么时候看 ADR
 
