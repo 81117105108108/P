@@ -58,7 +58,8 @@ test("the side panel renders the live conversation process", () => {
   assert.match(panelSource, /selected\.item\.delegate/);
   assert.doesNotMatch(panelSource, /role="tablist"|aria-selected|subagent-panel-tabs/);
   assert.match(transcriptSource, /function delegateTaskDescription\(message: UiMessage\)/);
-  assert.match(transcriptSource, /className="subagent-task-message"/);
+  assert.match(detailSource, /className="subagent-detail-task-row message-row user"/);
+  assert.match(detailSource, /className="message-bubble subagent-detail-task-bubble"/);
   assert.match(detailSource, /<SubagentRunRows/);
   assert.match(detailSource, /scrollable=\{false\}/);
 });
@@ -97,6 +98,9 @@ test("the task dock keeps one body scroll owner while the process streams", () =
   assert.match(panelSource, /ref=\{scrollRef\}/);
   assert.match(panelSource, /onScroll=\{handleScroll\}/);
   assert.match(panelSource, /onClick=\{jumpToLatest\}/);
+  assert.match(panelSource, /role="log"/);
+  assert.match(panelSource, /aria-live="polite"/);
+  assert.match(panelSource, /tabIndex=\{0\}/);
   assert.match(panelSource, /\[jumpToLatest, selection\.delegationId\]/);
 });
 
@@ -107,18 +111,26 @@ test("the subagent dock uses one task anchor and a continuous process timeline",
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail-summary\s*\{[\s\S]*?gap:\s*6px;/,
+    /\.subagent-detail-summary\s*\{[\s\S]*?gap:\s*8px;/,
+  );
+  assert.match(
+    detailSource,
+    /className="subagent-detail-task-row message-row user"[\s\S]*?className="message-bubble subagent-detail-task-bubble"/,
   );
   assert.match(
     workPanelCss,
-    /\.subagent-task-message::before\s*\{[\s\S]*?width:\s*2px;[\s\S]*?background:\s*var\(--ds-text-secondary\)/,
+    /\.subagent-detail-task-row\s*\{[\s\S]*?padding:\s*8px 0 12px;/,
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail > \.subagent-run\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?padding:\s*12px 0 0;/,
+    /\.subagent-detail-task-row\.message-row\.user\s+\.message-bubble\s*\{[\s\S]*?max-width:\s*min\(100%, 92%\);/,
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail > \.subagent-run \.subagent-run-rows\s*\{[\s\S]*?border-left:\s*1px solid var\(--ds-border-subtle\);/,
+    /\.subagent-detail > \.subagent-run\s*\{[\s\S]*?background:\s*transparent;[\s\S]*?padding:\s*8px 0 0;/,
+  );
+  assert.match(
+    workPanelCss,
+    /\.subagent-detail > \.subagent-run \.subagent-run-rows\s*\{[\s\S]*?border-left:\s*1px solid var\(--ds-border-subtle\);[\s\S]*?background:\s*transparent;/,
   );
 });
