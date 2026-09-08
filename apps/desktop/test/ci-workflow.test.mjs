@@ -115,7 +115,12 @@ test("release matrix packages both native macOS architectures", () => {
   );
   assert.match(
     releaseWorkflowSource,
-    /run: pnpm --filter @pi-desktop\/desktop run \$\{\{ matrix\.dist \}\} -- --\$\{\{ matrix\.arch \}\}/,
+    /pnpm --filter @pi-desktop\/desktop run \$\{\{ matrix\.dist \}\} -- "\$\{package_args\[@\]\}"/,
+  );
+  assert.match(
+    releaseWorkflowSource,
+    /package_args=\(--\$\{\{ matrix\.arch \}\}\)[\s\S]*?if \[\[ "\$\{\{ matrix\.platform \}\}" == "macos" && "\$\{\{ matrix\.arch \}\}" == "x64" \]\][\s\S]*?-c\.dmg\.artifactName=PI-Desktop-\$\{version\}-Intel\.\$\{ext\}[\s\S]*?-c\.zip\.artifactName=PI-Desktop-\$\{version\}-Intel-mac\.\$\{ext\}/,
+    "Intel macOS artifact names are applied only to the native x64 lane",
   );
   assert.match(
     releaseWorkflowSource,

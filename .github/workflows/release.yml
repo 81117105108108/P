@@ -143,7 +143,20 @@ jobs:
         # must not self-publish on tag builds (no token; softprops owns it).
         # The explicit architecture keeps the package and native Rust sidecar
         # aligned with the runner selected by this matrix entry.
-        run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          package_args=(--${{ matrix.arch }})
+          if [[ "${{ matrix.platform }}" == "macos" && "${{ matrix.arch }}" == "x64" ]]; then
+            # Keep Intel downloads distinct from the arm64 assets. These
+            # target-specific patterns are passed to electron-builder so the
+            # generated updater metadata keeps the renamed asset URLs and
+            # checksums in sync.
+            package_args+=(
+              '-c.dmg.artifactName=PI-Desktop-${version}-Intel.${ext}'
+              '-c.zip.artifactName=PI-Desktop-${version}-Intel-mac.${ext}'
+            )
+          fi
+          pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- "${package_args[@]}"
 
       - name: Verify Linux host-core glibc floor
         if: matrix.platform == 'linux'

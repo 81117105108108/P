@@ -175,6 +175,12 @@ macOS 矩阵使用 arm64 的 `macos-15` 和 Intel x64 的
 `pi-desktop-host-core`。每个架构的 `latest-mac.yml` 会在上传前重命名，
 发布作业下载两个工件后再合并为一个更新源。
 
+Intel x64 打包命令会覆盖 macOS 目标的工件命名模板，使公开下载名明确区分：
+`PI-Desktop-<version>-Intel.dmg` 和 `PI-Desktop-<version>-Intel-mac.zip`。
+arm64 通道保留通用的 `PI-Desktop-<version>.dmg` 和
+`PI-Desktop-<version>-mac.zip` 名称。命名模板在 electron-builder 打包时生效，
+因此生成的 `latest-mac-x64.yml` 会引用带 Intel 后缀的工件及其匹配校验和。
+
 macOS 打包步骤仅从 GitHub Actions 密钥接收 `CSC_LINK`、
 `CSC_KEY_PASSWORD`、`APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD` 和
 `APPLE_TEAM_ID`。该步骤强制执行代码签名和公证，然后验证 Developer ID
@@ -321,8 +327,9 @@ macOS 软件包包括按本机架构构建的 `bin/pi-desktop-host-core`；Windo
 
 Native-runner 输出矩阵：
 
-- macOS arm64：DMG 和 ZIP
-- macOS Intel x64：DMG 和 ZIP
+- macOS arm64：`PI-Desktop-<version>.dmg` 和 `PI-Desktop-<version>-mac.zip`
+- macOS Intel x64：`PI-Desktop-<version>-Intel.dmg` 和
+  `PI-Desktop-<version>-Intel-mac.zip`
 - Windows x64：NSIS 安装程序
 - Linux x64：AppImage 和 deb
 - Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`

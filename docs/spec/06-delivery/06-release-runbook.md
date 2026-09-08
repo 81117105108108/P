@@ -195,6 +195,14 @@ before any artifact upload. The per-architecture
 `latest-mac.yml` files are renamed before upload; the publish job merges them
 into one feed after downloading both artifacts.
 
+The Intel x64 package command overrides the macOS target-specific artifact
+patterns so the public assets are unambiguous: `PI-Desktop-<version>-Intel.dmg`
+and `PI-Desktop-<version>-Intel-mac.zip`. The arm64 lane keeps the generic
+`PI-Desktop-<version>.dmg` and `PI-Desktop-<version>-mac.zip` names. Because
+the patterns are applied during electron-builder execution, the generated
+`latest-mac-x64.yml` feed references the Intel asset names and their matching
+checksums.
+
 DMG, ZIP, NSIS, AppImage, deb, blockmap, and updater feed outputs are already
 compressed or compression-insensitive. The workflow therefore uploads their
 temporary Actions artifacts with compression level zero before the publish job
@@ -346,8 +354,9 @@ D126/D285.
 
 Native-runner output matrix:
 
-- macOS arm64: DMG and ZIP
-- macOS Intel x64: DMG and ZIP
+- macOS arm64: `PI-Desktop-<version>.dmg` and `PI-Desktop-<version>-mac.zip`
+- macOS Intel x64: `PI-Desktop-<version>-Intel.dmg` and
+  `PI-Desktop-<version>-Intel-mac.zip`
 - Windows x64: NSIS installer
 - Linux x64: AppImage and deb
 - Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`
