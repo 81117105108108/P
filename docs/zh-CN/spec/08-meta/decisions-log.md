@@ -2737,3 +2737,15 @@ D193 和 D194。
 - `--text-*` 阶是一组相对尺寸。窗口缩放会把布局一起放大，不是文字偏好。只改阅读区的 px 会让同一窗口出现两套字号。
 - 设置 → 常规 → 外观增加字体大小：杯型档位中杯 / 大杯 / 超大杯 / 超超大杯，加上 80%–150% 滑杆，持久化为可选 `AppSettings.fontScale`（`1` = 产品字号阶）。渲染器设置 `--font-scale`，全部 `--text-*` 台阶和共享 Lucide 图标按比例缩放。
 - 决策 D343 记录为 ADR 0180。见 `04-ux/06-settings-ia.md`、`04-ux/07-ui-design-system.md` 与 E2E-193。
+
+## 2026-09-08 —— macOS 侧边栏改用 source-list vibrancy 材质（D347）
+
+- 深色主题 CSS 叠在 `under-window` vibrancy 上时，macOS 26 Liquid Glass 会画出
+  一块浅色底板。40% 炭黑 tint 压不住，会话行就像浅色侧栏贴在不透明深色主面板
+  旁边。
+- 决策 D347：主窗口改用 Electron `vibrancy: "sidebar"`，不再用 `under-window`。
+  `nativeTheme.themeSource` 跟随应用主题偏好（`system` / `light` / `dark` /
+  插件 base），让原生菜单和毛玻璃底板与渲染器一致。薄的
+  `--ds-sidebar-glass-tint` 配方不变。修正 D304。
+- `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质和 `themeSource` 赋值。见
+  `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。

@@ -3826,3 +3826,18 @@ D193, and D194.
   host protocol, storage schema, or IPC version change.
 - Decision D346 is recorded as ADR 0183. See `04-ux/02-i18n-english-first.md`,
   `04-ux/06-settings-ia.md`, and E2E-091.
+
+## 2026-09-08 — macOS sidebar uses the source-list vibrancy material (D347)
+
+- Dark-theme CSS over `under-window` vibrancy painted a light plate on macOS 26
+  Liquid Glass. The 40% charcoal tint could not keep the dock in the dark
+  range, so session rows sat on a washed gray sidebar beside an opaque dark
+  main pane.
+- Decision D347: the main window uses Electron `vibrancy: "sidebar"` instead of
+  `under-window`. `nativeTheme.themeSource` follows the app theme preference
+  (`system` / `light` / `dark` / plugin base) so native menus and the vibrancy
+  plate match the renderer. The thin `--ds-sidebar-glass-tint` recipe is
+  unchanged. Amends D304.
+- `macos-sidebar-vibrancy.test.mjs` asserts the sidebar material and
+  `themeSource` assignment. See `04-ux/08-component-spec.md` §1.7 and
+  US-UI-74 / E2E-076.

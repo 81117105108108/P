@@ -23,13 +23,15 @@ function styleBlock(selector) {
   return stylesSource.match(new RegExp(`${selector}\\s*\\{[^}]*\\}`))?.[0] ?? "";
 }
 
-test("macOS main window enables native under-window vibrancy only in its platform branch", () => {
+test("macOS main window enables native sidebar vibrancy only in its platform branch", () => {
   assert.match(macOptions, /titleBarStyle:\s*"hiddenInset"/);
   assert.match(macOptions, /trafficLightPosition:\s*\{ x: 16, y: 16 \}/);
-  assert.match(macOptions, /vibrancy:\s*"under-window"/);
+  assert.match(macOptions, /vibrancy:\s*"sidebar"/);
   assert.match(macOptions, /visualEffectState:\s*"followWindow"/);
   assert.match(macOptions, /transparent:\s*true/);
   assert.match(macOptions, /backgroundColor:\s*"#00000000"/);
+  assert.match(mainSource, /nativeTheme\.themeSource = next/);
+  assert.match(mainSource, /mainWindow\.setVibrancy\("sidebar"\)/);
 
   // The shared opaque fallback remains in place for Windows/Linux.
   assert.match(
