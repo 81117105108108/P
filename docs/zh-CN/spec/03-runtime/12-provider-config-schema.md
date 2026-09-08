@@ -189,6 +189,11 @@ type ModelCatalogCacheRecord = {
 `limit.context`，它会替换旧 binding 中的 128k 通用种子；用户在模型
 Advanced 控件中设置的非默认值仍优先。未知模型继续使用 128k 的保守后备。
 
+Copilot OAuth 行还会保留固定 pin 的 pi-ai 传输模型中的静态 IDE 身份标头
+（`Editor-Version`、`Editor-Plugin-Version` 与 `Copilot-Integration-Id`），
+即使运行时模型使用本地行 id 进行账户隔离。Agent 运行时会按每次调用提供
+Copilot 的上下文相关请求标头；已保存的同名自定义 header 会覆盖默认值。
+
 ## 5. IPC / 主机方法（提供商域）
 
 - `providers.list`

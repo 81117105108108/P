@@ -49,6 +49,7 @@ import {
 } from "./agent-messages.js";
 import {
   buildProviderModel,
+  copilotRequestHeaders,
   createProviderModels,
   providerRequestKey,
   type RuntimeProviderConfig,
@@ -57,7 +58,7 @@ import {
   openCodeEndpointFromProvider,
   withOpenCodeSessionHeaders,
 } from "./opencode-session-headers.js";
-import { withProviderHeaders } from "./provider-headers.js";
+import { mergeProviderHeaders, withProviderHeaders } from "./provider-headers.js";
 import {
   captureProviderResponse,
   classifyProviderError,
@@ -228,7 +229,10 @@ export class SubagentRun {
               sessionId: opts.sessionId,
             },
           ),
-          opts.provider.headers,
+          mergeProviderHeaders(
+            copilotRequestHeaders(opts.provider, context),
+            opts.provider.headers,
+          ),
         );
         return createProviderRetryStream(
           m,

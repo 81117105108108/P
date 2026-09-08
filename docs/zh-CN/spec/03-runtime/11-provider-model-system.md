@@ -79,6 +79,13 @@ pi-ai 去发出 `x-opencode-session`。每个提供商行（AI 服务或 OAuth �
 设置可选的 `headers`；留空则保持适配器默认值。一层 fetch 包装是最后的写入方，
 因此 Codex 与 Anthropic 无法覆盖它们。
 
+当 OAuth 厂商围绕本地 provider 行 id 重建运行时模型时，运行时仍保留 pi-ai
+原生传输元数据，不会把该行当作普通 OpenAI 端点。GitHub Copilot 请求会保留
+固定 pin 模型的 IDE 身份标头，包括 `Editor-Version`、`Editor-Plugin-Version`
+与 `Copilot-Integration-Id`；Agent 运行时还会按上下文加入动态的
+`X-Initiator`、`Openai-Intent` 与图像请求标头。本地行 id 仍然拥有认证绑定与
+对话记录身份；用户设置的提供商 headers 仍是最后的覆盖层。
+
 智谱 / GLM 与 Z.AI 是命名的 OpenAI 兼容端点预设，收录在一份由 models.dev
 支撑的、简短的第一方厂商服务列表中（含小米）。添加提供商时的「服务」选择器
 会持久化匹配的 models.dev `vendorKey`，并使用已发布的端点，在命名服务这条

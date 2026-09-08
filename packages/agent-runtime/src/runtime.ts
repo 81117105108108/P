@@ -96,6 +96,7 @@ import { buildSessionContext } from "./session-context.js";
 import {
   apiBindingForStyle,
   buildProviderModel,
+  copilotRequestHeaders,
   createProviderModels,
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_MAX_TOKENS,
@@ -131,7 +132,11 @@ import {
   openCodeEndpointFromProvider,
   withOpenCodeSessionHeaders,
 } from "./opencode-session-headers.js";
-import { providerHeadersEqual, withProviderHeaders } from "./provider-headers.js";
+import {
+  mergeProviderHeaders,
+  providerHeadersEqual,
+  withProviderHeaders,
+} from "./provider-headers.js";
 import {
   captureProviderResponse,
   classifyProviderError,
@@ -1428,7 +1433,10 @@ Delegation rules:
               sessionId: this.sessionId,
             },
           ),
-          this.provider.headers,
+          mergeProviderHeaders(
+            copilotRequestHeaders(this.provider, context),
+            this.provider.headers,
+          ),
         );
         return createProviderRetryStream(
           m,

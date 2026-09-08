@@ -216,6 +216,13 @@ reject the request. First OAuth login does not collect headers; they are
 edited on the account after it exists. Advanced UI is a compact key/value
 editor, not a dedicated User-Agent field.
 
+Copilot OAuth rows also retain the static IDE identity headers from the pinned
+pi-ai transport model (`Editor-Version`, `Editor-Plugin-Version`, and
+`Copilot-Integration-Id`) even though runtime models use the local row id for
+account isolation. Agent-runtime supplies Copilot's context-sensitive request
+headers per call; a saved custom header with the same name overrides the
+default.
+
 ## 3. Built-in vendor presets
 
 Presets only prefill form defaults; they are not a closed world.

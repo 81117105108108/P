@@ -78,6 +78,15 @@ emit `x-opencode-session`. Each provider row (AI service or OAuth account)
 may set optional `headers`; empty keeps adapter defaults. A fetch wrapper is
 the last writer so Codex and Anthropic cannot overwrite them.
 
+When an OAuth vendor is rebuilt around a local provider-row id, runtime keeps
+the native pi-ai transport metadata instead of treating the row as a generic
+OpenAI endpoint. GitHub Copilot requests retain the pinned model's IDE identity
+headers, including `Editor-Version`, `Editor-Plugin-Version`, and
+`Copilot-Integration-Id`; agent-runtime adds the context-sensitive
+`X-Initiator`, `Openai-Intent`, and image-request header. The local row id still
+owns auth binding and transcript identity, and user-supplied provider headers
+remain the final override.
+
 Zhipu / GLM and Z.AI are named OpenAI-compatible endpoint presets among a
 short models.dev-backed Service list of first-party vendors (including
 Xiaomi). The add-provider Service picker persists the matching models.dev

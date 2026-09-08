@@ -4,6 +4,7 @@ import { convertMessages } from "@earendil-works/pi-ai/api/openai-completions";
 import {
   apiBindingForStyle,
   buildProviderModel,
+  copilotRequestHeaders,
   createProviderModels,
   runtimeBaseUrlForApi,
   type RuntimeProviderConfig,
@@ -277,5 +278,119 @@ describe("createProviderModels auth resolution", () => {
       apiKey: "second-token",
       baseUrl: "https://per-account.acme.test",
     });
+  });
+});
+
+describe("GitHub Copilot transport identity", () => {
+  const provider: RuntimeProviderConfig = {
+    id: "copilot-account-row",
+    name: "GitHub Copilot",
+    vendorKey: "github-copilot",
+    baseUrl: "https://api.individual.githubcopilot.com",
+    modelId: "gpt-4o",
+    apiKey: "",
+    authKind: "oauth",
+    apiStyle: "responses",
+    supportsReasoning: true,
+    supportedThinkingLevels: ["off", "low", "medium", "high", "max"],
+    resolveAuth: async () => ({
+      apiKey: "copilot-token",
+      baseUrl: "https://api.individual.githubcopilot.com",
+    }),
+  };
+
+  it("retains pi-ai static headers for a row-scoped OAuth model", () => {
+    const model = buildProviderModel(provider);
+
+    expect(model.provider).toBe(provider.id);
+    expect(model.headers).toMatchObject({
+      "Editor-Version": "vscode/1.107.0",
+      "Editor-Plugin-Version": "copilot-chat/0.35.0",
+      "Copilot-Integration-Id": "vscode-chat",
+    });
+  });
+
+  it("derives dynamic headers from the current request context", () => {
+    expect(
+      copilotRequestHeaders(provider, {
+        messages: [{ role: "user", content: "hello", timestamp: Date.now() }],
+      }),
+    ).toEqual({
+      "X-Initiator": "user",
+      "Openai-Intent": "conversation-edits",
+    });
+
+    expect(
+      copilotRequestHeaders(provider, {
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "hello" },
+              { type: "image", data: "AQI=", mimeType: "image/png" },
+            ],
+            timestamp: Date.now(),
+          },
+          {
+            role: "assistant",
+            content: [{ type: "text", text: "working" }],
+            api: "openai-responses",
+            provider: provider.id,
+            model: provider.modelId,
+            usage: {
+              input: 1,
+              output: 1,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 2,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
+            },
+            stopReason: "stop",
+            timestamp: Date.now(),
+          },
+        ],
+      }),
+    ).toEqual({
+      "X-Initiator": "agent",
+      "Openai-Intent": "conversation-edits",
+      "Copilot-Vision-Request": "true",
+    });
+  });
+
+  it("sends the complete identity on a row-scoped Responses request", async () => {
+    const model = buildProviderModel(provider);
+    const context = {
+      systemPrompt: "system",
+      messages: [{ role: "user" as const, content: "hello", timestamp: Date.now() }],
+      tools: [],
+    };
+    let request: Request | undefined;
+    const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      request = new Request(input, init);
+      return new Response(
+        JSON.stringify({ error: "missing Editor-Version header for IDE auth" }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    const result = await createProviderModels(provider, model)
+      .streamSimple(model, context, {
+        fetch,
+        headers: copilotRequestHeaders(provider, context),
+      })
+      .result();
+
+    expect(result.stopReason).toBe("error");
+    expect(request?.headers.get("Editor-Version")).toBe("vscode/1.107.0");
+    expect(request?.headers.get("Editor-Plugin-Version")).toBe("copilot-chat/0.35.0");
+    expect(request?.headers.get("Copilot-Integration-Id")).toBe("vscode-chat");
+    expect(request?.headers.get("X-Initiator")).toBe("user");
+    expect(request?.headers.get("Openai-Intent")).toBe("conversation-edits");
   });
 });
