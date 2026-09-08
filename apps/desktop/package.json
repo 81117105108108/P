@@ -181,7 +181,11 @@
     },
     "rpm": {
       "packageName": "pi-desktop",
-      "artifactName": "pi-desktop-${version}-${arch}.${ext}"
+      "artifactName": "pi-desktop-${version}-${arch}.${ext}",
+      "fpm": [
+        "--rpm-rpmbuild-define",
+        "_build_id_links none"
+      ]
     },
     "linux": {
       "executableName": "pi-desktop",

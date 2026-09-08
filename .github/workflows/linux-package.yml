@@ -46,6 +46,10 @@ jobs:
           mapfile -t packages < <(find apps/desktop/release -maxdepth 1 -type f -name '*.rpm' -print)
           test "${#packages[@]}" -eq 1
           rpm -qip "${packages[0]}"
+          if rpm -qpl "${packages[0]}" | grep -q '^/usr/lib/.build-id'; then
+            echo 'RPM must not ship global build-id links for bundled Electron binaries'
+            exit 1
+          fi
           rpm -qpl "${packages[0]}" | grep -Fx '/opt/PI-Desktop/resources/app.asar'
           rpm -qpl "${packages[0]}" | grep -Fx '/opt/PI-Desktop/resources/bin/pi-desktop-host-core'
           rpm -qpl "${packages[0]}" | grep -Fx '/usr/share/applications/pi-desktop.desktop'

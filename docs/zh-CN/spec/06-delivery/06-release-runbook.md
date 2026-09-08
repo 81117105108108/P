@@ -319,6 +319,10 @@ Native-runner 输出矩阵：
 - Linux x64：AppImage、deb 和 rpm
 - Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`
 
+RPM 目标会向 FPM 传入 `_build_id_links none`。捆绑的 Electron 二进制文件位于
+`/opt/PI-Desktop` 下；省略全局 `/usr/lib/.build-id` 链接，可以避免与其他捆绑相同
+Electron 二进制文件的应用发生冲突。
+
 该 ASAR 产物包含的是 Electron 应用归档，而不是完整的 Linux 发行包。
 若要重新打包，请把它作为应用归档放入目标 Electron 的 resources 布局中，
 与目标软件包内的本机主机及其他资源放在一起，然后用以下命令启动：

@@ -342,6 +342,10 @@ Native-runner output matrix:
 - Linux x64: AppImage, deb, and rpm
 - Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`
 
+RPM targets pass `_build_id_links none` to FPM. Bundled Electron binaries live
+under `/opt/PI-Desktop`; omitting global `/usr/lib/.build-id` links prevents
+collisions with other applications that bundle the same Electron binaries.
+
 The ASAR asset contains the Electron application archive, not a complete Linux
 distribution. To repackage it, place it as the application archive in the
 target Electron resources layout together with the native host and other
