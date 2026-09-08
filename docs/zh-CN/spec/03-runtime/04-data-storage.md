@@ -865,7 +865,8 @@ CREATE INDEX idx_notifications_unread
 | 回合完成分支存档 (`session.saveActiveRevision`) | 附加修订行（活动变体已归档时为刷新行），然后仅重写寻呼机标记的根用户的转录行 | 带有 `message_count` 的索引行（+ `is_active` 翻转）；其他消息的索引行未受影响 |
 | 修订版开关 | 先为实时分支自身的变体追加刷新行，读取目标分支，原子转录重写并保留锚点仍存在的检查点 | 翻转 `is_active`，重建索引行并带上每条幸存消息所属的 `turn_id`，重置 `last_seq` |
 | 进口 | 写入成绩单文件 | 每个会话一笔交易：会话行 + 索引行；失败时文件将被删除 |
-| 会话删除 | 行删除后删除两个会话文件 | `DELETE FROM sessions`（级联） |
+| 会话删除 | 行删除后删除两个会话文件 | `DELETE FROM sessions`（级联）；Electron 主进程会丢弃该会话的 outbox 条目（D318） |
+| 孤立会话恢复（启动 / `session.appendMessage`，D318） | 保留现有的 JSONL 文件 | 重新插入缺失的 `sessions` 行，并依据该文件重建索引行；若文件也已不存在，追加操作会在现有 id 下插入一个占位行，使 outbox 能够排空 |
 
 规则：回合开始前用户消息持久（fsync'd 文件行）；
 assistant/tool 行在其结束事件时持久化；正在流式的助手回复另外至多每 1.5 秒
