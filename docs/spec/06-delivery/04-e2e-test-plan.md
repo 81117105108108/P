@@ -141,6 +141,24 @@ Each scenario is documented in this format:
 - **Status**: Documented; artifact export is unit-covered, native system-Electron
   repackaging remains runner validation
 
+#### E2E-196a: v0.14.2 temporary unsigned macOS release exception
+
+- **Preconditions**: The `v0.14.2` tag workflow is running with the documented
+  temporary signing exception; Windows and Linux release credentials are not
+  affected.
+- **Steps**: 1) Run the `v0.14.2` tag release workflow. 2) Confirm both macOS
+  architectures complete ordinary DMG/ZIP packaging without certificate
+  secrets. 3) Inspect the published artifacts and the workflow steps.
+- **Expected**: macOS DMG/ZIP artifacts are produced and uploaded without
+  Developer ID signatures or notarization; macOS staple and Gatekeeper checks
+  are explicitly skipped. Windows/Linux artifacts and the merged updater feed
+  still publish normally. This exception must be removed before the next stable
+  release; it does not satisfy E2E-196.
+- **Specs linked**: `06-delivery/06-release-runbook.md`
+- **Acceptance**: Quality (temporary release recovery)
+- **Milestone**: M6+
+- **Status**: Temporary for `v0.14.2`; do not reuse for later stable releases
+
 #### E2E-196: macOS tag artifacts pass Gatekeeper without a quarantine bypass
 
 - **Preconditions**: A `vX.Y.Z` tag matches `apps/desktop/package.json`; GitHub
