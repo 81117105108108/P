@@ -76,6 +76,11 @@ test("main process registers update handlers and the auto-check lifecycle", () =
   assert.match(mainSource, /new AppUpdaterController\(/);
   assert.match(mainSource, /isPackaged:\s*!isDevelopmentBuild/);
   assert.match(mainSource, /updater\.startAutoCheck\(\)/);
+  assert.match(
+    mainSource,
+    /await ensureWindow\(\);[\s\S]*updater\.startAutoCheck\(\)/,
+    "auto-check starts after the first window exists, never on the boot await path",
+  );
   assert.match(mainSource, /updater\.dispose\(\)/);
 });
 
@@ -116,6 +121,18 @@ test("updater gates delivery mode by platform, packaging and signature reality",
     updaterSource,
     /refreshReleaseNotes/,
     "locale changes re-resolve notes without a new feed check",
+  );
+  assert.match(
+    updaterSource,
+    /AUTO_CHECK_TIMEOUT_MS = 8_000/,
+    "auto GitHub checks must not wait for Chromium's ~60s socket timeout",
+  );
+  assert.match(updaterSource, /raceWithTimeout/);
+  assert.match(updaterSource, /UPDATE_CHECK_TIMEOUT/);
+  assert.match(
+    updaterSource,
+    /status === "checking"[\s\S]*status: "idle"/,
+    "a timed-out auto-check must leave checking so the next interval can run",
   );
 });
 
