@@ -543,19 +543,31 @@ function AppShell() {
         })
         .catch(() => undefined);
     });
-    const offNotificationActivated = api.onNotificationActivated(({ id }) => {
-      void useAppStore
-        .getState()
-        .openNotification(id)
-        .catch((activationError) =>
-          showToast(
-            activationError instanceof Error
-              ? activationError.message
-              : String(activationError),
-            { variant: "error" },
-          ),
-        );
-    });
+    const offNotificationActivated = api.onNotificationActivated(
+      ({ id, sessionId }) => {
+        const store = useAppStore.getState();
+        const matched = store.notifications.find((item) => item.id === id);
+        if (matched) {
+          void store.openNotification(id).catch((activationError) =>
+            showToast(
+              activationError instanceof Error
+                ? activationError.message
+                : String(activationError),
+              { variant: "error" },
+            ),
+          );
+        } else if (sessionId) {
+          void store.selectSession(sessionId).catch((activationError) =>
+            showToast(
+              activationError instanceof Error
+                ? activationError.message
+                : String(activationError),
+              { variant: "error" },
+            ),
+          );
+        }
+      },
+    );
     const onKey = (e: KeyboardEvent) => {
       const modifierOnly = MODIFIER_ONLY_KEYS.has(e.key);
       if (modifierOnly || e.isComposing || e.keyCode === 229) return;

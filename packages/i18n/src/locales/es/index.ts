@@ -1744,6 +1744,13 @@ export const es = {
     "failedTitle": "{{sessionTitle}} necesita atención",
     "failedBody": "El chat no finalizó exitosamente.",
     "failedBodyWithCode": "El chat se detuvo con el error {{code}}.",
+    "askTitle": "{{sessionTitle}} necesita su respuesta",
+    "askBody": "{{question}}",
+    "askBodyFallback": "La tarea requiere su respuesta para continuar.",
+    "permissionTitle": "{{sessionTitle}} necesita aprobación de herramienta",
+    "permissionBody": "Se requiere permiso para ejecutar {{toolName}}.",
+    "planApprovalTitle": "{{sessionTitle}} plan pendiente de aprobación",
+    "planApprovalBody": "El plan propuesto está listo para su revisión.",
     "actionFailed": "No se pudieron actualizar las notificaciones.",
     "justNow": "Justo ahora"
   },
