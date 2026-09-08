@@ -117,7 +117,11 @@ test("the subagent dock uses a grouped identity, task card, and process timeline
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail-hero\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?top:\s*0;/,
+    /\.subagent-detail-hero\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?top:\s*0;[\s\S]*?flex-direction:\s*row;/,
+  );
+  assert.match(
+    workPanelCss,
+    /\.subagent-detail-summary\s*\{[\s\S]*?flex-wrap:\s*nowrap;/,
   );
   assert.match(
     detailSource,

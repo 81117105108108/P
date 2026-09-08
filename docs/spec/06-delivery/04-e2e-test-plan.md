@@ -7360,7 +7360,8 @@ This test plan spec is accepted when:
   3) Scroll the task/process conversation upward and then return to the latest
   output. 4) Switch sessions and return to the original session.
 - **Expected**: The right dock shows a sticky identity header (avatar, name,
-  model caption, status capsule, and elapsed time), the Task call's description
+  and model caption on the left; status capsule and elapsed time trailing on
+  the same row without wrapping), the Task call's description
   as a full-width inset grouped card under a Task section label, capped at four
   lines with an inline Show more / Show less control for longer tasks, and
   the delegate's live thinking/tool/answer process under an Activity section
