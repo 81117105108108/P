@@ -7360,9 +7360,11 @@ This test plan spec is accepted when:
   3) Scroll the task/process conversation upward and then return to the latest
   output. 4) Switch sessions and return to the original session.
 - **Expected**: The right dock shows one compact identity row, a status/
-  elapsed-time/step-count summary, the Task call's description in one quiet
-  tile, and the delegate's live thinking/tool/answer process on one subtle
-  vertical timeline using the same row components as the main conversation.
+  elapsed-time/step-count summary, the Task call's description as a
+  right-aligned user message bubble matching the main conversation, and the
+  delegate's live thinking/tool/answer process
+  on one subtle vertical timeline using the same row components as the main
+  conversation.
   New rows appear without a reload and follow the bottom while pinned. The
   panel has one body scrollbar; the process does not create a nested scrollbar
   or a second elevated card. A real upward gesture pauses follow and exposes

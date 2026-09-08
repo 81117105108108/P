@@ -131,8 +131,8 @@ test("a terminal tool event repairs a row lost during renderer reload", () => {
 test("the shared side-panel detail keeps the live conversation process", () => {
   assert.match(transcriptSource, /delegate\?: SubagentRun/);
   assert.match(detailSource, /function delegateTaskDescription\(message: UiMessage\)/);
-  assert.match(detailSource, /className="subagent-task-message"/);
-  assert.match(detailSource, /panel\.subagentTask/);
+  assert.match(detailSource, /className="subagent-detail-task-row message-row user"/);
+  assert.match(detailSource, /className="message-bubble subagent-detail-task-bubble"/);
   assert.match(detailSource, /<SubagentRunRows/);
   assert.match(detailSource, /scrollable=\{false\}/);
   assert.match(transcriptSource, /className=\{`subagent-run-rows\$\{scrollable \? "" : " is-panel-flow"\}`\}/);

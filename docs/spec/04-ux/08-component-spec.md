@@ -936,17 +936,21 @@ It does not render separate Details or Output tabs.
   selectable conversation-like message. The delegate's thinking, tool rows,
   and answer fragments reuse the same components and styling as the main
   conversation. Reports and counters remain omitted from this compact surface.
-- The dock has one scroll owner, the panel body. The live process is rendered
-  in normal content flow without a nested `.subagent-run-rows` scrollbar, so a
-  long process cannot create a second scrollbar or leave a long empty tail.
+- The dock has one scroll owner, the panel body. The scroll owner is
+  keyboard-focusable and exposed as a polite `role="log"` so streamed rows
+  remain discoverable without forcing focus changes. The live process is
+  rendered in normal content flow without a nested `.subagent-run-rows`
+  scrollbar, so a long process cannot create a second scrollbar or leave a long
+  empty tail.
   While pinned to the latest output, the panel body follows new process rows;
   a real upward gesture pauses follow and exposes the standard jump-to-latest
   control.
 - The selected delegate uses a compact identity row followed by status,
-  elapsed-time, and step-count capsules. The task is one full-width tile with a
-  quiet leading rail; the live process uses one subtle vertical timeline and
-  no nested card, so unused panel space reads as one continuous work surface
-  instead of a stack of floating boxes.
+  elapsed-time, and step-count metadata. The task is rendered as a
+  right-aligned user message bubble using the main transcript treatment; it is
+  not a separate task card. The live process uses one subtle vertical timeline
+  and no nested card, so unused panel space reads as one continuous work
+  surface instead of a stack of floating boxes.
 - The dock header identifies the view as **Subagent** and offers close and
   collapse controls. Closing returns to the previously selected work-panel
   resource, if any; `Cmd/Ctrl + J` hides the whole dock. Selecting another node

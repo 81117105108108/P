@@ -1175,10 +1175,13 @@ export function SubagentDetail({
           </div>
         ) : null}
       </div>
-      <div className="subagent-task-message">
-        <div className="subagent-task-message-label">{t("panel.subagentTask")}</div>
-        <div className="subagent-task-message-body">
-          {taskDescription || t("panel.subagentTaskEmpty")}
+      <div className="subagent-detail-task-row message-row user">
+        <div className="message-col">
+          <div className="message-bubble subagent-detail-task-bubble">
+            <div className="message-user-text subagent-task-message-body">
+              {taskDescription || t("panel.subagentTaskEmpty")}
+            </div>
+          </div>
         </div>
       </div>
       {delegate ? (
