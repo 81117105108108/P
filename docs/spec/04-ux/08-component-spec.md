@@ -1244,28 +1244,34 @@ Single message render — either user (plaintext) or assistant (markdown streami
   copies all contentful fragments in order; Fork and Regenerate target the last
   contentful fragment so existing durable transcript semantics remain intact
   (D157).
-- Assistant meta: optional model badge + compact Codex-style context inspector
-  under the answer. The inspector keeps a small remaining-capacity ring beside
-  the `Context` label and percentage; low capacity changes the semantic color
-  without making color the only signal. Clicking the trigger (or activating it
-  from the keyboard) toggles a non-modal panel with the remaining-token header,
-  used/window counts, and two unboxed turn/speed summary values. Model usage is
-  compressed into one inline summary row that retains exact input/output/cache/
-  reasoning values and the provider-reported cache hit rate when available.
-  Tool usage is compressed into one aggregate row showing tool types, calls,
-  and estimated tokens; per-tool rows, share bars, source badges, and the
-  explanatory estimate note are intentionally omitted from the default view.
-  Generation speed is a completed-turn value in tokens per second and is not
-  updated while a response is streaming. The context-window total uses the
-  same effective model window as the agent sidecar: a published models.dev
-  `limit.context` replaces a legacy 128k generic binding seed, while a non-default
-  per-model Advanced value remains explicit. Unknown models use the provider's
-  generic default window. The panel is portaled to
-  the document body as a fixed viewport overlay, flips above or below the
-  trigger, clamps to viewport margins, and repositions on transcript scrolling
-  or window resize so no transcript clipping ancestor can hide it (D103, D184,
-  D244). When the active session has an installed context checkpoint, the
-  panel adds one muted summary line for the compaction count and newest
+- Assistant meta: optional model badge under the answer. The compact
+  Codex-style context inspector lives in the composer right toolbar,
+  immediately left of the model × reasoning chip, and always mirrors the
+  newest assistant turn that reported usage (D347). It is hidden until that
+  usage exists. The trigger keeps a small remaining-capacity ring beside the
+  percentage and omits the redundant `Context` label; low capacity changes
+  the semantic color without making color the only signal. Clicking the
+  trigger (or activating it from the keyboard) toggles a non-modal panel with
+  a remaining-token-plus-percentage heading, used/window counts, and two
+  unboxed turn/speed summary values. Model usage is compressed into one
+  inline summary row that retains exact input/output/cache/reasoning values
+  and the provider-reported cache hit rate when available. Tool usage is
+  compressed into one aggregate row showing tool types, calls, and estimated
+  tokens; per-tool rows, share bars, source badges, and the explanatory
+  estimate note are intentionally omitted from the default view. Rows below
+  the heading share one muted-label / tabular-value rhythm separated by
+  spacing; the popover keeps its floating-layer edge and draws no inner
+  section rules (D297). Generation speed is a completed-turn value in tokens
+  per second and is not updated while a response is streaming. The
+  context-window total uses the same effective model window as the agent
+  sidecar: a published models.dev `limit.context` replaces a legacy 128k
+  generic binding seed, while a non-default per-model Advanced value remains
+  explicit. Unknown models use the provider's generic default window. The
+  panel is portaled to the document body as a fixed viewport overlay, flips
+  above or below the trigger, clamps to viewport margins, and repositions on
+  scroll or window resize so no clipping ancestor can hide it (D103, D184,
+  D244, D347). When the active session has an installed context checkpoint,
+  the panel adds one muted summary line for the compaction count and newest
   summary's estimated token cost; the transcript still shows one row per
   compaction (D203).
 - Gap: 12px vertical padding between consecutive message rows (denser than
@@ -1306,8 +1312,8 @@ message its checkpoint covers.
 - Assistant: `aria-label="Assistant message"`
 - Thinking trigger exposes localized Show/Hide labels, `aria-expanded`, and an
   `aria-controls` relationship to the reasoning panel
-- Context inspector trigger is keyboard focusable, exposes a localized
-  remaining percentage and token count, carries `aria-haspopup="dialog"`,
+- Context inspector trigger (composer toolbar) is keyboard focusable, exposes a
+  localized remaining percentage and token count, carries `aria-haspopup="dialog"`,
   `aria-expanded`, and an `aria-controls` relationship to the panel, and opens
   the same compact summary on click or keyboard activation; Escape or a click
   outside closes it and returns focus to the trigger
@@ -1931,7 +1937,7 @@ reasoning-level control.
 
 ```text
 +----------------------------------------------------------+
-| [Agent/Plan/Goal] [permission mode]          | [model · reasoning ▾] |
+| [Agent/Plan/Goal] [permission mode]     | [ring %] [model · reasoning ▾] |
 | queued messages (optional; one row per item) | [⏹ Stop / → Send] (one submit slot) |
 | textarea (auto-growing, 1 line → max 7)                         |
 | placeholder: welcome → command/file hint → keyboard hint        |
@@ -1970,11 +1976,13 @@ reasoning-level control.
   toolbar rhythm. Agent and Plan expose the effective selectable permission;
   Goal displays the localized Auto label as a disabled, non-opening chip while
   the approval card remains the separate place for choosing execution policy.
-- The right toolbar owns one combined model × reasoning-level chip immediately
-  before the standalone prompt-enhancement action and the single Stop/Send
-  submit slot. The chip shows Bot, the current model name, and the current
-  reasoning level separated by `·`; `off` omits the level text. The prompt-
-  enhancement action shows Sparkles while idle, uses the shared
+- The right toolbar owns the remaining-capacity context inspector (when the
+  newest assistant turn has usage) immediately left of one combined model ×
+  reasoning-level chip, then the standalone prompt-enhancement action and the
+  single Stop/Send submit slot (D347). The inspector trigger shows the ring
+  and percentage only. The chip shows Bot, the current model name, and the
+  current reasoning level separated by `·`; `off` omits the level text. The
+  prompt-enhancement action shows Sparkles while idle, uses the shared
   `.tool-spinner` and localized `Enhancing…` label while running, and remains
   a one-shot draft rewrite action.
 - The combined chip opens one anchored menu above itself. The menu starts with

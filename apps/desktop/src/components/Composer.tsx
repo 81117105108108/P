@@ -14,7 +14,6 @@ import type {
   PermissionMode,
   ProviderPublic,
   ThinkingLevel,
-  UiMessage,
 } from "@pi-desktop/shared";
 import {
   fileReferenceLabel,
@@ -28,20 +27,7 @@ import {
 } from "@pi-desktop/shared";
 import { materializeDraftSession, useAppStore } from "../stores/app-store";
 import type { ComposerDraftSnapshot } from "../lib/composer-smart-stop";
-import type { AssistantTurnEntry } from "../lib/assistant-turns";
-import {
-  assistantTurnResponseDuration,
-  assistantTurnResponseOutputIsEstimated,
-  assistantTurnResponseOutputTokens,
-  assistantTurnTools,
-  assistantTurnUsage,
-  buildTranscriptEntries,
-} from "../lib/assistant-turns";
-import {
-  DEFAULT_CONTEXT_WINDOW,
-  latestMessageUsage,
-  resolveContextWindow,
-} from "../lib/context-usage";
+import { latestTurnContextInspector } from "../lib/latest-turn-context";
 import {
   HOME_DRAFT_KEY,
   captureComposerDraft,
@@ -72,7 +58,7 @@ import {
   useComposerAutocomplete,
 } from "../hooks/use-composer-autocomplete";
 import { ComposerAutocomplete } from "./ComposerAutocomplete";
-import { ContextUsageInspector } from "./ChatTranscript";
+import { ContextUsageInspector } from "./ContextUsageInspector";
 import { AskToolCard } from "./AskToolCard";
 import { PlanApprovalBar } from "./PlanApprovalBar";
 import {
@@ -626,40 +612,20 @@ export function Composer({
   const providers = useAppStore((s) => s.providers);
   const providerModels = useAppStore((s) => s.providerModels);
   const liveMessages = useAppStore((s) => s.messages);
-  // The composer's context inspector mirrors the newest assistant turn, the
-  // same numbers the transcript row used to carry, so the token breakdown
-  // stays reachable at the model picker without scrolling the transcript.
-  const composerContextUsage = useMemo(() => {
-    const latestUsage = latestMessageUsage(liveMessages);
-    if (!latestUsage) return undefined;
-    const latestTurn = [...buildTranscriptEntries(liveMessages).entries]
-      .reverse()
-      .find((entry): entry is AssistantTurnEntry => entry.kind === "assistant-turn");
-    const latestUsageMessage: UiMessage | undefined = [
-      ...liveMessages,
-    ].reverse().find((message) => message.usage);
-    return {
-      usage: latestUsage,
-      turnUsage:
-        (latestTurn ? assistantTurnUsage(latestTurn) : undefined) ?? latestUsage,
-      contextWindow: resolveContextWindow(
-        latestUsageMessage?.providerId,
-        latestUsageMessage?.modelId,
+  const sessionCompactions = useAppStore((s) =>
+    s.activeSessionId ? s.sessionCompactions[s.activeSessionId] : undefined,
+  );
+  // One inspector in the composer toolbar, always the newest turn with usage.
+  const composerContextUsage = useMemo(
+    () =>
+      latestTurnContextInspector(
+        liveMessages,
         providerModels,
         providers,
+        sessionCompactions,
       ),
-      tools: latestTurn ? assistantTurnTools(latestTurn) : [],
-      responseDurationMs: latestTurn
-        ? assistantTurnResponseDuration(latestTurn)
-        : undefined,
-      responseOutputTokens: latestTurn
-        ? assistantTurnResponseOutputTokens(latestTurn)
-        : undefined,
-      responseOutputEstimated: latestTurn
-        ? assistantTurnResponseOutputIsEstimated(latestTurn)
-        : false,
-    };
-  }, [liveMessages, providerModels, providers]);
+    [liveMessages, providerModels, providers, sessionCompactions],
+  );
   const loadProviderModels = useAppStore((s) => s.loadProviderModels);
   const configureActiveSession = useAppStore((s) => s.configureActiveSession);
   const showToast = useAppStore((s) => s.showToast);

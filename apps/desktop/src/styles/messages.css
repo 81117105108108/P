@@ -1123,19 +1123,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-/*
- * Every section below the heading is one aligned list — muted micro label on
- * the left, tabular value on the right — with hairlines between sections. The
- * heading carries no rule of its own: the first section's top border already
- * separates them, and a second line just reads as a double underline.
- */
+/* Sections inside the popover are set apart by space alone (D297). */
 .context-inspector-window,
 .context-inspector-kpis,
 .context-inspector-summary,
 .context-inspector-compaction {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--ds-border-subtle);
+  margin-top: 14px;
 }
 
 .context-inspector-window {

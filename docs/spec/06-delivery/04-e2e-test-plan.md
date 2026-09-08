@@ -2553,24 +2553,29 @@ Each scenario is documented in this format:
   usage; another completed assistant message has content but no usage. The
   selected model has a published 1m-class context window, while its provider
   binding still contains the legacy 128k generic seed.
-- **Steps**: 1) Open the session. 2) Hover the completed assistant turn that has
-  usage, confirm the panel stays closed, then click its Context inspector
-  trigger. 3) Inspect the compact remaining-token header, used/window counts,
+- **Steps**: 1) Open the session. 2) Confirm the completed turn shows a model
+  badge and no context inspector under the answer. 3) Hover the composer
+  toolbar inspector trigger, confirm the panel stays closed, then click it.
+  4) Inspect the remaining-token-plus-percentage heading, used/window counts,
   unboxed turn/speed values, one inline provider-usage summary, and one
-  aggregate tool-usage summary. 4) Scroll the transcript until the trigger is
-  close to the top, bottom, and right viewport edges, and resize the window
-  while the panel is open. 5) Move the pointer away from the panel, then
-  dismiss it by clicking the trigger again, clicking outside it, and pressing
-  Escape from the keyboard. 6) Click Retry on that turn while idle. 7) Confirm
-  a turn without usage still offers Retry and omits the inspector.
-- **Expected**: Model badge and compact Context inspector appear under completed
-  assistant answers when data exists; the trigger shows remaining capacity and
-  low-space warning/error states, and click or keyboard activation toggles the
-  same compact summary while pointer hover alone never opens or closes it. An
-  open panel survives the pointer leaving it and closes on a second trigger
-  activation, an outside click, or Escape, which returns focus to the trigger.
-  Provider values remain exact, tool values remain visibly approximate through
-  the `~` aggregate total, and no per-tool list, source badge, progress bar, or
+  aggregate tool-usage summary, with no doubled heading rule and no inner
+  section hairlines. 5) Scroll the transcript and resize the window while the
+  panel is open. 6) Move the pointer away from the panel, then dismiss it by
+  clicking the trigger again, clicking outside it, and pressing Escape from
+  the keyboard. 7) Click Retry on that turn while idle. 8) Confirm a session
+  without usage still offers Retry on completed turns and omits the composer
+  inspector.
+- **Expected**: Model badge appears under completed assistant answers when a
+  model id exists. The compact Context inspector appears in the composer
+  right toolbar, left of the model picker, once any usage exists, and always
+  mirrors the newest usage-bearing assistant turn. The trigger shows the ring
+  plus remaining-capacity percentage (no Context label) and low-space
+  warning/error states; click or keyboard activation toggles the same compact
+  summary while pointer hover alone never opens or closes it. An open panel
+  survives the pointer leaving it and closes on a second trigger activation,
+  an outside click, or Escape, which returns focus to the trigger. Provider
+  values remain exact, tool values remain visibly approximate through the `~`
+  aggregate total, and no per-tool list, source badge, progress bar, or
   explanatory estimate paragraph is rendered. The cache hit rate is omitted
   when cache-read metadata is absent rather than inferred. A published 1m-class
   limit (for example `gpt-5.6-luna` at 1,050,000 tokens) is shown instead of
@@ -2579,14 +2584,15 @@ Each scenario is documented in this format:
   value and does not update during streaming; Retry
   re-sends the nearest preceding user prompt and is disabled while a turn is
   running; the portaled panel remains fully visible within the viewport, never
-  clipped by transcript scrolling, and follows the trigger after scrolling or
-  resize; Copy still excludes thinking text.
+  clipped by the composer or transcript, and follows the trigger after
+  scrolling or resize; Copy still excludes thinking text.
 - **Specs linked**: `04-ux/08-component-spec.md`,
   `04-ux/10-workbuddy-benchmark-ux.md`, `03-runtime/01-ipc-protocol.md`
 - **Acceptance**: C (chat stream), Quality
 - **Milestone**: M5
 - **Status**: Unit-covered (`transcript-style.test.mjs`,
-  `context-usage.test.mjs`, runtime usage mapping); full scenario Draft
+  `context-usage.test.mjs`, `latest-turn-context.test.mjs`, runtime
+  usage mapping); full scenario Draft
 
 #### E2E-061a: Regenerate replaces the current turn in place
 
@@ -6246,19 +6252,21 @@ This test plan spec is accepted when:
 - Click **Continue** and expect the app to append the localized continuation prompt (`Continue the user's unfinished task.` / `继续用户未完成的任务`) to the same session and start the next turn without truncating the failed turn.
 
 
-### US-UI-61 Assistant context summary + retry (D103, D184, D244)
+### US-UI-61 Assistant context summary + retry (D103, D184, D244, D347)
 - Complete an assistant turn that reports usage.
-- Expect a model badge and compact Context inspector under the answer. The
-  trigger shows the remaining context percentage; clicking it (or activating it
-  from the keyboard) shows used/remaining/window tokens, two unboxed turn/speed
-  values, one inline exact provider-usage summary, and one aggregate tool-usage
-  summary with types, calls, and approximate tokens. Per-tool rows, bars,
-  badges, and explanatory estimate copy are not shown.
+- Expect a model badge under the answer and the compact Context inspector in
+  the composer toolbar, left of the model picker. The trigger shows the
+  remaining-capacity ring and percentage; clicking it (or activating it from
+  the keyboard) shows remaining tokens plus percentage, used/window counts,
+  two unboxed turn/speed values, one inline exact provider-usage summary, and
+  one aggregate tool-usage summary with types, calls, and approximate tokens.
+  Per-tool rows, bars, badges, explanatory estimate copy, and inner section
+  hairlines are not shown.
 - Hovering the trigger changes nothing; the open panel closes on a second
   activation, an outside click, or Escape.
-- Move the trigger near each viewport edge and scroll or resize while the panel
-  is open; expect the body-level overlay to flip, clamp, and remain fully
-  visible instead of being clipped by the transcript scroll container.
+- Scroll or resize while the panel is open; expect the body-level overlay to
+  flip, clamp, and remain fully visible instead of being clipped by the
+  composer or transcript.
 - Hover the action row and click Retry; the nearest preceding user prompt is
   re-sent.
 
