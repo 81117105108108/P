@@ -202,3 +202,4 @@ Each ADR includes:
 | 0187 | Focus-aware native task notifications | Accepted (amends 0107 / D117) |
 | 0188 | Preserve distinct credentials during model configuration import | Accepted (amends 0179 / D342) |
 | 0189 | Parent fatal error aborts leftover delegates | Accepted (amends 0166 / D328) |
+| 0190 | Host-gated large-file and dropped-file access | Accepted |

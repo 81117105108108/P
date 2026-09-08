@@ -1748,6 +1748,28 @@ Each scenario is documented in this format:
 - **Acceptance**: G (isolated panel)
 - **Status**: Documented
 
+#### E2E-024Y: Large-file plugin reads and dropped-file grants stay host-gated
+
+- **Preconditions**: A test plugin declares `fs.read`; the workspace contains a
+  readable log and a protected credential fixture; the plugin panel is open.
+- **Steps**: 1) Pick a directory and open a large log. 2) Confirm initial page,
+  search, follow, and a file-growth poll complete through `fs.stat` and bounded
+  `fs.readRange`. 3) Drag a regular file into the panel and open it. 4) Drag a
+  second file or forge an absolute path with the first grant and retry. 5)
+  Reload/unload the plugin and retry the old grant.
+- **Expected**: Directory reads remain relative to the selected root and are
+  permission/audit checked. Range reads reject invalid values and lengths above
+  8 MiB, return an empty byte array at EOF, and preserve total size. A real
+  drop creates a one-file, read-only, memory-only grant; the dropped file uses
+  the same paging/search/follow engine, while another path, a protected path,
+  and a grant after unload fail closed with `PERMISSION_DENIED` or `NOT_FOUND`.
+  No renderer worker or raw plugin `node:fs` path is used.
+- **Specs linked**: `07-plugins/03-plugin-api.md`,
+  `07-plugins/04-plugin-security.md`, `07-plugins/12-plugin-ipc-and-host-services.md`,
+  `07-plugins/13-plugin-permissions-matrix.md`, ADR 0190
+- **Acceptance**: Security + G (plugin host services)
+- **Status**: Unit/integration-covered; real drag gesture remains manual
+
 #### E2E-024E: High-risk plugin APIs require grants
 
 - **Preconditions**: Notes plugin installed with explicit grants.

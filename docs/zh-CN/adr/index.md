@@ -46,6 +46,7 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
  | [ADR 0187：区分任务和交互式本机通知投递](/adr/0187-separate-task-and-interactive-native-notification-delivery) | 终端任务保持仅无焦点投递，交互询问可通知聚焦的其他会话 |
  | [ADR 0188：模型配置导入保留不同凭据](/adr/0188-preserve-distinct-import-credentials) | 同一端点的不同 API 密钥作为独立提供商导入，相同凭据仍保持幂等跳过 |
  | [ADR 0189：父级终态错误中止残留委托](/adr/0189-parent-fatal-error-aborts-leftover-delegates) | 父级空闲仍不中止委托；429 等终态错误会中止残留子智能体，让“继续”不再 AGENT_BUSY |
+ | [ADR 0190：宿主门控的大文件与拖拽文件访问](/adr/0190-host-gated-large-file-and-drop-access) | 大文件范围读取与拖拽文件授权统一经过宿主权限网关，授权只覆盖单个文件且仅存于当前插件进程 |
 
 ## 什么时候看 ADR
 

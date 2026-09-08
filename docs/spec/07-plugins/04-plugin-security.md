@@ -181,6 +181,18 @@ it. Containment and the deny-list still apply there. The handle is memory-only
 and dies with the process, so the plugin holds unlimited reach and zero standing
 power — the model the browser's File System Access API uses.
 
+### 6.4 Dropped-file grants
+
+A sandboxed plugin panel may resolve a user-dropped `File` to a local path through
+the host preload's `getDroppedFilePath`. The preload reports that path to the
+panel host before page code runs. `fs.registerDropped(path)` consumes one of
+those short-lived, sender-bound reports and returns a memory-only `grantId`.
+The grant covers exactly that one canonical regular file for `fs.stat` and
+`fs.readRange`; it does not change `manifest.fs`, grant a directory, or permit
+writes, opens, reveals, or deletes. The grant dies with the plugin process and is
+never persisted. Protected paths, credentials, symlink replacement, and the
+deny-list remain enforced on registration and every subsequent read.
+
 ## 7. Agent security
 
 - Plugin tool names are namespaced to avoid collisions using the frozen forced prefix `plugin_<pluginIdSafe>_<toolName>` (D015)

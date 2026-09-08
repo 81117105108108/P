@@ -36,6 +36,8 @@ const PERMISSION_API_HINTS: Record<string, string[]> = {
   "clipboard.write": ["clipboard.writeText"],
   "fs.read": [
     "fs.readText",
+    "fs.stat",
+    "fs.readRange",
     "fs.readPreview",
     "fs.openDefault",
     "fs.reveal",
