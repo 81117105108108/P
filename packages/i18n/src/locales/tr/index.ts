@@ -1742,7 +1742,7 @@ export const tr = {
     restored: "Bağlantı geri geldi",
     fatal: "Yerel servise ulaşılamıyor",
     unsupportedGlibc:
-      "Bu Linux sürümü glibc 2.39 veya daha yenisini gerektirir (Ubuntu 24.04, Debian 13, Fedora 40+).",
+      "Bu Linux sürümü glibc 2.35 veya daha yenisini gerektirir (Ubuntu 22.04, Debian 12, Fedora 36+).",
     openLogs: "Günlükleri aç",
   },
   toast: {

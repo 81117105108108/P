@@ -355,7 +355,9 @@ Shell smoke on each native runner:
 ## 7. Known limitations
 
 - macOS and Linux deb remain notify-and-link update modes.
-- Linux x64 packages are built on Ubuntu 24.04 and need glibc 2.39 or newer
-  (Ubuntu 24.04, Debian 13, Fedora 40+). Older glibc cannot load host-core.
+- Linux x64 packages are built on Ubuntu 22.04 so host-core needs glibc 2.35
+  or newer (Ubuntu 22.04, Debian 12, Fedora 36+). The tag job runs
+  `scripts/check-linux-host-glibc.mjs` and refuses a binary that needs a
+  newer glibc.
 - Signed in-app macOS delivery, rollback, staged rollout, and prerelease
   channel policy remain open release work.

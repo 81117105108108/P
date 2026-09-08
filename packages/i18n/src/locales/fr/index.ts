@@ -1704,7 +1704,7 @@ export const fr = {
     "restored": "Connexion restaurée",
     "fatal": "Impossible d'atteindre le service local",
     "unsupportedGlibc":
-      "Cette version Linux nécessite glibc 2.39 ou plus récent (Ubuntu 24.04, Debian 13, Fedora 40+).",
+      "Cette version Linux nécessite glibc 2.35 ou plus récent (Ubuntu 22.04, Debian 12, Fedora 36+).",
     "openLogs": "Journaux ouverts"
   },
   "toast": {

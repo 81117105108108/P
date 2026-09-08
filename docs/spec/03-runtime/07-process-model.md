@@ -76,9 +76,11 @@ those writes so a Linux AppImage or GUI launch without a live TTY keeps
 supervising host/sidecar instead of showing Electron's uncaught exception
 dialog.
 
-Linux packaged host-core needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13,
-Fedora 40+). A lower glibc is a fatal host status, not a restart loop: the UI
-names those releases instead of "Can't reach the local service".
+Linux packaged host-core is built on Ubuntu 22.04 and needs glibc 2.35 or newer
+(Ubuntu 22.04, Debian 12, Fedora 36+). A lower glibc is a fatal host status,
+not a restart loop: the UI names those releases instead of "Can't reach the
+local service". The Linux tag job must not use a newer runner that would raise
+the needed glibc.
 
 Supervision parameters (implemented in Electron main):
 

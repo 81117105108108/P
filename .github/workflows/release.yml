@@ -59,7 +59,10 @@ jobs:
             platform: windows
             dist: dist:win
           - name: Linux x64
-            os: ubuntu-latest
+            # Ubuntu 22.04 keeps host-core at glibc 2.35 so Ubuntu 22.04,
+            # Debian 12, and Fedora 36+ can load the binary. ubuntu-latest
+            # (24.04) would raise the floor to 2.39.
+            os: ubuntu-22.04
             arch: x64
             artifact: linux-x64
             platform: linux
@@ -138,6 +141,10 @@ jobs:
         # The explicit architecture keeps the package and native Rust sidecar
         # aligned with the runner selected by this matrix entry.
         run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --${{ matrix.arch }}
+
+      - name: Verify Linux host-core glibc floor
+        if: matrix.platform == 'linux'
+        run: node scripts/check-linux-host-glibc.mjs target/release/pi-desktop-host-core
 
       - name: Export Linux ASAR release asset
         if: matrix.platform == 'linux'

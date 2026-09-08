@@ -1889,16 +1889,18 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (`logger-routing.test.mjs`); packaged AppImage
   journey Documented
 
-#### E2E-195: Linux glibc below 2.39 names supported distros
+#### E2E-195: Linux glibc below 2.35 names supported distros
 
 - **Preconditions**: Linux x64 packaged app; the machine glibc is older than
-  2.39 (for example Ubuntu 22.04 / Debian 12 / Fedora 39), or a test doubles
-  `process.report` to `2.35`.
+  2.35 (for example Ubuntu 20.04 / Debian 11 / Fedora 35), or a test doubles
+  `process.report` to `2.31`.
 - **Steps**: 1) Launch the AppImage or deb. 2) Observe the main window and
   fatal banner. 3) Confirm host-core is not restarted in a loop.
 - **Expected**: Electron still opens. There is no uncaught `write EPIPE`
-  dialog. The fatal banner says the build needs glibc 2.39 or newer and names
-  Ubuntu 24.04, Debian 13, and Fedora 40+. Restart supervision does not spin.
+  dialog. The fatal banner says the build needs glibc 2.35 or newer and names
+  Ubuntu 22.04, Debian 12, and Fedora 36+. Restart supervision does not spin.
+  A host-core binary whose symbols need glibc 2.39 fails
+  `scripts/check-linux-host-glibc.mjs`.
 - **Specs linked**: `03-runtime/07-process-model.md`,
   `01-product/01-product-scope.md`, `06-delivery/06-release-runbook.md`
 - **Acceptance**: H (diagnostics), Quality (main path no crash)

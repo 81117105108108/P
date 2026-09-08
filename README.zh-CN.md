@@ -295,13 +295,13 @@ PI-Desktop 是 **本地优先**，不是“永远不碰网络”。
 
 ### Linux
 
-Linux x64 安装包需要 **glibc 2.39** 或更高版本，对应：
+Linux x64 安装包需要 **glibc 2.35** 或更高版本，对应：
 
-* Ubuntu 24.04 及以上
-* Debian 13 及以上
-* Fedora 40 及以上
+* Ubuntu 22.04 及以上
+* Debian 12 及以上
+* Fedora 36 及以上
 
-Ubuntu 22.04、Debian 12、Fedora 39 及更旧的发行版无法加载自带的 host。可用 `ldd --version` 查看本机 glibc。
+Ubuntu 20.04、Debian 11、Fedora 35 及更旧的发行版无法加载自带的 host。可用 `ldd --version` 查看本机 glibc。
 
 ### macOS
 

@@ -295,13 +295,13 @@ Packaged builds can check GitHub Releases for updates and surface new versions i
 
 ### Linux
 
-Linux x64 packages need **glibc 2.39** or newer. That is the library shipped with:
+Linux x64 packages need **glibc 2.35** or newer. That is the library shipped with:
 
-* Ubuntu 24.04 or later
-* Debian 13 or later
-* Fedora 40 or later
+* Ubuntu 22.04 or later
+* Debian 12 or later
+* Fedora 36 or later
 
-Ubuntu 22.04, Debian 12, Fedora 39, and older releases cannot load the bundled host. Check with `ldd --version`.
+Ubuntu 20.04, Debian 11, Fedora 35, and older releases cannot load the bundled host. Check with `ldd --version`.
 
 ### macOS
 

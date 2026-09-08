@@ -325,7 +325,8 @@ Native-runner 输出矩阵：
 ## 7. 已知限制
 
 - macOS 和 Linux deb 仍保持通知和链接更新模式。
-- Linux x64 包在 Ubuntu 24.04 上构建，需要 glibc 2.39 或更高版本（Ubuntu 24.04、
-  Debian 13、Fedora 40+）。更旧的 glibc 无法加载 host-core。
+- Linux x64 包在 Ubuntu 22.04 上构建，因此 host-core 需要 glibc 2.35 或更高
+  版本（Ubuntu 22.04、Debian 12、Fedora 36+）。标签作业运行
+  `scripts/check-linux-host-glibc.mjs`，拒绝需要更新 glibc 的二进制文件。
 - 签名的应用内 macOS 交付、回滚、分阶段部署和预发布
   渠道政策仍保持公开发布工作。

@@ -64,9 +64,10 @@ queued/running `plan_approvals` 执行状态已中断并中止它们
 因此 Linux AppImage 或没有活动 TTY 的 GUI 启动会继续监管 host/sidecar，而不是
 弹出 Electron 的未捕获异常对话框。
 
-Linux 打包的 host-core 需要 glibc 2.39 或更高版本（Ubuntu 24.04、Debian 13、
-Fedora 40+）。更低的 glibc 是致命 host 状态，而不是重启循环：界面会列出这些
-发行版，而不是只显示“无法连接本地服务”。
+Linux 打包的 host-core 在 Ubuntu 22.04 上构建，需要 glibc 2.35 或更高版本
+（Ubuntu 22.04、Debian 12、Fedora 36+）。更低的 glibc 是致命 host 状态，而不是
+重启循环：界面会列出这些发行版，而不是只显示“无法连接本地服务”。Linux 标签
+作业不得换用会抬高所需 glibc 的更新 runner。
 
 监管参数（在Electron main中实现）：
 
