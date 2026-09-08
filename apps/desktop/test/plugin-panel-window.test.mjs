@@ -88,6 +88,10 @@ test("plugin content is offset below the strict 46px host drag band", () => {
   assert.match(preloadSource, /플러그인 패널 창 컨트롤/);
   assert.match(preloadSource, /상단 46px는 드래그 전용/);
   assert.match(preloadSource, /locale\.startsWith\("ko"\)/);
+  assert.match(preloadSource, /locale\.startsWith\("tr"\)/);
+  assert.match(preloadSource, /locale\.startsWith\("de"\)/);
+  assert.match(preloadSource, /locale\.startsWith\("es"\)/);
+  assert.match(preloadSource, /locale\.startsWith\("fr"\)/);
   assert.match(preloadSource, /locale === "zh-tw"/);
   assert.match(preloadSource, /locale === "zh-hant"/);
   assert.match(preloadSource, /--pi-plugin-panel-theme=/);

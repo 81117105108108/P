@@ -15,6 +15,10 @@ const providersSource = await readFile(
   new URL("../src/components/settings/ModelConfigPage.tsx", import.meta.url),
   "utf8",
 );
+const scheduledSource = await readFile(
+  new URL("../src/pages/ScheduledPage.tsx", import.meta.url),
+  "utf8",
+);
 const pluginsPageSource = await readFile(
   new URL("../src/pages/PluginsPage.tsx", import.meta.url),
   "utf8",
@@ -172,6 +176,17 @@ test("stored language drives i18n and native labels at startup and on settings c
   assert.match(languageSource, /resolveLocale/);
   assert.match(mainSource, /initLanguageSync\(\)/);
   assert.match(electronMainSource, /catalogs\[resolveLocale\(updaterLocale\)\]/);
+});
+
+test("date copy follows the active application locale", () => {
+  assert.match(
+    scheduledSource,
+    /toLocaleString\(\s*i18n\.resolvedLanguage \?\? i18n\.language/s,
+  );
+  assert.match(
+    providersSource,
+    /toLocaleString\(\s*i18n\.resolvedLanguage \?\? i18n\.language/s,
+  );
 });
 
 test("sandboxed preload receives the OS locale without importing main-only APIs", () => {

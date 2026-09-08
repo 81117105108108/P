@@ -311,6 +311,46 @@ function chromeLabels(input = panelLocale()): ChromeLabels {
       safeArea: "개발 안내 · 상단 46px는 드래그 전용",
     };
   }
+  if (locale.startsWith("tr")) {
+    return {
+      toolbar: "Eklenti paneli pencere denetimleri",
+      minimize: "Küçült",
+      maximize: "Büyüt",
+      restore: "Geri yükle",
+      close: "Kapat",
+      safeArea: "Geliştirici ipucu · üst 46 piksel yalnızca sürükleme alanıdır",
+    };
+  }
+  if (locale.startsWith("de")) {
+    return {
+      toolbar: "Plugin-Panel-Fenstersteuerung",
+      minimize: "Minimieren",
+      maximize: "Maximieren",
+      restore: "Wiederherstellen",
+      close: "Schließen",
+      safeArea: "Entwicklerhinweis · die oberen 46 px dienen nur zum Ziehen",
+    };
+  }
+  if (locale.startsWith("es")) {
+    return {
+      toolbar: "Controles de ventana del panel del complemento",
+      minimize: "Minimizar",
+      maximize: "Maximizar",
+      restore: "Restaurar",
+      close: "Cerrar",
+      safeArea: "Aviso de desarrollo · los 46 px superiores son solo para arrastrar",
+    };
+  }
+  if (locale.startsWith("fr")) {
+    return {
+      toolbar: "Contrôles de fenêtre du panneau du plugin",
+      minimize: "Réduire",
+      maximize: "Agrandir",
+      restore: "Restaurer",
+      close: "Fermer",
+      safeArea: "Indication de développement · les 46 px supérieurs servent uniquement au déplacement",
+    };
+  }
   if (locale.startsWith("zh")) {
     return {
       toolbar: "插件面板窗口控制",

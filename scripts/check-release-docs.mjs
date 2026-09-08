@@ -11,8 +11,8 @@
  *   1. Workspace version surfaces agree: every workspace package.json,
  *      [workspace.package] in Cargo.toml, the host-core Cargo.lock entry, and
  *      APP_VERSION in packages/shared/src/protocol.ts.
- *   2. packages/shared/src/changelog.ts has an entry for the version under both
- *      `en` and `zh-CN`, newest-first, with matching highlight counts.
+ *   2. packages/shared/src/changelog*.ts has an entry for the version under
+ *      every shipped locale, newest-first, with matching highlight counts.
  *   3. packages/shared/src/changelog.test.ts pins the version as newest.
  *   4. README.md and README.zh-CN.md declare the current release line
  *      (`<major>.<minor>.x`) in their status section.

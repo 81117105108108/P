@@ -50,8 +50,10 @@ try {
     </React.StrictMode>,
   );
 } catch (error) {
+  const crashCatalog =
+    catalogs[resolveLocale(i18n.resolvedLanguage ?? i18n.language ?? locale)];
   rootEl.innerHTML = `<div style="padding:24px;font:14px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:#181818;color:#fff;height:100%">
-    <h1 style="margin:0 0 8px;font-size:16px">PI-Desktop failed to start UI</h1>
+    <h1 style="margin:0 0 8px;font-size:16px">${crashCatalog.app.uiCrashed}</h1>
     <pre style="white-space:pre-wrap;color:#fca5a5">${String(error)}</pre>
   </div>`;
 }

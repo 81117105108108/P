@@ -34,6 +34,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const version = process.argv[2];
 const doTag = process.argv.includes("--tag");
 const skipDocsCheck = process.argv.includes("--skip-docs-check");
+const isPrerelease = version?.includes("-") ?? false;
 
 if (!version || !/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(version)) {
   console.error(
@@ -138,9 +139,9 @@ if (changed.length === 0) {
   console.log(`Bumped to ${version}:\n  ${changed.join("\n  ")}`);
 }
 
-// Version surfaces, the dual-locale changelog, and the README release line must
+// Version surfaces, the shipped-locale changelog, and the README release line must
 // agree before a tag exists (D260). Bumping files is reversible; a tag is not.
-if (!skipDocsCheck) {
+if (!skipDocsCheck && !isPrerelease) {
   try {
     execFileSync(process.execPath, [path.join(root, "scripts/check-release-docs.mjs"), version], {
       cwd: root,
@@ -150,6 +151,8 @@ if (!skipDocsCheck) {
     console.error("\nRelease documentation check failed; not committing or tagging.");
     process.exit(1);
   }
+} else if (isPrerelease && !skipDocsCheck) {
+  console.log("Skipping stable release-document preflight for prerelease version.");
 }
 
 if (changed.length === 0) process.exit(0);
