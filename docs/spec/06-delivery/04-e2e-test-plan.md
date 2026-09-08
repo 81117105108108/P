@@ -141,32 +141,33 @@ Each scenario is documented in this format:
 - **Status**: Documented; artifact export is unit-covered, native system-Electron
   repackaging remains runner validation
 
-#### E2E-196a: v0.14.3 temporary unsigned macOS release exception
+#### E2E-196a: Default unsigned macOS release lane
 
-- **Preconditions**: The `v0.14.3` tag workflow is running with the documented
-  temporary signing exception; Windows and Linux release credentials are not
-  affected.
-- **Steps**: 1) Run the `v0.14.3` tag release workflow. 2) Confirm both macOS
-  architectures complete ordinary DMG/ZIP packaging without certificate
-  secrets. 3) Inspect the published artifacts and the workflow steps.
+- **Preconditions**: A `vX.Y.Z` tag matches `apps/desktop/package.json`, or the
+  Release workflow is manually dispatched with `sign_macos` omitted or false;
+  Windows and Linux release credentials are not affected.
+- **Steps**: 1) Run the tag workflow or dispatch it with the default signing
+  input. 2) Confirm both macOS architectures complete ordinary DMG/ZIP
+  packaging without certificate secrets. 3) Inspect the artifacts and workflow
+  steps.
 - **Expected**: macOS DMG/ZIP artifacts are produced and uploaded without
   Developer ID signatures or notarization; macOS staple and Gatekeeper checks
   are explicitly skipped. Windows/Linux artifacts and the merged updater feed
   still publish normally. This exception must be removed before the next stable
   release; it does not satisfy E2E-196.
 - **Specs linked**: `06-delivery/06-release-runbook.md`
-- **Acceptance**: Quality (temporary release recovery)
+- **Acceptance**: Quality (default release packaging)
 - **Milestone**: M6+
-- **Status**: Active for `v0.14.3` only; restore the signed macOS lane before
-  the next stable tag. This exception does not satisfy E2E-196.
+- **Status**: Active default; this scenario does not satisfy E2E-196.
 
 #### E2E-196: macOS tag artifacts pass Gatekeeper without a quarantine bypass
 
-- **Preconditions**: A `vX.Y.Z` tag matches `apps/desktop/package.json`; GitHub
-  Actions has `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
+- **Preconditions**: The Release workflow is manually dispatched for a
+  `vX.Y.Z` tag with `sign_macos: true`; the tag matches
+  `apps/desktop/package.json`; GitHub Actions has `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
   `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` secrets; both native macOS
   runners are available.
-- **Steps**: 1) Run the tag release workflow. 2) For each macOS architecture,
+- **Steps**: 1) Run the explicitly signed workflow. 2) For each macOS architecture,
   inspect the unpacked app with `codesign -dv --verbose=4` and confirm a
   `Developer ID Application` authority. 3) Run `codesign --verify --deep
   --strict`, `spctl -a -vv`, and `xcrun stapler validate` against the app. 4)

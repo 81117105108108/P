@@ -19,6 +19,12 @@ on:
   push:
     tags: ['v*.*.*']
   workflow_dispatch:
+    inputs:
+      sign_macos:
+        description: 'Sign and notarize macOS artifacts for this run'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -140,11 +146,10 @@ jobs:
         run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --${{ matrix.arch }}
 
       - name: Package unsigned macOS installer
-        if: matrix.platform == 'macos'
+        if: matrix.platform == 'macos' && inputs.sign_macos != true
         env:
-          # Temporary recovery lane: the current PKCS#12 secret cannot be
-          # imported by the macOS runner. Restore the signed lane after the
-          # certificate and password are repaired.
+          # Default release lane: macOS artifacts stay unsigned unless a
+          # workflow_dispatch run explicitly sets sign_macos=true.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
           set -euo pipefail
@@ -160,6 +165,35 @@ jobs:
             )
           fi
           pnpm --filter @pi-desktop/desktop run dist:mac -- "${package_args[@]}"
+
+      - name: Package signed and notarized macOS installer
+        if: matrix.platform == 'macos' && inputs.sign_macos == true
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          package_args=(--${{ matrix.arch }})
+          if [[ "${{ matrix.platform }}" == "macos" && "${{ matrix.arch }}" == "x64" ]]; then
+            package_args+=(
+              '-c.dmg.artifactName=PI-Desktop-${version}-Intel.${ext}'
+              '-c.zip.artifactName=PI-Desktop-${version}-Intel-mac.${ext}'
+            )
+          fi
+          pnpm --filter @pi-desktop/desktop run dist:mac -- "${package_args[@]}" \
+            -c.mac.forceCodeSigning=true \
+            -c.mac.notarize=true
+
+      - name: Staple macOS installer ticket
+        if: matrix.platform == 'macos' && inputs.sign_macos == true
+        run: scripts/staple-macos-release-dmg.sh apps/desktop/release
+
+      - name: Verify signed and notarized macOS installer
+        if: matrix.platform == 'macos' && inputs.sign_macos == true
+        run: scripts/verify-macos-release.sh apps/desktop/release
 
       - name: Verify Linux host-core glibc floor
         if: matrix.platform == 'linux'

@@ -161,7 +161,7 @@ Artifacts land in `apps/desktop/release/` (DMG + ZIP + blockmaps).
 `MAC_ARCH=arm64` or `MAC_ARCH=x64` only when that architecture matches the
 host. This keeps the native Rust host sidecar and Electron package aligned.
 
-### 4.3 GitHub tag workflow
+### 4.3 GitHub tag and manual workflow
 
 The GitHub Release workflow starts all native platform runners without a
 separate validation-job barrier. Each runner validates that the pushed tag
@@ -177,22 +177,24 @@ runtime, verifying the host build, building the Desktop application once, and
 invoking electron-builder. This avoids a redundant Desktop build without
 changing the package scripts or release artifacts.
 
-**Temporary `v0.14.3` recovery exception:** the GitHub tag workflow currently
-packages macOS DMG/ZIP artifacts unsigned while the `CSC_LINK` PKCS#12
-certificate and password are repaired. The macOS package step disables identity
-discovery and does not receive signing or notarization secrets; macOS stapling
-and signature verification are skipped. This is not an acceptable stable-release
-policy. Restore the signed and notarized lane before the next stable tag.
+**Default macOS release policy:** the GitHub Release workflow packages macOS
+DMG/ZIP artifacts unsigned by default. Tag pushes and manual runs with
+`sign_macos` omitted or set to `false` disable identity discovery, do not receive
+signing or notarization secrets, and skip macOS stapling and signature
+verification. To explicitly sign a run, manually dispatch the workflow for the
+target tag with `sign_macos: true`. The local `scripts/release-macos.sh` command
+remains the explicit signed lane.
 
 The macOS matrix uses `macos-15` for arm64 and `macos-15-intel` for Intel x64.
 Each job verifies `uname -m`, passes the matching `--arm64` or `--x64` flag to
 electron-builder, and builds `pi-desktop-host-core` on that same native
-runner. The macOS package step receives `CSC_LINK`, `CSC_KEY_PASSWORD`,
-`APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` only from
-GitHub Actions secrets. It forces code signing and notarization, then verifies
-the Developer ID authority, code-signing integrity, Gatekeeper assessment, and
-stapled app ticket. It explicitly staples and validates the generated DMG
-before any artifact upload. The per-architecture
+runner. The default macOS package step is unsigned. When a manual run explicitly
+sets `sign_macos: true`, it receives `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
+`APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` only from GitHub Actions
+secrets. It then forces code signing and notarization, verifies the Developer ID
+authority, code-signing integrity, Gatekeeper assessment, and stapled app
+ticket, and explicitly staples and validates the generated DMG before any
+artifact upload. The per-architecture
 `latest-mac.yml` files are renamed before upload; the publish job merges them
 into one feed after downloading both artifacts.
 
@@ -215,9 +217,9 @@ system Electron.
 
 ## 5. Verification gates
 
-For the temporary `v0.14.3` exception, do not treat unsigned macOS artifacts as
-Gatekeeper-qualified. The signature and staple checks below apply again once
-the signed lane is restored.
+For the default unsigned macOS lane, do not treat macOS artifacts as
+Gatekeeper-qualified. The signature and staple checks below apply only when a
+run explicitly enables `sign_macos: true`.
 
 Run after every release build:
 
