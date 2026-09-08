@@ -734,6 +734,7 @@ export const de = {
     "linkContextMenuOpenWorkpanel": "Im Arbeitsbereich öffnen",
     "linkContextMenuCopy": "Link-Adresse kopieren",
     "linkCopied": "Link in die Zwischenablage kopiert",
+    "linkCopyFailed": "Die Link-Adresse konnte nicht kopiert werden.",
     "largePasteThreshold": "Großer Einfügeschwellenwert",
     "largePasteThresholdDesc": "Nur-Text-Einfügungen, die länger als diese Anzahl von Zeichen sind, werden zu einer temporären Sitzungsdatei.",
     "largePasteThresholdSaveError": "Der Einfügeschwellenwert konnte nicht gespeichert werden.",

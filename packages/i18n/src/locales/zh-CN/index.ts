@@ -744,6 +744,7 @@ export const zhCN = {
     linkContextMenuOpenWorkpanel: "在工作区浏览器中打开",
     linkContextMenuCopy: "复制链接地址",
     linkCopied: "链接地址已复制到剪贴板",
+    linkCopyFailed: "链接地址复制失败",
     largePasteThreshold: "大段文本粘贴阈值",
     largePasteThresholdDesc:
       "纯文本粘贴超过此字符数后，会转换为当前会话的临时文件。",

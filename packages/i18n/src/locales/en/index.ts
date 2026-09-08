@@ -746,6 +746,7 @@ export const en = {
     linkContextMenuOpenWorkpanel: "Open in work panel",
     linkContextMenuCopy: "Copy link address",
     linkCopied: "Link copied to clipboard",
+    linkCopyFailed: "Couldn't copy link address",
     largePasteThreshold: "Large paste threshold",
     largePasteThresholdDesc:
       "Text-only pastes longer than this many characters become a temporary session file.",

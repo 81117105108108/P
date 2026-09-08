@@ -734,6 +734,7 @@ export const es = {
     "linkContextMenuOpenWorkpanel": "Abrir en el panel de trabajo",
     "linkContextMenuCopy": "Copiar dirección del enlace",
     "linkCopied": "Enlace copiado al portapapeles",
+    "linkCopyFailed": "No se pudo copiar la dirección del enlace.",
     "largePasteThreshold": "Umbral de pegado grande",
     "largePasteThresholdDesc": "Los pegados de solo texto de más de esta cantidad de caracteres se convierten en un archivo de sesión temporal.",
     "largePasteThresholdSaveError": "No se pudo guardar el umbral de pegado.",

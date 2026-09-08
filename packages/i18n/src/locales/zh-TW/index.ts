@@ -744,6 +744,7 @@ export const zhTW = {
     linkContextMenuOpenWorkpanel: "在工作區瀏覽器中開啟",
     linkContextMenuCopy: "複製連結位址",
     linkCopied: "連結位址已複製到剪貼簿",
+    linkCopyFailed: "連結位址複製失敗",
     largePasteThreshold: "大段文本貼上閾值",
     largePasteThresholdDesc:
       "純文本貼上超過此字元數後，會轉換為當前會話的臨時檔案。",

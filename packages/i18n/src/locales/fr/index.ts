@@ -734,6 +734,7 @@ export const fr = {
     "linkContextMenuOpenWorkpanel": "Ouvrir dans le panneau de travail",
     "linkContextMenuCopy": "Copier l'adresse du lien",
     "linkCopied": "Lien copié dans le presse-papiers",
+    "linkCopyFailed": "Impossible de copier l'adresse du lien.",
     "largePasteThreshold": "Seuil de collage élevé",
     "largePasteThresholdDesc": "Les collages de texte uniquement dépassant ce nombre de caractères deviennent un fichier de session temporaire.",
     "largePasteThresholdSaveError": "Impossible d'enregistrer le seuil de collage.",

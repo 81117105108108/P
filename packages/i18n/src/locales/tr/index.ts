@@ -748,6 +748,7 @@ export const tr = {
     linkContextMenuOpenWorkpanel: "Çalışma panelinde aç",
     linkContextMenuCopy: "Bağlantı adresini kopyala",
     linkCopied: "Bağlantı panoya kopyalandı",
+    linkCopyFailed: "Bağlantı adresi kopyalanamadı",
     largePasteThreshold: "Uzun yapıştırma eşiği",
     largePasteThresholdDesc:
       "Bu karakter sayısından uzun salt metin yapıştırmalar geçici bir oturum dosyası olur.",
