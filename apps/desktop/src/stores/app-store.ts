@@ -246,6 +246,7 @@ function notifyInteractivePrompt(
       sessionId,
       title,
       body,
+      source: "interactive",
     })
     .catch(() => undefined);
 }

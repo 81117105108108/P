@@ -303,6 +303,7 @@ export const api = {
     sessionId: string;
     title: string;
     body: string;
+    source?: "task" | "interactive";
   }) => invoke<{ shown: boolean }>(IPC.invoke.notificationShowNative, input),
   setNotificationViewingSession: (sessionId: string | null) =>
     invoke<{ ok: boolean }>(IPC.invoke.notificationSetViewingSession, {

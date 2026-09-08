@@ -540,6 +540,7 @@ function AppShell() {
           sessionId: notification.sessionId,
           title,
           body,
+          source: "task",
         })
         .catch(() => undefined);
     });
