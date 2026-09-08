@@ -401,6 +401,8 @@ export const zhTW = {
     processingSteps: "{{count}} 個步驟",
     processingSteps_other: "{{count}} 個步驟",
     collapseDetails: "摺疊詳情",
+    subagentTaskExpand: "展開任務",
+    subagentTaskCollapse: "收起任務",
     tool: "工具",
     userMessage: "使用者訊息",
     assistantMessage: "助手訊息",

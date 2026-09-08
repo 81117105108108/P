@@ -947,8 +947,9 @@ It does not render separate Details or Output tabs.
   control.
 - The selected delegate uses a compact identity row followed by status,
   elapsed-time, and step-count metadata. The task is rendered as a
-  right-aligned user message bubble using the main transcript treatment; it is
-  not a separate task card. The live process uses one subtle vertical timeline
+  right-aligned user message bubble using the main transcript treatment. The
+  bubble shows at most four lines by default; longer tasks expose an inline
+  expand/collapse control and are not rendered as a separate task card. The live process uses one subtle vertical timeline
   and no nested card, so unused panel space reads as one continuous work
   surface instead of a stack of floating boxes.
 - The dock header identifies the view as **Subagent** and offers close and

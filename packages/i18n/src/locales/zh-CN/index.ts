@@ -401,6 +401,8 @@ export const zhCN = {
     processingSteps: "{{count}} 个步骤",
     processingSteps_other: "{{count}} 个步骤",
     collapseDetails: "折叠详情",
+    subagentTaskExpand: "展开任务",
+    subagentTaskCollapse: "收起任务",
     tool: "工具",
     userMessage: "用户消息",
     assistantMessage: "助手消息",

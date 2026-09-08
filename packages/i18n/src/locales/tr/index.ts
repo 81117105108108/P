@@ -405,6 +405,8 @@ export const tr = {
     processingSteps: "{{count}} adım",
     processingSteps_other: "{{count}} adım",
     collapseDetails: "Ayrıntıları daralt",
+    subagentTaskExpand: "Görevi göster",
+    subagentTaskCollapse: "Görevi daralt",
     tool: "Araç",
     userMessage: "Kullanıcı iletisi",
     assistantMessage: "Asistan iletisi",

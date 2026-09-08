@@ -1131,6 +1131,27 @@ export function SubagentDetail({
       ? formatToolDuration(durationMs / 1000)
       : "";
   const taskDescription = delegateTaskDescription(message);
+  const taskBodyId = useId();
+  const taskBodyRef = useRef<HTMLDivElement>(null);
+  const [taskExpanded, setTaskExpanded] = useState(false);
+  const [taskOverflow, setTaskOverflow] = useState(false);
+
+  useLayoutEffect(() => {
+    setTaskExpanded(false);
+  }, [taskDescription]);
+
+  useLayoutEffect(() => {
+    const element = taskBodyRef.current;
+    if (!element) return;
+    const measure = () => {
+      const overflowing = element.scrollHeight > element.clientHeight + 1;
+      setTaskOverflow((current) => (taskExpanded ? current : overflowing));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [taskDescription, taskExpanded]);
 
   useEffect(() => {
     if (outcome !== "running") return;
@@ -1178,9 +1199,28 @@ export function SubagentDetail({
       <div className="subagent-detail-task-row message-row user">
         <div className="message-col">
           <div className="message-bubble subagent-detail-task-bubble">
-            <div className="message-user-text subagent-task-message-body">
+            <div
+              id={taskBodyId}
+              ref={taskBodyRef}
+              className={`message-user-text subagent-task-message-body${
+                taskExpanded ? " is-expanded" : " is-collapsed"
+              }`}
+            >
               {taskDescription || t("panel.subagentTaskEmpty")}
             </div>
+            {taskOverflow ? (
+              <button
+                type="button"
+                className="subagent-task-toggle"
+                aria-expanded={taskExpanded}
+                aria-controls={taskBodyId}
+                onClick={() => setTaskExpanded((expanded) => !expanded)}
+              >
+                {taskExpanded
+                  ? t("chat.subagentTaskCollapse")
+                  : t("chat.subagentTaskExpand")}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

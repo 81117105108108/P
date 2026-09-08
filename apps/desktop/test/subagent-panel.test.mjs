@@ -60,6 +60,10 @@ test("the side panel renders the live conversation process", () => {
   assert.match(transcriptSource, /function delegateTaskDescription\(message: UiMessage\)/);
   assert.match(detailSource, /className="subagent-detail-task-row message-row user"/);
   assert.match(detailSource, /className="message-bubble subagent-detail-task-bubble"/);
+  assert.match(detailSource, /subagentTaskExpand/);
+  assert.match(detailSource, /subagentTaskCollapse/);
+  assert.match(detailSource, /aria-controls={taskBodyId}/);
+  assert.match(workPanelCss, /-webkit-line-clamp: 4/);
   assert.match(detailSource, /<SubagentRunRows/);
   assert.match(detailSource, /scrollable=\{false\}/);
 });
@@ -119,7 +123,7 @@ test("the subagent dock uses one task anchor and a continuous process timeline",
   );
   assert.match(
     workPanelCss,
-    /\.subagent-detail-task-row\s*\{[\s\S]*?padding:\s*8px 0 12px;/,
+    /\.subagent-detail-task-row\s*\{[\s\S]*?margin-right:\s*-10px;[\s\S]*?padding:\s*8px 0 12px;/,
   );
   assert.match(
     workPanelCss,
