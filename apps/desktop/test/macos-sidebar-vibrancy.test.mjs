@@ -23,6 +23,13 @@ function styleBlock(selector) {
   return stylesSource.match(new RegExp(`${selector}\\s*\\{[^}]*\\}`))?.[0] ?? "";
 }
 
+function functionSource(name) {
+  const start = mainSource.indexOf(`function ${name}(`);
+  assert.ok(start >= 0, `expected function ${name}`);
+  const next = mainSource.indexOf("\nfunction ", start + 1);
+  return mainSource.slice(start, next === -1 ? undefined : next);
+}
+
 test("macOS main window enables native sidebar vibrancy only in its platform branch", () => {
   assert.match(macOptions, /titleBarStyle:\s*"hiddenInset"/);
   assert.match(macOptions, /trafficLightPosition:\s*\{ x: 16, y: 16 \}/);
@@ -30,6 +37,11 @@ test("macOS main window enables native sidebar vibrancy only in its platform bra
   assert.match(macOptions, /visualEffectState:\s*"followWindow"/);
   assert.match(macOptions, /transparent:\s*true/);
   assert.match(macOptions, /backgroundColor:\s*"#00000000"/);
+  assert.doesNotMatch(
+    mainWindowBlock,
+    /vibrancy:\s*"under-window"/,
+    "non-mac branch must not set under-window vibrancy",
+  );
 
   // The shared opaque fallback remains in place for Windows/Linux.
   assert.match(
@@ -37,44 +49,44 @@ test("macOS main window enables native sidebar vibrancy only in its platform bra
     /backgroundColor:\s*nativeTheme\.shouldUseDarkColors \? "#181818" : "#ffffff"/,
   );
   assert.match(mainWindowBlock, /frame: false/);
+  assert.doesNotMatch(
+    mainWindowBlock.replace(macOptions, ""),
+    /vibrancy:\s*"sidebar"/,
+    "sidebar vibrancy stays in the darwin branch",
+  );
 });
 
-test("nativeTheme.themeSource follows the app theme and only resets darwin vibrancy on change", () => {
-  const nativeThemeFn =
-    mainSource.match(
-      /function applyNativeThemeSource\([\s\S]*?\n\}\n\nfunction notifyPluginChanged/,
-    )?.[0] ?? "";
-  assert.match(nativeThemeFn, /settings\?\.theme \?\? appThemePreference/);
-  assert.match(nativeThemeFn, /let next: "system" \| "light" \| "dark" = "system"/);
-  assert.match(nativeThemeFn, /preference === "light" \|\| preference === "dark"/);
-  assert.match(nativeThemeFn, /preference\.startsWith\("plugin:"\)/);
+test("native theme source maps preferences and only resets vibrancy on change", () => {
+  const applyNative = functionSource("applyNativeThemeSource");
+  const applyMenu = functionSource("applyApplicationMenuSettings");
+  const send = functionSource("sendToRenderer");
+
+  assert.match(applyNative, /let next: "system" \| "light" \| "dark" = "system"/);
   assert.match(
-    nativeThemeFn,
+    applyNative,
+    /if \(preference === "light" \|\| preference === "dark"\) \{\s*next = preference;/,
+  );
+  assert.match(applyNative, /preference\.startsWith\("plugin:"\)/);
+  assert.match(
+    applyNative,
     /pluginTheme\?\.base === "light" \|\| pluginTheme\?\.base === "dark"/,
   );
-  assert.match(nativeThemeFn, /const changed = nativeTheme\.themeSource !== next/);
-  assert.match(nativeThemeFn, /if \(!changed\) return/);
-  assert.match(nativeThemeFn, /nativeTheme\.themeSource = next/);
+  assert.match(applyNative, /next = pluginTheme\.base/);
+  assert.doesNotMatch(
+    applyNative,
+    /next = pluginTheme\?\.base \?\?/,
+    "a missing plugin theme must keep the system default, not a guessed base",
+  );
+  assert.match(applyNative, /if \(nativeTheme\.themeSource === next\) return;/);
   assert.match(
-    nativeThemeFn,
-    /process\.platform === "darwin" && mainWindow && !mainWindow\.isDestroyed\(\)/,
+    applyNative,
+    /nativeTheme\.themeSource = next;\s*if \(process\.platform === "darwin" && mainWindow && !mainWindow\.isDestroyed\(\)\) \{\s*mainWindow\.setVibrancy\("sidebar"\);/,
   );
-  assert.match(nativeThemeFn, /mainWindow\.setVibrancy\("sidebar"\)/);
 
-  const menuSettings = mainSource.slice(
-    mainSource.indexOf("function applyApplicationMenuSettings"),
-    mainSource.indexOf("function resolveAppearance"),
-  );
-  assert.match(menuSettings, /applyNativeThemeSource\(settings\)/);
-
-  const notifyFn =
-    mainSource.match(/function notifyPluginChanged\([\s\S]*?\n\}/)?.[0] ?? "";
-  assert.match(notifyFn, /applyNativeThemeSource\(\)/);
-  assert.match(notifyFn, /sendToRenderer\(IPC\.event\.pluginChanged/);
-  assert.match(mainSource, /notifyPluginChanged\(\{/);
-  assert.equal(
-    mainSource.split("sendToRenderer(IPC.event.pluginChanged,").length - 1,
-    1,
+  assert.match(applyMenu, /applyNativeThemeSource\(settings\)/);
+  assert.match(
+    send,
+    /if \(channel === IPC\.event\.pluginChanged\) \{\s*applyNativeThemeSource\(\{ theme: appThemePreference \}\);/,
   );
 });
 

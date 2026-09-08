@@ -2748,16 +2748,16 @@ D193 和 D194。
 
 ## 2026-09-08 —— macOS 侧边栏改用 source-list vibrancy 材质（D348）
 
-- 深色主题 CSS 叠在 `under-window` vibrancy 上时，macOS 26 Liquid Glass 会画出
-  一块浅色底板，即使应用和系统都是深色也一样。40% 炭黑 tint 压不住，会话行
-  就像浅色侧栏贴在不透明深色主面板旁边。
-- 决策 D348：主窗口改用 Electron `vibrancy: "sidebar"`，不再用 `under-window`。
+- 洗灰侧栏在 **深色应用主题 + 深色系统外观** 的 macOS 26 上也能复现。只同步
+  `nativeTheme.themeSource` 能修深色应用 + 浅色系统；当 Liquid Glass 在深色外观
+  下仍画出浅色底板时，压不住 D304 的 `under-window`。所以材质改为 `sidebar`。
+- 决策 D348：主窗口改用 Electron `vibrancy: "sidebar"`。
   `nativeTheme.themeSource` 跟随应用主题偏好（`system` / `light` / `dark` /
-  插件 base），让原生菜单和毛玻璃底板与渲染器一致。该赋值是进程级的：
-  Chromium `prefers-color-scheme` 和非 macOS 窗口创建时的
-  `shouldUseDarkColors` 也跟着走。仅在 `themeSource` 真变时重设 vibrancy。
-  缺失的 `plugin:` 主题回落 `system`，包括插件禁用/卸载之后。薄的
-  `--ds-sidebar-glass-tint` 配方不变。修正 D304。
-- `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质、`themeSource` 映射、
-  变更门闩的 `setVibrancy`，以及 pluginChanged 后的重应用。见
+  插件 base），让原生菜单和毛玻璃底板与渲染器一致。该赋值是进程级的，因此
+  Windows/Linux 创建窗口时的 `shouldUseDarkColors` 也会跟随应用偏好，与
+  `windowSetBackgroundColor` 一致。`plugin:` 主题消失时重新 apply。只有
+  `themeSource` 真正变化时才 `setVibrancy`。薄的 `--ds-sidebar-glass-tint`
+  配方不变。修正 D304。
+- `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质、偏好映射、设置/
+  pluginChanged 路径，以及 darwin 存活窗口守卫。见
   `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。

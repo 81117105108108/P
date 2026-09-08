@@ -3843,19 +3843,19 @@ D193, and D194.
 
 ## 2026-09-08 — macOS sidebar uses the source-list vibrancy material (D348)
 
-- Dark-theme CSS over `under-window` vibrancy painted a light plate on macOS 26
-  Liquid Glass, including when the app and OS appearances were both dark. The
-  40% charcoal tint could not keep the dock in the dark range, so session rows
-  sat on a washed gray sidebar beside an opaque dark main pane.
-- Decision D348: the main window uses Electron `vibrancy: "sidebar"` instead of
-  `under-window`. `nativeTheme.themeSource` follows the app theme preference
-  (`system` / `light` / `dark` / plugin base) so native menus and the vibrancy
-  plate match the renderer. The assignment is process-wide: Chromium
-  `prefers-color-scheme` and non-macOS `shouldUseDarkColors` at window create
-  follow it too. Vibrancy is re-applied only when `themeSource` actually
-  changes. A missing `plugin:` theme falls back to `system`, including after
-  plugin disable/uninstall. The thin `--ds-sidebar-glass-tint` recipe is
-  unchanged. Amends D304.
-- `macos-sidebar-vibrancy.test.mjs` asserts the sidebar material, the
-  `themeSource` mapping, the change-gated `setVibrancy`, and the pluginChanged
-  re-apply. See `04-ux/08-component-spec.md` §1.7 and US-UI-74 / E2E-076.
+- The washed-gray dock reproduced with a **dark app theme and a dark OS** on
+  macOS 26. Syncing `nativeTheme.themeSource` alone would fix dark-app +
+  light-OS; it does not keep `under-window` charcoal when Liquid Glass still
+  paints a light plate under dark appearance. That is why the material changes
+  from D304's `under-window` to `sidebar`.
+- Decision D348: the main window uses Electron `vibrancy: "sidebar"`.
+  `nativeTheme.themeSource` follows the app theme preference (`system` /
+  `light` / `dark` / plugin base) so native menus and the vibrancy plate match
+  the renderer. The assignment is process-wide, so Windows/Linux
+  `shouldUseDarkColors` at window creation also follows the app preference
+  next to `windowSetBackgroundColor`. Re-apply when a `plugin:` theme
+  disappears. Only re-set vibrancy when `themeSource` actually changes. The
+  thin `--ds-sidebar-glass-tint` recipe is unchanged. Amends D304.
+- `macos-sidebar-vibrancy.test.mjs` asserts the sidebar material, preference
+  mapping, settings/pluginChanged apply path, and the darwin live-window
+  vibrancy guard. See `04-ux/08-component-spec.md` §1.7 and US-UI-74 / E2E-076.
