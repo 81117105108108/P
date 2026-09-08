@@ -177,6 +177,13 @@ runtime, verifying the host build, building the Desktop application once, and
 invoking electron-builder. This avoids a redundant Desktop build without
 changing the package scripts or release artifacts.
 
+**Temporary `v0.14.3` recovery exception:** the GitHub tag workflow currently
+packages macOS DMG/ZIP artifacts unsigned while the `CSC_LINK` PKCS#12
+certificate and password are repaired. The macOS package step disables identity
+discovery and does not receive signing or notarization secrets; macOS stapling
+and signature verification are skipped. This is not an acceptable stable-release
+policy. Restore the signed and notarized lane before the next stable tag.
+
 The macOS matrix uses `macos-15` for arm64 and `macos-15-intel` for Intel x64.
 Each job verifies `uname -m`, passes the matching `--arm64` or `--x64` flag to
 electron-builder, and builds `pi-desktop-host-core` on that same native
@@ -207,6 +214,10 @@ exact archive used by the Linux installers for downstream repackaging with a
 system Electron.
 
 ## 5. Verification gates
+
+For the temporary `v0.14.3` exception, do not treat unsigned macOS artifacts as
+Gatekeeper-qualified. The signature and staple checks below apply again once
+the signed lane is restored.
 
 Run after every release build:
 

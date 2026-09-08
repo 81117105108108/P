@@ -119,7 +119,7 @@ test("release matrix packages both native macOS architectures", () => {
   );
   assert.match(
     releaseWorkflowSource,
-    /name: Package signed and notarized macOS installer[\s\S]*?package_args=\(--\$\{\{ matrix\.arch \}\}\)[\s\S]*?if \[\[ "\$\{\{ matrix\.platform \}\}" == "macos" && "\$\{\{ matrix\.arch \}\}" == "x64" \]\][\s\S]*?-c\.dmg\.artifactName=PI-Desktop-\$\{version\}-Intel\.\$\{ext\}[\s\S]*?-c\.zip\.artifactName=PI-Desktop-\$\{version\}-Intel-mac\.\$\{ext\}[\s\S]*?pnpm --filter @pi-desktop\/desktop run dist:mac -- "\$\{package_args\[@\]\}"[\s\S]*?-c\.mac\.forceCodeSigning=true[\s\S]*?-c\.mac\.notarize=true/,
+    /name: Package unsigned macOS installer[\s\S]*?CSC_IDENTITY_AUTO_DISCOVERY:\s*'false'[\s\S]*?package_args=\(--\$\{\{ matrix\.arch \}\}\)[\s\S]*?if \[\[ "\$\{\{ matrix\.platform \}\}" == "macos" && "\$\{\{ matrix\.arch \}\}" == "x64" \]\][\s\S]*?-c\.dmg\.artifactName=PI-Desktop-\$\{version\}-Intel\.\$\{ext\}[\s\S]*?-c\.zip\.artifactName=PI-Desktop-\$\{version\}-Intel-mac\.\$\{ext\}[\s\S]*?pnpm --filter @pi-desktop\/desktop run dist:mac -- "\$\{package_args\[@\]\}"/,
     "Intel macOS artifact names are applied only to the native x64 lane",
   );
   assert.match(
@@ -129,31 +129,14 @@ test("release matrix packages both native macOS architectures", () => {
   assert.match(releaseWorkflowSource, /Merge macOS updater metadata[\s\S]*?ruby/);
 });
 
-test("tag releases sign, notarize, and verify each macOS installer before upload", () => {
-  assert.doesNotMatch(releaseWorkflowSource, /CSC_IDENTITY_AUTO_DISCOVERY:\s*'false'/);
-  for (const secret of [
-    "CSC_LINK",
-    "CSC_KEY_PASSWORD",
-    "APPLE_ID",
-    "APPLE_APP_SPECIFIC_PASSWORD",
-    "APPLE_TEAM_ID",
-  ]) {
-    assert.match(
-      releaseWorkflowSource,
-      new RegExp(`${secret}:\\s*\\$\\{\\{\\s*secrets\\.${secret}\\s*\\}\\}`),
-      `${secret} must be available only to the macOS packaging step`,
-    );
-  }
-  assert.match(releaseWorkflowSource, /-c\.mac\.forceCodeSigning=true/);
-  assert.match(releaseWorkflowSource, /-c\.mac\.notarize=true/);
-  assert.match(
-    releaseWorkflowSource,
-    /Staple macOS installer ticket[\s\S]*?scripts\/staple-macos-release-dmg\.sh apps\/desktop\/release[\s\S]*?Verify signed and notarized macOS installer/,
-  );
-  assert.match(
-    releaseWorkflowSource,
-    /Verify signed and notarized macOS installer[\s\S]*?scripts\/verify-macos-release\.sh apps\/desktop\/release/,
-  );
+test("the temporary macOS recovery lane packages unsigned installers", () => {
+  assert.match(releaseWorkflowSource, /CSC_IDENTITY_AUTO_DISCOVERY:\s*'false'/);
+  assert.doesNotMatch(releaseWorkflowSource, /CSC_LINK:/);
+  assert.doesNotMatch(releaseWorkflowSource, /CSC_KEY_PASSWORD:/);
+  assert.doesNotMatch(releaseWorkflowSource, /-c\.mac\.forceCodeSigning=true/);
+  assert.doesNotMatch(releaseWorkflowSource, /-c\.mac\.notarize=true/);
+  assert.doesNotMatch(releaseWorkflowSource, /Staple macOS installer ticket/);
+  assert.doesNotMatch(releaseWorkflowSource, /Verify signed and notarized macOS installer/);
 });
 
 test("the signed local macOS lane selects the native runner architecture", () => {

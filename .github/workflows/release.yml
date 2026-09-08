@@ -139,14 +139,13 @@ jobs:
         # aligned with the runner selected by this matrix entry.
         run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --${{ matrix.arch }}
 
-      - name: Package signed and notarized macOS installer
+      - name: Package unsigned macOS installer
         if: matrix.platform == 'macos'
         env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Temporary recovery lane: the current PKCS#12 secret cannot be
+          # imported by the macOS runner. Restore the signed lane after the
+          # certificate and password are repaired.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
           set -euo pipefail
           package_args=(--${{ matrix.arch }})
@@ -160,17 +159,7 @@ jobs:
               '-c.zip.artifactName=PI-Desktop-${version}-Intel-mac.${ext}'
             )
           fi
-          pnpm --filter @pi-desktop/desktop run dist:mac -- "${package_args[@]}" \
-            -c.mac.forceCodeSigning=true \
-            -c.mac.notarize=true
-
-      - name: Staple macOS installer ticket
-        if: matrix.platform == 'macos'
-        run: scripts/staple-macos-release-dmg.sh apps/desktop/release
-
-      - name: Verify signed and notarized macOS installer
-        if: matrix.platform == 'macos'
-        run: scripts/verify-macos-release.sh apps/desktop/release
+          pnpm --filter @pi-desktop/desktop run dist:mac -- "${package_args[@]}"
 
       - name: Verify Linux host-core glibc floor
         if: matrix.platform == 'linux'
