@@ -56,19 +56,36 @@ Settings / UI
 | `openai_compatible` | 任何 OpenAI 聊天 Completions/Responses 兼容网关 | OpenRouter、Together、Groq、Fireworks、DeepSeek、本地网关、企业代理 |
 | `custom` | 基于已知协议配置文件的用户定义的提供商 | 私有部署、区域网关 |
 
-协议配置文件 (MVP)：
+协议配置文件（MVP）：
 
-1.`openai`
-2.`anthropic`
-3.`google`
-4.`openai_compatible`
-5. `bedrock`（如果运行时支持启用）
-6. `custom_http`（稍后为advanced/experimental）
+1. `openai`
+2. `anthropic`
+3. `google`
+4. `openai_compatible`
+5. `bedrock`（若运行时支持则启用）
+6. `custom_http`（后续的进阶/实验特性）
 
-智谱 / GLM 与 Z.AI 是 models.dev 支持的命名端点预设之一。添加服务的「服务」
-按厂商平铺列出主流端点（含小米），持久化对应的 models.dev `vendorKey`。
-命名服务的常见路径是服务 + API 密钥。自定义端点在常见路径上并排显示 API 密钥
-与接口格式。
+OpenCode Go 以一个名为 `opencode_go` 的 API 风格预设暴露。它仍然处在
+`openai_compatible` 提供商路径内：该预设把端点固定为
+`https://opencode.ai/zen/go/v1`，使用 Bearer API key 认证，从 `/models` 发现
+模型，并通过 pi-ai 的 OpenAI Chat Completions 适配器发送对话回合。它不会另建
+第二条传输链路，也不会形成封闭的模型许可名单。Agent 运行时会在每一次 LLM
+请求上注入 OpenCode 路由标头（会话回合、子代理、提示增强以及插件的一次性
+调用）：`x-opencode-session` 是持久的对话 id（调用方没有会话时则是按次生成的
+UUID），`x-opencode-client` 为 `pi-desktop`，`User-Agent` 为
+`pi-desktop/<APP_VERSION>`，除非该行设置了 `headers["User-Agent"]`。base URL
+主机为 `opencode.ai` 的自定义 OpenAI 兼容行也会收到同样的标头。系统不依赖
+pi-ai 去发出 `x-opencode-session`。每个提供商行（AI 服务或 OAuth 账户）都可以
+设置可选的 `headers`；留空则保持适配器默认值。一层 fetch 包装是最后的写入方，
+因此 Codex 与 Anthropic 无法覆盖它们。
+
+智谱 / GLM 与 Z.AI 是命名的 OpenAI 兼容端点预设，收录在一份由 models.dev
+支撑的、简短的第一方厂商服务列表中（含小米）。添加提供商时的「服务」选择器
+会持久化匹配的 models.dev `vendorKey`，并使用已发布的端点，在命名服务这条
+路径上不显示名称、Base URL 或 API 格式。对话回合仍然使用选定的 pi-ai 适配器
+（`chat_completions`、`responses`、`anthropic_messages`、
+`google_generative_ai` 或 `opencode_go`）。智谱 / Z.AI 的 Completions 请求
+使用 `thinkingFormat: "zai"` 与 `zaiToolStream: true`。
 
 ## 5. 内置供应商矩阵（发货意图）
 
@@ -243,6 +260,15 @@ type UserModelConfig = {
   hidden?: boolean
 }
 
+type ModelBinding = {
+  id: string
+  contextWindow: number
+  maxTokens: number
+  thinkingLevels: ThinkingLevel[]
+  defaultThinkingLevel: ThinkingLevel | null
+  availableForSubagents?: boolean // opt-in for AI-driven delegation
+}
+
 type SelectedModelRef = {
   providerId: string
   modelId: string
@@ -258,11 +284,21 @@ type ThinkingLevel =
   | "max"
 ```
 
-上面的兼容性字段保留为持久模式兼容性
-面向老客户的表面。 PI-Desktop 不再将它们读取为运行时模型
-覆盖。推理支持和受支持的思维水平来自
-解决了 pi-ai 模型记录；未知的自由格式 ID 未暴露任何推断
-推理能力。
+上面这些兼容性字段，是为老客户端保留的持久化模式兼容面。PI-Desktop 不再把
+它们当作运行时的模型覆盖来读取。`ModelInfo` 的推理支持与受支持的思考级别
+描述的是解析出的 models.dev 记录；有效的 provider/会话能力则来自那个确切的
+`ModelBinding`。未知的自由格式 id 以通用形态起步，不带任何推断出的推理能力，
+但显式的 binding 可以主动启用相应级别。
+
+提供商对话框会为每个选中的模型持久化一条 `ModelBinding`。第一条 binding 是
+当前对话以及旧版运行时消费方的有效模型。对话级别的模型切换与跨数组路由仍属
+后续工作。只有 `defaultModelId` 的旧版提供商，在主机读取时会被具体化为一条
+回退 binding，并在下一次提供商写入时升级为 `models`。
+
+`ModelBinding.availableForSubagents`（布尔值，默认 false）：这是一个选择加入
+的标志，让该模型可用于 AI 驱动的子代理委托。启用后，该模型会出现在注入父
+agent 系统提示的委托目录中。父 agent 随后就能通过 Task 工具的 `model` 参数
+选中它。
 
 ## 8. 秘密
 
