@@ -161,7 +161,12 @@ import { PluginPanelHost } from "./plugin-panel-host";
 import { PluginViewHost, pluginViewKey } from "./plugin-view-host";
 import { parseAllowedExternalUrl } from "./safe-open-external";
 import type { PluginAppearance } from "../shared/plugin-panel-chrome";
-import { Logger } from "./logger";
+import { Logger, ignoreBrokenStdio } from "./logger";
+import {
+  GLIBC_UNSUPPORTED_STATUS,
+  assertLinuxGlibcSupported,
+  isGlibcUnsupportedError,
+} from "./linux-glibc";
 import { collectWorkspaceDiff } from "./git-diff";
 import { BrowserPane, resolveLocalFile } from "./browser-view";
 import {
@@ -269,6 +274,10 @@ function stripWinLongPrefix(p: string): string {
   }
   return p;
 }
+
+// A closed stdout/stderr (Linux AppImage, GUI launch without a TTY) must not
+// surface as Electron's "Uncaught Exception: write EPIPE" dialog.
+ignoreBrokenStdio();
 
 app.setName(APP_NAME);
 if (process.platform === "win32") {
@@ -4398,6 +4407,7 @@ function wireHost(h: HostProcess) {
 }
 
 async function startHost(): Promise<void> {
+  assertLinuxGlibcSupported();
   const h = new HostProcess(dataDir, (text) => logger.child("host", text));
   wireHost(h);
   host = h;
@@ -5365,6 +5375,19 @@ async function superviseRestartLoop(kind: RestartKind): Promise<void> {
       });
       return;
     } catch (e) {
+      if (isGlibcUnsupportedError(e)) {
+        logger.app("runtime", "error", "linux glibc is below the packaged host floor", {
+          code: ErrorCodes.HOST_UNAVAILABLE,
+          data: String(e),
+        });
+        sendToRenderer(IPC.event.hostStatus, {
+          ok: false,
+          component: kind,
+          fatal: true,
+          message: GLIBC_UNSUPPORTED_STATUS,
+        });
+        return;
+      }
       logger.app("runtime", "error", `${kind} restart failed`, { data: String(e) });
     }
   }
@@ -8636,7 +8659,13 @@ app.whenReady().then(async () => {
     sendToRenderer(IPC.event.hostStatus, {
       ok: !bootError,
       ...(bootError
-        ? { component: "host", fatal: true, message: String(bootError) }
+        ? {
+            component: "host",
+            fatal: true,
+            message: isGlibcUnsupportedError(bootError)
+              ? GLIBC_UNSUPPORTED_STATUS
+              : String(bootError),
+          }
         : {}),
     });
     applicationBooted = true;

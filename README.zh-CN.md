@@ -293,6 +293,16 @@ PI-Desktop 是 **本地优先**，不是“永远不碰网络”。
 
 打包版本会检查 GitHub Releases 上的更新，并在应用内提示新版本。Linux `.asar` 文件用于配合系统 Electron 重新打包；补齐目标发行版所需的原生 host 和资源后，可运行 `electron PI-Desktop-<version>-linux-x64.asar` 启动。
 
+### Linux
+
+Linux x64 安装包需要 **glibc 2.39** 或更高版本，对应：
+
+* Ubuntu 24.04 及以上
+* Debian 13 及以上
+* Fedora 40 及以上
+
+Ubuntu 22.04、Debian 12、Fedora 39 及更旧的发行版无法加载自带的 host。可用 `ldd --version` 查看本机 glibc。
+
 ### macOS
 
 macOS 构建目前尚未代码签名或公证。

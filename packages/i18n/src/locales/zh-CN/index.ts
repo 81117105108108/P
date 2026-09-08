@@ -1715,6 +1715,8 @@ export const zhCN = {
     restarting: "正在重新连接…",
     restored: "连接已恢复",
     fatal: "无法连接本地服务",
+    unsupportedGlibc:
+      "当前 Linux 构建需要 glibc 2.39 或更高版本（Ubuntu 24.04、Debian 13、Fedora 40+）。",
     openLogs: "打开日志",
   },
   toast: {

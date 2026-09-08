@@ -1739,6 +1739,8 @@ export const en = {
     restarting: "Reconnecting…",
     restored: "Connection restored",
     fatal: "Can't reach the local service",
+    unsupportedGlibc:
+      "This Linux build needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13, Fedora 40+).",
     openLogs: "Open logs",
   },
   toast: {

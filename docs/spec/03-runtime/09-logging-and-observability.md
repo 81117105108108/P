@@ -201,6 +201,11 @@ Not in MVP:
   `<category>.2.log`)
 - audit log (SQLite): retained with the database; longer than debug logs
 - rotation must never fail the caller; disk trouble is swallowed
+- console mirroring is best-effort: a closed stdout/stderr (`EPIPE`/`EIO`,
+  typical of Linux AppImage and GUI launches without a TTY) is swallowed and
+  is never an uncaught main-process exception. Main also ignores those stream
+  errors on `process.stdout` / `process.stderr` so other writers cannot surface
+  Electron's uncaught-exception dialog.
 
 ## 10. Acceptance
 
@@ -214,3 +219,5 @@ Not in MVP:
 6. Plan startup interruption and shell changed-selection/timeout/process abort
    can be diagnosed from session/turn/tool-call correlation and stable error
    code
+7. logging or console mirroring never crashes the main process when stdout is
+   a broken pipe

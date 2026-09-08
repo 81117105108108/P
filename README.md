@@ -293,6 +293,16 @@ Download the latest build from **[GitHub Releases](https://github.com/vastsa/PI-
 
 Packaged builds can check GitHub Releases for updates and surface new versions inside the application. The Linux `.asar` asset is available for repackaging with a system Electron; launch it with `electron PI-Desktop-<version>-linux-x64.asar` after adding the native host and packaged resources required by the target distribution.
 
+### Linux
+
+Linux x64 packages need **glibc 2.39** or newer. That is the library shipped with:
+
+* Ubuntu 24.04 or later
+* Debian 13 or later
+* Fedora 40 or later
+
+Ubuntu 22.04, Debian 12, Fedora 39, and older releases cannot load the bundled host. Check with `ldd --version`.
+
 ### macOS
 
 macOS builds are not yet code-signed or notarized.

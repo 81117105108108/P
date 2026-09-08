@@ -239,7 +239,7 @@ function AppShell() {
   const presentedWorkPanelRef = useRef(false);
   const workPanelExitingRef = useRef(false);
   const [backendDown, setBackendDown] = useState<
-    { fatal: boolean; component?: string } | null
+    { fatal: boolean; component?: string; message?: string } | null
   >(null);
   const [splashPhase, setSplashPhase] = useState<"loading" | "exiting" | "done">(
     "loading",
@@ -516,6 +516,7 @@ function AppShell() {
         setBackendDown({
           fatal: status.fatal === true,
           component: status.component,
+          message: status.message,
         });
         // A dead sidecar cannot finish the turn; unstick the composer.
         useAppStore.setState({ isRunning: false });
@@ -1848,7 +1849,11 @@ function AppShell() {
               >
                 <span className="backend-dot" aria-hidden />
                 <span>
-                  {backendDown.fatal ? t("status.fatal") : t("status.restarting")}
+                  {backendDown.fatal
+                    ? backendDown.message === "GLIBC_UNSUPPORTED"
+                      ? t("status.unsupportedGlibc")
+                      : t("status.fatal")
+                    : t("status.restarting")}
                 </span>
                 {backendDown.fatal && (
                   <button

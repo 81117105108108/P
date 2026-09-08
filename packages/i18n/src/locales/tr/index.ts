@@ -1741,6 +1741,8 @@ export const tr = {
     restarting: "Yeniden bağlanılıyor…",
     restored: "Bağlantı geri geldi",
     fatal: "Yerel servise ulaşılamıyor",
+    unsupportedGlibc:
+      "Bu Linux sürümü glibc 2.39 veya daha yenisini gerektirir (Ubuntu 24.04, Debian 13, Fedora 40+).",
     openLogs: "Günlükleri aç",
   },
   toast: {

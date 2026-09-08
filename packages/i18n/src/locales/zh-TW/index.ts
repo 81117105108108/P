@@ -1715,6 +1715,8 @@ export const zhTW = {
     restarting: "正在重新連線…",
     restored: "連線已恢復",
     fatal: "無法連線本地服務",
+    unsupportedGlibc:
+      "目前 Linux 建置需要 glibc 2.39 或更新版本（Ubuntu 24.04、Debian 13、Fedora 40+）。",
     openLogs: "開啟日誌",
   },
   toast: {

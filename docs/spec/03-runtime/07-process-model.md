@@ -71,6 +71,15 @@ host-core marketplace `curl` gets `--proxy` from the stored settings and does
 | Node agent crash | abort active turns and live approval waiters/queue entries, keep pending sessions in their contract mode, preserve already-approved Agent mode in Rust, restart sidecar, and never replay an execution |
 | Electron main crash | full app exit |
 
+Broken stdout/stderr (`EPIPE`/`EIO`) is not a main-process crash. Main ignores
+those writes so a Linux AppImage or GUI launch without a live TTY keeps
+supervising host/sidecar instead of showing Electron's uncaught exception
+dialog.
+
+Linux packaged host-core needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13,
+Fedora 40+). A lower glibc is a fatal host status, not a restart loop: the UI
+names those releases instead of "Can't reach the local service".
+
 Supervision parameters (implemented in Electron main):
 
 - Child exit rejects all in-flight RPCs for that child immediately (no 130s timeout wait).

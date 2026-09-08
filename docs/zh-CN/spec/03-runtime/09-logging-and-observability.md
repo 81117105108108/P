@@ -202,6 +202,10 @@ MVP 提供：
   `<category>.2.log`）
 - 审核日志（SQLite）：与数据库一起保留；比调试日志长
 - 轮换决不能让调用者失败；磁盘故障被吞噬
+- 控制台镜像是尽力而为：关闭的 stdout/stderr（`EPIPE`/`EIO`，常见于 Linux
+  AppImage 以及没有 TTY 的 GUI 启动）会被吞掉，绝不会变成主进程未捕获异常。
+  Main 也会忽略 `process.stdout` / `process.stderr` 上的这类流错误，以免其他
+  写入触发 Electron 的未捕获异常对话框。
 
 ## 10. 验收
 
@@ -215,3 +219,4 @@ MVP 提供：
 6. Plan 启动中断和 shell changed-selection/timeout/process 中止
    可以从session/turn/tool-call相关性和稳定误差进行诊断
    代码
+7. 当 stdout 是断开的管道时，日志或控制台镜像绝不能让主进程崩溃
