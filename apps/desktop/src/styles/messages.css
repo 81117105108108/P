@@ -1103,8 +1103,6 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--ds-border-subtle);
 }
 
 .context-inspector-heading-value {
@@ -1127,7 +1125,9 @@
 
 /*
  * Every section below the heading is one aligned list — muted micro label on
- * the left, tabular value on the right — with hairlines between sections.
+ * the left, tabular value on the right — with hairlines between sections. The
+ * heading carries no rule of its own: the first section's top border already
+ * separates them, and a second line just reads as a double underline.
  */
 .context-inspector-window,
 .context-inspector-kpis,
