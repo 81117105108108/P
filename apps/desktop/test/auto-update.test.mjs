@@ -212,14 +212,27 @@ test("packaging publishes an electron-updater feed for GitHub Releases", () => {
     assert.match(pkg.scripts[script], /--publish never/, script);
   }
   assert.equal(pkg.build.linux.executableName, "pi-desktop");
-  // Scoped package name is not a valid deb package/file name.
+  const linuxTargets = pkg.build.linux.target.map((entry) => entry.target);
+  assert.deepEqual(
+    linuxTargets,
+    ["AppImage", "deb", "rpm"],
+    "Linux release targets",
+  );
+  // Scoped package name is not a valid deb/rpm package or file name.
   assert.equal(pkg.build.deb.packageName, "pi-desktop");
+  assert.equal(pkg.build.rpm.packageName, "pi-desktop");
   assert.ok(!pkg.build.deb.artifactName.includes("${name}"), "deb artifactName");
+  assert.equal(
+    pkg.build.rpm.artifactName,
+    "pi-desktop-${version}-${arch}.${ext}",
+    "rpm artifactName",
+  );
   // GitHub asset URLs mangle spaces; keep the NSIS artifact name space-free.
   assert.equal(pkg.build.nsis.artifactName, "PI-Desktop-Setup-${version}.${ext}");
   // The upload step must carry every updater feed, and the release publishes
   // all platforms unfiltered (D126/D285).
   assert.match(releaseWorkflowSource, /release\/\*\.zip/);
+  assert.match(releaseWorkflowSource, /release\/\*\.rpm/);
   assert.match(releaseWorkflowSource, /release\/latest\*\.yml/);
   assert.match(releaseWorkflowSource, /files: dist\/\*/);
 });
