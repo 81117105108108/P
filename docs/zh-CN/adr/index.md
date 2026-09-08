@@ -32,8 +32,18 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
 | [ADR 0148：明确禁用应用快捷键](/adr/0148-explicitly-disable-keyboard-shortcuts) | 缺少覆盖使用默认值，`null` 表示未绑定并关闭渲染器、菜单和启动器分发 |
 | [ADR 0174：宿主代发的插件补全与会话上下文](/adr/0174-plugin-host-owned-completion-and-session-context) | 插件可通过公开 API 列出已登录模型、读取进行中工具会话，并由宿主代打一次性补全 |
 | [ADR 0175：解释安静的进行中回合](/adr/0175-live-agent-activity-status) | 用 waiting-model / retrying / waiting-subagents 状态行说明停顿 |
-| [ADR 0176：按供应商覆盖 User-Agent](/adr/0176-per-provider-user-agent) | 每个 AI 服务/OAuth 行可设置可选 User-Agent |
+| [ADR 0176：按供应商覆盖 User-Agent](/adr/0176-per-provider-user-agent) | 每个 AI 服务/OAuth 行可设置可选 User-Agent（已被 0178 的 headers 映射取代） |
 | [ADR 0177：用户可配置的出站代理](/adr/0177-user-configurable-outbound-proxy) | 设置里的系统/直连/自定义代理覆盖模型请求、市场、更新和内置浏览器 |
+| [ADR 0178：按供应商自定义 HTTP 请求头](/adr/0178-per-provider-custom-headers) | 每个 AI 服务/OAuth 行可在高级选项中编辑任意非敏感请求头 |
+| [ADR 0179：从本地智能体存储导入模型配置](/adr/0179-import-model-configuration) | 设置 → 导入显式扫描 Claude Code / Codex / OpenCode / Pi 的提供商配置并复制 API 密钥 |
+| [ADR 0180：自定义全局文字缩放](/adr/0180-custom-reading-font-size) | 设置外观按比例缩放全部界面文字，不使用 px，窗口缩放仍独立 |
+| [ADR 0181：主进程拥有的文件选择能力](/adr/0181-main-owned-picker-capabilities) | 文件选择路径留在主进程，以一次性令牌保护导入边界，并移除不支持的文件夹选择 |
+| [ADR 0182：繁体中文应用程序壳](/adr/0182-traditional-chinese-shell-locale) | 提供独立的繁体中文外壳、系统语言解析和发版日志目录 |
+| [ADR 0183：P0 国际化应用程序壳语言](/adr/0183-p0-international-shell-locales) | 提供德语、西班牙语和法语完整外壳目录及发版日志 |
+| [ADR 0184：输入框工具栏中的上下文用量检查器](/adr/0184-composer-context-usage-inspector) | 把剩余容量检查器移到模型选择器左侧，答案下方只保留模型徽章 |
+ | [ADR 0185：韩语应用程序壳](/adr/0185-korean-shell-locale) | 提供完整韩语外壳、系统语言解析和韩语发版日志目录 |
+ | [ADR 0186：显示进行中重试的 provider 原因](/adr/0186-retry-cause-in-active-turn-status) | 悬停或聚焦重试状态行时显示错误摘要、错误码和安全的 provider 消息 |
+ | [ADR 0187：区分任务和交互式本机通知投递](/adr/0187-separate-task-and-interactive-native-notification-delivery) | 终端任务保持仅无焦点投递，交互询问可通知聚焦的其他会话 |
 
 ## 什么时候看 ADR
 

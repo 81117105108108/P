@@ -7,16 +7,16 @@
 > macOS signing/notarization 保留下面的详细资格通道。
 > 交叉引用：[里程碑](/zh-CN/spec/06-delivery/01-mvp-milestones) · [进程模型](/zh-CN/spec/03-runtime/07-process-model) · [安全性](/zh-CN/spec/05-security/01-security)
 
-## 1. 修建车道
+## 1. 构建通道
 
-| 巷 | 命令 | 签约 | 使用 |
+| 通道 | 命令 | 签名 | 用途 |
 |---|---|---|---|
-| 开发者 | `pnpm dev` | 无 | 日常发展 |
-| 本地套餐 | `pnpm --filter @pi-desktop/desktop pack` | 未签名（`identity: null`） | 包装烟雾（`--dir` 输出） |
-| 局部DMG | `pnpm --filter @pi-desktop/desktop dist` | 未签名 | 本地安装测试 |
-| 发布 | `scripts/release-macos.sh` | 开发者 ID + 可选公证 | 可分发的工件 |
+| 开发 | `pnpm dev` | 无 | 日常开发 |
+| 本地打包 | `pnpm --filter @pi-desktop/desktop pack` | 未签名（`identity: null`） | 打包冒烟测试（`--dir` 输出） |
+| 本地 DMG | `pnpm --filter @pi-desktop/desktop dist` | 未签名 | 本地安装测试 |
+| 发布 | `scripts/release-macos.sh` | Developer ID + 可选公证 | 可分发产物 |
 
-静态电子构建器配置保持未签名友好（`identity: null`）
+静态 electron-builder 配置保持未签名友好（`identity: null`）
 因此没有证书的贡献者可以随时打包。发布脚本
 在构建时通过 `-c.mac.identity` 注入真实身份。
 
@@ -66,14 +66,14 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 - `Resources/app.asar` — Electron Main、preload、渲染器输出以及仅
   运行时解析的生产模块。 Renderer 库已存在
   在 Vite 输出中，并且不会再次复制为原始包树。
-- Chromium 语言环境包仅适用于英语和简体中文。产品展示
-  `en`/`zh-CN` 目录保持捆绑状态，独立于 Chromium 区域设置。
+- Chromium 语言环境包适用于英语、简体中文、繁体中文和土耳其语。产品目录
+  保持捆绑状态，独立于 Chromium 区域设置。
 - 应用程序图标 `build/icon.icns`（源自规范 `build/icon_1024.png`，作者：
   `scripts/make-icon.py`）。
 
 ## 4. 发布步骤
 
-### 4. 1 强制发布版本面门禁 (D164 + D260)
+### 4.1 强制发布版本面门禁 (D164 + D260)
 
 **每个提升稳定应用版本并打标签的产品发布，都必须先更新所有带版本号的位置：
 双语应用内产品更新日志，以及项目文档中声明的版本号。** 如果任一位置仍在描述
@@ -85,7 +85,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 
 | 位置 | 要求 |
 |---|---|
-| `packages/shared/src/changelog.ts` | 该版本的 EN + zh-CN 条目按最新优先排列，亮点条数一致 |
+| `packages/shared/src/changelog.ts` | 每个已发货产品语言的该版本条目按最新优先排列，亮点条数一致 |
 | `packages/shared/src/changelog.test.ts` | 该版本加入最新优先清单的首位 |
 | `package.json`、`apps/*/package.json`、`packages/*/package.json`、`docs/package.json` | 版本号一致（`docs` 是第三个工作区根，不在 `apps`/`packages` 之下） |
 | `Cargo.toml` 的 `[workspace.package]`、`Cargo.lock` 的 `host-core` | 版本号一致 |
@@ -96,7 +96,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 
 1. 在 `node scripts/release.mjs <version>` / `git tag` **之前**编辑
    `packages/shared/src/changelog.ts`：
-   - 在 `en` 和 `zh-CN` 下各添加**最新优先**的条目。
+   - 在 `en` 和每个已发货产品语言下各添加**最新优先**的条目。
    - 使用相同的 `version` 字符串（semver，**不带**前导 `v`，与
      `apps/desktop` / `APP_VERSION` 一致）。
    - 可选的 ISO `date`（`YYYY-MM-DD`）。
@@ -113,7 +113,8 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
    状态或参与开发章节的描述不再准确时同样要更新。两个语言版本保持结构一致，
    英文是事实来源，中文版链接 `docs/zh-CN/` 镜像。
 5. 运行预检并修复所有报告的位置：
-   `pnpm check:release-docs [version]`（即 `node scripts/check-release-docs.mjs`）。
+   `pnpm check:release-docs [version]`（即 `node scripts/check-release-docs.mjs`）。预检会
+   在临时目录编译 TypeScript 更新日志，因此不要求先构建整个工作区。
    `scripts/release.mjs` 在升
    版本后运行同一检查，未通过时拒绝提交或打标签；`--skip-docs-check` 仅用于
    明确的非发布性升版本。
@@ -124,7 +125,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 
 打标签前清单：
 
-- [ ] `packages/shared/src/changelog.ts` 含有即将打标签版本的 EN + zh-CN 条目
+- [ ] `packages/shared/src/changelog.ts` 含有即将打标签版本的每个已发货产品语言条目
 - [ ] 各语言的亮点条数一致
 - [ ] 共享更新日志测试通过
 - [ ] `README.md` 与 `README.zh-CN.md` 声明当前版本线，且没有被本次发布
@@ -132,7 +133,7 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
 - [ ] `node scripts/check-release-docs.mjs` 在发布提交上通过
 - [ ] `release.mjs` / 打标签仅在文档提交进入发布分支后执行
 
-### 4. 2 构建/打包
+### 4.2 构建/打包
 
 ```bash
 export MAC_SIGNING_IDENTITY="Developer ID Application: ... (TEAMID)"
@@ -148,10 +149,10 @@ scripts/release-macos.sh
 `MAC_ARCH=x64`，但该值必须与主机匹配，以保持 Rust 本机主机和 Electron
 软件包的架构一致。
 
-### 4. 3 GitHub 标签工作流程
+### 4.3 GitHub 标签工作流程
 
 GitHub Release 工作流程启动所有本机平台运行程序，无需
-单独的验证作业障碍。每个跑步者都会验证推送的标签
+单独的验证作业障碍。每个运行器都会验证推送的标签
 结账后、打包前立即匹配 `apps/desktop/package.json`
 输入已准备好。
 
@@ -188,7 +189,7 @@ for APP in apps/desktop/release/mac-*/PI-Desktop.app; do
 done
 ```
 
-### 5. 1 封装封装门
+### 5.1 安装包体积门禁
 
 在发布之前检查每个本机运行程序包并记录所有内容
 压缩工件格式、解压应用程序、ASAR、Electron
@@ -206,7 +207,7 @@ framework/runtime、区域设置和未打包的本机大小。将它们与
 ASAR 中的树
 - 所需的第三方许可和通知文件保留在 ASAR 中或
   `Resources/licenses` 当其非运行时包树被修剪时
-- 仅配置的英语和简体中文 Chromium 语言环境包
+- 仅配置的英语、简体中文、繁体中文和土耳其语 Chromium 语言环境包
 
 第一个经过审核的优化包建立了平台基线。保留
 针对每个平台进行测量，而不是将一项预算应用于不同的平台
@@ -224,7 +225,7 @@ Electron 目标布局。
 | `Contents/Resources` | 33,102,807 | 31.6 |
 | `Resources/app.asar` | 20,944,962 | 20.0 |
 | `Resources/app.asar.unpacked` 本机负载 | 137,336 | 0.1 |
-| 英语和简体中文 Chromium 语言环境包 | 1,033,673 | 1.0 |
+| 历史英语和简体中文 Chromium 语言环境包基线 | 1,033,673 | 1.0 |
 | Agent sidecar | 3,258,983 | 3.1 |
 | Rust 主机 | 7,160,000 | 6.8 |
 
@@ -302,7 +303,7 @@ Linux:   pnpm --filter @pi-desktop/desktop dist:linux
 macOS 软件包包括按本机架构构建的 `bin/pi-desktop-host-core`；Windows
 软件包包括 `bin/pi-desktop-host-core.exe`；Linux 包括
 `bin/pi-desktop-host-core`。签名、回滚和安装程序升级资质仍保持发布
-硬化工作；出版物本身在 D126/D285 下有效。
+硬化工作；发布本身已在 D126/D285 下启用。
 
 Native-runner 输出矩阵：
 
@@ -310,8 +311,17 @@ Native-runner 输出矩阵：
 - macOS Intel x64：DMG 和 ZIP
 - Windows x64：NSIS 安装程序
 - Linux x64：AppImage 和 deb
+- Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`
 
-每个本地跑步者身上都冒着贝壳烟：
+该 ASAR 产物包含的是 Electron 应用归档，而不是完整的 Linux 发行包。
+若要重新打包，请把它作为应用归档放入目标 Electron 的 resources 布局中，
+与目标软件包内的本机主机及其他资源放在一起，然后用以下命令启动：
+
+```bash
+electron PI-Desktop-<version>-linux-x64.asar
+```
+
+每个本机运行器上的外壳冒烟测试：
 
 1. 确认窗口中没有出现 File/Edit/View/Window/Help 菜单。
 2. 验证 F10 和 Shift+F10 对焦点内容仍然可用。
@@ -324,5 +334,8 @@ Native-runner 输出矩阵：
 ## 7. 已知限制
 
 - macOS 和 Linux deb 仍保持通知和链接更新模式。
+- Linux x64 包在 Ubuntu 22.04 上构建，因此 host-core 需要 glibc 2.35 或更高
+  版本（Ubuntu 22.04、Debian 12、Fedora 36+）。标签作业运行
+  `scripts/check-linux-host-glibc.mjs`，拒绝需要更新 glibc 的二进制文件。
 - 签名的应用内 macOS 交付、回滚、分阶段部署和预发布
   渠道政策仍保持公开发布工作。

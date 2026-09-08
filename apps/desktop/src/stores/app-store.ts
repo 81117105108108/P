@@ -159,6 +159,7 @@ import {
   type QueuedPrompt,
   type QueuedPrompts,
 } from "../lib/queued-prompts";
+import { settleBootstrapRequests } from "../lib/bootstrap-result";
 
 const ErrorCodes = {
   ...SharedErrorCodes,
@@ -170,18 +171,25 @@ export type { WorkPanelTab } from "../lib/work-panel-tabs";
 function promptAttachmentsFromDraft(
   references: ComposerDraftSnapshot["fileReferences"],
 ): AgentPromptAttachment[] {
-  return references
-    .filter((reference) => !reference.token)
-    .map((reference) => ({
-      path: reference.path,
-      name: reference.name,
-      kind:
-        reference.kind ??
-        (/\.(avif|bmp|gif|heic|jpe?g|png|tiff?|webp)$/i.test(reference.path)
-          ? "image"
-          : "file"),
-      ...(reference.mimeType ? { mimeType: reference.mimeType } : {}),
-    }));
+  return references.flatMap((reference) => {
+    const kind =
+      reference.kind ??
+      (/\.(avif|bmp|gif|heic|jpe?g|png|tiff?|webp)$/i.test(reference.path)
+        ? "image"
+        : "file");
+    // Inline chips use tokens for both files and images. Ordinary file chips
+    // already serialize to @path text (the model can Read them); only image
+    // chips need the structured transport for vision/fallback handling.
+    if (reference.token && kind !== "image") return [];
+    return [
+      {
+        path: reference.path,
+        name: reference.name,
+        kind,
+        ...(reference.mimeType ? { mimeType: reference.mimeType } : {}),
+      },
+    ];
+  });
 }
 
 function promptAttachmentsFromMessage(
@@ -200,6 +208,11 @@ function promptAttachmentsFromMessage(
 // match against every locale's defaults (case-insensitive), not just the
 // active locale's.
 const LEGACY_DEFAULT_TITLES = new Set(["new task", "new chat", "新建任务", "新对话"]);
+const SESSION_TITLE_FALLBACK_LENGTH = 48;
+
+function promptFallbackSessionTitle(userPrompt: string, emptyTitle: string): string {
+  return userPrompt.trim().replace(/\s+/g, " ").slice(0, SESSION_TITLE_FALLBACK_LENGTH) || emptyTitle;
+}
 
 function withoutRecordKey<T>(record: Record<string, T>, key: string): Record<string, T> {
   const next = { ...record };
@@ -214,6 +227,92 @@ function viewingSessionIdForPrompt(
   return state.page === "chat" && state.activeSessionId === sessionId
     ? sessionId
     : null;
+}
+
+function notifyInteractivePrompt(
+  sessionId: string,
+  kind: "ask" | "permission" | "plan",
+  payload?: { question?: string; toolName?: string },
+) {
+  const session = useAppStore.getState().sessions.find((s) => s.id === sessionId);
+  const sessionTitle = session?.title || i18n.t("chat.untitledTask");
+  let title = "";
+  let body = "";
+  if (kind === "ask") {
+    title = i18n.t("notifications.askTitle", { sessionTitle });
+    body = payload?.question?.trim() || i18n.t("notifications.askBodyFallback");
+  } else if (kind === "permission") {
+    title = i18n.t("notifications.permissionTitle", { sessionTitle });
+    body = i18n.t("notifications.permissionBody", {
+      toolName: payload?.toolName || "tool",
+    });
+  } else if (kind === "plan") {
+    title = i18n.t("notifications.planApprovalTitle", { sessionTitle });
+    body = i18n.t("notifications.planApprovalBody");
+  }
+  void api
+    .showNativeNotification({
+      id: crypto.randomUUID(),
+      sessionId,
+      kind: "interactive",
+      title,
+      body,
+      source: "interactive",
+    })
+    .catch(() => undefined);
+}
+
+const manuallyRenamedSessionIds = new Set<string>();
+const summarizedSessionIds = new Set<string>();
+
+async function triggerAutoTitleSummarization(sessionId: string) {
+  if (!sessionId) return;
+  if (manuallyRenamedSessionIds.has(sessionId)) return;
+  if (summarizedSessionIds.has(sessionId)) return;
+
+  const state = useAppStore.getState();
+  const session = state.sessions.find((s) => s.id === sessionId);
+  if (!session) return;
+
+  const messages =
+    sessionId === state.activeSessionId
+      ? state.messages
+      : sessionTranscriptCache.get(sessionId) ?? [];
+
+  const firstUser = messages.find((m) => m.role === "user");
+  if (!firstUser?.content) return;
+  // The marker covers renames made in this renderer and survives restart.
+  // The title check also protects custom titles created before the marker was
+  // introduced, while retaining the prompt fallback until its summary lands.
+  if (
+    state.sessionMeta[sessionId]?.manualTitle ||
+    (!isDefaultSessionTitle(session.title) &&
+      session.title.trim() !== promptFallbackSessionTitle(firstUser.content, ""))
+  ) {
+    return;
+  }
+
+  const firstAssistant = messages.find(
+    (m) => m.role === "assistant" && typeof m.content === "string" && m.content.trim(),
+  );
+
+  summarizedSessionIds.add(sessionId);
+
+  try {
+    const res = await api.summarizeSessionTitle({
+      sessionId,
+      userPrompt: firstUser.content,
+      assistantReply:
+        typeof firstAssistant?.content === "string" ? firstAssistant.content : undefined,
+    });
+    const nextTitle = res?.title?.trim();
+    if (nextTitle && !manuallyRenamedSessionIds.has(sessionId)) {
+      await api.renameSession(sessionId, nextTitle);
+      await useAppStore.getState().refreshSessions();
+    }
+  } catch {
+    // Non-fatal: keep current truncated prompt title as fallback
+  }
 }
 
 export type ToastVariant = "info" | "success" | "warning" | "error";
@@ -932,6 +1031,9 @@ function openPlanArtifact(
 }
 
 const initialSidebarPreferences = loadSidebarPreferences();
+for (const [sessionId, meta] of Object.entries(initialSidebarPreferences.sessionMeta)) {
+  if (meta.manualTitle) manuallyRenamedSessionIds.add(sessionId);
+}
 const initialWorkPanelWidth = loadWorkPanelWidth();
 
 function currentWorkPanelContext(state: AppState): WorkPanelContext {
@@ -1226,11 +1328,55 @@ export const useAppStore = create<AppState>((set, get) => ({
   errorRetriable: null,
 
   bootstrap: async () => {
+    const bootstrapStarted = performance.now();
+    let recoveredSettings: AppSettings | undefined;
+    let bootstrapOk = true;
     try {
+      const settingsRequest = api.getSettings().then(async (settingsRaw) => {
+        let settings = settingsRaw
+          ? {
+              ...settingsRaw,
+              defaultMode: normalizeMode(
+                (settingsRaw as { defaultMode?: unknown }).defaultMode,
+              ),
+            }
+          : settingsRaw;
+        // First-run default per D003: Agent. Never force-rewrite an existing
+        // user choice on boot.
+        if (settings && !settings.defaultMode) {
+          const next = { ...settings, defaultMode: "agent" as const };
+          try {
+            await api.setSettings(next);
+            settings = next;
+          } catch {
+            settings = next;
+          }
+        }
+        return settings;
+      });
+      const snapshotRequest = Promise.all([
+        api.getVersion(),
+        api.health(),
+        api.listSessions(),
+        api.listProviders(),
+        api.getProject(),
+        api.getOnboarding(),
+        api.listPlugins(),
+        api.listNotifications({ limit: 200 }),
+        api.pendingPlans(),
+      ]);
+      const bootstrapResult = await settleBootstrapRequests(
+        settingsRequest,
+        snapshotRequest,
+      );
+      recoveredSettings = bootstrapResult.settings;
+      if (!bootstrapResult.ok) {
+        throw bootstrapResult.error;
+      }
+      const settings = bootstrapResult.settings;
       const [
         version,
         health,
-        settingsRaw,
         sessions,
         providers,
         project,
@@ -1238,38 +1384,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         plugins,
         notifications,
         pendingPlansResult,
-      ] =
-        await Promise.all([
-          api.getVersion(),
-          api.health(),
-          api.getSettings(),
-          api.listSessions(),
-          api.listProviders(),
-          api.getProject(),
-          api.getOnboarding(),
-          api.listPlugins(),
-          api.listNotifications({ limit: 200 }),
-          api.pendingPlans(),
-        ]);
-      let settings = settingsRaw
-        ? {
-            ...settingsRaw,
-            defaultMode: normalizeMode(
-              (settingsRaw as { defaultMode?: unknown }).defaultMode,
-            ),
-          }
-        : settingsRaw;
-      // First-run default per D003: Agent. Never force-rewrite an existing
-      // user choice on boot.
-      if (settings && !settings.defaultMode) {
-        const next = { ...settings, defaultMode: "agent" as const };
-        try {
-          await api.setSettings(next);
-          settings = next;
-        } catch {
-          settings = next;
-        }
-      }
+      ] = bootstrapResult.snapshot;
       if (version.protocolVersion !== PROTOCOL_VERSION) {
         set({
           error: `Protocol mismatch: UI ${PROTOCOL_VERSION} vs app ${version.protocolVersion}`,
@@ -1394,11 +1509,18 @@ export const useAppStore = create<AppState>((set, get) => ({
         });
       }
     } catch (e) {
+      bootstrapOk = false;
       set({
         ready: true,
         healthOk: false,
+        ...(recoveredSettings ? { settings: recoveredSettings } : {}),
         error: e instanceof Error ? e.message : String(e),
       });
+    } finally {
+      const durationMs = Math.round(performance.now() - bootstrapStarted);
+      console.info(
+        `[timing] kind=boot phase=renderer-bootstrap durationMs=${durationMs} ok=${bootstrapOk}`,
+      );
     }
   },
 
@@ -2079,8 +2201,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const current = get().sessions.find((s) => s.id === sessionId);
       if (isDefaultSessionTitle(current?.title)) {
-        const nextTitle =
-          content.trim().replace(/\s+/g, " ").slice(0, 48) || untitledTaskTitle();
+        const nextTitle = promptFallbackSessionTitle(content, untitledTaskTitle());
         // Fire-and-forget: renaming the sidebar title must not delay the prompt
         // reaching the agent runtime — removes visible lag after pressing Enter.
         api.renameSession(sessionId, nextTitle)
@@ -2894,18 +3015,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!id) return;
     const nextTitle = title.trim();
     if (!nextTitle) throw new Error("Session title must not be empty");
+    manuallyRenamedSessionIds.add(id);
     const result = await api.renameSession(id, nextTitle);
     if (!result.ok) throw new Error("Session not found");
     set((state) => ({
+      sessionMeta: {
+        ...state.sessionMeta,
+        [id]: { ...(state.sessionMeta[id] || {}), manualTitle: true },
+      },
       sessions: state.sessions.map((session) =>
         session.id === id ? { ...session, title: nextTitle } : session,
       ),
     }));
+    persistCurrentSidebar(get);
   },
 
   deleteSession: async (id) => {
     if (!id) return;
     await api.deleteSession(id);
+    manuallyRenamedSessionIds.delete(id);
     pendingSessionConfigurations.delete(id);
     sessionTranscriptCache.delete(id);
     sessionHistoryCache.delete(id);
@@ -3554,6 +3682,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           openPlanArtifact(checkpoint, get().openWorkPanelTabForSession);
         }
         void get().restorePendingPlan(envelope.sessionId);
+        notifyInteractivePrompt(envelope.sessionId, "plan");
       }
       if (event.state !== "awaiting_approval") {
         void drainQueuedPrompts(envelope.sessionId);
@@ -3636,12 +3765,19 @@ export const useAppStore = create<AppState>((set, get) => ({
             receivedAt: envelope.ts,
           }),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "permission", {
+          toolName: event.request.toolName,
+        });
       } else if (event.type === "asktool_request") {
         set((state) => ({
           pendingAsks: enqueueAsk(state.pendingAsks, event.request),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "ask", {
+          question: event.request.questions?.[0]?.question,
+        });
       } else if (event.type === "agent_end") {
         void get().refreshSessions();
+        void triggerAutoTitleSummarization(envelope.sessionId);
       } else if (event.type === "planning_state") {
         void get().refreshSessions();
       }
@@ -3689,6 +3825,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       case "agent_end":
         set({ isRunning: false });
         void get().refreshSessions();
+        void triggerAutoTitleSummarization(envelope.sessionId);
         break;
       case "turn_end":
         break;
@@ -3843,11 +3980,17 @@ export const useAppStore = create<AppState>((set, get) => ({
             receivedAt: envelope.ts,
           }),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "permission", {
+          toolName: event.request.toolName,
+        });
         break;
       case "asktool_request":
         set((state) => ({
           pendingAsks: enqueueAsk(state.pendingAsks, event.request),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "ask", {
+          question: event.request.questions?.[0]?.question,
+        });
         break;
       case "error": {
         // A user-initiated stop is not an error; just settle the run state.

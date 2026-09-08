@@ -10,6 +10,8 @@ import type {
   AgentPromptResponse,
   PromptEnhancementRequest,
   PromptEnhancementResponse,
+  SessionSummarizeTitleRequest,
+  SessionSummarizeTitleResponse,
   AgentStopResponse,
   AgentStatus,
   AskToolResolution,
@@ -84,10 +86,12 @@ import {
   normalizeLargePasteThreshold,
   normalizeMode,
   normalizeNetworkProxy,
+  resolveFontScale,
   validateNetworkProxy,
 } from "@pi-desktop/shared";
 
 export type ImportSource = "claude-code" | "opencode" | "codex" | "pi";
+export type ModelConfigImportSource = ImportSource | "cc-switch";
 
 export interface ImportCandidate {
   source: ImportSource;
@@ -104,6 +108,16 @@ export interface ImportRunResult {
   imported: number;
   skipped: number;
   failed: number;
+}
+
+export interface ModelConfigImportCandidate {
+  source: ModelConfigImportSource;
+  externalId: string;
+  name: string;
+  baseUrl: string | null;
+  apiStyle: string;
+  modelIds: string[];
+  hasSecret: boolean;
 }
 
 declare global {
@@ -174,6 +188,7 @@ export function normalizeSettings(settings: AppSettings): AppSettings {
     largePasteThreshold: normalizeLargePasteThreshold(
       (settings as { largePasteThreshold?: unknown }).largePasteThreshold,
     ),
+    fontScale: resolveFontScale(settings),
     networkProxy: normalizeNetworkProxy(
       (settings as { networkProxy?: unknown }).networkProxy,
     ),
@@ -184,6 +199,7 @@ export function validateSettingsWrite(settings: AppSettings): AppSettings {
   const value = settings as AppSettings & {
     defaultCommandShell?: unknown;
     largePasteThreshold?: unknown;
+    fontScale?: unknown;
     networkProxy?: unknown;
   };
   if (
@@ -200,6 +216,14 @@ export function validateSettingsWrite(settings: AppSettings): AppSettings {
       value.largePasteThreshold
   ) {
     throw Object.assign(new Error("largePasteThreshold is invalid"), {
+      errorCode: "INVALID_PARAMS",
+    });
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(value, "fontScale") &&
+    resolveFontScale({ fontScale: value.fontScale }) !== value.fontScale
+  ) {
+    throw Object.assign(new Error("fontScale is invalid"), {
       errorCode: "INVALID_PARAMS",
     });
   }
@@ -279,8 +303,10 @@ export const api = {
   showNativeNotification: (input: {
     id: string;
     sessionId: string;
+    kind: "task" | "interactive";
     title: string;
     body: string;
+    source?: "task" | "interactive";
   }) => invoke<{ shown: boolean }>(IPC.invoke.notificationShowNative, input),
   setNotificationViewingSession: (sessionId: string | null) =>
     invoke<{ ok: boolean }>(IPC.invoke.notificationSetViewingSession, {
@@ -316,6 +342,8 @@ export const api = {
     invoke<{ ok: boolean; path: string }>(IPC.invoke.projectOpenFolder, path),
   renameSession: (id: string, title: string) =>
     invoke<{ ok: boolean }>(IPC.invoke.sessionRename, id, title),
+  summarizeSessionTitle: (req: SessionSummarizeTitleRequest) =>
+    invoke<SessionSummarizeTitleResponse>(IPC.invoke.sessionSummarizeTitle, req),
   configureSession: (
     id: string,
     config: Pick<SessionSummary, "mode" | "providerId" | "modelId"> &
@@ -330,6 +358,12 @@ export const api = {
     invoke<{ sessions: ImportCandidate[] }>(IPC.invoke.sessionImportScan),
   runImportSessions: (items: ImportCandidate[]) =>
     invoke<ImportRunResult>(IPC.invoke.sessionImportRun, items),
+  scanImportModelConfigs: () =>
+    invoke<{ providers: ModelConfigImportCandidate[] }>(
+      IPC.invoke.modelConfigImportScan,
+    ),
+  runImportModelConfigs: (items: ModelConfigImportCandidate[]) =>
+    invoke<ImportRunResult>(IPC.invoke.modelConfigImportRun, items),
   getSettings: () => invoke<AppSettings>(IPC.invoke.settingsGet).then(normalizeSettings),
   setSettings: (settings: AppSettings) =>
     invoke(IPC.invoke.settingsSet, validateSettingsWrite(settings)),
@@ -365,7 +399,7 @@ export const api = {
     baseUrl?: string;
     apiKey?: string;
     apiStyle?: string;
-    userAgent?: string;
+    headers?: Record<string, string>;
     source?: "cache" | "refresh";
   }) =>
     invoke<{
@@ -422,9 +456,14 @@ export const api = {
       IPC.invoke.projectOpen,
     ),
   pickFiles: () =>
-    invoke<{ paths: string[]; canceled?: boolean }>(IPC.invoke.composerPickFiles),
+    invoke<{ token: string | null; canceled?: boolean }>(IPC.invoke.composerPickFiles),
   pickPhotos: () =>
-    invoke<{ paths: string[]; canceled?: boolean }>(IPC.invoke.composerPickPhotos),
+    invoke<{ token: string | null; canceled?: boolean }>(IPC.invoke.composerPickPhotos),
+  importFiles: (sessionId: string, token: string) =>
+    invoke<{ files: ComposerPastedFile[] }>(IPC.invoke.composerImportFiles, {
+      sessionId,
+      token,
+    }),
   pasteFiles: (sessionId: string, files: ComposerPasteFile[]) =>
     invoke<{ files: ComposerPastedFile[] }>(IPC.invoke.composerPasteFiles, {
       sessionId,
@@ -765,6 +804,11 @@ export const api = {
     invoke<{ requested: number; applied: number }>(
       IPC.invoke.windowSetWorkPanelChatWidth,
       { width },
+    ),
+  setWindowBackgroundColor: (theme: "light" | "dark") =>
+    invoke<{ applied: boolean; theme: "light" | "dark" }>(
+      IPC.invoke.windowSetBackgroundColor,
+      { theme },
     ),
   windowControl: (action: WindowControlAction) =>
     invoke<{ maximized: boolean }>(IPC.invoke.windowControl, { action }),

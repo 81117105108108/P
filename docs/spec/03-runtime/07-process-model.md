@@ -56,6 +56,9 @@ After host-core is up, Electron main reads `AppSettings.networkProxy` and
 applies it before spawning the agent sidecar (D340). Chromium sessions use
 `session.setProxy`; main-process `fetch` is `net.fetch`; the sidecar receives
 the same config through `sidecar.configure` and `PI_DESKTOP_PROXY_JSON`.
+HTTP(S) provider requests use undici's proxy dispatcher; SOCKS5 provider
+requests use a buffered CONNECT tunnel so a proxy may coalesce the SOCKS
+handshake response without stalling the request.
 host-core marketplace `curl` gets `--proxy` from the stored settings and does
 **not** inherit proxy env, so workspace Bash cannot see proxy credentials.
 
@@ -67,6 +70,17 @@ host-core marketplace `curl` gets `--proxy` from the stored settings and does
 | Rust host crash | mark app degraded, interrupt pending/queued/running approval work, keep pending sessions in their contract mode (Plan or Goal) and already-approved sessions in Agent, attempt restart host, and fail active sessions closed |
 | Node agent crash | abort active turns and live approval waiters/queue entries, keep pending sessions in their contract mode, preserve already-approved Agent mode in Rust, restart sidecar, and never replay an execution |
 | Electron main crash | full app exit |
+
+Broken stdout/stderr (`EPIPE`/`EIO`) is not a main-process crash. Main ignores
+those writes so a Linux AppImage or GUI launch without a live TTY keeps
+supervising host/sidecar instead of showing Electron's uncaught exception
+dialog.
+
+Linux packaged host-core is built on Ubuntu 22.04 and needs glibc 2.35 or newer
+(Ubuntu 22.04, Debian 12, Fedora 36+). A lower glibc is a fatal host status,
+not a restart loop: the UI names those releases instead of "Can't reach the
+local service". The Linux tag job must not use a newer runner that would raise
+the needed glibc.
 
 Supervision parameters (implemented in Electron main):
 

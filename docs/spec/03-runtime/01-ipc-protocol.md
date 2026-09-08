@@ -18,7 +18,7 @@ Principles:
 | `app` | App info, health checks |
 | `agent` | Conversation, queued-send stop/abort, status, and interactive asktool resolution |
 | `plan` | Plan proposal listing, resolution, and change events |
-| `session` | Session CRUD / history |
+| `session` | Session CRUD / history / title metadata and summarization |
 | `settings` | Config read/write |
 | `secrets` | Secret write/delete/exists (never return plaintext to UI logs) |
 | `project` | Workspace selection and query |
@@ -50,6 +50,7 @@ Examples:
 - `pi-desktop/agent/event/message`
 - `pi-desktop/agent/askTool/resolve`
 - `pi-desktop/session/list`
+- `pi-desktop/session/summarizeTitle`
 - `pi-desktop/project/open`
 - `pi-desktop/project/openFolder`
 
@@ -515,9 +516,9 @@ setup so a fast completion cannot beat the viewing-context update. Electron
 combines this hint with Main-owned window visibility/focus at the terminal event
 boundary. Missing, null, or mismatched context fails safe to notification. It
 also invokes
-`pi-desktop/notification/showNative({ id, sessionId, title, body })` after
-localizing a new record. This Electron-only request never crosses into the host
-RPC domain.
+`pi-desktop/notification/showNative({ id, sessionId, kind, title, body })` after
+localizing a new record, where `kind` is `"task" | "interactive"`. This
+Electron-only request never crosses into the host RPC domain.
 
 ```ts
 type AppNotification = {
@@ -559,11 +560,13 @@ Main sends two events:
 
 Electron owns the native surface while the renderer derives localized
 title/body text from the structured record. Electron accepts `showNative` only
-for a valid notification/session pair, shows a native notification only when
-the main window is unfocused and the platform API is supported, then
-restores/shows and focuses the window before emitting `activated`. There is no
-native notification while focused and no permission, scheduled-reminder, or
-plugin source in this contract. Native delivery is best-effort; the durable
+for a valid notification/session pair. For `kind: "task"`, it shows a native
+notification only while the main window is unfocused; for `kind: "interactive"`,
+it preserves the exact-visible-session suppression while allowing a focused
+background session to alert. In both cases the platform API is best-effort,
+and a shown notification restores/shows and focuses the window before emitting
+`activated`. No permission, scheduled-reminder, or plugin source enters the
+task notification contract. Native delivery is best-effort; the durable
 inbox remains authoritative when the OS suppresses a banner. On Windows,
 Electron Main registers `com.pi-desktop.app` as the process AppUserModelID
 before readiness and before any window is created. The ID matches the NSIS
@@ -693,11 +696,27 @@ Minimal interface:
   accepts 1–80 Unicode code points. Blank or overlong titles are rejected as
   `INVALID_PARAMS`; a successful rename changes only session metadata and does
   not alter transcript content, message count, or activity timestamps.
+- `session/summarizeTitle({ sessionId, userPrompt, assistantReply? }) ->
+  { title }` validates the session and prompt in Electron main, resolves that
+  session's provider/model, and runs one `thinkingLevel: "off"` one-shot
+  completion. It never writes the title itself; the renderer applies the
+  result through `session/rename` only while the session still has a default or
+  first-prompt fallback title. A one-shot failure leaves that fallback intact.
 - `session/importScan`
 - `session/importRun(candidates) -> { imported, skipped, failed }`
+- `modelConfig/importScan -> { providers }`
+- `modelConfig/importRun(candidates) -> { imported, skipped, failed }`
 
 Import candidates carry `projectPath: string | null`. A successful import
 refreshes both sessions and the durable Projects index.
+
+`modelConfig/importScan` reads Claude Code, Codex, OpenCode, Pi, and CC
+Switch config files from the user home directory and returns public provider drafts
+(`source`, `externalId`, `name`, `baseUrl`, `apiStyle`, `modelIds`,
+`hasSecret`). Secrets stay in the main-process scan cache and are written
+through `providers.create` on `modelConfig/importRun`. Re-importing a
+matching endpoint is skipped. OAuth tokens from those tools are never
+copied. No host protocol or storage schema version bump.
 
 A regenerate or edit-resend truncates the durable transcript before appending
 its new user turn. `agent/prompt` accepts `truncateFromMessageId` — the identity
@@ -1330,11 +1349,15 @@ reservation, and background artifacts cannot change visible window geometry.
 
 ## 13c. Composer input APIs (D123/D124/D197, ADR 0024/0059)
 
-Electron-only channels backing composer autocomplete and clipboard file
-references. `composer/commands` and `fs/index` are read-only and fail soft;
-`composer/pasteFiles` writes only to the originating session's Electron-owned
-scratch directory. None adds a host RPC method or changes the host protocol
-version.
+Electron-only channels backing composer autocomplete and file references.
+`composer/commands` and `fs/index` are read-only and fail soft;
+`composer/pickFiles` opens the unified native picker used by the Composer and
+returns a one-shot token; the legacy `composer/pickPhotos` channel remains
+available for compatibility but is not exposed by the Composer UI.
+`composer/importFiles` and `composer/pasteFiles` write only to the originating
+session's Electron-owned scratch directory. None adds a host RPC method or
+changes the host protocol version. Renderer-supplied absolute source paths are
+never accepted by the picker import channel (ADR 0181).
 
 ### composer/commands
 
@@ -1371,6 +1394,39 @@ Workspace-rooted relative paths for the `@` menu: `git ls-files -co
 directories derived from file paths, 8000-entry cap with `truncated: true`,
 short TTL cache per root. Fails closed to an empty list without a
 workspace. Fuzzy filtering happens renderer-side.
+
+### composer/pickFiles and composer/pickPhotos
+
+```ts
+composer/pickFiles() -> { token: string | null; canceled: boolean }
+composer/pickPhotos() -> { token: string | null; canceled: boolean }
+```
+
+Both dialogs run in Electron main. The Composer uses `pickFiles` as its single
+file/image entry point: it accepts regular files without a type filter, and the
+importer classifies each result as an image or file from MIME/extension metadata.
+`pickPhotos` is retained as a compatibility channel for older renderer clients.
+Directories are not part of the MVP picker contract. When the user selects
+files, main stores the native paths against a token bound to the invoking
+`WebContents`, with a 60-second lifetime and one-shot consumption. The
+renderer receives the token but never receives the selected absolute paths.
+
+### composer/importFiles
+
+```ts
+composer/importFiles({ sessionId, token }) -> {
+  files: ComposerPastedFile[];
+}
+```
+
+Electron main consumes the sender-bound picker token, resolves each recorded
+path through `realpath`, requires an existing regular file, applies the same
+20-file / 64 MiB per file / 128 MiB total limits as clipboard transfer, and
+copies the bytes into `<data_dir>/scratch/<sessionId>/pasted/` under a
+UUID-backed sanitized name. The token is deleted before import starts, so it
+cannot be replayed. The returned `ComposerPastedFile` records are the only
+paths the renderer stores or dispatches, so a picker selection cannot leave an
+external source path in the prompt or bypass the attachment-root boundary.
 
 ### composer/pasteFiles
 

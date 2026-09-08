@@ -106,13 +106,14 @@ async function socks5Connect(
     proxy.port ??
     (proxy.scheme === "http" || proxy.scheme === "https" ? 80 : 1080);
   const socket = await connectTcp(proxy.host, proxyPort);
+  const reader = new SocketReader(socket);
   try {
     const methods =
       proxy.username || proxy.password
         ? Buffer.from([0x05, 0x02, 0x00, 0x02])
         : Buffer.from([0x05, 0x01, 0x00]);
     socket.write(methods);
-    const choice = await readExact(socket, 2);
+    const choice = await reader.readExact(2);
     if (choice[0] !== 0x05) {
       throw new Error("SOCKS5: invalid version");
     }
@@ -130,7 +131,7 @@ async function socks5Connect(
           pass,
         ]),
       );
-      const auth = await readExact(socket, 2);
+      const auth = await reader.readExact(2);
       if (auth[1] !== 0x00) throw new Error("SOCKS5: authentication failed");
     } else if (choice[1] !== 0x00) {
       throw new Error("SOCKS5: no acceptable authentication");
@@ -140,13 +141,15 @@ async function socks5Connect(
     const port = Buffer.alloc(2);
     port.writeUInt16BE(destPort, 0);
     socket.write(Buffer.concat([Buffer.from([0x05, 0x01, 0x00]), dest, port]));
-    const header = await readExact(socket, 4);
+    const header = await reader.readExact(4);
     if (header[1] !== 0x00) {
       throw new Error(`SOCKS5: connect failed (${header[1]})`);
     }
-    await readSocksBind(socket, header[3]);
+    await readSocksBind(reader, header[3]);
+    reader.dispose();
     return socket;
   } catch (error) {
+    reader.dispose();
     socket.destroy();
     throw error;
   }
@@ -215,12 +218,12 @@ function ipv6ToBytes(host: string): Buffer | null {
   return buf;
 }
 
-async function readSocksBind(socket: Socket, atyp: number): Promise<void> {
-  if (atyp === 0x01) await readExact(socket, 4 + 2);
-  else if (atyp === 0x04) await readExact(socket, 16 + 2);
+async function readSocksBind(reader: SocketReader, atyp: number): Promise<void> {
+  if (atyp === 0x01) await reader.readExact(4 + 2);
+  else if (atyp === 0x04) await reader.readExact(16 + 2);
   else if (atyp === 0x03) {
-    const len = await readExact(socket, 1);
-    await readExact(socket, len[0] + 2);
+    const len = await reader.readExact(1);
+    await reader.readExact(len[0] + 2);
   } else {
     throw new Error("SOCKS5: unknown address type");
   }
@@ -242,36 +245,81 @@ function connectTcp(host: string, port: number): Promise<Socket> {
   });
 }
 
-function readExact(socket: Socket, size: number): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let got = 0;
-    const onData = (chunk: Buffer) => {
-      chunks.push(chunk);
-      got += chunk.length;
-      if (got >= size) {
-        cleanup();
-        const buf = Buffer.concat(chunks);
-        const extra = buf.subarray(size);
-        if (extra.length) socket.unshift(extra);
-        resolve(buf.subarray(0, size));
-      }
-    };
-    const onError = (error: Error) => {
-      cleanup();
-      reject(error);
-    };
-    const onClose = () => {
-      cleanup();
-      reject(new Error("SOCKS5: connection closed"));
-    };
-    const cleanup = () => {
-      socket.off("data", onData);
-      socket.off("error", onError);
-      socket.off("close", onClose);
-    };
-    socket.on("data", onData);
-    socket.once("error", onError);
-    socket.once("close", onClose);
-  });
+class SocketReader {
+  private buffer: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+  private readonly waiters: Array<{
+    size: number;
+    resolve: (value: Buffer) => void;
+    reject: (error: Error) => void;
+  }> = [];
+  private closed = false;
+
+  private readonly onData = (chunk: Buffer) => {
+    this.buffer = this.buffer.length
+      ? Buffer.concat([this.buffer, chunk])
+      : chunk;
+    this.drain();
+  };
+
+  private readonly onError = (error: Error) => {
+    this.fail(error);
+  };
+
+  private readonly onClose = () => {
+    this.fail(new Error("SOCKS5: connection closed"));
+  };
+
+  constructor(private readonly socket: Socket) {
+    socket.on("data", this.onData);
+    socket.once("error", this.onError);
+    socket.once("close", this.onClose);
+  }
+
+  readExact(size: number): Promise<Buffer> {
+    if (size <= 0) return Promise.resolve(Buffer.alloc(0));
+    if (this.buffer.length >= size) return Promise.resolve(this.take(size));
+    if (this.closed) {
+      return Promise.reject(new Error("SOCKS5: connection closed"));
+    }
+    return new Promise((resolve, reject) => {
+      this.waiters.push({ size, resolve, reject });
+    });
+  }
+
+  dispose(): void {
+    if (this.closed) return;
+    this.closed = true;
+    if (this.buffer.length > 0) {
+      this.socket.unshift(this.buffer);
+      this.buffer = Buffer.alloc(0);
+    }
+    this.socket.off("data", this.onData);
+    this.socket.off("error", this.onError);
+    this.socket.off("close", this.onClose);
+    this.socket.pause();
+  }
+
+  private take(size: number): Buffer {
+    const value = this.buffer.subarray(0, size);
+    this.buffer = this.buffer.subarray(size);
+    return value;
+  }
+
+  private drain(): void {
+    while (this.waiters.length > 0) {
+      const waiter = this.waiters[0]!;
+      if (this.buffer.length < waiter.size) return;
+      this.waiters.shift();
+      waiter.resolve(this.take(waiter.size));
+    }
+  }
+
+  private fail(error: Error): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.socket.off("data", this.onData);
+    this.socket.off("error", this.onError);
+    this.socket.off("close", this.onClose);
+    for (const waiter of this.waiters.splice(0)) waiter.reject(error);
+  }
 }

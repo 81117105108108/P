@@ -57,7 +57,7 @@ import {
   openCodeEndpointFromProvider,
   withOpenCodeSessionHeaders,
 } from "./opencode-session-headers.js";
-import { withProviderUserAgent } from "./provider-user-agent.js";
+import { withProviderHeaders } from "./provider-headers.js";
 import {
   captureProviderResponse,
   classifyProviderError,
@@ -208,7 +208,7 @@ export class SubagentRun {
       streamFn: (m, context, options) => {
         this.providerRetryHeaders = undefined;
         this.providerResponseStatus = undefined;
-        const requestOptions = withProviderUserAgent(
+        const requestOptions = withProviderHeaders(
           withOpenCodeSessionHeaders(
             {
               ...options,
@@ -228,7 +228,7 @@ export class SubagentRun {
               sessionId: opts.sessionId,
             },
           ),
-          opts.provider.userAgent,
+          opts.provider.headers,
         );
         return createProviderRetryStream(
           m,

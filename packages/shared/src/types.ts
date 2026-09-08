@@ -525,6 +525,13 @@ export type AgentStatus = {
   activity?: AgentActivity;
 };
 
+/** Bounded provider diagnostics shown while the runtime waits before retrying. */
+export type AgentActivityError = {
+  code: string;
+  message: string;
+  providerStatus?: number;
+};
+
 /** The runtime phase that explains a quiet interval in an active turn. */
 export type AgentActivity =
   | { phase: "starting"; since: number }
@@ -534,6 +541,7 @@ export type AgentActivity =
       since: number;
       attempt: number;
       retryDelayMs?: number;
+      error?: AgentActivityError;
     }
   | {
       phase: "waiting-subagents";
@@ -603,6 +611,19 @@ export type PromptEnhancementRequest = {
 
 export type PromptEnhancementResponse = {
   enhancedDraft: string;
+};
+
+export type SessionSummarizeTitleRequest = {
+  sessionId: string;
+  userPrompt: string;
+  assistantReply?: string;
+  providerId?: string;
+  modelId?: string;
+  thinkingLevel?: ThinkingLevel;
+};
+
+export type SessionSummarizeTitleResponse = {
+  title: string;
 };
 
 export type AgentExecuteApprovedPlanRequest = {
@@ -820,10 +841,11 @@ export type ProviderPublic = {
   /** Non-secret label for the signed-in account; never carries a token. */
   oauthAccountLabel?: string;
   /**
-   * Optional outbound User-Agent. Empty/absent keeps the adapter default
-   * (pi-ai / `claude-cli` / OpenCode).
+   * Optional outbound HTTP headers. Empty/absent keeps adapter defaults
+   * (pi-ai / `claude-cli` / OpenCode). Not a secret; Authorization and
+   * other reserved keys are rejected.
    */
-  userAgent?: string;
+  headers?: Record<string, string>;
   /** Per-model settings selected in the provider dialog. */
   models: ModelBinding[];
   /** @deprecated Use `models[0]?.id`; retained for older runtime consumers. */
@@ -862,10 +884,10 @@ export type ProviderCreateInput = {
    */
   oauthAccountLabel?: string;
   /**
-   * Optional outbound User-Agent. On update, an empty string clears the stored
-   * override; omit the field to leave it unchanged.
+   * Optional outbound HTTP headers. On update, `{}` clears the stored map;
+   * omit the field to leave it unchanged.
    */
-  userAgent?: string;
+  headers?: Record<string, string>;
   /** Explicit override for custom model catalogs. */
   supportsReasoning?: boolean;
   /**
@@ -924,6 +946,7 @@ export type OAuthPromptOption = {
 export type OAuthPromptRequest = {
   promptId: string;
   type: "text" | "secret" | "select" | "manual_code";
+  /** Plain text prompts may accept an empty value as a vendor-defined default. */
   message: string;
   placeholder?: string;
   options?: OAuthPromptOption[];
@@ -1093,13 +1116,23 @@ export type AppSettings = {
   defaultPermissionMode?: GlobalPermissionMode;
   theme: ThemePreference;
   /** UI language; `auto` (and absent) follows the OS locale. */
-  language?: "auto" | "en" | "zh-CN" | "tr";
+  language?: "auto" | "en" | "zh-CN" | "zh-TW" | "tr" | "de" | "es" | "fr" | "ko";
   /**
    * Global UI font stack (CSS `font-family` value). Absent means the built-in
    * token stack; bundled open-source families and installed system families
    * are offered by the settings picker.
    */
   fontFamily?: string;
+  /**
+   * Global UI type scale (D343). `1` is the product `--text-*` ramp.
+   * Absent means 1. Range 0.8–1.5 in 0.025 steps. Window zoom is independent.
+   */
+  fontScale?: number;
+  /**
+   * @deprecated Unreleased D343 px field. Reads migrate into `fontScale`
+   * as `px / 14`; new writes persist `fontScale` instead.
+   */
+  fontSize?: number;
   enterToSend: boolean;
   /** Text length above which a plain-text paste becomes a session file reference. */
   largePasteThreshold?: number;
@@ -1127,8 +1160,16 @@ export type AppSettings = {
    * is set. See `network-proxy.ts`.
    */
   networkProxy?: NetworkProxySettings;
+  /**
+   * Preferred destination when clicking HTTP/HTTPS links in chat messages.
+   * `workpanel`: Preview in the Work Panel browser tab (default).
+   * `external`: Open directly in the system's default web browser.
+   */
+  linkOpenTarget?: LinkOpenTarget;
   onboardingDismissed: boolean;
 };
+
+export type LinkOpenTarget = "workpanel" | "external";
 
 export type PluginMarketSource = "official" | "mirror" | "custom";
 
@@ -1664,7 +1705,7 @@ export type UpdateState = {
   currentVersion: string;
   availableVersion?: string;
   /**
-   * Localized product highlights for `availableVersion` from the dual-locale
+   * Localized product highlights for `availableVersion` from the shipped-locale
    * in-app changelog. Plain text (bullet lines); absent when the version has
    * no catalog entry. Main selects the locale — the renderer never supplies
    * a feed or remote notes URL (ADR 0022 / D164).

@@ -59,7 +59,7 @@ test("update IPC channels are declared and whitelisted for the preload bridge", 
   assert.match(
     typesSource,
     /releaseNotes\?: string/,
-    "UpdateState carries dual-locale product notes from Main",
+    "UpdateState carries localized product notes from Main",
   );
 });
 
@@ -76,6 +76,11 @@ test("main process registers update handlers and the auto-check lifecycle", () =
   assert.match(mainSource, /new AppUpdaterController\(/);
   assert.match(mainSource, /isPackaged:\s*!isDevelopmentBuild/);
   assert.match(mainSource, /updater\.startAutoCheck\(\)/);
+  assert.match(
+    mainSource,
+    /await ensureWindow\(\);[\s\S]*updater\.startAutoCheck\(\)/,
+    "auto-check starts after the first window exists, never on the boot await path",
+  );
   assert.match(mainSource, /updater\.dispose\(\)/);
 });
 
@@ -105,7 +110,7 @@ test("updater gates delivery mode by platform, packaging and signature reality",
   assert.match(
     updaterSource,
     /formatChangelogNotes/,
-    "in-app dual-locale notes attach from the shared changelog catalog",
+    "in-app localized notes attach from the shared changelog catalog",
   );
   assert.match(
     updaterSource,
@@ -116,6 +121,18 @@ test("updater gates delivery mode by platform, packaging and signature reality",
     updaterSource,
     /refreshReleaseNotes/,
     "locale changes re-resolve notes without a new feed check",
+  );
+  assert.match(
+    updaterSource,
+    /AUTO_CHECK_TIMEOUT_MS = 8_000/,
+    "auto GitHub checks must not wait for Chromium's ~60s socket timeout",
+  );
+  assert.match(updaterSource, /raceWithTimeout/);
+  assert.match(updaterSource, /UPDATE_CHECK_TIMEOUT/);
+  assert.match(
+    updaterSource,
+    /status === "checking"[\s\S]*status: "idle"/,
+    "a timed-out auto-check must leave checking so the next interval can run",
   );
 });
 
@@ -137,6 +154,7 @@ test("renderer exposes the updates API, banner and settings row", () => {
   assert.match(settingsSource, /updates\.releaseNotes/);
   assert.match(settingsSource, /<ReleaseNotesDialog/);
   assert.match(releaseNotesDialogSource, /CHANGELOG\[locale\]/);
+  assert.match(releaseNotesDialogSource, /new Intl\.DateTimeFormat\(locale,/);
   assert.match(releaseNotesDialogSource, /role="dialog"/);
   assert.match(releaseNotesDialogSource, /aria-modal="true"/);
   assert.match(releaseNotesDialogSource, /data-release-version/);
@@ -206,10 +224,11 @@ test("packaging publishes an electron-updater feed for GitHub Releases", () => {
   assert.match(releaseWorkflowSource, /files: dist\/\*/);
 });
 
-test("shared dual-locale changelog is the in-app notes source of truth", () => {
+test("shared shipped-locale changelog is the in-app notes source of truth", () => {
   assert.match(changelogSource, /export const CHANGELOG/);
   assert.match(changelogSource, /formatChangelogNotes/);
   assert.match(changelogSource, /"zh-CN"/);
+  assert.match(changelogSource, /"zh-TW"/);
   assert.match(changelogSource, /version: "0\.2\.7"/);
   assert.match(
     mainSource,

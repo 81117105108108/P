@@ -18,6 +18,7 @@ import {
   isActiveInProject,
   keybindingDisplayParts,
   keybindingMatchesEvent,
+  resolveFontScale,
   resolveKeybinding,
   type AppMenuCommand,
   type KeyboardShortcutId,
@@ -238,7 +239,7 @@ function AppShell() {
   const presentedWorkPanelRef = useRef(false);
   const workPanelExitingRef = useRef(false);
   const [backendDown, setBackendDown] = useState<
-    { fatal: boolean; component?: string } | null
+    { fatal: boolean; component?: string; message?: string } | null
   >(null);
   const [splashPhase, setSplashPhase] = useState<"loading" | "exiting" | "done">(
     "loading",
@@ -450,17 +451,15 @@ function AppShell() {
       delete document.documentElement.dataset.pluginTheme;
     }
 
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
     const apply = () => {
-      document.documentElement.dataset.theme =
-        base === "system"
-          ? window.matchMedia("(prefers-color-scheme: light)").matches
-            ? "light"
-            : "dark"
-          : base;
+      const resolvedTheme =
+        base === "system" ? (mq.matches ? "light" : "dark") : base;
+      document.documentElement.dataset.theme = resolvedTheme;
+      void api.setWindowBackgroundColor(resolvedTheme).catch(() => undefined);
     };
     apply();
     if (base !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: light)");
     const onChange = () => apply();
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -476,6 +475,15 @@ function AppShell() {
       root.style.removeProperty("--font-sans");
     }
   }, [settings?.fontFamily]);
+
+  // Global type scale: Settings persists a multiplier in
+  // `AppSettings.fontScale`; the `--text-*` ramp multiplies from `--font-scale`.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--font-scale",
+      String(resolveFontScale(settings ?? {})),
+    );
+  }, [settings?.fontScale, settings?.fontSize]);
 
   useEffect(() => {
     if (bootstrapStartedRef.current) return;
@@ -508,6 +516,7 @@ function AppShell() {
         setBackendDown({
           fatal: status.fatal === true,
           component: status.component,
+          message: status.message,
         });
         // A dead sidecar cannot finish the turn; unstick the composer.
         useAppStore.setState({ isRunning: false });
@@ -529,24 +538,38 @@ function AppShell() {
         .showNativeNotification({
           id: notification.id,
           sessionId: notification.sessionId,
+          kind: "task",
           title,
           body,
+          source: "task",
         })
         .catch(() => undefined);
     });
-    const offNotificationActivated = api.onNotificationActivated(({ id }) => {
-      void useAppStore
-        .getState()
-        .openNotification(id)
-        .catch((activationError) =>
-          showToast(
-            activationError instanceof Error
-              ? activationError.message
-              : String(activationError),
-            { variant: "error" },
-          ),
-        );
-    });
+    const offNotificationActivated = api.onNotificationActivated(
+      ({ id, sessionId }) => {
+        const store = useAppStore.getState();
+        const matched = store.notifications.find((item) => item.id === id);
+        if (matched) {
+          void store.openNotification(id).catch((activationError) =>
+            showToast(
+              activationError instanceof Error
+                ? activationError.message
+                : String(activationError),
+              { variant: "error" },
+            ),
+          );
+        } else if (sessionId) {
+          void store.selectSession(sessionId).catch((activationError) =>
+            showToast(
+              activationError instanceof Error
+                ? activationError.message
+                : String(activationError),
+              { variant: "error" },
+            ),
+          );
+        }
+      },
+    );
     const onKey = (e: KeyboardEvent) => {
       const modifierOnly = MODIFIER_ONLY_KEYS.has(e.key);
       if (modifierOnly || e.isComposing || e.keyCode === 229) return;
@@ -1840,7 +1863,11 @@ function AppShell() {
               >
                 <span className="backend-dot" aria-hidden />
                 <span>
-                  {backendDown.fatal ? t("status.fatal") : t("status.restarting")}
+                  {backendDown.fatal
+                    ? backendDown.message === "GLIBC_UNSUPPORTED"
+                      ? t("status.unsupportedGlibc")
+                      : t("status.fatal")
+                    : t("status.restarting")}
                 </span>
                 {backendDown.fatal && (
                   <button

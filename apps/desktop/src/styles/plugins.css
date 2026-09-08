@@ -1200,15 +1200,6 @@
   margin-bottom: 3px;
 }
 
-.plugins-market-settings-active {
-  margin: 5px 0 0;
-  color: var(--ds-text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs-plus);
-  line-height: var(--leading-body);
-  overflow-wrap: anywhere;
-}
-
 .plugins-market-settings-control {
   display: flex;
   flex: 0 0 240px;

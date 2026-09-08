@@ -179,6 +179,63 @@ describe("buildProviderModel OpenAI-compatible role compatibility", () => {
       supportsDeveloperRole: false,
     });
   });
+
+  it("preserves MiniMax M3 image input on its OpenAI-compatible endpoint", () => {
+    const provider: RuntimeProviderConfig = {
+      ...keyedProvider,
+      id: "minimax-row",
+      name: "MiniMax (OpenAI)",
+      vendorKey: "minimax-cn",
+      baseUrl: "https://api.minimaxi.com/v1",
+      modelId: "MiniMax-M3",
+      apiStyle: "chat_completions",
+      supportsReasoning: true,
+      supportedThinkingLevels: ["off", "low", "medium", "high"],
+      modelConfig: {
+        source: "models.dev",
+        name: "MiniMax-M3",
+        baseUrl: "https://api.minimaxi.com/v1",
+        reasoning: true,
+        modalities: { input: ["text", "image", "video"], output: ["text"] },
+        input: ["text", "image"],
+        contextWindow: 1_048_576,
+        maxTokens: 512_000,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      },
+    };
+    const model = buildProviderModel(provider) as any;
+    expect(model.input).toEqual(["text", "image"]);
+    expect(model.compat).toMatchObject({ supportsDeveloperRole: false });
+
+    const messages = convertMessages(
+      model,
+      {
+        systemPrompt: "Read the image.",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "What is shown?" },
+              { type: "image", data: "AQI=", mimeType: "image/png" },
+            ],
+            timestamp: Date.now(),
+          },
+        ],
+      },
+      { supportsDeveloperRole: false } as any,
+    );
+
+    expect(messages).toEqual([
+      { role: "system", content: "Read the image." },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "What is shown?" },
+          { type: "image_url", image_url: { url: "data:image/png;base64,AQI=" } },
+        ],
+      },
+    ]);
+  });
 });
 
 describe("createProviderModels auth resolution", () => {

@@ -27,6 +27,7 @@ import {
 } from "@pi-desktop/shared";
 import { materializeDraftSession, useAppStore } from "../stores/app-store";
 import type { ComposerDraftSnapshot } from "../lib/composer-smart-stop";
+import { latestTurnContextInspector } from "../lib/latest-turn-context";
 import {
   HOME_DRAFT_KEY,
   captureComposerDraft,
@@ -57,11 +58,13 @@ import {
   useComposerAutocomplete,
 } from "../hooks/use-composer-autocomplete";
 import { ComposerAutocomplete } from "./ComposerAutocomplete";
+import { ContextUsageInspector } from "./ContextUsageInspector";
 import { AskToolCard } from "./AskToolCard";
 import { PlanApprovalBar } from "./PlanApprovalBar";
 import {
   IconArrowUp,
   IconUndo2,
+  IconPlus,
   IconShield,
   IconStop,
   IconChevronDown,
@@ -608,6 +611,21 @@ export function Composer({
   const workspacePath = useAppStore((s) => s.workspace?.path ?? "");
   const providers = useAppStore((s) => s.providers);
   const providerModels = useAppStore((s) => s.providerModels);
+  const liveMessages = useAppStore((s) => s.messages);
+  const sessionCompactions = useAppStore((s) =>
+    s.activeSessionId ? s.sessionCompactions[s.activeSessionId] : undefined,
+  );
+  // One inspector in the composer toolbar, always the newest turn with usage.
+  const composerContextUsage = useMemo(
+    () =>
+      latestTurnContextInspector(
+        liveMessages,
+        providerModels,
+        providers,
+        sessionCompactions,
+      ),
+    [liveMessages, providerModels, providers, sessionCompactions],
+  );
   const loadProviderModels = useAppStore((s) => s.loadProviderModels);
   const configureActiveSession = useAppStore((s) => s.configureActiveSession);
   const showToast = useAppStore((s) => s.showToast);
@@ -1706,6 +1724,83 @@ export function Composer({
         ...(token ? { token } : {}),
       }));
 
+  const pickAndAttach = async () => {
+    try {
+      // The picker intentionally accepts every regular file. The importer
+      // classifies images from MIME/extension metadata after selection.
+      const result = await api.pickFiles();
+      if (result.canceled || !result.token || inputBlocked) return;
+
+      const editor = ref.current;
+      const sourceValue = editor ? readEditorValue(editor) : valueRef.current;
+      const { start: selectionStart, end: selectionEnd } = editor
+        ? editorSelectionRange(editor)
+        : { start: sourceValue.length, end: sourceValue.length };
+      const sourceSessionId = activeSessionId;
+      const sourceDraftKey = draftKey;
+      const previousReferences = snapshotReferences(sourceSessionId ?? "");
+      setPasting(true);
+      try {
+        // A picker action is real input, so a home draft gets a durable owner
+        // before native paths are copied into scratch.
+        const sessionId = sourceSessionId ?? (await materializeDraftSession());
+        if (!sessionId) throw new Error("session unavailable");
+        const imported = await api.importFiles(sessionId, result.token);
+        const chips = imported.files.map((file) => {
+          const token = nextChipToken();
+          return {
+            token,
+            reference: createFileReference(file.path, file.name, sessionId, {
+              kind: file.kind,
+              mimeType: file.mimeType,
+              token,
+            }),
+          };
+        });
+        if (!chips.length) return;
+        const inserted = chips.map((chip) => chip.token).join("");
+        const nextText =
+          sourceValue.slice(0, selectionStart) +
+          inserted +
+          sourceValue.slice(selectionEnd);
+        const nextReferences = [
+          ...previousReferences.map((reference) =>
+            createFileReference(reference.path, reference.name, sessionId, reference),
+          ),
+          ...chips.map((chip) => chip.reference),
+        ];
+        writeComposerDraft(sessionId, {
+          text: nextText,
+          fileReferences: [
+            ...previousReferences,
+            ...chips.map((chip) => ({
+              path: chip.reference.path,
+              name: chip.reference.name,
+              kind: chip.reference.kind,
+              ...(chip.reference.mimeType
+                ? { mimeType: chip.reference.mimeType }
+                : {}),
+              token: chip.token,
+            })),
+          ],
+        });
+        const currentSessionId = useAppStore.getState().activeSessionId;
+        if (currentSessionId === sessionId) {
+          applyEditorDraft(nextText, nextReferences, selectionStart + inserted.length);
+        } else if (sourceDraftKey === HOME_DRAFT_KEY) {
+          deleteComposerDraft(HOME_DRAFT_KEY);
+        }
+        showToast(t("chat.filesAttached", { count: chips.length }), {
+          variant: "success",
+        });
+      } finally {
+        setPasting(false);
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
+    }
+  };
+
   const pasteClipboardFiles = async (event: ClipboardEvent<HTMLDivElement>) => {
     if (inputBlocked) return;
     const files = clipboardFiles(event.clipboardData);
@@ -2106,6 +2201,21 @@ export function Composer({
 
           <div className="composer-toolbar">
             <div className="composer-left">
+              <div className="composer-plus">
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title={t("chat.addFiles")}
+                  aria-label={t("chat.addFiles")}
+                  disabled={controlsBlocked || pasting}
+                  onClick={() => {
+                    setPermissionOpen(false);
+                    void pickAndAttach();
+                  }}
+                >
+                  <IconPlus size={15} aria-hidden="true" />
+                </button>
+              </div>
               <button
                 className="icon-btn mode-chip composer-mode-chip"
                 data-mode={mode}
@@ -2210,6 +2320,9 @@ export function Composer({
             </div>
 
             <div className="composer-right">
+              {composerContextUsage ? (
+                <ContextUsageInspector {...composerContextUsage} />
+              ) : null}
               <div
                 className="composer-model-thinking"
                 ref={modelThinkingRef}

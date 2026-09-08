@@ -10,7 +10,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type {
   AgentActivity,
@@ -88,9 +87,7 @@ import {
   assistantTurnContent,
   assistantTurnMessages,
   assistantTurnResponseDuration,
-  assistantTurnResponseOutputIsEstimated,
   assistantTurnResponseOutputTokens,
-  assistantTurnTools,
   assistantTurnUsage,
   buildTranscriptEntries,
   messageThinking as thinkingText,
@@ -102,16 +99,7 @@ import {
   type SubagentRunItem,
   type TranscriptEntry,
 } from "../lib/assistant-turns";
-import {
-  aggregateToolTokenUsage,
-  calculateCacheRate,
-  calculateContextUsage,
-  calculateTokenRate,
-  DEFAULT_CONTEXT_WINDOW,
-  latestMessageUsage,
-  resolveContextWindow,
-  usageTokenTotal,
-} from "../lib/context-usage";
+import { calculateTokenRate } from "../lib/context-usage";
 import {
   IconArrowDown,
   IconBot,
@@ -184,388 +172,25 @@ function formatTokenCount(value: number): string {
   return String(value);
 }
 
-const CONTEXT_RING_RADIUS = 9;
-const CONTEXT_RING_CIRCUMFERENCE = 2 * Math.PI * CONTEXT_RING_RADIUS;
-const CONTEXT_POPOVER_GAP = 8;
-const CONTEXT_VIEWPORT_MARGIN = 16;
-
-type ContextPopoverPosition = {
-  top: number;
-  left: number;
-};
-
-function ContextUsageInspector({
-  usage,
-  turnUsage,
-  contextWindow,
-  tools,
-  responseDurationMs,
-  responseOutputTokens,
-  responseOutputEstimated = false,
-}: {
-  usage: MessageUsage;
-  turnUsage: MessageUsage;
-  contextWindow: number;
-  tools: UiMessage[];
-  responseDurationMs?: number;
-  responseOutputTokens?: number;
-  responseOutputEstimated?: boolean;
-}) {
-  const { t } = useTranslation();
-  const panelId = useId();
-  // The transcript shows one row per compaction; the inspector adds what those
-  // rows cannot — how much of the model context the newest summary occupies.
-  const compaction = useAppStore((state) =>
-    state.activeSessionId
-      ? state.sessionCompactions[state.activeSessionId]?.at(-1)
-      : undefined,
-  );
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const [popoverPosition, setPopoverPosition] =
-    useState<ContextPopoverPosition | null>(null);
-  const context = calculateContextUsage(usage, contextWindow);
-  const turnTotal = usageTokenTotal(turnUsage);
-  const throughput = calculateTokenRate(
-    responseOutputTokens ?? turnUsage.outputTokens,
-    responseDurationMs,
-  );
-  const cacheRate = calculateCacheRate(
-    turnUsage.inputTokens,
-    turnUsage.cacheReadTokens,
-  );
-  const toolRows = aggregateToolTokenUsage(tools);
-  const toolTotal = toolRows.reduce(
-    (total, row) => total + row.totalTokens,
-    0,
-  );
-  const level =
-    context.remainingPercent <= 10
-      ? "critical"
-      : context.remainingPercent <= 25
-        ? "warning"
-      : "comfortable";
-
-  const closeInspector = useCallback(() => {
-    setOpen(false);
-    setPopoverPosition(null);
-  }, []);
-
-  // The panel is click-toggled rather than hover-opened: reading the token
-  // breakdown takes long enough that a pointer leaving the trigger should not
-  // dismiss it.
-  const toggleInspector = useCallback(() => {
-    setOpen((previous) => {
-      if (previous) setPopoverPosition(null);
-      return !previous;
-    });
-  }, []);
-
-  const updatePopoverPosition = useCallback(() => {
-    const trigger = triggerRef.current;
-    const popover = popoverRef.current;
-    if (!trigger || !popover) return;
-
-    const triggerRect = trigger.getBoundingClientRect();
-    const triggerVisible =
-      triggerRect.bottom > 0 && triggerRect.top < window.innerHeight;
-    if (!triggerVisible) {
-      setOpen(false);
-      setPopoverPosition(null);
-      return;
-    }
-    const popoverRect = popover.getBoundingClientRect();
-    const maxLeft = Math.max(
-      CONTEXT_VIEWPORT_MARGIN,
-      window.innerWidth - popoverRect.width - CONTEXT_VIEWPORT_MARGIN,
-    );
-    const left = Math.min(
-      Math.max(CONTEXT_VIEWPORT_MARGIN, triggerRect.left),
-      maxLeft,
-    );
-    const above = triggerRect.top - popoverRect.height - CONTEXT_POPOVER_GAP;
-    const below = triggerRect.bottom + CONTEXT_POPOVER_GAP;
-    const maxTop = Math.max(
-      CONTEXT_VIEWPORT_MARGIN,
-      window.innerHeight - popoverRect.height - CONTEXT_VIEWPORT_MARGIN,
-    );
-    const top =
-      above >= CONTEXT_VIEWPORT_MARGIN && above <= maxTop
-        ? above
-        : below >= CONTEXT_VIEWPORT_MARGIN && below <= maxTop
-          ? below
-          : Math.min(Math.max(CONTEXT_VIEWPORT_MARGIN, below), maxTop);
-
-    setPopoverPosition((previous) =>
-      previous?.top === top && previous.left === left
-        ? previous
-        : { top, left },
-    );
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    const frame = window.requestAnimationFrame(updatePopoverPosition);
-    return () => window.cancelAnimationFrame(frame);
-  }, [
-    compaction,
-    context.usedTokens,
-    contextWindow,
-    open,
-    toolRows.length,
-    toolTotal,
-    turnTotal,
-    throughput,
-    updatePopoverPosition,
-  ]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleViewportChange = () => updatePopoverPosition();
-    window.addEventListener("resize", handleViewportChange);
-    window.addEventListener("scroll", handleViewportChange, true);
-    return () => {
-      window.removeEventListener("resize", handleViewportChange);
-      window.removeEventListener("scroll", handleViewportChange, true);
-    };
-  }, [open, updatePopoverPosition]);
-
-  useEffect(() => {
-    if (!open || !popoverRef.current || typeof ResizeObserver === "undefined") {
-      return;
-    }
-    const observer = new ResizeObserver(updatePopoverPosition);
-    observer.observe(popoverRef.current);
-    return () => observer.disconnect();
-  }, [open, updatePopoverPosition]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (
-        triggerRef.current?.contains(target) ||
-        popoverRef.current?.contains(target)
-      ) {
-        return;
-      }
-      closeInspector();
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      closeInspector();
-      triggerRef.current?.focus();
-    };
-    window.addEventListener("pointerdown", handlePointerDown, true);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown, true);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [closeInspector, open]);
-
-  const popover = open ? (
-    <div
-      ref={popoverRef}
-      className={`context-inspector-popover${popoverPosition ? " is-open" : ""}`}
-      id={panelId}
-      role="dialog"
-      aria-label={t("chat.usageContextLabel")}
-      style={
-        popoverPosition
-          ? {
-              top: `${popoverPosition.top}px`,
-              left: `${popoverPosition.left}px`,
-            }
-          : undefined
-      }
-    >
-      <div className="context-inspector-heading">
-        <div className="context-inspector-heading-copy">
-          <span className="context-inspector-eyebrow">
-            {t("chat.usageContextLabel")}
-          </span>
-          <strong>
-            {t("chat.usageContextLeft", {
-              count: formatTokenCount(context.remainingTokens),
-            })}
-          </strong>
-        </div>
-        <div className="context-inspector-remaining">
-          <strong>{context.remainingPercent}%</strong>
-          <span>{t("chat.usageContextRemaining")}</span>
-        </div>
-      </div>
-      <div className="context-inspector-window">
-        <span>{t("chat.usageContextWindow")}</span>
-        <strong>
-          {t("chat.usageContextTokens", {
-            used: formatTokenCount(context.usedTokens),
-            window: formatTokenCount(contextWindow),
-          })}
-        </strong>
-        <span className="context-inspector-window-percent">
-          {context.usedPercent}%
-        </span>
-      </div>
-      <div className="context-inspector-kpis">
-        <div>
-          <span>{t("chat.usageTurnTotal")}</span>
-          <strong>{formatTokenCount(turnTotal)}</strong>
-        </div>
-        <div>
-          <span>{t("chat.usageThroughputLabel")}</span>
-          <strong>
-            {throughput === undefined
-              ? t("chat.usageThroughputUnavailable")
-              : t(
-                  responseOutputEstimated
-                    ? "chat.usageThroughputEstimated"
-                    : "chat.usageThroughput",
-                  {
-                    count: formatTokenCount(throughput),
-                  },
-                )}
-          </strong>
-        </div>
-      </div>
-      <div className="context-inspector-summary">
-        <div className="context-inspector-summary-row">
-          <strong>{t("chat.usageProviderUsage")}</strong>
-          <span className="context-inspector-summary-values">
-            <span>
-              {t("chat.usageInput")} {formatTokenCount(turnUsage.inputTokens)}
-            </span>
-            <span>
-              {t("chat.usageOutput")} {formatTokenCount(turnUsage.outputTokens)}
-            </span>
-            {turnUsage.cacheReadTokens !== undefined ? (
-              <span>
-                {t("chat.usageCacheRead")} {formatTokenCount(turnUsage.cacheReadTokens)}
-              </span>
-            ) : null}
-            {cacheRate !== undefined ? (
-              <span>
-                {t("chat.usageCacheRate")} {cacheRate}%
-              </span>
-            ) : null}
-            {turnUsage.cacheWriteTokens !== undefined ? (
-              <span>
-                {t("chat.usageCacheWrite")} {formatTokenCount(turnUsage.cacheWriteTokens)}
-              </span>
-            ) : null}
-            {turnUsage.reasoningTokens !== undefined ? (
-              <span>
-                {t("chat.usageReasoning")} {formatTokenCount(turnUsage.reasoningTokens)}
-              </span>
-            ) : null}
-          </span>
-        </div>
-        <div className="context-inspector-summary-row">
-          <strong>{t("chat.usageTools")}</strong>
-          <span className="context-inspector-summary-values">
-            {toolRows.length > 0
-              ? t("chat.usageToolsSummary", {
-                  count: toolRows.length,
-                  calls: tools.length,
-                  tokens: formatTokenCount(toolTotal),
-                })
-              : t("chat.usageNoTools")}
-          </span>
-        </div>
-      </div>
-      {compaction ? (
-        <div className="context-inspector-compaction">
-          <span>
-            {t("chat.usageCompaction", { times: compaction.generation })}
-          </span>
-          <strong>~{formatTokenCount(compaction.summaryTokens)}</strong>
-        </div>
-      ) : null}
-    </div>
-  ) : null;
-
-  return (
-    <div
-      className="context-inspector"
-      data-level={level}
-      data-open={open ? "true" : "false"}
-    >
-      <button
-        ref={triggerRef}
-        type="button"
-        className="context-inspector-trigger"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={open ? panelId : undefined}
-        aria-label={t("chat.usageContextAria", {
-          percent: context.remainingPercent,
-          remaining: formatTokenCount(context.remainingTokens),
-        })}
-        onClick={toggleInspector}
-      >
-        <svg
-          className="context-inspector-ring"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <circle
-            className="context-inspector-ring-track"
-            cx="12"
-            cy="12"
-            r={CONTEXT_RING_RADIUS}
-          />
-          <circle
-            className="context-inspector-ring-progress"
-            cx="12"
-            cy="12"
-            r={CONTEXT_RING_RADIUS}
-            strokeDasharray={CONTEXT_RING_CIRCUMFERENCE}
-            strokeDashoffset={
-              CONTEXT_RING_CIRCUMFERENCE * (1 - context.remainingRatio)
-            }
-          />
-        </svg>
-        <span className="context-inspector-trigger-copy">
-          <span>{t("chat.usageContextLabel")}</span>
-          <strong>{context.remainingPercent}%</strong>
-        </span>
-      </button>
-      {popover && typeof document !== "undefined"
-        ? createPortal(popover, document.body)
-        : null}
-    </div>
-  );
-}
 
 function MessageMeta({
   modelId,
   usage,
-  contextUsage,
-  contextWindow = DEFAULT_CONTEXT_WINDOW,
-  tools = [],
   responseDurationMs,
   responseOutputTokens,
-  responseOutputEstimated,
 }: {
   modelId?: string;
   usage?: MessageUsage;
-  contextUsage?: MessageUsage;
-  contextWindow?: number;
-  tools?: UiMessage[];
   responseDurationMs?: number;
   responseOutputTokens?: number;
-  responseOutputEstimated?: boolean;
 }) {
   const { t } = useTranslation();
-  const visibleContextUsage = contextUsage ?? usage;
   const throughput = calculateTokenRate(
     responseOutputTokens ?? usage?.outputTokens ?? 0,
     responseDurationMs,
   );
-  if (!modelId && !usage && !visibleContextUsage && throughput === undefined) {
+  const showThroughput = !usage && throughput !== undefined;
+  if (!modelId && !showThroughput) {
     return null;
   }
   return (
@@ -575,18 +200,7 @@ function MessageMeta({
           {modelId}
         </span>
       ) : null}
-      {visibleContextUsage ? (
-        <ContextUsageInspector
-          usage={visibleContextUsage}
-          turnUsage={usage ?? visibleContextUsage}
-          contextWindow={contextWindow}
-          tools={tools}
-          responseDurationMs={responseDurationMs}
-          responseOutputTokens={responseOutputTokens}
-          responseOutputEstimated={responseOutputEstimated}
-        />
-      ) : null}
-      {!visibleContextUsage && throughput !== undefined ? (
+      {showThroughput ? (
         <span className="message-meta-chip throughput">
           {t("chat.usageThroughputEstimated", {
             count: formatTokenCount(throughput),
@@ -894,6 +508,16 @@ function delegateAgentName(
   return "";
 }
 
+/** Effective model resolved for this delegation, recorded by the Task result. */
+function delegateModelId(message: UiMessage): string {
+  const payload = toolResultPayload(message);
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return "";
+  }
+  const modelId = (payload as { modelId?: unknown }).modelId;
+  return typeof modelId === "string" ? modelId.trim() : "";
+}
+
 /**
  * Copies a run row's command from its head. The expanded body holds only the
  * output, so this is the one place the command can be taken from (D226).
@@ -1014,6 +638,7 @@ const ToolRow = memo(function ToolRow({
     action === "delegate" && !lifecycle
       ? delegateAgentName(message, delegate)
       : "";
+  const modelId = variant === "topology" ? delegateModelId(message) : "";
   // The delegate's last answer row is its report, so the body must not print
   // the same text a second time.
   const nestedReport = delegate?.items.some((item) => item.kind === "answer");
@@ -1111,7 +736,7 @@ const ToolRow = memo(function ToolRow({
         open ? "open" : ""
       } status-${run === "failed" ? "error" : status || "success"}${outcome ? ` outcome-${outcome.replaceAll("_", "-")}` : ""}`}
       role={variant === "topology" ? "listitem" : "region"}
-      aria-label={`${t("chat.toolCall")}: ${rawName}${statusLabel ? `, ${statusLabel}` : ""}`}
+      aria-label={`${t("chat.toolCall")}: ${rawName}${agentName ? `, ${agentName}` : ""}${modelId ? `, ${modelId}` : ""}${statusLabel ? `, ${statusLabel}` : ""}`}
     >
       {variant === "topology" ? (
         <button
@@ -1141,6 +766,11 @@ const ToolRow = memo(function ToolRow({
               <span className="subagent-topology-node-title">
                 {agentName || t("chat.subagentUnnamed")}
               </span>
+              {modelId ? (
+                <span className="subagent-topology-node-model" title={modelId}>
+                  {modelId}
+                </span>
+              ) : null}
               <span className="subagent-topology-node-status">
                 {statusLabel}
                 {duration ? ` · ${duration}` : ""}
@@ -1866,6 +1496,7 @@ type VisibleAgentActivity = Exclude<AgentActivity, { phase: "starting" }>;
 function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now);
+  const retryErrorDetailsId = useId();
 
   useEffect(() => {
     setNow(Date.now());
@@ -1884,6 +1515,52 @@ function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) 
         : t("chat.waitingForSubagents", {
             count: activity.subagentCount,
           });
+  const retryError = activity.phase === "retrying" ? activity.error : undefined;
+  const retryErrorSummary = retryError
+    ? (() => {
+        const key = `errors.${retryError.code}`;
+        const localized = t(key);
+        return localized === key ? t("chat.responseFailed") : localized;
+      })()
+    : undefined;
+  const retryLabel = retryError
+    ? `${label}: ${retryErrorSummary}: ${retryError.message}`
+    : label;
+  const labelContent = retryError ? (
+    <span
+      className="run-activity-retry-reason"
+      tabIndex={0}
+      aria-describedby={retryErrorDetailsId}
+      aria-label={retryLabel}
+    >
+      <span className="working-indicator-label">{label}</span>
+      <span
+        id={retryErrorDetailsId}
+        className="run-activity-error-popover message-error"
+        role="tooltip"
+      >
+        <span className="message-error-heading">
+          <span className="message-error-icon" aria-hidden>
+            <IconCircleAlert size={16} />
+          </span>
+          <span className="message-error-copy">
+            <strong>{retryErrorSummary}</strong>
+            <code>
+              {retryError.code}
+              {retryError.providerStatus !== undefined
+                ? ` · HTTP ${retryError.providerStatus}`
+                : ""}
+            </code>
+          </span>
+        </span>
+        <span className="run-activity-error-message selectable">
+          {retryError.message}
+        </span>
+      </span>
+    </span>
+  ) : (
+    <span className="working-indicator-label">{label}</span>
+  );
 
   return (
     <div
@@ -1898,7 +1575,7 @@ function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) 
         <span />
         <span />
       </span>
-      <span className="working-indicator-label">{label}</span>
+      {labelContent}
       <span className="working-elapsed" aria-hidden="true">
         {elapsed}
       </span>
@@ -2315,8 +1992,6 @@ const AssistantTurn = memo(function AssistantTurn({
   const { t } = useTranslation();
   const retryAssistantMessage = useAppStore((s) => s.retryAssistantMessage);
   const forkAssistantMessage = useAppStore((s) => s.forkAssistantMessage);
-  const providerModels = useAppStore((s) => s.providerModels);
-  const providers = useAppStore((s) => s.providers);
   const messages = assistantTurnMessages(entry);
   const content = assistantTurnContent(entry);
   const actionMessage = [...messages]
@@ -2334,21 +2009,10 @@ const AssistantTurn = memo(function AssistantTurn({
   const latestUsageMessage = [...messages]
     .reverse()
     .find((message) => message.usage);
-  const latestUsage = latestMessageUsage(messages);
   const usage = assistantTurnUsage(entry);
-  const tools = assistantTurnTools(entry);
   const responseDurationMs = assistantTurnResponseDuration(entry);
   const responseOutputTokens = assistantTurnResponseOutputTokens(entry);
-  const responseOutputEstimated = assistantTurnResponseOutputIsEstimated(entry);
   const modelId = metaMessage?.modelId ?? latestUsageMessage?.modelId;
-  const contextWindow = latestUsage
-    ? resolveContextWindow(
-        latestUsageMessage?.providerId ?? metaMessage?.providerId,
-        latestUsageMessage?.modelId ?? modelId,
-        providerModels,
-        providers,
-      )
-    : DEFAULT_CONTEXT_WINDOW;
   const hasError = messages.some((message) => Boolean(message.error));
   const complete =
     !isActive && !hasError && Boolean(content) && Boolean(actionMessage);
@@ -2416,12 +2080,8 @@ const AssistantTurn = memo(function AssistantTurn({
           <MessageMeta
             modelId={modelId}
             usage={usage}
-            contextUsage={latestUsage}
-            contextWindow={contextWindow}
-            tools={tools}
             responseDurationMs={responseDurationMs}
             responseOutputTokens={responseOutputTokens}
-            responseOutputEstimated={responseOutputEstimated}
           />
         ) : null}
         {(content || hasError) && actionMessage ? (

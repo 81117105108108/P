@@ -536,6 +536,18 @@ const KNOWN_PROVIDER_BASE_URLS: Record<string, string[]> = {
   "moonshotai-cn": ["https://api.moonshot.cn/v1"],
   "siliconflow-cn": ["https://api.siliconflow.cn/v1"],
   volcengine: ["https://ark.cn-beijing.volces.com/api/v3"],
+  // MiniMax exposes both an Anthropic endpoint (the published models.dev
+  // URL) and an OpenAI-compatible `/v1` endpoint. Treat the latter as the
+  // same provider so a custom OpenAI-style row still inherits M3's vision
+  // metadata instead of falling back to a text-only generic model.
+  "minimax-cn": [
+    "https://api.minimaxi.com/v1",
+    "https://api.minimaxi.com/anthropic/v1",
+  ],
+  minimax: [
+    "https://api.minimax.io/v1",
+    "https://api.minimax.io/anthropic/v1",
+  ],
 };
 
 const PROVIDER_ALIASES: Record<string, string[]> = {

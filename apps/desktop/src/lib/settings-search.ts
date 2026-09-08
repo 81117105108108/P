@@ -55,6 +55,7 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "settings.language",
       "settings.languageAuto",
       "settings.font",
+      "settings.fontSize",
       "settings.closeBehaviorTitle",
       "settings.closeBehaviorTray",
       "settings.closeBehaviorQuit",
@@ -80,6 +81,7 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "settings.defaultsTitle",
       "settings.mode",
       "settings.commandShell",
+      "settings.linkOpenTarget",
       "settings.enterToSend",
       "settings.largePasteThreshold",
     ],
@@ -186,9 +188,12 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
     group: "workspace",
     keywordKeys: [
       "settings.importTitle",
+      "settings.importModelsTitle",
       "settings.importSourceClaudeCode",
       "settings.importSourceOpenCode",
       "settings.importSourceCodex",
+      "settings.importSourcePi",
+      "settings.importSourceCcSwitch",
     ],
   },
   {

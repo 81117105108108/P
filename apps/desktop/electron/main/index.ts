@@ -54,6 +54,12 @@ import {
   modelIdsMatch,
   ok,
   parseMcpImport,
+  draftMatchesExisting,
+  isModelConfigImportSource,
+  modelConfigImportKey,
+  providerCreateInputFromDraft,
+  publicModelConfigCandidate,
+  type ModelConfigImportDraft,
   type ActivationScope,
   type AgentCapabilityQuery,
   type ComposerPasteFile,
@@ -63,6 +69,7 @@ import {
   type AgentEventEnvelope,
   type AgentPromptRequest,
   type PromptEnhancementRequest,
+  type SessionSummarizeTitleRequest,
   type AgentStopRequest,
   type AskToolResolution,
   type AppMenuCommand,
@@ -104,13 +111,15 @@ import {
   visionFromModelConfig,
   expandSlashInvocation,
   enhancePromptDraft,
+  summarizeSessionTitle,
   completeOneShot,
   loadComposerTemplates,
   globalInstructionPath,
   loadInstructionChain,
   loadSubagentDefinitions,
   resolveSubagentProviders,
-  withUserAgentHeaders,
+  mergeProviderHeaders,
+  optionalProviderHeaders,
   type ComposerTemplate,
   type ThinkingCapabilities,
   type RuntimeProviderConfig,
@@ -135,6 +144,7 @@ import {
 import { HostProcess } from "./host-process";
 import {
   shouldCreateTaskNotification as shouldCreateTaskNotificationPolicy,
+  shouldShowNativeNotification,
 } from "./notification-policy";
 import { PersistenceOutbox } from "./persistence-outbox";
 import { InflightCheckpointer } from "./inflight-checkpoint";
@@ -154,7 +164,17 @@ import { PluginPanelHost } from "./plugin-panel-host";
 import { PluginViewHost, pluginViewKey } from "./plugin-view-host";
 import { parseAllowedExternalUrl } from "./safe-open-external";
 import type { PluginAppearance } from "../shared/plugin-panel-chrome";
-import { Logger } from "./logger";
+import { Logger, ignoreBrokenStdio } from "./logger";
+import {
+  BootTiming,
+  shouldLogClipboardSample,
+  timingMessage,
+} from "./boot-timing";
+import {
+  GLIBC_UNSUPPORTED_STATUS,
+  assertLinuxGlibcSupported,
+  isGlibcUnsupportedError,
+} from "./linux-glibc";
 import { collectWorkspaceDiff } from "./git-diff";
 import { BrowserPane, resolveLocalFile } from "./browser-view";
 import {
@@ -178,11 +198,19 @@ import {
   resolveRealOpenablePath,
 } from "./fs-panel";
 import { getWorkspaceFileIndex } from "./fs-index";
-import { saveComposerPasteFiles } from "./composer-paste";
+import {
+  importComposerFiles,
+  saveComposerPasteFiles,
+} from "./composer-paste";
+import {
+  consumeComposerPickerSelection,
+  rememberComposerPickerSelection,
+} from "./composer-picker";
 import { builtinComposerCommands, builtinPaletteItems } from "./builtin-commands";
 import {
   convertSession,
   scanAllSources,
+  scanModelConfigs,
   type ExternalSessionSummary,
   type ExternalSource,
 } from "./importers";
@@ -254,6 +282,11 @@ function stripWinLongPrefix(p: string): string {
   }
   return p;
 }
+
+// A closed stdout/stderr (Linux AppImage, GUI launch without a TTY) must not
+// surface as Electron's "Uncaught Exception: write EPIPE" dialog.
+ignoreBrokenStdio();
+const processStartedAt = Date.now();
 
 app.setName(APP_NAME);
 if (process.platform === "win32") {
@@ -410,26 +443,100 @@ async function requestPluginNotificationPermission(): Promise<PluginNotification
   return result.permission;
 }
 
+let clipboardSampleIndex = 0;
+let lastClipboardSampleLogAt = 0;
+
 async function readSystemClipboard(): Promise<ClipboardCapture | null> {
-  const { clipboard } = await import("electron");
-  const hasImage = clipboard.availableFormats().some((format) => /^image\//i.test(format));
-  if (hasImage) {
-    const image = clipboard.readImage();
-    if (!image.isEmpty()) {
-      const size = image.getSize();
-      return {
-        type: "image",
-        // NativeImage provides a stable cross-platform PNG representation even
-        // when the source clipboard format is JPEG, WebP, or OS-native data.
-        format: "png",
-        data: new Uint8Array(image.toPNG()),
-        width: size.width,
-        height: size.height,
-      };
+  const started = Date.now();
+  let kind: "empty" | "text" | "image" = "empty";
+  let bytes = 0;
+  let width = 0;
+  let height = 0;
+  let formatsMs = 0;
+  let readImageMs = 0;
+  let toPngMs = 0;
+  try {
+    const { clipboard } = await import("electron");
+    const formatsStarted = Date.now();
+    const hasImage = clipboard
+      .availableFormats()
+      .some((format) => /^image\//i.test(format));
+    formatsMs = Date.now() - formatsStarted;
+    if (hasImage) {
+      const readStarted = Date.now();
+      const image = clipboard.readImage();
+      readImageMs = Date.now() - readStarted;
+      if (!image.isEmpty()) {
+        const size = image.getSize();
+        const pngStarted = Date.now();
+        const data = new Uint8Array(image.toPNG());
+        toPngMs = Date.now() - pngStarted;
+        kind = "image";
+        bytes = data.byteLength;
+        width = size.width;
+        height = size.height;
+        return {
+          type: "image",
+          // NativeImage provides a stable cross-platform PNG representation even
+          // when the source clipboard format is JPEG, WebP, or OS-native data.
+          format: "png",
+          data,
+          width: size.width,
+          height: size.height,
+        };
+      }
+    }
+    const text = clipboard.readText();
+    if (text) {
+      kind = "text";
+      bytes = Buffer.byteLength(text, "utf8");
+      return { type: "text", text };
+    }
+    return null;
+  } finally {
+    const durationMs = Date.now() - started;
+    const sampleIndex = clipboardSampleIndex;
+    clipboardSampleIndex += 1;
+    if (
+      shouldLogClipboardSample({
+        sampleIndex,
+        durationMs,
+        lastLoggedAt: lastClipboardSampleLogAt,
+      })
+    ) {
+      lastClipboardSampleLogAt = Date.now();
+      logger.app(
+        "timing",
+        durationMs >= 100 ? "warn" : "info",
+        timingMessage("clipboard", "poll", {
+          durationMs,
+          kind,
+          bytes,
+          width,
+          height,
+          formatsMs,
+          readImageMs,
+          toPngMs,
+          sampleIndex,
+        }),
+        {
+          data: {
+            kind: "clipboard",
+            phase: "poll",
+            durationMs,
+            sampleKind: kind,
+            bytes,
+            width,
+            height,
+            formatsMs,
+            readImageMs,
+            toPngMs,
+            sampleIndex,
+          },
+        },
+      );
     }
   }
-  const text = clipboard.readText();
-  return text ? { type: "text", text } : null;
 }
 
 const clipboardHistory = new ClipboardHistory({ read: readSystemClipboard });
@@ -663,7 +770,7 @@ const plugins: PluginRuntime = new PluginRuntime({
     // the tab is still active and the plugin came back.
     pluginViews.closePlugin(pluginId);
     if (pluginId === BROWSER_PLUGIN_ID) browserHost.disposeGuest();
-    sendToRenderer(IPC.event.pluginChanged, { reason: "crash", pluginId });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "crash", pluginId });
   },
   // Supervision state is UI-only: the runtime owns restarts, the renderer just
   // reflects what happened.
@@ -672,7 +779,7 @@ const plugins: PluginRuntime = new PluginRuntime({
       pluginId: status.pluginId,
       data: { serviceId: status.serviceId, state: status.state, restarts: status.restarts },
     });
-    sendToRenderer(IPC.event.pluginChanged, {
+    sendToRenderer(IPC.event.pluginChanged,{
       reason: "service",
       pluginId: status.pluginId,
     });
@@ -690,7 +797,7 @@ const plugins: PluginRuntime = new PluginRuntime({
     // Views were loaded from the previous revision of the plugin's files.
     pluginViews.closePlugin(pluginId);
     if (pluginId === BROWSER_PLUGIN_ID) browserHost.disposeGuest();
-    sendToRenderer(IPC.event.pluginChanged, { reason: "reload", pluginId });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "reload", pluginId });
   },
 });
 const userMcp = new UserMcpRuntime({
@@ -779,6 +886,7 @@ plugins.setServices({
   },
 });
 let scannedImportSessions = new Map<string, ExternalSessionSummary>();
+let scannedModelConfigs = new Map<string, ModelConfigImportDraft>();
 
 const IMPORT_SOURCES = new Set<ExternalSource>([
   "claude-code",
@@ -794,6 +902,9 @@ const logger = new Logger(
   dataDir,
   process.env.NODE_ENV === "production" ? "info" : "debug",
 );
+const bootTiming = new BootTiming((message, data) => {
+  logger.app("timing", "info", message, data ? { data } : undefined);
+}, processStartedAt);
 const persistenceOutbox = new PersistenceOutbox(dataDir, (level, message, data) => {
   logger.app("persistence", level, message, { data });
 });
@@ -815,7 +926,7 @@ const inflightCheckpointer = new InflightCheckpointer(async (checkpoint) => {
   );
 });
 
-/** Product UI locale for dual-locale update notes (mirrored from settings). */
+/** Product UI locale for shipped-locale update notes (mirrored from settings). */
 let updaterLocale = "en";
 type PluginPanelTheme = "light" | "dark";
 let pluginPanelTheme: PluginPanelTheme = nativeTheme.shouldUseDarkColors
@@ -882,7 +993,7 @@ type RuntimeProvider = {
   hasSecret?: boolean;
   hasOauth?: boolean;
   oauthAccountLabel?: string;
-  userAgent?: string;
+  headers?: Record<string, string>;
   enabled?: boolean;
   supportsVision?: boolean;
 };
@@ -1533,7 +1644,7 @@ async function resolveAgentRuntimeLaunch(
         apiKey,
         ...(row.authKind ? { authKind: row.authKind } : {}),
         ...(row.apiStyle ? { apiStyle: row.apiStyle } : {}),
-        ...(row.userAgent ? { userAgent: row.userAgent } : {}),
+        ...optionalProviderHeaders(row.headers),
         supportsReasoning: caps.supportsReasoning,
         supportedThinkingLevels: [...caps.supportedThinkingLevels],
         ...(mc ? { modelConfig: mc } : {}),
@@ -1593,7 +1704,7 @@ async function resolveAgentRuntimeLaunch(
         apiKey: secret.value || "",
         authKind: provider.authKind,
         apiStyle,
-        ...(provider.userAgent ? { userAgent: provider.userAgent } : {}),
+        ...optionalProviderHeaders(provider.headers),
         supportsReasoning: thinkingCapabilities.supportsReasoning,
         supportsVision: visionFromModelConfig(modelConfig),
         supportedThinkingLevels: [...thinkingCapabilities.supportedThinkingLevels],
@@ -1734,6 +1845,9 @@ function createTray() {
 
 
 function sendToRenderer(channel: string, payload: unknown) {
+  if (channel === IPC.event.pluginChanged) {
+    applyNativeThemeSource({ theme: appThemePreference });
+  }
   if (!IPC_WHITELIST.has(channel)) return;
   const window = mainWindow;
   if (
@@ -1916,6 +2030,31 @@ function applyDeveloperMode(settings?: { developerMode?: unknown } | null) {
   }
 }
 
+/**
+ * Drive Chromium and macOS native chrome (menus, vibrancy) from the same
+ * theme preference the renderer paints. `system` keeps following the OS;
+ * an explicit or plugin base locks the native appearance so a dark dock
+ * cannot sit on a light Liquid Glass plate (D348). Missing `plugin:` themes
+ * fall back to `system`, matching the renderer.
+ */
+function applyNativeThemeSource(settings?: { theme?: unknown } | null) {
+  const preference = settings?.theme;
+  let next: "system" | "light" | "dark" = "system";
+  if (preference === "light" || preference === "dark") {
+    next = preference;
+  } else if (typeof preference === "string" && preference.startsWith("plugin:")) {
+    const pluginTheme = plugins.getThemes().find((theme) => theme.id === preference);
+    if (pluginTheme?.base === "light" || pluginTheme?.base === "dark") {
+      next = pluginTheme.base;
+    }
+  }
+  if (nativeTheme.themeSource === next) return;
+  nativeTheme.themeSource = next;
+  if (process.platform === "darwin" && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setVibrancy("sidebar");
+  }
+}
+
 /** Keep native labels and accelerators aligned with persisted app settings. */
 function applyApplicationMenuSettings(settings?: {
   language?: unknown;
@@ -1940,6 +2079,7 @@ function applyApplicationMenuSettings(settings?: {
       : typeof preference === "string" && preference.startsWith("plugin:")
         ? preference
         : "system";
+  applyNativeThemeSource(settings);
   if (preference === "light" || preference === "dark") {
     pluginPanelTheme = preference;
   } else if (typeof preference === "string" && preference.startsWith("plugin:")) {
@@ -2041,6 +2181,20 @@ function importSelectionKey(value: unknown): string | null {
     return null;
   }
   return `${source}:${externalId}`;
+}
+
+function modelConfigSelectionKey(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const source = Reflect.get(value, "source");
+  const externalId = Reflect.get(value, "externalId");
+  if (
+    !isModelConfigImportSource(source) ||
+    typeof externalId !== "string" ||
+    !externalId
+  ) {
+    return null;
+  }
+  return modelConfigImportKey(source, externalId);
 }
 
 
@@ -2191,7 +2345,7 @@ function applyCloseBehavior(next: CloseBehavior) {
 async function askCloseBehavior(
   window: BrowserWindow,
 ): Promise<"tray" | "quit" | null> {
-  const labels = catalogs[resolveLocale(app.getLocale())];
+  const labels = catalogs[resolveLocale(updaterLocale)];
   const { response } = await dialog.showMessageBox(window, {
     type: "question",
     title: labels.tray.askTitle,
@@ -2212,7 +2366,7 @@ async function askCloseBehavior(
  * Returns `true` when the user confirms, `false` when they cancel.
  */
 async function confirmQuitDialog(): Promise<boolean> {
-  const labels = catalogs[resolveLocale(app.getLocale())];
+  const labels = catalogs[resolveLocale(updaterLocale)];
   const parent =
     mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
   const options = {
@@ -2395,10 +2549,23 @@ function createPluginLauncherWindow(): Promise<BrowserWindow> {
 }
 
 function prewarmPluginLauncher(): void {
-  void createPluginLauncherWindow().catch((error) =>
-    logger.app("diagnostics", "warn", "plugin launcher warm-up failed", {
-      data: String(error),
-    }),
+  const started = Date.now();
+  void createPluginLauncherWindow().then(
+    () => {
+      bootTiming.mark("plugin-launcher-prewarm", {
+        durationMs: Date.now() - started,
+        ok: true,
+      });
+    },
+    (error) => {
+      bootTiming.mark("plugin-launcher-prewarm", {
+        durationMs: Date.now() - started,
+        ok: false,
+      });
+      logger.app("diagnostics", "warn", "plugin launcher warm-up failed", {
+        data: String(error),
+      });
+    },
   );
 }
 
@@ -2515,7 +2682,7 @@ async function createWindow() {
       ? {
           titleBarStyle: "hiddenInset" as const,
           trafficLightPosition: { x: 16, y: 16 },
-          vibrancy: "under-window" as const,
+          vibrancy: "sidebar" as const,
           visualEffectState: "followWindow" as const,
           transparent: true,
           backgroundColor: "#00000000",
@@ -2535,7 +2702,13 @@ async function createWindow() {
       additionalArguments: [`--pi-desktop-locale=${app.getLocale()}`],
     },
   });
+  bootTiming.mark("window-created");
   const window = mainWindow;
+  window.webContents.on("console-message", (_event, _level, message) => {
+    if (typeof message === "string" && message.startsWith("[timing] ")) {
+      logger.app("timing", "info", message);
+    }
+  });
   const initialBounds = window.getBounds();
   workPanelBaseBounds = savedState ? { ...savedState } : { ...initialBounds };
   workPanelLastAppliedBounds = { ...initialBounds };
@@ -3264,6 +3437,7 @@ async function createWindow() {
     ensureStableBounds(process.env.PI_DESKTOP_CAPTURE === "1");
     window.show();
     window.focus();
+    bootTiming.mark("window-shown");
     // Burst re-assert only while Stage Manager initially settles / shelves us.
     for (const ms of [100, 250, 500, 1000, 2000, 3500, 5000, 8000, 12000]) {
       setTimeout(() => ensureStableBounds(false), ms);
@@ -4162,6 +4336,7 @@ async function createWindow() {
     }
   });
 
+  const loadStarted = Date.now();
   if (process.env.ELECTRON_RENDERER_URL) {
     await window.loadURL(process.env.ELECTRON_RENDERER_URL);
     if (process.env.PI_DESKTOP_DEVTOOLS === "1") {
@@ -4170,6 +4345,7 @@ async function createWindow() {
   } else {
     await window.loadFile(join(__dirname, "../renderer/index.html"));
   }
+  bootTiming.mark("window-loaded", { durationMs: Date.now() - loadStarted, ok: true });
 }
 
 const RESTART_WINDOW_MS = 120_000;
@@ -4368,11 +4544,21 @@ function wireHost(h: HostProcess) {
 }
 
 async function startHost(): Promise<void> {
+  assertLinuxGlibcSupported();
+  const spawnStarted = Date.now();
   const h = new HostProcess(dataDir, (text) => logger.child("host", text));
+  const spawnedMs = Date.now() - spawnStarted;
   wireHost(h);
   host = h;
   try {
+    const handshakeStarted = Date.now();
     await h.handshake();
+    bootTiming.mark("host", {
+      spawnedMs,
+      handshakeMs: Date.now() - handshakeStarted,
+      durationMs: Date.now() - spawnStarted,
+      ok: true,
+    });
     logger.app("runtime", "info", "host-core handshake ok", {
       data: { generation: h.generation },
     });
@@ -4391,6 +4577,11 @@ async function startHost(): Promise<void> {
       });
     }
   } catch (error) {
+    bootTiming.mark("host", {
+      spawnedMs,
+      durationMs: Date.now() - spawnStarted,
+      ok: false,
+    });
     if (host === h) host = null;
     logger.flushChild("host");
     await h.dispose();
@@ -4488,7 +4679,9 @@ function wireSidecar(s: AgentSidecar) {
 }
 
 async function startSidecar(): Promise<void> {
+  const spawnStarted = Date.now();
   const s = new AgentSidecar((text) => logger.child("agent", text));
+  const spawnedMs = Date.now() - spawnStarted;
   wireSidecar(s);
   s.setProjectInstructionResolver(async ({ projectPath, path }) => {
     // The root is registered by Electron main from the host-owned session
@@ -4694,15 +4887,22 @@ async function startSidecar(): Promise<void> {
       for (const toast of plugins.drainToasts()) {
         sendToRenderer(IPC.event.toast, { message: toast });
       }
-      sendToRenderer(IPC.event.pluginChanged, { reason: "scaffold" });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "scaffold" });
     },
   });
   sidecar = s;
   if (host) s.setHost(host);
+  const configureStarted = Date.now();
   await s.call("sidecar.configure", {
     hostBinary: host?.binaryPath,
     dataDir,
     networkProxy: currentNetworkProxy(),
+  });
+  bootTiming.mark("sidecar", {
+    spawnedMs,
+    configureMs: Date.now() - configureStarted,
+    durationMs: Date.now() - spawnStarted,
+    ok: true,
   });
   logger.app("runtime", "info", "agent sidecar configured");
 }
@@ -5335,6 +5535,19 @@ async function superviseRestartLoop(kind: RestartKind): Promise<void> {
       });
       return;
     } catch (e) {
+      if (isGlibcUnsupportedError(e)) {
+        logger.app("runtime", "error", "linux glibc is below the packaged host floor", {
+          code: ErrorCodes.HOST_UNAVAILABLE,
+          data: String(e),
+        });
+        sendToRenderer(IPC.event.hostStatus, {
+          ok: false,
+          component: kind,
+          fatal: true,
+          message: GLIBC_UNSUPPORTED_STATUS,
+        });
+        return;
+      }
       logger.app("runtime", "error", `${kind} restart failed`, { data: String(e) });
     }
   }
@@ -5345,6 +5558,7 @@ async function bootBackends() {
   logger.app("lifecycle", "info", `app boot ${APP_NAME} ${APP_VERSION}`, {
     data: { protocolVersion: PROTOCOL_VERSION },
   });
+  bootTiming.mark("backends-start");
   await startHost();
   try {
     const stored = await host!.call("settings.get");
@@ -5379,6 +5593,7 @@ async function bootBackends() {
     rememberPluginScopes(listed.plugins ?? []);
     for (const p of listed.plugins ?? []) {
       if (p.enabled && p.path) {
+        const pluginStarted = Date.now();
         try {
           await plugins.loadFromPath(p.path, p.permissions ?? [], {
             development: p.source === "dev",
@@ -5386,8 +5601,18 @@ async function bootBackends() {
           // Dev plugins keep hot reload across restarts: the folder was picked
           // once, and the edit loop should not have to pick it again.
           if (p.source === "dev") plugins.watchDevPlugin(p.id);
+          bootTiming.mark("plugin-restore", {
+            pluginId: p.id,
+            durationMs: Date.now() - pluginStarted,
+            ok: true,
+          });
           logger.app("plugin", "info", "plugin restored", { pluginId: p.id });
         } catch (e) {
+          bootTiming.mark("plugin-restore", {
+            pluginId: p.id,
+            durationMs: Date.now() - pluginStarted,
+            ok: false,
+          });
           logger.app("plugin", "error", "plugin restore failed", {
             pluginId: p.id,
             data: String(e),
@@ -5402,17 +5627,28 @@ async function bootBackends() {
   // The user's MCP servers are only *registered* here; each one connects the
   // first time a session that can see it is assembled, so a project-scoped
   // server costs nothing until that project is open.
+  const mcpStarted = Date.now();
   await refreshUserMcp();
+  bootTiming.mark("mcp-refresh", { durationMs: Date.now() - mcpStarted, ok: true });
   await drainApprovedPlanExecutions().catch((error) =>
     logger.app("runtime", "warn", "queued approved plan drain failed", {
       data: String(error),
     }),
   );
+  bootTiming.mark("backends-ready");
 }
 
 function registerIpc() {
   const handle = (channel: string, fn: (...args: any[]) => Promise<any>) => {
     ipcMain.handle(channel, async (_event, ...args) => wrap(() => fn(...args)));
+  };
+  const handleWithEvent = (
+    channel: string,
+    fn: (event: { sender: { id: number } }, ...args: any[]) => Promise<any>,
+  ) => {
+    ipcMain.handle(channel, async (event, ...args) =>
+      wrap(() => fn(event, ...args)),
+    );
   };
 
   handle(IPC.invoke.pluginLauncherToggle, async () => {
@@ -5639,22 +5875,38 @@ function registerIpc() {
   handle(IPC.invoke.notificationShowNative, async (input: {
     id?: string;
     sessionId?: string;
+    kind?: "task" | "interactive";
     title?: string;
     body?: string;
   } = {}) => {
     if (
       !mainWindow ||
       mainWindow.isDestroyed() ||
-      mainWindow.isFocused() ||
       !SystemNotification.isSupported()
     ) {
       return { shown: false };
     }
     const id = String(input.id ?? "");
     const sessionId = String(input.sessionId ?? "");
+    const kind = input.kind === "interactive" ? "interactive" : "task";
     const title = String(input.title ?? "").trim().slice(0, 100);
     const body = String(input.body ?? "").trim().slice(0, 240);
     if (!id || !sessionId || !title) return { shown: false };
+
+    const liveWindow = mainWindow !== null && !mainWindow.isDestroyed();
+    const windowVisible = liveWindow && mainWindow.isVisible() === true;
+    const windowFocused = liveWindow && mainWindow.isFocused() === true;
+    if (
+      !shouldShowNativeNotification({
+        kind,
+        sessionId,
+        viewingSessionId: notificationViewingSessionId,
+        windowVisible,
+        windowFocused,
+      })
+    ) {
+      return { shown: false };
+    }
 
     const notification = new SystemNotification({ title, body });
     notification.on("click", () => {
@@ -5966,6 +6218,89 @@ function registerIpc() {
     },
   );
 
+  handle(IPC.invoke.modelConfigImportScan, async () => {
+    const drafts = await scanModelConfigs();
+    scannedModelConfigs = new Map(
+      drafts.map((draft) => [modelConfigImportKey(draft.source, draft.externalId), draft]),
+    );
+    return { providers: drafts.map(publicModelConfigCandidate) };
+  });
+  handle(
+    IPC.invoke.modelConfigImportRun,
+    async (selections: unknown) => {
+      if (!host) throw new Error("host unavailable");
+      let imported = 0;
+      let skipped = 0;
+      let failed = 0;
+      const items = Array.isArray(selections) ? selections : [];
+      const existing = await host.call<{
+        providers: Array<{
+          baseUrl?: string | null;
+          apiStyle?: string | null;
+          vendorKey?: string | null;
+        }>;
+      }>("providers.list", { includeDisabled: true });
+      const known = [...(existing.providers ?? [])];
+      let firstImported:
+        | { id: string; defaultModelId?: string; models?: Array<{ id: string }> }
+        | undefined;
+      for (const selection of items) {
+        const key = modelConfigSelectionKey(selection);
+        const draft = key ? scannedModelConfigs.get(key) : undefined;
+        if (!draft) {
+          failed += 1;
+          logger.app("provider", "warn", "model config import selection rejected", {
+            data: { reason: "candidate was not returned by the latest scan" },
+          });
+          continue;
+        }
+        if (draftMatchesExisting(draft, known)) {
+          skipped += 1;
+          continue;
+        }
+        try {
+          const created = await host.call<{
+            provider: { id: string; defaultModelId?: string; models?: Array<{ id: string }> };
+          }>("providers.create", providerCreateInputFromDraft(draft));
+          imported += 1;
+          known.push(draft);
+          firstImported ??= created.provider;
+        } catch (e) {
+          failed += 1;
+          logger.app("provider", "warn", "model config import failed", {
+            data: {
+              source: draft.source,
+              externalId: draft.externalId,
+              name: draft.name,
+              hasSecret: draft.hasSecret,
+              error: String(e),
+            },
+          });
+        }
+      }
+      if (firstImported) {
+        try {
+          const settings = await host.call<{ defaultProviderId?: string }>("settings.get");
+          if (!settings?.defaultProviderId) {
+            await host.call("settings.set", {
+              defaultProviderId: firstImported.id,
+              defaultModelId:
+                firstImported.models?.[0]?.id ?? firstImported.defaultModelId,
+            });
+          }
+        } catch (e) {
+          logger.app("provider", "warn", "model config import default not set", {
+            data: { error: String(e) },
+          });
+        }
+      }
+      logger.app("provider", "info", "model config import finished", {
+        data: { imported, skipped, failed },
+      });
+      return { imported, skipped, failed };
+    },
+  );
+
   handle(IPC.invoke.settingsGet, async () => {
     if (!host) throw new Error("host unavailable");
     const settings = await host.call("settings.get");
@@ -5993,6 +6328,7 @@ function registerIpc() {
     applyApplicationMenuSettings(
       validatedSettings as {
         language?: unknown;
+        theme?: unknown;
         keybindings?: unknown;
         developerMode?: unknown;
       } | null,
@@ -6051,7 +6387,7 @@ function registerIpc() {
     );
     if (!local.ok) return { ...local, network: "skipped" };
     const detail = await host.call<{
-      provider?: { baseUrl?: string; authKind?: string; userAgent?: string };
+      provider?: { baseUrl?: string; authKind?: string; headers?: Record<string, string> };
     }>("providers.get", { id });
     // A vendor account proves itself by resolving auth — refreshing the token
     // if it has expired — not by probing /models with a key it does not have.
@@ -6075,9 +6411,9 @@ function registerIpc() {
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/models`, {
-        headers: withUserAgentHeaders(
+        headers: mergeProviderHeaders(
           secret.value ? { Authorization: `Bearer ${secret.value}` } : {},
-          detail.provider?.userAgent,
+          detail.provider?.headers,
         ),
         signal: controller.signal,
       });
@@ -6147,7 +6483,7 @@ function registerIpc() {
             baseUrl?: string;
             apiKey?: string;
             apiStyle?: string;
-            userAgent?: string;
+            headers?: Record<string, string>;
             source?: "cache" | "refresh";
           },
     ) => {
@@ -6379,7 +6715,7 @@ function registerIpc() {
             baseUrl,
             apiKey,
             apiStyle,
-            userAgent: req.userAgent ?? provider?.userAgent,
+            headers: req.headers ?? provider?.headers,
           });
           if (discovered.length > 0) {
             const models = discovered.map((model) => decorate(model));
@@ -6529,24 +6865,67 @@ function registerIpc() {
     return host.call("workspace.clear");
   });
 
-  handle(IPC.invoke.composerPickFiles, async () => {
+  handleWithEvent(IPC.invoke.composerPickFiles, async (event) => {
     const result = await dialog.showOpenDialog({
-      properties: ["openFile", "openDirectory", "multiSelections"],
+      properties: ["openFile", "multiSelections"],
     });
-    if (result.canceled) return { paths: [] as string[], canceled: true };
-    return { paths: result.filePaths, canceled: false };
+    if (result.canceled || result.filePaths.length === 0) {
+      return { token: null, canceled: true };
+    }
+    return {
+      token: rememberComposerPickerSelection(result.filePaths, event.sender.id),
+      canceled: false,
+    };
   });
 
-  handle(IPC.invoke.composerPickPhotos, async () => {
+  handleWithEvent(IPC.invoke.composerPickPhotos, async (event) => {
     const result = await dialog.showOpenDialog({
       properties: ["openFile", "multiSelections"],
       filters: [
         { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "heic", "tif", "tiff"] },
       ],
     });
-    if (result.canceled) return { paths: [] as string[], canceled: true };
-    return { paths: result.filePaths, canceled: false };
+    if (result.canceled || result.filePaths.length === 0) {
+      return { token: null, canceled: true };
+    }
+    return {
+      token: rememberComposerPickerSelection(result.filePaths, event.sender.id),
+      canceled: false,
+    };
   });
+
+  handleWithEvent(
+    IPC.invoke.composerImportFiles,
+    async (
+      event,
+      input: { sessionId?: unknown; token?: unknown } = {},
+    ) => {
+      if (!host) throw new Error("host unavailable");
+      const sessionId =
+        typeof input.sessionId === "string" ? input.sessionId.trim() : "";
+      if (!sessionId) {
+        throw Object.assign(new Error("session required"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      const session = (await host.call("session.get", { id: sessionId })) as {
+        session?: unknown;
+      };
+      if (!session.session) {
+        throw Object.assign(new Error("session not found"), {
+          errorCode: ErrorCodes.NOT_FOUND,
+        });
+      }
+      const paths = consumeComposerPickerSelection(input.token, event.sender.id);
+      return {
+        files: await importComposerFiles(
+          dataDir,
+          sessionId,
+          paths,
+        ),
+      };
+    },
+  );
 
   handle(
     IPC.invoke.composerPasteFiles,
@@ -6887,6 +7266,23 @@ function registerIpc() {
     },
   );
 
+  handle(IPC.invoke.windowSetBackgroundColor, async (input: unknown = {}) => {
+    const theme = (input as { theme?: unknown })?.theme;
+    if (theme !== "light" && theme !== "dark") {
+      throw Object.assign(new Error("invalid window background theme"), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    // macOS uses a transparent window with native sidebar vibrancy. Do not make
+    // this renderer-driven fallback opaque on that platform.
+    if (process.platform === "darwin") return { applied: false, theme };
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      throw new Error("main window unavailable");
+    }
+    mainWindow.setBackgroundColor(theme === "light" ? "#ffffff" : "#181818");
+    return { applied: true, theme };
+  });
+
   // Custom window-chrome buttons on Windows/Linux (renderer-drawn).
   handle(
     IPC.invoke.windowControl,
@@ -7113,6 +7509,54 @@ function registerIpc() {
       data: { providerId: launch.providerId, modelId: launch.modelId },
     });
     return { enhancedDraft };
+  });
+
+  handle(IPC.invoke.sessionSummarizeTitle, async (req: SessionSummarizeTitleRequest) => {
+    if (!host) throw new Error("backend unavailable");
+    const sessionId = typeof req?.sessionId === "string" ? req.sessionId.trim() : "";
+    const userPrompt = typeof req?.userPrompt === "string" ? req.userPrompt.trim() : "";
+    if (!sessionId || !userPrompt) {
+      throw Object.assign(new Error("sessionId and userPrompt required"), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    const session = (await host.call<{ session?: any }>("session.get", { id: sessionId })).session;
+    if (!session) {
+      throw Object.assign(new Error("Session not found"), {
+        errorCode: ErrorCodes.NOT_FOUND,
+      });
+    }
+    const settings = await host.call<any>("settings.get");
+    const launch = await resolveAgentRuntimeLaunch(
+      `title-summary:${sessionId}`,
+      session,
+      settings,
+      {
+        mode: "agent",
+        providerId: typeof req.providerId === "string" ? req.providerId.trim() : undefined,
+        modelId: typeof req.modelId === "string" ? req.modelId.trim() : undefined,
+        thinkingLevel: "off",
+      },
+    );
+    const runtimeProvider = {
+      ...launch.sidecarParams.provider,
+      ...(launch.sidecarParams.provider.authKind === OAUTH_AUTH_KIND
+        ? { resolveAuth: () => vendorOAuth.resolveAuth(launch.providerId) }
+        : {}),
+    } as RuntimeProviderConfig;
+
+    const title = await summarizeSessionTitle(
+      runtimeProvider,
+      userPrompt,
+      req.assistantReply,
+      "off",
+      { sessionId },
+    );
+    logger.app("session", "info", "session title summarized", {
+      sessionId,
+      data: { title, providerId: launch.providerId, modelId: launch.modelId },
+    });
+    return { title };
   });
 
   handle(IPC.invoke.agentPrompt, async (req: AgentPromptRequest) => {
@@ -7580,7 +8024,7 @@ function registerIpc() {
         String(payload?.id ?? ""),
         payload?.settings ?? {},
       );
-      sendToRenderer(IPC.event.pluginChanged, {
+      sendToRenderer(IPC.event.pluginChanged,{
         reason: "settings",
         pluginId: String(payload?.id ?? ""),
       });
@@ -7605,7 +8049,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, {
+    sendToRenderer(IPC.event.pluginChanged,{
       reason: "loadDev",
       pluginId: loaded.plugin?.id,
     });
@@ -7624,7 +8068,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, { reason: "reload", pluginId: id });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "reload", pluginId: id });
     return { plugin };
   });
 
@@ -7687,7 +8131,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, {
+    sendToRenderer(IPC.event.pluginChanged,{
       reason: "install",
       pluginId: installed.result?.plugin?.id,
     });
@@ -7719,7 +8163,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, {
+    sendToRenderer(IPC.event.pluginChanged,{
       reason: "install",
       pluginId: installed.result?.plugin?.id,
     });
@@ -7736,7 +8180,7 @@ function registerIpc() {
       if (res.plugin.source === "dev") plugins.watchDevPlugin(id);
     }
     logger.app("plugin", "info", "plugin enabled", { pluginId: id });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "enable", pluginId: id });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "enable", pluginId: id });
     return res;
   });
 
@@ -7747,7 +8191,7 @@ function registerIpc() {
     await plugins.unload(id);
     logger.app("plugin", "info", "plugin disabled", { pluginId: id });
     const res = await host.call("plugins.disable", { id });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "disable", pluginId: id });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "disable", pluginId: id });
     return res;
   });
 
@@ -7757,7 +8201,7 @@ function registerIpc() {
     await plugins.unload(id);
     logger.app("plugin", "info", "plugin uninstalled", { pluginId: id });
     const res = await host.call("plugins.uninstall", { id });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "uninstall", pluginId: id });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "uninstall", pluginId: id });
     return res;
   });
 
@@ -7785,7 +8229,7 @@ function registerIpc() {
         pluginId: payload.id,
         data: { mode: payload.scope?.mode, projects: payload.scope?.projects?.length ?? 0 },
       });
-      sendToRenderer(IPC.event.pluginChanged, { reason: "scope", pluginId: payload.id });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "scope", pluginId: payload.id });
       return res;
     },
   );
@@ -7810,7 +8254,7 @@ function registerIpc() {
     if (!host) throw new Error("host unavailable");
     const res = await host.call<{ server: McpServerRecord }>("mcp.upsert", { server });
     await refreshUserMcp(currentWorkspacePath());
-    sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: res.server?.id });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp", pluginId: res.server?.id });
     return res;
   });
 
@@ -7820,7 +8264,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("mcp.remove", payload);
       await refreshUserMcp(currentWorkspacePath());
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: payload.id });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp", pluginId: payload.id });
       return res;
     },
   );
@@ -7831,7 +8275,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("mcp.setEnabled", payload);
       await refreshUserMcp(currentWorkspacePath());
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: payload.id });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp", pluginId: payload.id });
       return res;
     },
   );
@@ -7842,7 +8286,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("mcp.setScope", payload);
       await refreshUserMcp(currentWorkspacePath());
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: payload.id });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp", pluginId: payload.id });
       return res;
     },
   );
@@ -7865,7 +8309,7 @@ function registerIpc() {
       ]);
       const status = await userMcp.test(payload.id);
       await refreshUserMcp(currentWorkspacePath());
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: payload.id });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp", pluginId: payload.id });
       return { status };
     },
   );
@@ -7889,7 +8333,7 @@ function registerIpc() {
     }
     await refreshUserMcp(currentWorkspacePath());
     if (imported.length) {
-      sendToRenderer(IPC.event.pluginChanged, { reason: "mcp" });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp" });
     }
     return { imported, failed };
   });
@@ -7904,7 +8348,7 @@ function registerIpc() {
   handle(IPC.invoke.skillCreate, async (skill: Record<string, unknown>) => {
     if (!host) throw new Error("host unavailable");
     const res = await host.call("skills.create", { skill });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "skill" });
     return res;
   });
 
@@ -7921,7 +8365,7 @@ function registerIpc() {
       path: picked.filePaths[0],
       ...query,
     });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "skill" });
     return res;
   });
 
@@ -7931,7 +8375,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const { id, ...skill } = payload;
       const res = await host.call("skills.update", { id, skill });
-      sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "skill" });
       return res;
     },
   );
@@ -7951,7 +8395,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const request = typeof payload === "string" ? { id: payload } : payload;
       const res = await host.call("skills.remove", request);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "skill" });
       return res;
     },
   );
@@ -7961,7 +8405,7 @@ function registerIpc() {
     async (payload: { id: string; enabled: boolean } & Partial<AgentCapabilityQuery>) => {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("skills.setEnabled", payload);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "skill" });
       return res;
     },
   );
@@ -7971,7 +8415,7 @@ function registerIpc() {
     async (payload: { id: string; scope: ActivationScope }) => {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("skills.setScope", payload);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "skill" });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "skill" });
       return res;
     },
   );
@@ -8018,7 +8462,7 @@ function registerIpc() {
   handle(IPC.invoke.subagentCreate, async (subagent: Record<string, unknown>) => {
     if (!host) throw new Error("host unavailable");
     const res = await host.call("agents.create", { subagent });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "subagent" });
     return res;
   });
 
@@ -8028,7 +8472,7 @@ function registerIpc() {
       if (!host) throw new Error("host unavailable");
       const { id, ...subagent } = payload;
       const res = await host.call("agents.update", { id, subagent });
-      sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "subagent" });
       return res;
     },
   );
@@ -8041,7 +8485,7 @@ function registerIpc() {
   handle(IPC.invoke.subagentRemove, async (id: string) => {
     if (!host) throw new Error("host unavailable");
     const res = await host.call("agents.remove", { id });
-    sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "subagent" });
     return res;
   });
 
@@ -8050,7 +8494,7 @@ function registerIpc() {
     async (payload: { id: string; enabled: boolean }) => {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("agents.setEnabled", payload);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "subagent" });
       return res;
     },
   );
@@ -8060,7 +8504,7 @@ function registerIpc() {
     async (payload: { id: string; scope: ActivationScope }) => {
       if (!host) throw new Error("host unavailable");
       const res = await host.call("agents.setScope", payload);
-      sendToRenderer(IPC.event.pluginChanged, { reason: "subagent" });
+      sendToRenderer(IPC.event.pluginChanged,{ reason: "subagent" });
       return res;
     },
   );
@@ -8283,7 +8727,7 @@ function registerIpc() {
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
     }
-    sendToRenderer(IPC.event.pluginChanged, { reason: "market.install", pluginId: payload.id });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "market.install", pluginId: payload.id });
     return installed;
   });
 
@@ -8308,7 +8752,7 @@ function registerIpc() {
         await plugins.loadFromPath(plugin.path, plugin.permissions ?? []);
       }
     }
-    sendToRenderer(IPC.event.pluginChanged, { reason: "market.applyUpdates" });
+    sendToRenderer(IPC.event.pluginChanged,{ reason: "market.applyUpdates" });
     return applied;
   });
 
@@ -8383,8 +8827,9 @@ app.whenReady().then(async () => {
   // create a window, a tray, or a child process on top of the running app.
   if (!hasSingleInstanceLock) return;
   applyDevelopmentBranding();
+  bootTiming.mark("when-ready");
   try {
-    await clipboardHistory.start();
+    await bootTiming.span("clipboard-history-start", () => clipboardHistory.start());
   } catch (error) {
     logger.app("plugin", "warn", "clipboard history sampling unavailable", {
       data: String(error),
@@ -8416,7 +8861,6 @@ app.whenReady().then(async () => {
   // snapshot stale, so every release performs one bounded update without
   // blocking the first window; Settings can force the same refresh on demand.
   void modelsDevCatalog.ensureLoaded();
-  updater.startAutoCheck();
   let bootError: unknown = null;
   try {
     await bootBackends();
@@ -8432,6 +8876,7 @@ app.whenReady().then(async () => {
     try {
       const stored = (await host.call("settings.get")) as {
         language?: unknown;
+        theme?: unknown;
         keybindings?: unknown;
         developerMode?: unknown;
       } | null;
@@ -8448,6 +8893,11 @@ app.whenReady().then(async () => {
     applyPluginLauncherShortcut();
   }
   await ensureWindow();
+  bootTiming.mark("window-ready");
+  // GitHub discovery is delayed and time-bounded. Never start it before the
+  // first window exists: a hung feed used to sit in "checking" for ~60s and
+  // compete with boot for the net stack.
+  updater.startAutoCheck();
   // createWindow awaits the initial load (loadFile resolves on
   // did-finish-load), so the page is up; give React a beat to mount its
   // event subscriptions before pushing the boot outcome.
@@ -8455,7 +8905,13 @@ app.whenReady().then(async () => {
     sendToRenderer(IPC.event.hostStatus, {
       ok: !bootError,
       ...(bootError
-        ? { component: "host", fatal: true, message: String(bootError) }
+        ? {
+            component: "host",
+            fatal: true,
+            message: isGlibcUnsupportedError(bootError)
+              ? GLIBC_UNSUPPORTED_STATUS
+              : String(bootError),
+          }
         : {}),
     });
     applicationBooted = true;

@@ -1,0 +1,375 @@
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
+import type { MessageUsage, UiMessage } from "@pi-desktop/shared";
+import { useAppStore } from "../stores/app-store";
+import {
+  aggregateToolTokenUsage,
+  calculateCacheRate,
+  calculateContextUsage,
+  calculateTokenRate,
+  usageTokenTotal,
+} from "../lib/context-usage";
+
+function formatTokenCount(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 10_000) return `${Math.round(value / 1000)}k`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return String(value);
+}
+
+const CONTEXT_RING_RADIUS = 9;
+const CONTEXT_RING_CIRCUMFERENCE = 2 * Math.PI * CONTEXT_RING_RADIUS;
+const CONTEXT_POPOVER_GAP = 8;
+const CONTEXT_VIEWPORT_MARGIN = 16;
+
+type ContextPopoverPosition = {
+  top: number;
+  left: number;
+};
+
+export function ContextUsageInspector({
+  usage,
+  turnUsage,
+  contextWindow,
+  tools,
+  responseDurationMs,
+  responseOutputTokens,
+  responseOutputEstimated = false,
+}: {
+  usage: MessageUsage;
+  turnUsage: MessageUsage;
+  contextWindow: number;
+  tools: UiMessage[];
+  responseDurationMs?: number;
+  responseOutputTokens?: number;
+  responseOutputEstimated?: boolean;
+}) {
+  const { t } = useTranslation();
+  const panelId = useId();
+  // The transcript shows one row per compaction; the inspector adds what those
+  // rows cannot — how much of the model context the newest summary occupies.
+  const compaction = useAppStore((state) =>
+    state.activeSessionId
+      ? state.sessionCompactions[state.activeSessionId]?.at(-1)
+      : undefined,
+  );
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [popoverPosition, setPopoverPosition] =
+    useState<ContextPopoverPosition | null>(null);
+  const context = calculateContextUsage(usage, contextWindow);
+  const turnTotal = usageTokenTotal(turnUsage);
+  const throughput = calculateTokenRate(
+    responseOutputTokens ?? turnUsage.outputTokens,
+    responseDurationMs,
+  );
+  const cacheRate = calculateCacheRate(
+    turnUsage.inputTokens,
+    turnUsage.cacheReadTokens,
+  );
+  const toolRows = aggregateToolTokenUsage(tools);
+  const toolTotal = toolRows.reduce(
+    (total, row) => total + row.totalTokens,
+    0,
+  );
+  const level =
+    context.remainingPercent <= 10
+      ? "critical"
+      : context.remainingPercent <= 25
+        ? "warning"
+      : "comfortable";
+
+  const closeInspector = useCallback(() => {
+    setOpen(false);
+    setPopoverPosition(null);
+  }, []);
+
+  // The panel is click-toggled rather than hover-opened: reading the token
+  // breakdown takes long enough that a pointer leaving the trigger should not
+  // dismiss it.
+  const toggleInspector = useCallback(() => {
+    setOpen((previous) => {
+      if (previous) setPopoverPosition(null);
+      return !previous;
+    });
+  }, []);
+
+  const updatePopoverPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    const popover = popoverRef.current;
+    if (!trigger || !popover) return;
+
+    const triggerRect = trigger.getBoundingClientRect();
+    const triggerVisible =
+      triggerRect.bottom > 0 && triggerRect.top < window.innerHeight;
+    if (!triggerVisible) {
+      setOpen(false);
+      setPopoverPosition(null);
+      return;
+    }
+    const popoverRect = popover.getBoundingClientRect();
+    const maxLeft = Math.max(
+      CONTEXT_VIEWPORT_MARGIN,
+      window.innerWidth - popoverRect.width - CONTEXT_VIEWPORT_MARGIN,
+    );
+    const left = Math.min(
+      Math.max(CONTEXT_VIEWPORT_MARGIN, triggerRect.left),
+      maxLeft,
+    );
+    const above = triggerRect.top - popoverRect.height - CONTEXT_POPOVER_GAP;
+    const below = triggerRect.bottom + CONTEXT_POPOVER_GAP;
+    const maxTop = Math.max(
+      CONTEXT_VIEWPORT_MARGIN,
+      window.innerHeight - popoverRect.height - CONTEXT_VIEWPORT_MARGIN,
+    );
+    const top =
+      above >= CONTEXT_VIEWPORT_MARGIN && above <= maxTop
+        ? above
+        : below >= CONTEXT_VIEWPORT_MARGIN && below <= maxTop
+          ? below
+          : Math.min(Math.max(CONTEXT_VIEWPORT_MARGIN, below), maxTop);
+
+    setPopoverPosition((previous) =>
+      previous?.top === top && previous.left === left
+        ? previous
+        : { top, left },
+    );
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(updatePopoverPosition);
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    compaction,
+    context.usedTokens,
+    contextWindow,
+    open,
+    toolRows.length,
+    toolTotal,
+    turnTotal,
+    throughput,
+    updatePopoverPosition,
+  ]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleViewportChange = () => updatePopoverPosition();
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+    return () => {
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [open, updatePopoverPosition]);
+
+  useEffect(() => {
+    if (!open || !popoverRef.current || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(updatePopoverPosition);
+    observer.observe(popoverRef.current);
+    return () => observer.disconnect();
+  }, [open, updatePopoverPosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (
+        triggerRef.current?.contains(target) ||
+        popoverRef.current?.contains(target)
+      ) {
+        return;
+      }
+      closeInspector();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      closeInspector();
+      triggerRef.current?.focus();
+    };
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeInspector, open]);
+
+  const popover = open ? (
+    <div
+      ref={popoverRef}
+      className={`context-inspector-popover${popoverPosition ? " is-open" : ""}`}
+      id={panelId}
+      role="dialog"
+      aria-label={t("chat.usageContextLabel")}
+      style={
+        popoverPosition
+          ? {
+              top: `${popoverPosition.top}px`,
+              left: `${popoverPosition.left}px`,
+            }
+          : undefined
+      }
+    >
+      <div className="context-inspector-heading">
+        <strong className="context-inspector-heading-value">
+          {t("chat.usageContextLeft", {
+            count: formatTokenCount(context.remainingTokens),
+          })}
+        </strong>
+        <strong className="context-inspector-heading-percent">
+          {context.remainingPercent}%
+        </strong>
+      </div>
+      <div className="context-inspector-window">
+        <span>{t("chat.usageContextWindow")}</span>
+        <strong>
+          {t("chat.usageContextTokens", {
+            used: formatTokenCount(context.usedTokens),
+            window: formatTokenCount(contextWindow),
+          })}
+        </strong>
+        <span className="context-inspector-window-percent">
+          {context.usedPercent}%
+        </span>
+      </div>
+      <div className="context-inspector-kpis">
+        <div>
+          <span>{t("chat.usageTurnTotal")}</span>
+          <strong>{formatTokenCount(turnTotal)}</strong>
+        </div>
+        <div>
+          <span>{t("chat.usageThroughputLabel")}</span>
+          <strong>
+            {throughput === undefined
+              ? t("chat.usageThroughputUnavailable")
+              : t(
+                  responseOutputEstimated
+                    ? "chat.usageThroughputEstimated"
+                    : "chat.usageThroughput",
+                  {
+                    count: formatTokenCount(throughput),
+                  },
+                )}
+          </strong>
+        </div>
+      </div>
+      <div className="context-inspector-summary">
+        <div className="context-inspector-summary-row">
+          <strong>{t("chat.usageProviderUsage")}</strong>
+          <span className="context-inspector-summary-values">
+            <span>
+              {t("chat.usageInput")} {formatTokenCount(turnUsage.inputTokens)}
+            </span>
+            <span>
+              {t("chat.usageOutput")} {formatTokenCount(turnUsage.outputTokens)}
+            </span>
+            {turnUsage.cacheReadTokens !== undefined ? (
+              <span>
+                {t("chat.usageCacheRead")} {formatTokenCount(turnUsage.cacheReadTokens)}
+              </span>
+            ) : null}
+            {cacheRate !== undefined ? (
+              <span>
+                {t("chat.usageCacheRate")} {cacheRate}%
+              </span>
+            ) : null}
+            {turnUsage.cacheWriteTokens !== undefined ? (
+              <span>
+                {t("chat.usageCacheWrite")} {formatTokenCount(turnUsage.cacheWriteTokens)}
+              </span>
+            ) : null}
+            {turnUsage.reasoningTokens !== undefined ? (
+              <span>
+                {t("chat.usageReasoning")} {formatTokenCount(turnUsage.reasoningTokens)}
+              </span>
+            ) : null}
+          </span>
+        </div>
+        <div className="context-inspector-summary-row">
+          <strong>{t("chat.usageTools")}</strong>
+          <span className="context-inspector-summary-values">
+            {toolRows.length > 0
+              ? t("chat.usageToolsSummary", {
+                  count: toolRows.length,
+                  calls: tools.length,
+                  tokens: formatTokenCount(toolTotal),
+                })
+              : t("chat.usageNoTools")}
+          </span>
+        </div>
+      </div>
+      {compaction ? (
+        <div className="context-inspector-compaction">
+          <span>
+            {t("chat.usageCompaction", { times: compaction.generation })}
+          </span>
+          <strong>~{formatTokenCount(compaction.summaryTokens)}</strong>
+        </div>
+      ) : null}
+    </div>
+  ) : null;
+
+  return (
+    <div
+      className="context-inspector"
+      data-level={level}
+      data-open={open ? "true" : "false"}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        className="context-inspector-trigger"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
+        aria-label={t("chat.usageContextAria", {
+          percent: context.remainingPercent,
+          remaining: formatTokenCount(context.remainingTokens),
+        })}
+        onClick={toggleInspector}
+      >
+        <svg
+          className="context-inspector-ring"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle
+            className="context-inspector-ring-track"
+            cx="12"
+            cy="12"
+            r={CONTEXT_RING_RADIUS}
+          />
+          <circle
+            className="context-inspector-ring-progress"
+            cx="12"
+            cy="12"
+            r={CONTEXT_RING_RADIUS}
+            strokeDasharray={CONTEXT_RING_CIRCUMFERENCE}
+            strokeDashoffset={
+              CONTEXT_RING_CIRCUMFERENCE * (1 - context.remainingRatio)
+            }
+          />
+        </svg>
+        <span className="context-inspector-ring-value">
+          {context.remainingPercent}%
+        </span>
+      </button>
+      {popover && typeof document !== "undefined"
+        ? createPortal(popover, document.body)
+        : null}
+    </div>
+  );
+}

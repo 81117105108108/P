@@ -321,6 +321,10 @@
   min-width: 0;
 }
 
+.composer-right .context-inspector-trigger {
+  min-height: 28px;
+}
+
 .icon-btn {
   display: inline-flex;
   height: 28px;

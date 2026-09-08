@@ -4,6 +4,10 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { ErrorCodes, PROTOCOL_VERSION, rpcTimeoutMs, stripProxyEnv } from "@pi-desktop/shared";
+import {
+  GlibcUnsupportedError,
+  glibcMissingSymbol,
+} from "./linux-glibc";
 
 const HOST_DISPOSE_GRACE_MS = 3_000;
 const HOST_FORCE_KILL_GRACE_MS = 1_000;
@@ -90,6 +94,7 @@ export class HostProcess {
   private resolveExit!: () => void;
   private disposePromise?: Promise<void>;
   private readline?: ReturnType<typeof createInterface>;
+  private lastStderr = "";
   readonly binaryPath: string;
   readonly generation = randomUUID();
 
@@ -114,6 +119,7 @@ export class HostProcess {
     this.child.stderr.setEncoding("utf8");
     this.child.stderr.on("data", (text: string) => {
       if (!text) return;
+      this.lastStderr = `${this.lastStderr}${text}`.slice(-4_000);
       if (onStderr) onStderr(text);
       else console.error(`[host-core] ${text.trimEnd()}`);
     });
@@ -193,6 +199,11 @@ export class HostProcess {
    * rather than by matching message text.
    */
   private unavailableError(message: string): Error & { errorCode: string } {
+    if (glibcMissingSymbol(this.lastStderr) || glibcMissingSymbol(message)) {
+      return Object.assign(new GlibcUnsupportedError(), {
+        errorCode: ErrorCodes.HOST_UNAVAILABLE,
+      });
+    }
     return Object.assign(new Error(message), {
       errorCode: ErrorCodes.HOST_UNAVAILABLE,
     });

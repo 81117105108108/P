@@ -1,7 +1,7 @@
 # 06. Desktop Release Runbook
 
 > Scope: D126/D285 tag artifacts for macOS arm64 and Intel x64, Windows x64,
-> and Linux x64;
+> and Linux x64, including the Linux system-Electron ASAR asset;
 > macOS signing/notarization remains the detailed qualification lane below.
 > Cross-references: [milestones](01-mvp-milestones.md) · [process model](../03-runtime/07-process-model.md) · [security](../05-security/01-security.md)
 
@@ -64,8 +64,9 @@ when macOS `iconutil` is available, without overwriting the canonical source.
 - `Resources/app.asar` — Electron Main, preload, renderer output, and only the
   runtime-resolved production modules. Renderer libraries are already present
   in Vite output and are not copied again as raw package trees.
-- Chromium locale packs for English and Simplified Chinese only. Product
-  `en`/`zh-CN` catalogs remain bundled independently of Chromium locales.
+- Chromium locale packs for English, Simplified Chinese, Traditional Chinese,
+  Turkish, German, Spanish, French, and Korean. Product catalogs remain bundled
+  independently of Chromium locales.
 - App icon `build/icon.icns` (derived from canonical `build/icon_1024.png` by
   `scripts/make-icon.py`).
 - macOS menu bar template `build/tray-icon-mac.png`, derived from the dark PI
@@ -77,7 +78,7 @@ when macOS `iconutil` is available, without overwriting the canonical source.
 ### 4.1 Mandatory release version-surface gate (D164 + D260)
 
 **Every product release that bumps a stable app version and cuts a tag MUST
-first update every version-bearing surface: the dual-locale in-app product
+first update every version-bearing surface: the shipped-locale in-app product
 changelog and the version numbers stated in project documentation.** Tagging a
 stable version while any surface still describes an older version is a
 **release process failure**: packaged builds cannot show "what's new" without a
@@ -89,7 +90,7 @@ Surfaces in scope:
 
 | Surface | Requirement |
 |---|---|
-| `packages/shared/src/changelog.ts` | Newest-first EN + zh-CN entries for the version, matching highlight counts |
+| `packages/shared/src/changelog.ts` | Newest-first entries for every shipped product locale, matching highlight counts |
 | `packages/shared/src/changelog.test.ts` | Version added at the top of the newest-first list |
 | `package.json`, `apps/*/package.json`, `packages/*/package.json`, `docs/package.json` | Same version (`docs` is a third workspace root, not under `apps`/`packages`) |
 | `Cargo.toml` `[workspace.package]`, `Cargo.lock` `host-core` | Same version |
@@ -100,7 +101,7 @@ Blocking steps:
 
 1. Edit `packages/shared/src/changelog.ts` **before**
    `node scripts/release.mjs <version>` / `git tag`:
-   - Add a **newest-first** entry under both `en` and `zh-CN`.
+   - Add a **newest-first** entry under `en` and every shipped product locale.
    - Same `version` string (semver **without** a leading `v`, matching
      `apps/desktop` / `APP_VERSION`).
    - Optional ISO `date` (`YYYY-MM-DD`).
@@ -118,7 +119,9 @@ Blocking steps:
    now describe incorrectly. Both locales stay structurally in sync; English is
    the source of truth and the zh-CN file links the `docs/zh-CN/` mirrors.
 5. Run the preflight and fix every reported surface:
-   `pnpm check:release-docs [version]` (`node scripts/check-release-docs.mjs`).
+   `pnpm check:release-docs [version]` (`node scripts/check-release-docs.mjs`). The
+   preflight compiles the TypeScript changelog in a temporary directory, so it does
+   not require a prior workspace build.
    `scripts/release.mjs` runs
    the same check after bumping and refuses to commit or tag while it fails;
    `--skip-docs-check` exists only for a deliberate non-release bump.
@@ -129,7 +132,8 @@ Blocking steps:
 
 Pre-tag checklist:
 
-- [ ] `packages/shared/src/changelog.ts` has EN + zh-CN entries for the version
+- [ ] `packages/shared/src/changelog.ts` has entries for every shipped product
+      locale for the version
       about to be tagged
 - [ ] Highlight counts match across locales
 - [ ] Shared changelog tests pass
@@ -180,7 +184,11 @@ the publish job merges them into one feed after downloading both artifacts.
 DMG, ZIP, NSIS, AppImage, deb, blockmap, and updater feed outputs are already
 compressed or compression-insensitive. The workflow therefore uploads their
 temporary Actions artifacts with compression level zero before the publish job
-assembles the GitHub Release.
+assembles the GitHub Release. The Linux runner also copies
+`linux-unpacked/resources/app.asar` to the versioned
+`PI-Desktop-<version>-linux-x64.asar` asset before upload. This preserves the
+exact archive used by the Linux installers for downstream repackaging with a
+system Electron.
 
 ## 5. Verification gates
 
@@ -213,7 +221,8 @@ The package inventory must confirm:
   tree in ASAR
 - required third-party license and notice files remain in ASAR or
   `Resources/licenses` when their non-runtime package trees are pruned
-- only the configured English and Simplified Chinese Chromium locale packs
+- only the configured English, Simplified Chinese, Traditional Chinese,
+  Turkish, German, Spanish, French, and Korean Chromium locale packs
 
 The first audited optimized package establishes the platform baseline. Keep
 per-platform measurements rather than applying one budget to different
@@ -231,7 +240,7 @@ applicable to this directory-only validation build.
 | `Contents/Resources` | 33,102,807 | 31.6 |
 | `Resources/app.asar` | 20,944,962 | 20.0 |
 | `Resources/app.asar.unpacked` native payload | 137,336 | 0.1 |
-| English and Simplified Chinese Chromium locale packs | 1,033,673 | 1.0 |
+| Historical English and Simplified Chinese Chromium locale packs baseline | 1,033,673 | 1.0 |
 | Agent sidecar | 3,258,983 | 3.1 |
 | Rust host | 7,160,000 | 6.8 |
 
@@ -322,6 +331,16 @@ Native-runner output matrix:
 - macOS Intel x64: DMG and ZIP
 - Windows x64: NSIS installer
 - Linux x64: AppImage and deb
+- Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`
+
+The ASAR asset contains the Electron application archive, not a complete Linux
+distribution. To repackage it, place it as the application archive in the
+target Electron resources layout together with the native host and other
+resources from the target package, then launch it with:
+
+```bash
+electron PI-Desktop-<version>-linux-x64.asar
+```
 
 Shell smoke on each native runner:
 
@@ -336,5 +355,9 @@ Shell smoke on each native runner:
 ## 7. Known limitations
 
 - macOS and Linux deb remain notify-and-link update modes.
+- Linux x64 packages are built on Ubuntu 22.04 so host-core needs glibc 2.35
+  or newer (Ubuntu 22.04, Debian 12, Fedora 36+). The tag job runs
+  `scripts/check-linux-host-glibc.mjs` and refuses a binary that needs a
+  newer glibc.
 - Signed in-app macOS delivery, rollback, staged rollout, and prerelease
   channel policy remain open release work.

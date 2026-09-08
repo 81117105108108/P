@@ -25,6 +25,10 @@ const settingsComponents = new Map(
     .map((name) => [name, readFileSync(join(settingsDir, name), "utf8")]),
 );
 const pageSrc = readFileSync(join(here, "../src/pages/PluginsPage.tsx"), "utf8");
+const marketSettingsSrc = readFileSync(
+  join(here, "../src/components/plugins/MarketplaceSourceSettings.tsx"),
+  "utf8",
+);
 const settingsPageSrc = readFileSync(join(here, "../src/pages/SettingsPage.tsx"), "utf8");
 const electronMainSrc = readFileSync(join(here, "../electron/main/index.ts"), "utf8");
 const hostCapabilitySources = [
@@ -105,6 +109,15 @@ test("the extensions page keeps only installed and market tabs", () => {
 test("the extensions page uses tabs instead of the removed capability overview", () => {
   assert.doesNotMatch(pageSrc, /plugins-hero|plugins-stat|const summary\s*=/);
   assert.match(pageSrc, /className="plugins-segment"/);
+});
+
+test("marketplace source settings omit redundant explanatory copy", () => {
+  assert.match(marketSettingsSrc, /marketProviderTitle/);
+  assert.doesNotMatch(
+    marketSettingsSrc,
+    /marketProviderDesc|marketProviderMirrorHint|marketActiveSource|plugins-market-settings-active/,
+  );
+  assert.match(marketSettingsSrc, /marketCustomUrlDesc/);
 });
 
 test("installed plugin rows keep secondary detail behind a disclosure", () => {

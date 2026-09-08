@@ -23,6 +23,11 @@ import {
 } from "@pi-desktop/shared";
 import type { Logger } from "./logger";
 import { parseAllowedExternalUrl } from "./safe-open-external";
+import {
+  raceWithTimeout,
+  timingMessage,
+  UPDATE_CHECK_TIMEOUT_CODE,
+} from "./boot-timing";
 
 const { autoUpdater } = electronUpdaterPkg;
 
@@ -30,13 +35,17 @@ export const RELEASES_URL = "https://github.com/vastsa/PI-Desktop/releases/lates
 
 const AUTO_CHECK_INITIAL_DELAY_MS = 15_000;
 const AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+/** Auto-check wait. Chromium's GitHub hang is ~60s; do not pin UI on that. */
+export const AUTO_CHECK_TIMEOUT_MS = 8_000;
+/** Manual check can wait a bit longer; still far below the socket timeout. */
+export const MANUAL_CHECK_TIMEOUT_MS = 15_000;
 
 export type UpdaterOptions = {
   logger: Logger;
   send: (channel: string, payload: unknown) => void;
   currentVersion: string;
   /**
-   * Active product UI locale for dual-locale release notes (en / zh-CN).
+   * Active product UI locale for shipped-locale release notes.
    * Called when attaching notes to update state; defaults to English.
    */
   getLocale?: () => string | null | undefined;
@@ -188,9 +197,91 @@ export class AppUpdaterController {
       return this.state;
     }
     this.manualRequested = Boolean(options.manual);
+    const timeoutMs = this.manualRequested
+      ? MANUAL_CHECK_TIMEOUT_MS
+      : AUTO_CHECK_TIMEOUT_MS;
+    const started = Date.now();
+    this.logger.app(
+      "timing",
+      "info",
+      timingMessage("updater", "check-start", {
+        manual: this.manualRequested,
+        timeoutMs,
+      }),
+      {
+        data: {
+          kind: "updater",
+          phase: "check-start",
+          manual: this.manualRequested,
+          timeoutMs,
+        },
+      },
+    );
     try {
-      await autoUpdater.checkForUpdates();
+      // Fire-and-forget relative to boot: callers must not await this from the
+      // first-window path. The race only bounds *our* wait; electron-updater
+      // may still finish later and emit available/up-to-date.
+      await raceWithTimeout(
+        autoUpdater.checkForUpdates(),
+        timeoutMs,
+        "update check",
+      );
+      this.logger.app(
+        "timing",
+        "info",
+        timingMessage("updater", "check-done", {
+          durationMs: Date.now() - started,
+          outcome: "ok",
+          manual: this.manualRequested,
+        }),
+        {
+          data: {
+            kind: "updater",
+            phase: "check-done",
+            durationMs: Date.now() - started,
+            outcome: "ok",
+            manual: this.manualRequested,
+          },
+        },
+      );
     } catch (error) {
+      const durationMs = Date.now() - started;
+      const timedOut =
+        (error as { code?: unknown } | null)?.code === UPDATE_CHECK_TIMEOUT_CODE;
+      this.logger.app(
+        "timing",
+        "warn",
+        timingMessage("updater", "check-done", {
+          durationMs,
+          outcome: timedOut ? "timeout" : "error",
+          manual: this.manualRequested,
+        }),
+        {
+          data: {
+            kind: "updater",
+            phase: "check-done",
+            durationMs,
+            outcome: timedOut ? "timeout" : "error",
+            manual: this.manualRequested,
+            error: String(error),
+          },
+        },
+      );
+      if (timedOut) {
+        if (this.manualRequested) {
+          this.setState({ status: "error", error: "update check timed out" });
+          throw error;
+        }
+        // Auto checks fail quietly. Drop "checking" so a 60s GitHub hang
+        // cannot skip the next interval or freeze Settings on a spinner.
+        // Read through getState(): check() already narrowed this.state.status
+        // away from "checking", but the checking-for-update listener can set
+        // it during the awaited race.
+        if (this.getState().status === "checking") {
+          this.setState({ status: "idle", error: undefined });
+        }
+        return this.state;
+      }
       // The 'error' listener already recorded state; rethrow for manual
       // callers so the invoke rejects and the UI can toast it.
       if (options.manual) throw error;
@@ -225,6 +316,11 @@ export class AppUpdaterController {
     await shell.openExternal(url);
   }
 
+  /**
+   * Schedule background GitHub feed checks. Never await this from boot: the
+   * first check is delayed and time-bounded so a hung feed cannot block the
+   * first window or pin the updater on `checking`.
+   */
   startAutoCheck() {
     if (this.state.mode === "disabled" || this.initialTimer || this.intervalTimer) {
       return;

@@ -8,11 +8,12 @@
 ## Context
 
 The composer is a controlled textarea. Chromium exposes pasted operating-system
-files and screenshots as `File` objects, but the text-only prompt contract has
-no binary `ImageContent` channel and a pasted file must remain available to the
-agent after the prompt is sent. Writing the bytes into the project would dirty
-git state and would not follow the session-bound workspace/scratch ownership
-rules.
+files and screenshots as `File` objects, while the native picker exposes files
+that may live outside the active workspace. The text-only prompt contract has
+no binary `ImageContent` channel and an attached file must remain available to
+the agent after the prompt is sent. Writing the bytes into the project would
+dirty git state and would not follow the session-bound workspace/scratch
+ownership rules.
 
 ## Decision
 
@@ -21,7 +22,9 @@ rules.
 2. The renderer transfers bounded file bytes plus the browser-provided name and
    MIME type to Electron main through `composer/pasteFiles`, together with the
    durable session id. A home composer creates or reuses a session before the
-   transfer.
+   transfer. Native picker selections use the additive `composer/importFiles`
+   channel with the same session id; main resolves and copies those source
+   paths before returning references to the renderer.
 3. Electron main validates that the session exists, limits the request to 20
    files, 64 MiB per file, and 128 MiB total, strips directory components and
    unsafe name characters, and writes unique files with exclusive-create
@@ -44,6 +47,8 @@ rules.
 
 - The renderer cannot select the destination directory; the session id is
   checked in main and the output root is constructed from the host data dir.
+  Picker source paths are resolved through `realpath` and must be regular files;
+  they never become prompt references or destination paths.
 - Renderer names are reduced to a basename and sanitized. A UUID prefix and
   exclusive creation prevent collisions and overwrite-by-name.
 - The bridge is Electron-only. It adds no host RPC method and does not expose
@@ -58,9 +63,10 @@ rules.
 - **Send binary inline with the prompt:** changes the text-only prompt contract,
   inflates context, and requires provider-specific attachment handling.
   Rejected.
-- **Use an Electron file picker:** does not support screenshots and adds an
-  extra interaction for the common clipboard workflow. Rejected as the paste
-  path, though existing picker channels remain independent.
+- **Use an Electron file picker for paste:** does not support screenshots and
+  adds an extra interaction for the common clipboard workflow. Rejected as the
+  paste path; the separate picker upload action now reuses this scratch
+  contract for explicitly selected files.
 
 ## Consequences
 

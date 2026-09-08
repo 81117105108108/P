@@ -140,7 +140,7 @@ replace an artifact.
 - The client carries no GitHub token. A private or otherwise unreachable feed
   fails closed; automatic failures stay ambient and explicit checks expose the
   error.
-- Dual-locale product "what's new" text (D164) is selected in Main from the
+- Localized product "what's new" text (D164/D345) is selected in Main from the
   shipped changelog catalog and attached to `UpdateState.releaseNotes`. The
   renderer cannot supply a notes URL, feed, or remote body; missing catalog
   entries simply omit the section.

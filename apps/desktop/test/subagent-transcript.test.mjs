@@ -6,6 +6,14 @@ const transcriptSource = await readFile(
   new URL("../src/components/ChatTranscript.tsx", import.meta.url),
   "utf8",
 );
+const runtimeSource = await readFile(
+  new URL("../../../packages/agent-runtime/src/runtime.ts", import.meta.url),
+  "utf8",
+);
+const toolPresentationSource = await readFile(
+  new URL("../src/lib/tool-presentation.ts", import.meta.url),
+  "utf8",
+);
 const followScrollSource = await readFile(
   new URL("../src/hooks/use-follow-scroll.ts", import.meta.url),
   "utf8",
@@ -139,6 +147,29 @@ test("a Task row is expandable and names the delegate it used", () => {
   assert.match(transcriptSource, /TOOL_RUNNING_KEYS.*delegate: "chat\.toolDelegating"/s);
   assert.match(transcriptSource, /className="tool-row-agent"/);
   assert.match(transcriptSource, /case "delegate":\n\s+return <IconBot/);
+});
+
+test("a Task node shows the effective model after the subagent name", () => {
+  assert.match(
+    runtimeSource,
+    /startedAt,\s*\n\s*modelId: provider\.modelId,/,
+  );
+  assert.match(
+    transcriptSource,
+    /const modelId = variant === "topology" \? delegateModelId\(message\) : "";/,
+  );
+  assert.match(
+    transcriptSource,
+    /className="subagent-topology-node-model" title=\{modelId\}/,
+  );
+  assert.match(
+    toolPresentationSource,
+    /key !== "agent" && key !== "error" && key !== "modelId"/,
+  );
+  assert.match(
+    messagesCss,
+    /\.subagent-topology-node-model \{[^}]*font-family: var\(--font-mono\)/,
+  );
 });
 
 test("the report is printed once: in the body, or as the nested answer", () => {

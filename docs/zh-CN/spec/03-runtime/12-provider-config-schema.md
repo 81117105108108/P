@@ -46,9 +46,10 @@
     "secretRef": { "type": "string" },
     "headers": {
       "type": "object",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": { "type": "string" },
+      "maxProperties": 32
     },
-    "userAgent": { "type": "string", "maxLength": 256 },
+    "userAgent": { "type": "string", "maxLength": 256, "description": "legacy; migrates into headers.User-Agent" },
     "apiStyle": {
       "enum": [
         "chat_completions",
@@ -132,9 +133,9 @@ base URL 与粘贴的密钥工作。厂商行的样式不由厂商固定：GitHu
 OpenCode Go（以及任何 `opencode.ai` 主机）的 LLM 请求必须带稳定的
 `x-opencode-session`。agent-runtime 在会话、子代理、提示增强与插件 one-shot
 上发送该头，并附带 `x-opencode-client: pi-desktop` 与
-`User-Agent: pi-desktop/<APP_VERSION>`。行上可选的 `userAgent` 会覆盖该默认值；留空则保持适配器默认。
+`User-Agent: pi-desktop/<APP_VERSION>`。行上可选的 `headers` 会覆盖这些默认值；留空则保持适配器默认。
 
-每行（AI 服务或 OAuth 账户）可在高级选项中设置 User-Agent。空值保持 pi-ai / `claude-cli` / OpenCode 默认。fetch 包装器是最后写入者，因此 Codex 与 Anthropic SDK 无法覆盖。首次 OAuth 登录不收集 User-Agent，登录后再编辑。覆盖 Anthropic OAuth 的 `claude-cli/…` 可能导致 Claude Pro/Max 拒绝请求。
+每行（AI 服务或 OAuth 账户）可在高级选项中用键值行编辑自定义请求头。空映射保持 pi-ai / `claude-cli` / OpenCode 默认。fetch 包装器是最后写入者，因此 Codex 与 Anthropic SDK 无法覆盖。禁止 `Authorization` / `Host` / `Content-Type` 等保留头。遗留的 `userAgent` 读取时迁入 `headers["User-Agent"]`。首次 OAuth 登录不收集请求头，登录后再编辑。覆盖 Anthropic OAuth 的 `claude-cli/…` 可能导致 Claude Pro/Max 拒绝请求。
 
 ### 命名端点预设
 
@@ -238,12 +239,12 @@ Advanced 控件中设置的非默认值仍优先。未知模型继续使用 128k
 - 输出：`{ providers: ProviderPublic[] }`
 - `ProviderPublic` 排除原始秘密；包括 `hasSecret: boolean`（**任一种**凭据
   存在即为真）、`hasOauth: boolean`、非敏感的 `oauthAccountLabel?: string`
-  与可选的 `userAgent?: string`
+  与可选的 `headers?: Record<string, string>`
 
 ### `providers.create` / `providers.update`
 - 在：提供商字段 + 可选的 `secretValue` + 可选的 `oauthAccountLabel`
-  （合并进 `config_json.oauth`，传空字符串即清除）+ 可选的 `userAgent`
-  （合并进 `config_json.userAgent`，传空字符串即清除）；旧客户端仍可能发送
+  （合并进 `config_json.oauth`，传空字符串即清除）+ 可选的 `headers`
+  （合并进 `config_json.headers`，传 `{}` 即清除）；遗留 `userAgent` 读取时迁入 `headers["User-Agent"]`；旧客户端仍可能发送
   `supportsReasoning` / `supportedThinkingLevels`
 - 行为：保留配置；如果存在secretValue，则写入密钥存储并设置
   `secretRef`；传统思维领域可能仍保留在
@@ -271,7 +272,8 @@ Advanced 控件中设置的非默认值仍优先。未知模型继续使用 128k
 - 对 `authKind: "oauth"` 行，Electron 主进程读取已认证的目录
   （`models.getAvailable`，它已应用厂商自己的 `filterModels`，因此 Copilot
   账户列出的是其订阅包含的模型），而不是调用 `/models`；返回的每个模型都
-  带着其线路 API 所隐含的 apiStyle
+  带着其线路 API 所隐含的 apiStyle。`openai-codex` 这类静态厂商使用已固定
+  的 pi-ai 目录（0.85.1 包含 `gpt-6-astra`）；models.dev 不会发明这些 ID。
 - 输出：`{ models: ModelCatalogItem[] }`；每个模型都带有 pi-resolved
   `reasoning` 功能和 `supportedThinkingLevels`。缓存的功能标签
   旧提供程序字段无法覆盖 pi 模型记录。
@@ -297,7 +299,7 @@ Advanced 控件中设置的非默认值仍优先。未知模型继续使用 128k
 2. `openai_compatible` / 本地网关需要绝对 `baseUrl`，除非预设表示可选
 3. `authKind=none` 禁止用于需要密钥的云预设
 4. headers key 不区分大小写，唯一
-5. `userAgent` 需 trim，最多 256 字节，不得含 CR/LF
+5. headers key 不区分大小写且唯一，最多 32 条；禁止保留头与 CR/LF
 6. 强制实施 SecretValue 最大长度（例如 8KB）
 6. modelId 必须是非空的修剪字符串；允许 `/`、`.`、`:`、`-`
 7.旧客户端上的未知协议 => 提供程序显示为禁用并带有警告，而不是崩溃

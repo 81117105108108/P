@@ -315,6 +315,10 @@ PI-Desktop 的行为类似于桌面应用程序 shell，因此意外拖动
 
 UI 字体栈可从设置 → 基础 → 外观中由用户覆盖（ADR 0083）。字体行
 将 CSS 字体栈持久化为 `AppSettings.fontFamily`；缺失值保持上述令牌栈。
+字体大小行（D343 / ADR 0180）将可选倍率持久化为 `AppSettings.fontScale`
+（默认 1，范围 0.8–1.5）。渲染器在根元素设置 `--font-scale`，全部
+`--text-*` 令牌（以及 `--leading-row`）按比例缩放。共享 Lucide 图标使用同一倍率。
+窗口缩放仍独立。界面不出现 px 输入。
 内置开源字体（Geist、Inter、Noto Sans SC、LXGW WenKai — SIL OFL 1.1）
 在 `apps/desktop/src/assets/fonts/` 下本地发布并附许可证文本，系统已安装
 字体由 Electron 主进程枚举。每个自定义字体栈都会追加 CJK 回退层，
@@ -345,6 +349,7 @@ UI 字体栈可从设置 → 基础 → 外观中由用户覆盖（ADR 0083）�
 字母间距标记：`--tracking-tighter` -0.03em、`--tracking-tight` -0.02em、`--tracking-normal` 0、`--tracking-wide` 0.02em。
 
 > 注意：14px 底座是针对开发人员密度而设计的。不要达到默认值 16px。
+> 想把文字调大或调密时，在外观里改字体大小；那会通过 `--font-scale` 缩放整条 `--text-*` 阶。
 >
 > 侧边栏主要镶边（导航项、页脚标识、配置文件菜单操作）
 > 使用 `--text-base`，因此左导轨与主体可读性相匹配。
@@ -571,8 +576,8 @@ shadow-lg:  0 8px 24px rgba(0,0,0,0.12)
 - 退出：一旦 `ready` 为 true，就会出现 280 毫秒不透明度淡出 (`startup-splash-out`)，显露出来
   下面已经安装好的外壳
 - 减少运动：接近零的 enter/exit 和静态全宽条
-- macOS：启动页与侧边栏使用同一套玻璃态（D304）——`--ds-sidebar-glass-tint`
-  底色加上下 sheen，叠在原生 `under-window` vibrancy 之上，这样启动面不会在
+- macOS：启动页与侧边栏使用同一套玻璃态（D304 / D348）——`--ds-sidebar-glass-tint`
+  底色加上下 sheen，叠在原生 `sidebar` vibrancy 之上，这样启动面不会在
   半透明侧边栏之前闪出一块不透明面板。已挂载的 shell 在玻璃下保持隐藏直到退出
   淡出，再交叉淡入。其他平台仍为不透明的 `--ds-bg-primary`
 
@@ -944,7 +949,7 @@ Linux 保留淡入淡出和滑动退出。
 
 ### 11. 8 Toast
 
-完整的组件合同和使用规则：[08-component-spec.md §17](/zh-CN/spec/04-ux/08-component-spec#17-toast)。
+完整的组件合同和使用规则：[08-component-spec.md §17](/zh-CN/spec/04-ux/08-component-spec#_17-toast)。
 
 | 财产 | 价值 |
 |---|---|

@@ -172,7 +172,7 @@ Each ADR includes:
 | 0157 | Main-owned GitHub issue feedback | Accepted |
 | 0158 | Keep approval cards focused and remember the selected mode | Accepted |
 | 0159 | Generated plugin settings and plugin-local shortcuts | Accepted |
-| 0160 | Shipped locale registry and searchable language picker | Accepted |
+| 0160 | Shipped locale registry and searchable language picker | Accepted (amended by 0182) |
 | 0161 | Searchable theme picker matching language | Accepted |
 | 0162 | Cross-session A2A addressing | Superseded by 0165 |
 | 0163 | Transcript file references render as previewable chips | Accepted |
@@ -188,5 +188,15 @@ Each ADR includes:
 | 0173 | Plugin-owned token usage dashboard | Accepted (amends 0171) |
 | 0174 | Host-owned plugin completions and session context | Accepted (amends D019) |
 | 0175 | Explain quiet active turns with live agent activity status | Accepted |
-| 0176 | Per-provider User-Agent override | Accepted (amends 0095 / 0156) |
+| 0176 | Per-provider User-Agent override | Accepted (amends 0095 / 0156; header map superseded by 0178) |
 | 0177 | User-configurable outbound proxy | Accepted |
+| 0178 | Per-provider custom HTTP headers | Accepted (amends 0176 / 0095 / 0156) |
+| 0179 | Import model configuration from local agent stores | Accepted |
+| 0180 | Custom global UI type scale | Accepted |
+| 0181 | Main-owned picker capabilities | Accepted |
+| 0182 | Traditional Chinese shell locale | Accepted (amends 0160) |
+| 0183 | P0 international shell locales | Accepted (amends 0160 / 0182) |
+| 0184 | Dock the context usage inspector in the composer toolbar | Accepted (amends 0047 / 0103) |
+| 0185 | Korean shell locale | Accepted (amends 0160 / 0183) |
+| 0186 | Summarize first-turn session titles with a main-owned one-shot | Accepted |
+| 0187 | Focus-aware native task notifications | Accepted (amends 0107 / D117) |

@@ -64,7 +64,9 @@
 | D033 | 工具结果限制 | **256KB/4000 行默认带有显式截断标记** *（由 D194、D306 修订）* | 保护上下文和 UI |
 | D306 | 搜索/读取截断表示切断，而不是窗口 | **修订 D033 / D194：Read/Glob/Grep 的 `truncated` 仅在主机切断了调用方请求的内容时为真（字节预算、单行剪辑、Grep/Glob 命中上限）。一次返回了请求窗口或默认窗口的 Read，即使文件更长也是该窗口的完整结果；`totalLines`/`offset`/`lineCount` 和下一个偏移的 `notice` 描述剩余部分。默认 Read 窗口为 2000 行（最大 4000）。`BUDGET_SEARCH` 为 128KB / 4000 行。单行剪辑为 16,384 个字符。UI 截断芯片跟随该标志。** | 48KB / 500 行的窗口把几乎每个源文件和规格表都标成截断，包括已经填满的分页读取，既掩盖了真正的切断，又迫使智能体重新搜索已经读过的内容。 |
 | D307 | 修订载荷跟随实时分支 | **修订 D109：重新生成分支在归档后仍会继续生长（之后的提示、从未到达 `agent_end` 的错误回合），因此每个会丢弃实时分支的操作都先把它写回所属变体。`session.activateRevision` 在切换前从持久转录本重新归档该系列的实时分支，并从那里取前缀；重新生成路径通过 `session.saveRevision { revisionIndex }` 刷新被标记的变体；`session.saveActiveRevision` 对已归档索引做刷新而不是跳过。被刷新的是实时根消息 `activeRevision` 标记所指的变体；已标记但尚无索引行的变体作为新变体单独存储，绝不覆盖之前的变体。切换同时带上每条幸存消息所属的 `turn_id`，并保留锚点仍存在的检查点。** | 归档只写一次、永久复用：从一个自 agent_end 归档后又生长过的分支切走再切回，会恢复陈旧副本，并悄悄地从转录本及其 JSONL 中删掉之后的每一回合。 |
-| D244 | 紧凑的上下文用量摘要 | **修订 D103 / D184 / ADR 0047：保留上下文检查器的剩余容量触发器、已用/窗口计数、回合合计、已完成回合速度、精确的提供商数值、聚合的工具类型/调用数/令牌数以及检查点摘要，但把它们渲染为一段简短摘要。从默认面板中移除逐工具行、占比条、来源徽章、解释性估算段落和已用容量计量条。不改动协议、存储、运行时计费或模型元数据。** | 之前的诊断式布局让一次例行的容量检查变得又高又密。保留聚合信号、移除下钻装饰，使默认状态界面可以快速浏览，同时不改变底层用量数据。参见 ADR 0103 与 E2E-060d / US-UI-61。 |
+| D244 | 紧凑的上下文用量摘要 | **修订 D103 / D184 / ADR 0047：保留上下文检查器的剩余容量触发器、已用/窗口计数、回合合计、已完成回合速度、精确的提供商数值、聚合的工具类型/调用数/令牌数以及检查点摘要，但把它们渲染为一段简短摘要。从默认面板中移除逐工具行、占比条、来源徽章、解释性估算段落和已用容量计量条。不改动协议、存储、运行时计费或模型元数据。** *（由 D347 修订：触发器移到输入框工具栏。）* | 之前的诊断式布局让一次例行的容量检查变得又高又密。保留聚合信号、移除下钻装饰，使默认状态界面可以快速浏览，同时不改变底层用量数据。参见 ADR 0103 与 E2E-060d / US-UI-61。 |
+| D347 | 输入框工具栏中的上下文用量检查器 | **修订 D103 / D184 / D244 / ADR 0047 / ADR 0103：紧凑上下文检查器放在输入框右侧工具栏、模型 × 推理芯片左侧，始终对应当前最新一条已报告用量的助手回合。触发器保留剩余容量圆环和百分比，去掉重复的 Context 文字。弹层标题为剩余 tokens + 百分比；下方行用同一套左标签/右数值节奏，只用留白分隔，不画内部分隔线（D297）。答案下方的助理元只保留模型徽章。仅渲染器改动。** | 挂在最新答案下方的检查器会随记录滚出视野。输入框只保留一个入口作为最新快照的权威位置；标题双线通过去掉多余说明文字解决，而不是加分隔线。参见 ADR 0184 与 E2E-060d / US-UI-61。 |
+| D348 | macOS 侧边栏改用 source-list vibrancy | **修订 D304：主窗口改用 Electron `vibrancy: "sidebar"`，不再用 `under-window`。`nativeTheme.themeSource` 跟随应用主题（`system` / `light` / `dark` / 插件 base），进程级生效。仅在 `themeSource` 真变时重设 vibrancy；缺失的插件主题回落 `system`。** | macOS 26 Liquid Glass 让 `under-window` 变成浅色底板，40% tint 压不住，即使应用和系统都是深色也一样。见 `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。 |
 | D243 | 模型感知的图片附件传输 | **修订 D197 / ADR 0059：输入框文件引用保留结构化的 kind/name/MIME 元数据。Electron main 在匹配时从精确的 models.dev 模型记录解析视觉能力，否则用精确的 pi-ai 回退记录（`modalities.input` / `input` 含 `image`），将图片字节存为 `attachments/<sha256>`，把符合条件的图片作为瞬态图片块发送，并对未知/非视觉或超大图片回退为安全的 `@path`。持久消息只存引用和元数据，绝不存 base64；渲染器展示可访问的能力状态。** | 之前只走路径的约定让具备视觉能力的 GPT 模型收到的是一个临时路径而不是图片内容。把能力归属放在所选目录来源上，可以避免提供商发现或未知模型 ID 擅自决定传输方式，而路径回退保留了非视觉的文件工具行为（ADR 0101，由 D266 修订）。 |
 | D245 | OpenCode 风格的有界提供商 429 重试 | **修订 D186 / D233 / ADR 0091：`PROVIDER_RATE_LIMITED` 在首次尝试之后获得五次静默、可中止的重试，请求建立与流中恢复共享同一个计数器。禁用 pi-ai 的嵌套重试；捕获失败响应的状态码/头部；依次遵循 `retry-after-ms`、`retry-after` 秒数、HTTP 日期，然后是 2 秒指数退避，带 25% 正向抖动、上限 30 秒。复用助手气泡，并在主会话与内置子代理中抑制中间的生命周期/错误事件。认证、模型选择、格式错误请求和上下文错误仍然是终止性的；耗尽时记录 `retryAttempt: 5` 与 `providerStatus: 429`。** | 之前拆分的单次重试策略过早暴露瞬时 429，并且允许建立层与流层各自漂移。OpenCode 那套有界、感知头部的策略在不隐藏持续性提供商故障、也不叠加嵌套重试的前提下保留了用户控制权。 |
 | D237 | 提供商的厂商账户（OAuth）登录 | **提供商行可以用厂商订阅账户认证，而不是 API 密钥。pi-ai 的七个 OAuth 流程在启动时静态注册（`registerBunOAuthFlows()`）；Electron 主进程拥有登录/退出编排，并在 host-core 的加密密钥存储之上实现 pi-ai 的 `CredentialStore`，使用新的引用 `secret:provider:<id>:oauth`，并按提供商串行化 `modify` 以满足带锁刷新。`auth_kind` 新增 `oauth`，`has_secret` 放宽为“存在 API 密钥**或** oauth 凭据”，新增的 `has_oauth` 与非敏感的 `oauthAccountLabel` 驱动徽标并隐藏密钥输入框；主机协议与存储架构不变。厂商卡片列表由 `models.getProviders().filter(p => p.auth.oauth)` 派生，登录按 `vendorKey` 幂等 upsert 一行。OAuth 行的 sidecar 启动载荷中 `apiKey: ""`；运行时注入 `resolveAuth` 回调，调用新的宿主代理方法 `provider.resolveAuth`，该方法由 Electron 主进程自行应答 —— 绝不转发给 host-core —— 并先用每次启动重写的绑定表校验 `(sessionId, providerId)`。应答是短时 `ModelAuth`（`apiKey`/`headers`/`baseUrl`），因此刷新令牌永不离开主进程，而 `matches()` 让厂商运行时跨回合保持温热。`providers.listModels` 与连接测试改走已认证的账户，而不是探测 `/models`；apiStyle 跟随所选模型，并新增 `openai_codex_responses` 与 `pi_messages`。交互由 `pi-desktop/providers/oauth/*` 下的五条调用通道与一条事件通道承载。** | Claude Pro/Max、ChatGPT Plus/Pro 与 Copilot 的订阅用户此前必须另买 API 额度才能使用本应用。pi-ai 提供了流程，但明确声明登录编排归宿主应用。厂商令牌约一小时过期，启动时解析一次会让长会话中断，并让 `matches()` 每回合失配；按请求解析既保持运行时稳定，又只把一个可作废的令牌交给运行模型指令的进程，且仅限该会话绑定的提供商 —— 严格少于今天无条件下发的长期 API 密钥（ADR 0095）。 |
@@ -272,7 +274,9 @@
 
 | 身份证号 | 主题 | 决定 | 基本原理 |
 |---|---|---|---|
-| D117 | 持久任务通知收件箱 | **Rust host-core 独占拥有 schema-v6 `notifications` 表，并且仅在 Electron 报告结果尚未可见时，当 `session.endTurn` 将运行轮移至 completed/error 时，才会自动插入一个结构化 `task.completed` / `task.failed` 行。 Renderer 通过允许列表查看上下文 IPC 提供当前聊天会话；仅当其窗口为 visible/focused 并且该会话匹配时，Main 才会抑制插入，而未知、背景、隐藏或未聚焦状态无法安全通知。 `turn_id UNIQUE` 可以防止重复，中止是静默的，会话删除级联，并且只保留最新的 200 行。标题栏响铃显示准确的未读计数、All/Unread、行 mark-read/session 激活、标记所有已读以及通过完整的 keyboard/accessibility 行为进行清除。协议 v4 添加了单数 `notification.list/markRead/markAllRead/clear`； `session.endTurn` 返回插入的记录，Electron 发出渲染器 `notification.changed`，并且仅当主窗口未聚焦时，它才会显示本机系统通知，该通知单击 restores/focuses 窗口并发出 `notification.activated`。持久化行包含结构化 kind/session/turn/error 数据以及会话名称快照，从未本地化通知 title/body 散文。任务收件箱没有权限、计划提醒、偏好、云通知或插件通知源；插件本机通知是单独的 D213 表面。 D113 的个人资料页脚保持不变。** | 通知应该恢复用户没有看到的任务结果，而不是重复当前聊天中已经可见的结果。有界主机拥有的收件箱可保持 background/unfocused 结果的持久性和可导航性，而不会侵犯 SQLite 所有权、重复事件或将每个终端事件转变为通知历史记录。 |
+| D117 | 持久任务通知收件箱（本机投递条款由 D350 修订） | **Rust host-core 独占拥有 schema-v6 `notifications` 表，并且仅在 Electron 报告结果尚未可见时，当 `session.endTurn` 将运行轮移至 completed/error 时，才会自动插入一个结构化 `task.completed` / `task.failed` 行。 Renderer 通过允许列表查看上下文 IPC 提供当前聊天会话；仅当其窗口为 visible/focused 并且该会话匹配时，Main 才会抑制插入，而未知、背景、隐藏或未聚焦状态无法安全通知。 `turn_id UNIQUE` 可以防止重复，中止是静默的，会话删除级联，并且只保留最新的 200 行。标题栏响铃显示准确的未读计数、All/Unread、行 mark-read/session 激活、标记所有已读以及通过完整的 keyboard/accessibility 行为进行清除。协议 v4 添加了单数 `notification.list/markRead/markAllRead/clear`； `session.endTurn` 返回插入的记录，Electron 发出渲染器 `notification.changed`，并且仅当主窗口未聚焦时，它才会显示本机系统通知，该通知单击 restores/focuses 窗口并发出 `notification.activated`。持久化行包含结构化 kind/session/turn/error 数据以及会话名称快照，从未本地化通知 title/body 散文。任务收件箱没有权限、计划提醒、偏好、云通知或插件通知源；插件本机通知是单独的 D213 表面。 D113 的个人资料页脚保持不变。** | 通知应该恢复用户没有看到的任务结果，而不是重复当前聊天中已经可见的结果。有界主机拥有的收件箱可保持 background/unfocused 结果的持久性和可导航性，而不会侵犯 SQLite 所有权、重复事件或将每个终端事件转变为通知历史记录。 |
+
+| D350 | 按来源区分本机通知投递 | **修订 D117 / ADR 0107：渲染器在 `notification/showNative` 终端结果调用中标记 `source: "task"`，在 asktool、工具权限和 Plan 审批调用中标记 `source: "interactive"`。缺失或未知来源默认为 `task`。任务本机投递仍然仅在未聚焦时进行，包括聚焦的背景会话；交互投递仅在确切的询问会话已在聚焦窗口中可见时抑制，因此聚焦其他会话时可以收到横幅。交互询问从不创建持久任务收件箱行，插件本机通知仍使用独立的权限门控 API。不改变主机协议或存储架构版本。** | PR #84 扩展共享 handler 的门控时，使聚焦的背景终端完成也显示了本机横幅，同时实现了聚焦背景交互询问通知的目标。显式来源在同一个 Electron 边界隔离这两种用户可见策略。 |
 
 ## O. 桌面 shell 决定
 
@@ -281,7 +285,9 @@
 | D118 | 平台应用程序菜单和窗口镶边 | **macOS 安装传统的系统应用程序菜单并保留隐藏式交通信号灯。 Windows/Linux 使用共享的 46px 无框架外壳以及本地化的 File/Edit/View/Window/Help 菜单和渲染器绘制的 minimize/maximize-or-restore/close 控件。两个菜单表面都通过固定的 `AppMenuCommand` 允许列表路由渲染器拥有的操作；渲染器菜单通过单独的固定允许列表路由本机 editing/window 操作。目标打包在 Electron 打包之前构建本地发布主机。这增加了平台就绪的 shell 行为，但不会逆转 D010：Windows/Linux 发布资格在 MVP 后仍然有效。** | 默认的 Electron 菜单会使 macOS shell 命令不完整，而无框 Windows/Linux 窗口会丢失应用程序菜单和窗口控件。共享允许列表可以保持行为一致，而不会暴露任意特权命令桥。 |
 | D120 | 应用程序更新交付 | **Electron Main 独家拥有固定的 GitHub 发布源、更新轮询、类型化状态和安装生命周期。开发被禁用；打包的 macOS 和非 AppImage Linux 使用通知和链接传递，而 Windows NSIS 和 Linux AppImage 在应用程序内下载并在退出时安装。 Renderer IPC 无法提供 Feed URL。自动故障保持环境状态，显式检查表面状态，下载状态保持可操作。更新程序始终强制使用 `allowPrerelease = false`，因此预发布安装（例如 `0.2.0-rc.6`）会跟踪 GitHub 的最新稳定版本，而不是 electro-updater 的默认同通道引脚。 D126 随后发布由标签矩阵生成的每个平台提要，而 macOS 仍保持手动状态，直到签名通道合格为止。** | 将软件包安装保持在沙盒渲染器之外，匹配每种安装程序格式的交付，并在菜单、设置和更新横幅之间提供一种一致的状态 (ADR 0022)。如果没有稳定通道引脚，RC 不会构建更新的稳定通道，因为电子更新程序将 `rc` 视为自定义通道。 |
 | D313 | 主进程拥有的 GitHub 问题反馈 | **GitHub issue 表单是唯一入口。Bug 表单必填描述、复现步骤、预期/实际行为、应用版本和操作系统；功能表单必填问题和期望改动。设置 → 信息提供一条「问题反馈」，走 `pi-desktop/app/openFeedback`。Electron Main 构造固定的 `bug_report.yml` URL，用主进程版本信息预填 `app-version` / `os` / `environment`，再以 `shell.openExternal` 打开。渲染器不能提供 URL。功能请求仍从 GitHub 模板选择器进入。不改 host 协议、存储或更新源（ADR 0157）。** | 缺少版本或复现步骤的报告无法排查；由渲染器选择目标会削弱 D120 同样的「GitHub URL 归主进程」规则。 |
-| D314 | 已发布语言注册表与语言选择器 | **修订 D073：界面语言列在 `@pi-desktop/i18n`（`en`、`zh-CN`、`tr`）。本地名称永不翻译。设置 → 常规的语言是可搜索选择器（跟随系统 + 注册表），不再是三张预览卡。插件标签和更新日志仍为 `en` + `zh-CN`，其它语言回退到英文。见 ADR 0160 与 E2E-091。** | 预览卡无法扩展到两种以上语言；注册表让土耳其语（以及后续语言）无需重写外观卡即可发货。 |
+| D314 | 已发布语言注册表与语言选择器 | **修订 D073：界面语言列在 `@pi-desktop/i18n`（`en`、`zh-CN`、`zh-TW`、`tr`）。本地名称永不翻译。设置 → 常规的语言是可搜索选择器（跟随系统 + 注册表），不再是三张预览卡。插件标签保持 `en` + `zh-CN` 契约；没有插件翻译的外壳语言使用英语回退；产品更新日志跟随每个已发布产品语言。见 ADR 0160、ADR 0182 与 E2E-091。** | 预览卡无法扩展到两种以上语言；注册表让添加语言无需重写外观卡即可发货。 |
+| D345 | 繁体中文外壳语言 | **修订 D314 / ADR 0160：以独立完整外壳目录发布 `zh-TW`，本地名称为繁體中文。`zh-TW`、`zh-Hant`、`zh-HK` 和 `zh-MO` 解析到繁体中文外壳；通用 `zh` 和简体中文区域继续解析到 `zh-CN`。持久化的 `AppSettings.language` 加入 `zh-TW`，Electron 打包 `zh-TW` 与 `zh_TW` 语言环境目录；应用内变更日志加入对应的 `zh-TW` 目录，使发行说明跟随当前繁体中文外壳。不改变宿主协议或存储架构版本。** | 繁体中文用户需要独立的外壳和发行说明语言；复用简体中文目录会使自动检测和可见术语不正确。 |
+| D346 | P0 国际外壳语言 | **修订 D314 / ADR 0160 / ADR 0182：发布完整的 `de`、`es` 和 `fr` 外壳目录，本地名称为 Deutsch、Español 和 Français。`de-*`、`es-*` 和 `fr-*` 解析到对应基础目录；持久化的 `AppSettings.language` 接受三个新 ID；匹配的变更日志目录让发行说明跟随当前语言。不改变宿主协议、存储架构或 IPC 版本。** | 西班牙语、法语和德语是缺失的最高价值 P0 国际化覆盖，而现有注册表和可搜索选择器已经可以扩展到更多语言。 |
 | D316 | 可搜索主题选择器 | **修订 ADR 0160：设置 → 常规的主题是可搜索选择行（与语言相同的锚定菜单），不再是三张预览卡。系统 / 浅色 / 深色钉在顶部；插件主题在分隔线之后。`AppSettings.theme` 与插件主题回退不变。见 ADR 0161 与 E2E-091。** | 插件主题会撑破三列卡片网格，而语言选择器已经解决了可增长列表的控件问题。 |
 | D121 | 品牌macOS开发主机 | **macOS 上的 `pnpm dev` 通过 `.cache/electron-dev/` 下已安装的 Electron 主机包的指纹、临时签名的 PI-Desktop 副本启动 electro-vite。生成的捆绑包仅更改开发主机元数据、可执行文件名称、捆绑包标识符和 ICNS 资源；它永远不会改变 `node_modules`。 Windows/Linux 保持库存开发可执行，而打包通道仍归电子制造商所有。** | AppKit 会忽略顶级应用程序身份的运行时 app-name/menu 覆盖，并从主机包中获取本机菜单名称和“关于”图标；需要品牌开发主机才能与打包的 PI-Desktop 保持一致。 |
 | D129 | 无菜单 Windows/Linux 窗口镀铬 | **应用程序菜单仅为 macOS 系统菜单表面。 Windows/Linux 保留共享的无框架 46px 标题栏和渲染器绘制的 minimize/maximize-or-restore/close 控件，但在窗口内不渲染 File/Edit/View/Window/Help 菜单，并且不保留左侧标题栏空间。通过 renderer/native Web 内容处理，现有应用程序、编辑、缩放、全屏和关闭快捷方式仍然可用；仍然可以通过“设置”->“信息”访问更新检查。这仅取代 D118 和 ADR 0021 的 Windows/Linux 渲染器菜单部分。** | 窗口内桌面菜单会重复 macOS 特定的系统菜单镶边、占用导航空间，并且不属于 PI-Desktop 的无框 Windows/Linux 标题栏。 |
@@ -295,6 +301,7 @@
 | D218 | 主机拥有的跨平台插件面板窗口栏 | **插件面板窗口采用主窗口的 46px 平台窗口栏：macOS 使用 `hiddenInset`，交通灯位置为 `{x:16,y:16}`；Windows/Linux 使用无框窗口，并提供 112px 宽的自定义最小化、最大化或还原、关闭控制区。沙盒化插件 preload 在封闭的 Shadow DOM 中渲染 manifest 标题与控件，在现有顶部内边距之外再按标题栏高度偏移内容，并使用一个私有、验证发送方、固定动作集合的窗口操作通道；`window.pluginBridge`、每插件 partition 与 host protocol v9 均不扩展。重新打开最小化的面板时会还原并聚焦窗口。** | Electron 默认窗口框架使插件工具看起来脱离 PI-Desktop，且各平台表现不一致。由 preload 拥有窗口栏可实现一致性，同时不将不受信任的插件 HTML 移入主机渲染器，也不暴露通用 Electron 窗口权限（ADR 0081）。 |
 | D234 | 插件拥有的面板表面与主机窗口控制胶囊 | **插件面板在 macOS、Windows 和 Linux 上均使用无框窗口。沙盒化 preload 在每个平台预留相同的透明 46px 安全区，并在右上角的封闭 Shadow DOM 中仅渲染一个固定胶囊，胶囊恰好包含最小化、最大化或还原、关闭三个按钮。主机不再渲染面板标题或开发安全区提示；插件拥有标题、工具栏、背景以及其他所有可见面板界面。普通流内容会自动偏移，固定或粘性界面使用现有的 `--pi-plugin-titlebar-height: 46px`，插件自己的拖拽区域使用 `-webkit-app-region: drag`，交互控件退出拖拽。私有的验证发送方控制通道、本地化标签、页面自适应颜色、`window.pluginBridge`、每插件 partition、host protocol v9 和存储架构保持不变。本决策修订 D218 / ADR 0081 以及 D232 / ADR 0082。** | 主机标题栏占用了插件自己的视觉层级，并且仍然让 macOS 与 Windows/Linux 表现不同。紧凑的主机控制胶囊保留安全的原生窗口操作，同时把面板表面交还给插件。 |
 | D235 | 严格 46px 插件拖拽带与简约胶囊 | **插件面板在每个平台均严格预留 46px 的透明主机拖拽带。普通流内容按该数值偏移，拖拽带内除胶囊外不接受插件点击，开发面板显示本地化提示，说明顶部 46px 仅用于拖拽。主机不渲染面板标题。固定在右上角的胶囊保持在拖拽带内，恰好包含最小化、最大化或还原、关闭三个按钮，并使用简洁的页面自适应表面，不添加厚重阴影或模糊效果。本决策修订 D234 / ADR 0092；私有的验证发送方控制通道、封闭 Shadow DOM、`window.pluginBridge`、protocol v9 和存储架构保持不变。** | 无框面板需要可靠的拖拽目标和清晰的开发约束，但主机拖拽带不能增长，也不能抢占插件自己的视觉层级。 |
+| D343 | 自定义全局文字缩放 | **设置 → 常规 → 外观在字体行下增加字体大小。星巴克式杯型档位（中杯 / 大杯 / 超大杯 / 超超大杯）加上百分比滑杆，持久化为可选 `AppSettings.fontScale`（`1` = 产品字号阶，缺失 = 1，范围 0.8–1.5、步进 0.025）。渲染器在根元素设置 `--font-scale`；每个 `--text-*` 令牌和 `--leading-row` 都是 `calc(<产品 px> * var(--font-scale))`，共享 Lucide 图标使用同一倍率，正文、chrome、标题、代码和图标无需重载即保持相对阶。界面不出现 px 输入。窗口放大/缩小/重置仍独立。未发布的遗留 `fontSize` px 字段在没有 `fontScale` 时按 `px / 14` 迁移。无协议/存储版本升级。** | `--text-*` 阶本身就是一组相对尺寸；一个倍率可以一次缩放所有台阶。窗口缩放仍会缩放布局。只改阅读区的 px 会让同一窗口出现两套字号，还强迫用户填一个只对应 `--text-base` 的数字（ADR 0180）。 |
 | D232 | 自定义全局界面字体 | **设置 → 基础 → 外观新增可搜索的字体选择器（触发器以当前字体的字样预览）。选择结果持久化为 `AppSettings.fontFamily`（CSS 字体栈）；缺失时保持内置 `--font-sans` 令牌栈，渲染器通过覆盖根元素的 `--font-sans` 应用字体栈，无需重载。四款内置字体——Geist、Inter、Noto Sans SC、LXGW WenKai——以 woff2 格式按 SIL OFL 1.1 本地发布并附许可证文本；每个自定义字体栈都追加 CJK 回退层，等宽字体栈保持不变。系统已安装字体由 Electron 主进程仅使用平台工具枚举（macOS 用 `system_profiler`、Windows 用 PowerShell、Linux 用 `fc-list`），去重/排序/过滤并缓存 60 秒，通过新增的允许通道 `pi-desktop/app/systemFonts` 暴露；主机协议 v9 与存储架构 v10 不变。** | 用户需要 Codex/dbx 风格的全局字体偏好，但沙盒化渲染器无法枚举系统字体，而针对仅渲染器偏好不应扩大主机 RPC 面。内置 OFL 许可字体保证每个可选字体均商用安全且可离线使用，60 秒缓存限制了 macOS 枚举的耗时（ADR 0083）。 |
 | D230 | 用户可配置的关闭行为与关闭到托盘 | **Windows/Linux 的关闭行为是由 Electron 主进程存放在 `<data>/close-behavior.json` 的持久化偏好。`ask` 是尚未设置的过渡态：首次关闭弹出原生模态框（取消 / 关闭到托盘 / 退出），选定其一即永久保存，取消则保持窗口打开且偏好仍未设置。可设置的只有 `tray` 和 `quit` —— 设置 → 通用仅在 Windows/Linux 渲染两项单选段（关闭到托盘 / 退出应用），`pi-desktop/window/closeBehavior/set` 拒绝 `ask`，因此选择可以切换但无法退回到每次询问。`tray` 把窗口隐藏到 D216 常驻的托盘图标之下（点击恢复，菜单显示或退出）；切换到 `quit` 不会销毁该图标，因为最小化到托盘仍然需要它。除了已经获准的退出之外，每一次非 macOS 的关闭都会被拦截；`quitting` 与 macOS 的关闭直接放行，`quit` 分支自己调用 `app.quit()`，而 `window-all-closed` 只在 `tray` 下保持沉默，因此启动探针与显式退出不受影响，常驻托盘也不会让 `quit` 会话继续活着。在 macOS 上 `closeBehavior/set` 同样以 `INVALID_ARGUMENT` 失败。边界看门狗跳过最小化和隐藏的窗口，所以隐藏到托盘的窗口不会被强制恢复。macOS 保持原生 Dock 生命周期（D216、ADR 0078、ADR 0090）。** | 最小化本来就把窗口收进 D216 的托盘；缺口在关闭：它在 Windows/Linux 上直接退出。固定的关闭到托盘会让期待退出的用户意外，所以这个选择只问一次、记住、并可在设置里回访 —— 与 Codex 风格外壳让长时会话继续存活但不接管关闭按钮的做法一致。 |
 | D252 | Windows 任务栏保留原生最小化/恢复 | *（显式的渲染器/菜单最小化条款被 D256 / ADR 0123 取代）* **修订 D216 / ADR 0078：当聚焦的 Windows 主窗口从它的任务栏按钮被切换时，Electron 让原生 `minimize` 过渡走完，而不是隐藏窗口。任务栏条目保持可用，下一次点击任务栏会恢复并聚焦它。显式的渲染器/菜单最小化操作仍然隐藏到常驻托盘；macOS/Linux 的原生最小化仍然驻留托盘。不改动 IPC、存储、主机协议或后台工作。** | D216 无条件的 `window.hide()` 把任务栏发起的 Windows `minimize` 事件当成托盘隐藏处理，意外移除了任务栏条目，只给用户留下托盘恢复这一条路。 |
@@ -2722,3 +2729,56 @@ D193 和 D194。
 - 模型请求、市场下载、更新和内置浏览器各自走不同 HTTP 栈，都没有产品设置。sidecar 里的 Node `fetch` 不使用系统代理。
 - 设置 → 常规 → 网络增加系统 / 直连 / 自定义。自定义是一个 HTTP 或 SOCKS5 URL 加上回环绕过。Chromium 会话、main `net.fetch`、sidecar undici 与 host-core 市场 curl 共用它。工作区 Bash 不继承代理凭据。
 - 决策 D340 记录为 ADR 0177。见 `04-ux/06-settings-ia.md`、`03-runtime/07-process-model.md` 与 E2E-190。
+
+## 2026-09-08 —— 从本地智能体存储导入模型配置（D342）
+
+- 设置 → 导入已经能扫描会话。同一批工具还把提供商地址、模型 id 和 API 密钥写在本机配置里，用户否则要在模型页重填。
+- 增加独立的模型配置卡片：显式扫描 Claude Code / Codex / OpenCode / Pi / CC Switch，密钥留在主进程扫描缓存，通过 `providers.create` 写入。OAuth/订阅令牌不复制。等价端点跳过。D007 的禁止自动导入仍然有效。
+- 决策 D342 记录为 ADR 0179。见 `04-ux/06-settings-ia.md`、`04-ux/08-component-spec.md` §18.5 与 E2E-192。
+
+## 2026-09-08 —— 自定义全局文字缩放（D343）
+
+- `--text-*` 阶是一组相对尺寸。窗口缩放会把布局一起放大，不是文字偏好。只改阅读区的 px 会让同一窗口出现两套字号。
+- 设置 → 常规 → 外观增加字体大小：杯型档位中杯 / 大杯 / 超大杯 / 超超大杯，加上 80%–150% 滑杆，持久化为可选 `AppSettings.fontScale`（`1` = 产品字号阶）。渲染器设置 `--font-scale`，全部 `--text-*` 台阶和共享 Lucide 图标按比例缩放。
+- 决策 D343 记录为 ADR 0180。见 `04-ux/06-settings-ia.md`、`04-ux/07-ui-design-system.md` 与 E2E-193。
+
+## 2026-09-08 —— 输入框工具栏中的上下文用量检查器（D347）
+
+- 紧凑上下文检查器原先挂在最新助手回合下方，会话一滚动就够不着。协作者同意把唯一入口移到模型选择器旁，而不是两处显示同一份数字。
+- 决策 D347：检查器放在输入框右侧工具栏、模型 × 推理芯片左侧，始终对应当前最新一条已报告用量的助手回合。触发器是圆环加百分比。弹层标题为剩余 tokens + 百分比；内部分隔线仍然禁止（D297）。答案下方的助理元只保留模型徽章。
+- 见 ADR 0184、`04-ux/08-component-spec.md` §8.3 / §11.3 与 E2E-060d。
+
+## 2026-09-08 —— 按来源区分本机通知投递（D350）
+
+- PR #84 为 asktool、工具权限和 Plan 审批询问增加本机通知时，扩大了现有
+  `showNative` handler 的范围。这也让聚焦的背景终端完成显示本机横幅，违反了
+  E2E-065。
+- 决策 D350：应用拥有的终端调用使用 `source: "task"`，仍然只在未聚焦时投递。
+  交互询问调用使用 `source: "interactive"`，仅在确切询问会话已在聚焦窗口中可见时
+  抑制，因此聚焦其他会话时可以通知。省略或未知来源默认为 `task`；交互询问仍在
+  持久任务收件箱之外，插件本机通知继续使用独立 API。
+- 决策 D350 记录为 ADR 0187。见 `03-runtime/01-ipc-protocol.md`、
+  `04-ux/08-component-spec.md`、`04-ux/09-interaction-patterns.md` 与 E2E-065a。
+
+## 2026-09-08 —— macOS 侧边栏改用 source-list vibrancy 材质（D348）
+
+- 洗灰侧栏在 **深色应用主题 + 深色系统外观** 的 macOS 26 上也能复现。只同步
+  `nativeTheme.themeSource` 能修深色应用 + 浅色系统；当 Liquid Glass 在深色外观
+  下仍画出浅色底板时，压不住 D304 的 `under-window`。所以材质改为 `sidebar`。
+- 决策 D348：主窗口改用 Electron `vibrancy: "sidebar"`。
+  `nativeTheme.themeSource` 跟随应用主题偏好（`system` / `light` / `dark` /
+  插件 base），让原生菜单和毛玻璃底板与渲染器一致。该赋值是进程级的，因此
+  Windows/Linux 创建窗口时的 `shouldUseDarkColors` 也会跟随应用偏好，与
+  `windowSetBackgroundColor` 一致。`plugin:` 主题消失时重新 apply。只有
+  `themeSource` 真正变化时才 `setVibrancy`。薄的 `--ds-sidebar-glass-tint`
+  配方不变。修正 D304。
+- `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质、偏好映射、设置/
+  pluginChanged 路径，以及 darwin 存活窗口守卫。见
+  `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。
+
+## 2026-09-08 —— 会话标题摘要与按焦点区分的原生任务通知（D349/D350）
+
+- 首条提示会立即显示规范化的 48 字符回退标题。首轮完成后，Electron 根据会话的有效提供商/模型运行关闭推理的 `session/summarizeTitle` 单次请求；渲染器通过 `session.rename` 持久化成功结果。
+- 渲染器本地会话元数据持久化 `manualTitle`。自动标题会跳过该标记，也会跳过既不是已知默认标题、也不是首条提示回退标题的持久化标题，因此手动标题和已有摘要在重启后不会被覆盖。
+- 原生任务完成通知和交互式提示共用 Electron IPC 入口，但使用明确的 `kind`。主窗口可见且聚焦时（包括聚焦在后台会话时）抑制任务横幅；交互式提示仍只抑制当前可见会话，因此聚焦的后台请求仍会提醒。持久任务插入仍遵循 D117，插件通知保持独立。
+- 见 ADR 0186 / ADR 0187、`03-runtime/01-ipc-protocol.md`、`03-runtime/02-agent-runtime.md`、`04-ux/08-component-spec.md` 与 E2E-021a / E2E-065。

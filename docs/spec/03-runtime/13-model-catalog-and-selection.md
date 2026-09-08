@@ -34,6 +34,20 @@ entitled to it.
   and then replaces it with the live answer.
 - Filtering that list is client-side: it is a short live list, not a catalog, so
   no host search is involved.
+- The list header has a checkbox that selects or clears every currently visible
+  row in one step, so a long service list does not have to be ticked one by one.
+  While a search filter is active, "all" means the matching rows only; models
+  already chosen outside the filter stay chosen. Newly added rows adopt
+  `bindingFromModelInfo` (or the custom-model defaults); existing bindings keep
+  their advanced overrides. The checkbox is checked when every visible row is
+  chosen, unchecked when none are, and indeterminate when the visible set is
+  mixed.
+- The same header has a Fetch list action that probes the service immediately,
+  skipping the 600 ms edit debounce and the cache-first paint. Existing rows
+  stay visible while it loads. Automatic discovery on credential edits is
+  unchanged. The control is disabled when no discoverable endpoint is ready,
+  while a probe is in flight, or while the form is saving. Idle-with-a-valid-URL
+  (the edit debounce) stays enabled so Fetch list can skip that window.
 - Context window, output limit and initial thinking levels come from
   `bindingFromModelInfo` over the enriched record; per-model overrides live
   behind a per-row **Advanced** disclosure. `publishedThinkingLevels` describes
@@ -65,6 +79,13 @@ entitled to it.
 
 An OAuth vendor account skips step 2 — it has no key to probe with, and pi-ai
 already knows which models the subscription allows.
+
+The picker never dumps the raw host error into the model list. A failed probe
+with no rows shows a classified one-line summary (auth, missing list, rate
+limit, timeout, network, invalid response, or HTTP status) plus a short hint
+to add an ID manually. A failed probe that still has cached rows keeps those
+rows and shows the same summary as a compact banner.
+
 ### Advanced
 - “Use custom model ID”
 - “Refresh catalog”

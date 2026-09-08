@@ -209,8 +209,10 @@ by state — Needs attention / Updates available / Active / Turned off — as so
 tiles stacked under a group label (D296). Marketplace remains the browse/install
 card grid. The page draws no dividers: header, toolbar, rows, source settings,
 cards and the detail sheet's sections are set apart by tone and spacing, and
-hairlines are reserved for floating layers (menus, sheet, dialogs).
-MCP, Skills, and Subagents are not tabs or sections of Extensions.
+hairlines are reserved for floating layers (menus, sheet, dialogs). The
+marketplace source settings show the source selector without a redundant
+provider explanation or active-source status line. MCP, Skills, and Subagents
+are not tabs or sections of Extensions.
 
 ### 3.6 Settings (full-page takeover)
 ### 3.6 Settings (full-page takeover)
@@ -222,10 +224,12 @@ changes the page destination rather than a tab inside a shared capability panel.
 Appearance lives inside General; global AI behavior (permissions and context
 management) lives inside 全局 AI; keyboard shortcuts and global/project
 instructions have their own destinations; provider management lives inside
-Model configuration. Import scans supported local agent stores and presents
-candidates in collapsible groups. Project path is an alternate grouping
+Model configuration. Import scans supported local agent stores for sessions
+and, independently, for model configuration, and presents candidates in
+collapsible groups. Project path is an alternate grouping for sessions
 alongside the default source grouping, and every scan or grouping change starts
-with all groups collapsed. Project archive owns the durable D086 Projects index
+with all groups collapsed. Model-configuration import copies stored API keys
+and skips subscription logins. Project archive owns the durable D086 Projects index
 (search, add, expand, pin, archive/restore, close, and reopen) and always includes
 archived records. Opening or switching a project retains a sidebar tab, selects
 that project as the active workspace, and returns to chat. Other retained tabs
@@ -324,10 +328,12 @@ shared capability contract:
   completions stay in the durable record for the sidebar outcome badge and
   native notification but never appear in the inbox (D295). Selecting a row
   marks it read and activates its bound project/session.
-  Electron additionally presents a native system notification only when the
+  Electron additionally presents a native task notification only when the
   app window is unfocused, and clicking it focuses the window before activating
-  the same session (D117). Receiving either the durable or native notification
-  event never navigates by itself; only explicit activation does.
+  the same session (D117). Interactive ask/permission/plan prompts use their
+  separate native path and may alert for a focused background session. Receiving
+  either durable or native notification events never navigates by itself; only
+  explicit activation does.
 - Backend degraded → status capsule (restarting) or fatal banner with Open
   logs (D080); composer submits are rejected with readable errors while down.
   - Plan/Goal checkpoint → the originating session shows only the structured title
@@ -349,6 +355,6 @@ shared capability contract:
 
 ## 8. i18n
 
-English is the source locale. Shipped translations (currently zh-CN and
-Turkish) cover shell chrome; labels are asserted by US-UI e2e scenarios.
+English is the source locale. Shipped translations (zh-CN, zh-TW, Turkish, German, Spanish, French, and
+Korean) cover shell chrome; labels are asserted by US-UI e2e scenarios.
 Copy rules live in [02-i18n-english-first](02-i18n-english-first.md).

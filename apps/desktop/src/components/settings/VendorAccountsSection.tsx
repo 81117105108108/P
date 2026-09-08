@@ -137,7 +137,7 @@ export function VendorAccountsSection() {
         oauthAccountLabel: form.name.trim(),
         defaultModelId: form.modelId.trim(),
         models: form.models,
-        userAgent: form.userAgent,
+        headers: form.headers,
       });
       if (settings?.defaultProviderId === provider.id) {
         await api.setSettings({

@@ -230,6 +230,16 @@
   line-height: var(--leading-heading);
 }
 
+.settings-recovery {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--ds-text-muted);
+  font-size: var(--text-sm-plus);
+}
+
 .settings-card-block {
   margin-bottom: 28px;
 }
@@ -394,6 +404,49 @@
 
 .settings-number-control .field-input {
   width: 140px;
+}
+
+.settings-font-size {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.settings-row:has(.settings-font-size) .settings-row-control {
+  max-width: none;
+}
+
+.settings-font-size .settings-segment {
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.settings-font-size .settings-segment-item {
+  flex: 1 0 auto;
+  padding-inline: 8px;
+  white-space: nowrap;
+}
+
+.settings-font-size-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-font-size-slider input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ds-accent);
+}
+
+.settings-font-size-percent {
+  color: var(--ds-text-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  min-width: 3em;
+  text-align: right;
 }
 
 .shortcut-map {

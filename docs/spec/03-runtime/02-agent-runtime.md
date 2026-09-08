@@ -61,6 +61,23 @@ request. It does not cancel an active provider stream or running tool. An idle
 runtime returns `{ requested: false }`; immediate `abort()` remains the
 separate cancellation path.
 
+### 4.1 Session title summarization
+
+The renderer applies a short first-prompt fallback immediately so sending a
+prompt never waits on title generation. After the first turn emits `agent_end`,
+Electron main resolves the session's effective provider/model and invokes the
+runtime's `summarizeSessionTitle` one-shot path with thinking disabled. The
+runtime supplies the initial user prompt and an optional assistant reply,
+returns only sanitized title text, and treats an empty/failing completion as a
+non-fatal result. The renderer persists a successful title through the existing
+`session.rename` path.
+
+The renderer also persists a `manualTitle` marker in its local session metadata.
+Automatic summarization is skipped for that marker and for any persisted title
+that is neither a recognized default nor the deterministic first-prompt
+fallback, which protects manual and already-summarized titles after restart.
+No host RPC or storage schema change is required.
+
 ## 5. Prompt flow
 
 1. load the durable session and reject a missing session
@@ -174,8 +191,10 @@ state are untouched: the failed assistant is removed from the next model context
 and the same visible message id is reused, so a retry never restarts the turn or
 re-runs a completed tool call.
 Each retry is abortable and reports its current backoff through the normalized
-status event. The main session, builtin subagents, and one-shot composer
-enhancement use the same codes, budget size, and precedence.
+status event. The `retrying` activity carries the classified error code, the
+bounded/redacted provider message, and the HTTP status when known. The main
+session, builtin subagents, and one-shot composer enhancement use the same
+codes, budget size, and precedence.
 
 When the 429 budget is exhausted, the final assistant error and lifecycle
 `error` are emitted once. Provider failures carry bounded diagnostics in
@@ -560,9 +579,14 @@ core set rather than the on-demand catalog of §7.1:
   (`"provider/modelId"`) that overrides the delegate's model for that run.
   Resolution priority: Task.model parameter → definition frontmatter pin →
   session model. The parent agent sees a model summary in the system prompt
-  listing all models marked `availableForSubagents` in provider settings.
-  When a model key is not pre-resolved, the runtime asks Electron main to
-  resolve it on-demand via the `provider.resolveSubagentModel` RPC.
+  listing all models marked `availableForSubagents` in provider settings. If
+  the delegation catalog is empty, the prompt tells the model to omit `model`
+  and inherit the session model; an explicit key that exactly names the current
+  session provider/model is treated as the same inheritance case. Other
+  explicit model keys must be configured and enabled for delegation. When a
+  model key is not pre-resolved, the runtime asks Electron main to resolve it
+  on-demand via the `provider.resolveSubagentModel` RPC. The started `Task`
+  result details record the effective `modelId` used for that run.
 - `TaskWait(delegationIds?, mode?, minCompleted?, timeoutSeconds?)` — converges
   on running delegations (defaults to all of them) and returns their reports;
   `mode: "any"` with `minCompleted` converges as soon as the first N settle.
@@ -595,8 +619,8 @@ running until the duration limit. The built-in `explorer` declares `Read`,
 the terminal ones surface through `TaskWait`, whose text is
 the report (bounded to `MAX_SUBAGENT_REPORT_CHARS`, 12k) and whose details
 carry `delegationId`, `agent`, `status`, `startedAt`, `completedAt` when
-settled, `turns`, `toolCalls` and, on failure or timeout, `error`. `startedAt` and
-`completedAt` are runtime timestamps in milliseconds and are the source of
+settled, `turns`, `toolCalls` and, on failure or timeout, `error`.
+`startedAt` and `completedAt` are runtime timestamps in milliseconds and are the source of
 truth for renderer delegation duration; the immediate `Task` tool-call
 duration only covers starting the background work.
 
@@ -733,9 +757,10 @@ URL host is `opencode.ai` send:
 
 Caller-supplied headers override the client and User-Agent defaults. An empty
 session header is restored from the conversation id so OpenCode Go cannot
-return `MissingSessionID`. A provider-row `userAgent` is applied after this
-merge (headers plus a fetch wrapper) so it wins over the OpenCode default
-and over adapter last-writes. This is an agent-runtime concern, matching the
+return `MissingSessionID`. A provider-row `headers` map is applied after this
+merge (headers plus a fetch wrapper) so custom values win over the OpenCode
+default and over adapter last-writes. Reserved keys cannot smash
+`x-opencode-session`. This is an agent-runtime concern, matching the
 official Pi coding-agent attribution layer; pi-ai's `sessionId` stream option
 does not emit `x-opencode-session`.
 

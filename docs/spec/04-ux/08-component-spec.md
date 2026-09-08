@@ -135,18 +135,21 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
 | Windows | Frameless 46px titlebar; sidebar actions at left, open work-panel collapse in session pane top-right ahead of minimize/maximize/close | None inside the window |
 | Linux | Frameless 46px titlebar; sidebar actions at left, open work-panel collapse in session pane top-right ahead of minimize/maximize/close | None inside the window |
 
-- macOS enables the native Electron `vibrancy: "under-window"` material with
-  `visualEffectState: "followWindow"` and a transparent window backing. Only the
-  `.sidebar` and any rendered `.sidebar-rail` surface are translucent; the
-  renderer adds a thin theme tint (`--ds-sidebar-glass-tint`, 40% dark /
-  55% light) plus a top/bottom sheen. The dock carries no seam or hairline:
-  the glass meets the opaque main pane flush, so the only edge cue is the
-  tint's natural change against the pane. The material carries the blur, so the
-  tint must stay thin — the sheen is what keeps the surface reading as glass
-  rather than a painted panel. `.main-pane`, `.main-titlebar`, and
-  `.conversation-topbar` remain opaque `bg-primary` surfaces, so vibrancy does
-  not spread across the whole window. Windows/Linux retain their existing
-  opaque background and frameless behavior.
+- macOS enables the native Electron `vibrancy: "sidebar"` source-list material
+  with `visualEffectState: "followWindow"` and a transparent window backing
+  (D348). `nativeTheme.themeSource` follows the app theme preference (`system` /
+  `light` / `dark` / plugin base) so the material's light or dark plate matches
+  the renderer. Vibrancy is re-applied only when that source changes; a missing
+  plugin theme falls back to `system`. Only the `.sidebar` and any rendered `.sidebar-rail` surface
+  are translucent; the renderer adds a thin theme tint
+  (`--ds-sidebar-glass-tint`, 40% dark / 55% light) plus a top/bottom sheen.
+  The dock carries no seam or hairline: the glass meets the opaque main pane
+  flush, so the only edge cue is the tint's natural change against the pane.
+  The material carries the blur, so the tint must stay thin — the sheen is what
+  keeps the surface reading as glass rather than a painted panel.
+  `.main-pane`, `.main-titlebar`, and `.conversation-topbar` remain opaque
+  `bg-primary` surfaces, so vibrancy does not spread across the whole window.
+  Windows/Linux retain their existing opaque background and frameless behavior.
 - The macOS system menu exposes New Task, Open Project, Settings, Command
   Palette, Sidebar, standard editing, zoom/fullscreen, window, Help, Logs, and
   Check for Updates actions. Windows/Linux expose equivalent product actions
@@ -277,8 +280,9 @@ combined model × reasoning selection (§11).
 
 - No search field in topbar (deferred)
 - Notification history is the bounded D117 inbox; scheduled reminders,
-  permission-request notifications, and notification preferences remain out of
-  scope
+  durable permission-request history, and notification preferences remain out
+  of scope. Interactive prompt notifications are native-only and do not enter
+  the inbox.
 
 ---
 
@@ -365,6 +369,9 @@ visually distinct from list content.
 | Archived row | Hidden by default; visible in the explicit archived view |
 | No retained project | Compact Open project entry; standalone Sessions rows remain available |
 | Empty group | Muted one-line empty state; group create action remains available |
+| Default session title | New task/New chat (localized where applicable) until the first prompt |
+| First prompt title | A normalized 48-character prompt fallback appears immediately; after the first turn, a successful background summary replaces it |
+| Manual session title | User-defined title remains stable across refresh and renderer restart; automatic summary never overwrites it |
 | Footer idle | Transparent 58px band; build and action controls remain visually quiet |
 | Footer hover/focus | Only the targeted control receives the semantic hover/focus treatment |
 | Profile menu open | Profile trigger is active; 280px menu opens 8px above the footer |
@@ -630,7 +637,7 @@ Primary chat area containing ChatTranscript and Composer. Scrollable, center of 
 |---|---|
 | Empty | Restrained hero + optional onboarding checklist in a scrollable content region, with a bottom-reserved home composer and no starter-card or contextual quick-action layer (D111/D204/D206) |
 | Streaming | Auto-scroll follows while pinned; new tokens append |
-| Active progress | Immediately after send, before the first assistant or tool event, a compact localized `Working…` status with elapsed time appears inline. It yields to concrete thinking, tool, and answer rows, while a permission card owns the approval state; no large generic progress card is rendered. |
+| Active progress | Immediately after send, before the first assistant or tool event, a compact localized `Working…` status with elapsed time appears inline. Its model and subagent elapsed labels use the carried-unit format in §9.1. It yields to concrete thinking, tool, and answer rows, while a permission card owns the approval state; no large generic progress card is rendered. A retrying row remains compact at rest; hovering or focusing it reveals an error-styled tooltip with the localized error summary, stable code/HTTP status, and bounded provider message. |
 | Turn outcome | After a failed turn, a session-scoped recovery card summarizes the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
 | Session switch | A first-opened session paints at its latest record; a revisited pane paints at its own retained position. Bounded first commit and full-history expansion show the same position: no post-paint height correction may shift the visible rows, in either direction |
 | Turn start (send / retry / regenerate) | Re-pins and positions the latest content before paint, even if the user had scrolled up; the later persisted user-message event does not flash the transcript at its top, and the composer collapse / indicator layout clamps during the send never release follow mode |
@@ -1193,10 +1200,13 @@ Single message render — either user (plaintext) or assistant (markdown streami
   workspace HTML chip previews it in the side browser; clicking a resolved
   image thumbnail opens the host files viewer on that ref; clicking any other
   allowed file opens it with the OS default application for that suffix.
-  HTTP(S) URLs remain inline text links
-  that open in the side browser; long URL links wrap within the plate and
-  keep logical-start alignment instead of inheriting the browser's centered
-  button text.
+  HTTP(S) URLs remain inline text links. Plain clicks follow the persisted
+  Link open destination setting (Work panel browser by default, or the system
+  default browser). Right-clicking a link opens a body-level context menu with
+  Open in default browser, Open in work panel, and Copy link address. Modifier
+  clicks (Ctrl/Cmd/Shift/Alt) continue to open externally. Long URL links wrap
+  within the plate and keep logical-start alignment instead of inheriting the
+  browser's centered button text.
 - Assistant: transparent surface, left-aligned, markdown rendered at full
   content width. Workspace file paths in that markdown are previewable:
   inline code, markdown links, and bare path tokens (with a known
@@ -1214,7 +1224,8 @@ Single message render — either user (plaintext) or assistant (markdown streami
   Fork and Regenerate on completed assistant turns; Edit and Delete on user
   turns. Assistant rows expose neither Delete nor Edit. Chips render the glyph
   alone: the label is carried by `aria-label` plus a themed hover/focus
-  tooltip above the chip, never as visible caption text (D137). Right-aligned
+  tooltip 8px above the chip (compact raised shadow, not the composer glow),
+  never as visible caption text (D137). Right-aligned
   for user turns, left-aligned for
   assistant turns; visible on hover/focus-within. Regenerate truncates the
   durable transcript to the nearest preceding user prompt and re-runs that turn
@@ -1245,28 +1256,34 @@ Single message render — either user (plaintext) or assistant (markdown streami
   copies all contentful fragments in order; Fork and Regenerate target the last
   contentful fragment so existing durable transcript semantics remain intact
   (D157).
-- Assistant meta: optional model badge + compact Codex-style context inspector
-  under the answer. The inspector keeps a small remaining-capacity ring beside
-  the `Context` label and percentage; low capacity changes the semantic color
-  without making color the only signal. Clicking the trigger (or activating it
-  from the keyboard) toggles a non-modal panel with the remaining-token header,
-  used/window counts, and two unboxed turn/speed summary values. Model usage is
-  compressed into one inline summary row that retains exact input/output/cache/
-  reasoning values and the provider-reported cache hit rate when available.
-  Tool usage is compressed into one aggregate row showing tool types, calls,
-  and estimated tokens; per-tool rows, share bars, source badges, and the
-  explanatory estimate note are intentionally omitted from the default view.
-  Generation speed is a completed-turn value in tokens per second and is not
-  updated while a response is streaming. The context-window total uses the
-  same effective model window as the agent sidecar: a published models.dev
-  `limit.context` replaces a legacy 128k generic binding seed, while a non-default
-  per-model Advanced value remains explicit. Unknown models use the provider's
-  generic default window. The panel is portaled to
-  the document body as a fixed viewport overlay, flips above or below the
-  trigger, clamps to viewport margins, and repositions on transcript scrolling
-  or window resize so no transcript clipping ancestor can hide it (D103, D184,
-  D244). When the active session has an installed context checkpoint, the
-  panel adds one muted summary line for the compaction count and newest
+- Assistant meta: optional model badge under the answer. The compact
+  Codex-style context inspector lives in the composer right toolbar,
+  immediately left of the model × reasoning chip, and always mirrors the
+  newest assistant turn that reported usage (D347). It is hidden until that
+  usage exists. The trigger keeps a small remaining-capacity ring beside the
+  percentage and omits the redundant `Context` label; low capacity changes
+  the semantic color without making color the only signal. Clicking the
+  trigger (or activating it from the keyboard) toggles a non-modal panel with
+  a remaining-token-plus-percentage heading, used/window counts, and two
+  unboxed turn/speed summary values. Model usage is compressed into one
+  inline summary row that retains exact input/output/cache/reasoning values
+  and the provider-reported cache hit rate when available. Tool usage is
+  compressed into one aggregate row showing tool types, calls, and estimated
+  tokens; per-tool rows, share bars, source badges, and the explanatory
+  estimate note are intentionally omitted from the default view. Rows below
+  the heading share one muted-label / tabular-value rhythm separated by
+  spacing; the popover keeps its floating-layer edge and draws no inner
+  section rules (D297). Generation speed is a completed-turn value in tokens
+  per second and is not updated while a response is streaming. The
+  context-window total uses the same effective model window as the agent
+  sidecar: a published models.dev `limit.context` replaces a legacy 128k
+  generic binding seed, while a non-default per-model Advanced value remains
+  explicit. Unknown models use the provider's generic default window. The
+  panel is portaled to the document body as a fixed viewport overlay, flips
+  above or below the trigger, clamps to viewport margins, and repositions on
+  scroll or window resize so no clipping ancestor can hide it (D103, D184,
+  D244, D347). When the active session has an installed context checkpoint,
+  the panel adds one muted summary line for the compaction count and newest
   summary's estimated token cost; the transcript still shows one row per
   compaction (D203).
 - Gap: 12px vertical padding between consecutive message rows (denser than
@@ -1307,8 +1324,8 @@ message its checkpoint covers.
 - Assistant: `aria-label="Assistant message"`
 - Thinking trigger exposes localized Show/Hide labels, `aria-expanded`, and an
   `aria-controls` relationship to the reasoning panel
-- Context inspector trigger is keyboard focusable, exposes a localized
-  remaining percentage and token count, carries `aria-haspopup="dialog"`,
+- Context inspector trigger (composer toolbar) is keyboard focusable, exposes a
+  localized remaining percentage and token count, carries `aria-haspopup="dialog"`,
   `aria-expanded`, and an `aria-controls` relationship to the panel, and opens
   the same compact summary on click or keyboard activation; Escape or a click
   outside closes it and returns focus to the trigger
@@ -1452,6 +1469,10 @@ activity rows and their nested result disclosures. The group reports duration
 and containment, not turn outcome: a failed child remains an error on its own
 ToolCallRow but never changes the group header to a terminal failure. Terminal
 agent errors remain owned by the assistant error and TurnOutcomeCard surfaces.
+Elapsed labels use compact automatically carried units: seconds below one
+minute, minutes plus seconds below one hour, and hours plus minutes (and
+seconds when non-zero) from one hour onward. Zero-value units are omitted, so
+`90m` is rendered as `1h 30m`.
 
 ### 9.2 Anatomy
 
@@ -1581,7 +1602,9 @@ twice.
 A `Task` call is presented as a node of a delegation card, not as a compact tool
 row — one delegation reads the same as a fan-out (D265). The node names the
 delegate it ran, taken from the rows it produced or, before any arrived, from
-the call's own `agent` argument, and carries the call's short `description`.
+the call's own `agent` argument, and carries the call's short `description`. The
+resolved model id is shown immediately after the delegate name, from the
+structured `Task` result details.
 
 The lifecycle rows (`TaskWait`/`TaskList`/`TaskStop`) stay compact tool rows —
 they are not topology nodes and must not inflate the subagent counts — but they
@@ -1618,7 +1641,7 @@ never summarizes from its own arguments:
 ```text
 [flow] Subagent completed   1 subagent · 1/1 finished · 40s        [›]
   ┌────────────────┐    ┌───────────────────────────────────────────┐
-  │ (◎) Main agent │────│ [bot] code-reviewer      Completed · 32s  │
+  │ (◎) Main agent │────│ [bot] code-reviewer  claude-sonnet-4-5 · Completed · 32s │
   │ Coordinating 1 │    │ check the store diff                      │
   │ delegated task │    │ 3 steps                             [›]   │
   └────────────────┘    └───────────────────────────────────────────┘
@@ -1643,8 +1666,8 @@ Opening a node reveals the blocks the call carries, then the delegate's own rows
 - Block order is brief in, report out, counters last: the `task` argument as an
   `input` block, the report as the output block, then a `Details` block holding
   the counters pi handed back — `status`, `turns`, `toolCalls`, and `usage` when
-  present. `agent` is omitted because the node title already shows it, and an
-  `error` is rendered as the leading error block, not as a counter. The
+  present. `agent` and `modelId` are omitted because the node title already shows them,
+  and an `error` is rendered as the leading error block, not as a counter. The
   delegate's own rows follow the whole body, so the summary reads before the
   detail.
 - A failed delegation shows its error instead of an empty report.
@@ -1720,10 +1743,13 @@ Opening a node reveals the blocks the call carries, then the delegate's own rows
   connected to the `Task` nodes in parent-row order. The runtime exposes no
   delegate dependencies and forbids nested `Task`, so the renderer must not
   invent delegate-to-delegate edges or a downstream summary node.
-- Each node shows the definition name, short description, explicit outcome,
-  runtime duration and step count. The duration uses the delegation registry's
+- Each node shows the definition name, effective model id, short description,
+  explicit outcome, runtime duration and step count. The duration uses the
+  delegation registry's
   `startedAt`/`completedAt` timestamps (and ticks live while the node is
-  running), not the immediate `Task` tool-call duration. Outcome prefers the
+  running), not the immediate `Task` tool-call duration, and uses the same
+  automatically carried `h`/`m`/`s` format as the processing-group header.
+  Outcome prefers the
   structured `Task` result
   (`completed`, `truncated`, `timed_out`, `aborted`, `stopped`, `failed`) and falls back to transport
   state (`running`, `error`, `denied`, `success`). Clicking the node expands the
@@ -1929,7 +1955,7 @@ reasoning-level control.
 
 ```text
 +----------------------------------------------------------+
-| [Agent/Plan/Goal] [permission mode]          | [model · reasoning ▾] |
+| [Agent/Plan/Goal] [permission mode]     | [ring %] [model · reasoning ▾] |
 | queued messages (optional; one row per item) | [⏹ Stop / → Send] (one submit slot) |
 | textarea (auto-growing, 1 line → max 7)                         |
 | placeholder: welcome → command/file hint → keyboard hint        |
@@ -1968,11 +1994,13 @@ reasoning-level control.
   toolbar rhythm. Agent and Plan expose the effective selectable permission;
   Goal displays the localized Auto label as a disabled, non-opening chip while
   the approval card remains the separate place for choosing execution policy.
-- The right toolbar owns one combined model × reasoning-level chip immediately
-  before the standalone prompt-enhancement action and the single Stop/Send
-  submit slot. The chip shows Bot, the current model name, and the current
-  reasoning level separated by `·`; `off` omits the level text. The prompt-
-  enhancement action shows Sparkles while idle, uses the shared
+- The right toolbar owns the remaining-capacity context inspector (when the
+  newest assistant turn has usage) immediately left of one combined model ×
+  reasoning-level chip, then the standalone prompt-enhancement action and the
+  single Stop/Send submit slot (D347). The inspector trigger shows the ring
+  and percentage only. The chip shows Bot, the current model name, and the
+  current reasoning level separated by `·`; `off` omits the level text. The
+  prompt-enhancement action shows Sparkles while idle, uses the shared
   `.tool-spinner` and localized `Enhancing…` label while running, and remains
   a one-shot draft rewrite action.
 - The combined chip opens one anchored menu above itself. The menu starts with
@@ -2202,6 +2230,12 @@ reasoning-level control.
   above it is saved as UTF-8 in the session's scratch `pasted/` directory and
   inserts an inline temporary-file token at the paste position (D197, D209,
   D262, ADR 0059, ADR 0070, ADR 0131)
+- The Composer `+` button opens one native file picker with no type-choice menu.
+  The picker accepts regular files, and the importer classifies each selected
+  item as an image or file from its MIME/extension metadata before copying it
+  into the active session's scratch `pasted/` directory and adding its compact
+  chip; the original absolute picker paths never enter the prompt. Directory
+  selections are rejected with the normal error toast in the current MVP.
 - The compact chips retain structured kind/name/MIME metadata while keeping
   the textarea free of binary data. The selected model's models.dev
   capability controls dispatch when its exact models.dev record matches;
@@ -2296,6 +2330,11 @@ Anatomy:
   startup-only home draft into a durable session before saving when no active
   session is available. The scratch lifecycle removes pasted files with the
   session and never dirties the workspace git tree.
+- A `+` picker selection follows the same session ownership and chip flow: the
+  renderer materializes a home draft when needed, sends a one-shot picker token
+  through `composer/importFiles`, and keeps only the returned scratch
+  references. The native file picker accepts regular files only; Electron main
+  owns the selected paths and applies the same size limits before copying.
 - Reference chips wrap within the prompt area, expose the canonical path in
   their tooltip and accessible name, and provide a focus-visible localized
   remove button that restores textarea focus. Duplicate leaf labels remain
@@ -2308,7 +2347,8 @@ Anatomy:
   leaf-name chip as the draft. Clicking a workspace `.html`/`.htm` file opens
   the work-panel browser; clicking any other allowed file (workspace, session
   scratch, or attachments) opens it with the OS default application. HTTP(S)
-  URLs stay text links into the side browser.
+  URLs stay text links. Plain clicks follow the Link open destination setting,
+  and right-clicking exposes the same external, work-panel, and copy actions.
 - States: keyboard-active row uses the shared `kb-active` treatment; empty
   query lists everything (slash) / recently indexed order (file); zero
   matches renders the localized empty row and the menu counts as closed for
@@ -2636,6 +2676,33 @@ groups, select candidates, and start an explicit import.
 - Projects-row disclosure and action-menu buttons expose localized,
   project-specific accessible names.
 
+### 18.5 ModelConfigImportPanel
+
+Scan the same local agent stores for provider and model settings, review
+candidates grouped by source, select them, and start an explicit import.
+
+```text
+[Found N providers]                         [Import selected (N)]
+──────────────────────────────────────────────────────────────────
+[ ] [›] Claude Code                                      N providers
+[ ] [›] OpenCode                                         N providers
+[ ] [›] CC Switch                                        N providers
+```
+
+- The card is independent of session import: its own Scan, selection, and
+  Import selected action. A session scan never starts a model-config scan.
+- Source grouping is the only grouping. A successful scan replaces the prior
+  candidate set, clears selection, and leaves every group collapsed.
+- Each row shows the provider name, model count, host, an API key / No API
+  key badge, and the source. The raw secret never reaches the renderer.
+- Import creates one `providers.create` row per selected candidate. An
+  existing provider with the same normalized base URL and API style is
+  skipped. OAuth-only source accounts are omitted from the scan.
+  CC Switch is a fifth source (`~/.cc-switch/cc-switch.db`); a live tool
+  file that matches a CC Switch endpoint is not listed twice.
+- If `settings.defaultProviderId` is empty after a successful create, the
+  first new provider becomes the global default.
+
 ---
 
 ## 19. ProviderStudio (Settings → Agent)
@@ -2699,6 +2766,16 @@ compatibility remains owned by pi-ai.
   and resize; model selection immediately adds or removes its configuration
   row. Configuration rows stay compact until expanded; expanding one row does
   not expand or collapse any other row.
+- The left-pane list header carries a checkbox that selects or clears every
+  currently visible row. A search filter narrows which rows "all" means;
+  already-chosen bindings keep their advanced overrides. The checkbox is
+  checked when every visible row is chosen, unchecked when none are, and
+  indeterminate when the visible set is mixed.
+- The same header has a compact Fetch list action that re-probes the service
+  immediately. It stays disabled when no discoverable endpoint is ready, while
+  a probe is in flight, or while saving. Idle-with-a-valid-URL (the edit
+  debounce) stays enabled so the action can skip that window. Current rows
+  stay on screen until the live answer replaces them.
 - Adding a custom model validates non-empty and duplicate IDs, adds it to the
   top-level option list, selects it, and applies 128,000 context / 8,192 max
   output / no thinking defaults. Removing its selection does not delete the
@@ -2713,6 +2790,9 @@ compatibility remains owned by pi-ai.
   model remains the head binding, and when the account is the global default,
   its model selection updates with it
 - Test connection on an account resolves that account's OAuth authorization and toasts success/failure
+- Optional OAuth text prompts keep Continue enabled for an empty value and
+  submit the trimmed value so vendor-defined defaults remain usable; secret and
+  manual-code prompts still require non-empty input
 - Context, output, thinking-level, and default-thinking edits persist per model
   through `providers.create` / `providers.update`; runtime callers continue to
   use the first configured model until multi-model conversation selection is
@@ -2721,6 +2801,9 @@ compatibility remains owned by pi-ai.
 
 ### 19.5 Accessibility
 - Segmented controls expose `aria-pressed`
+- The discovered-list header checkbox has a localized accessible name
+  (Select all / Deselect all) and an indeterminate state when only some
+  visible rows are chosen
 - Enter-to-send uses `role="switch"` + `aria-checked`
 - Model configuration rows expose `aria-expanded` and reference their details
   with `aria-controls`; collapsed details are removed from the tab order
@@ -2803,8 +2886,10 @@ Sidebar footer                                        Popover (360px max)
   an unfocused current session enters the inbox and receives a native banner.
   Clicking the banner restores/shows and focuses the main window before
   emitting `notification.activated` for the matching session.
-- Aborted turns, permission requests, scheduled reminders, and plugin
-  notifications do not enter this inbox.
+- Aborted turns, interactive permission/ask/Plan prompts, scheduled reminders,
+  and plugin notifications do not enter this inbox. Interactive prompts may
+  use the source-aware native surface while the app is focused on a different
+  session.
 
 ### 20.5 Accessibility
 
@@ -2828,8 +2913,9 @@ Sidebar footer                                        Popover (360px max)
   from unseen terminal agent turns. Visible-current results and `aborted` turns
   are intentionally silent.
 - At most 200 newest rows are retained globally. There is no pagination,
-  scheduled notification source, permission-notification source, preferences
-  page, notification permission prompt, or cloud sync.
+  scheduled notification source, durable permission-notification source,
+  preferences page, notification permission prompt, or cloud sync. Interactive
+  prompt banners are transient native surfaces outside the inbox.
 
 ---
 
@@ -2856,6 +2942,7 @@ Sidebar footer                                        Popover (360px max)
 13. Toasts stack top-center with variant icon + dismiss, auto-dismiss 4s/8s, pause on hover, and announce via `role="status"`/`role="alert"` per §17
 14. Session import defaults to source grouping, offers project-path grouping, collapses all groups after scan/group changes, and exposes accessible group disclosure state per §18
 15. Imported project paths materialize exactly once in the durable Projects index; path-less imports remain Temporary sessions and no filesystem directory is created
+15a. Model-configuration import scans the same local stores independently, never sends secrets to the renderer, skips equivalent endpoints, and does not copy OAuth/subscription logins per §18.5
 16. ProviderStudio shows compact defaults, vendor-account rows with edit/test/delete actions, add/edit dialogs, and AI service cards; secrets never render raw; every action remains keyboard reachable
 17. NotificationInbox exposes All/Unread views, exact unread badge semantics,
     row activation, mark-all-read and clear actions; it is keyboard-operable

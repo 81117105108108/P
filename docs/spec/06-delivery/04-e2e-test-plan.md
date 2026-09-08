@@ -119,6 +119,28 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Documented; automation pending
 
+### Release & Packaging
+
+#### E2E-192: Linux release publishes a system-Electron ASAR asset
+
+- **Preconditions**: A `vX.Y.Z` tag matches `apps/desktop/package.json`; the
+  Linux x64 release runner can complete `dist:linux` and has a system Electron
+  available for repackaging validation.
+- **Steps**: 1) Run the tag release workflow. 2) Inspect the published GitHub
+  Release assets. 3) Confirm the versioned
+  `PI-Desktop-X.Y.Z-linux-x64.asar` asset is present. 4) Place that archive in
+  the target Electron resources layout with the target package's native host
+  and other resources, then launch it with `electron <archive>.asar`.
+- **Expected**: The ASAR is copied byte-for-byte from
+  `linux-unpacked/resources/app.asar`, is uploaded alongside the Linux
+  AppImage and deb, and the system Electron opens the PI-Desktop application
+  archive without requiring the bundled Electron executable.
+- **Specs linked**: `06-delivery/06-release-runbook.md`, `03-runtime/07-process-model.md`
+- **Acceptance**: Quality (release artifact and packaging compatibility)
+- **Milestone**: M6+
+- **Status**: Documented; artifact export is unit-covered, native system-Electron
+  repackaging remains runner validation
+
 ### Boot & Healthcheck
 
 #### E2E-001: App launches and shows main window
@@ -132,12 +154,19 @@ Each scenario is documented in this format:
   host-core and Electron startup. Window first shows the branded startup splash
   while bootstrap runs, then reveals the main shell in English with the current
   locale catalog; no compile error, missing-menu runtime error, or crash;
-  version info visible.
-- **Specs linked**: `03-runtime/07-process-model.md`, `04-ux/01-ui-ia.md`
+  version info visible. `~/.pi-desktop/logs/app/timing.log` contains greppable
+  `[timing] kind=boot` lines for `when-ready`, `host`, `sidecar`,
+  `window-shown`, and `renderer-bootstrap` with `elapsedMs` / `durationMs`.
+  GitHub auto-update is not started until after `ensureWindow`, and a hung
+  feed cannot keep updater status on `checking` for Chromium's ~60s timeout.
+- **Specs linked**: `03-runtime/07-process-model.md`, `04-ux/01-ui-ia.md`,
+  `03-runtime/09-logging-and-observability.md` §7b
 - **Acceptance**: A (app startup)
 - **Milestone**: M1
 - **Status**: Partially automated (`runtime-build-contract.test.mjs` covers the
-  dependency build contract; Electron window launch remains Draft)
+  dependency build contract; `boot-timing.test.mjs` and `auto-update.test.mjs`
+  cover timing helpers and the bounded auto-check contract; Electron window
+  launch remains Draft)
 
 #### E2E-002: IPC bridge is functional
 
@@ -197,8 +226,8 @@ Each scenario is documented in this format:
 #### E2E-005: Add a provider and save API key
 
 - **Preconditions**: App running; no provider configured; the models.dev snapshot ships with the build.
-- **Steps**: 1) Open Settings → Model configuration and choose Add provider. 2) Confirm the dialog is ONE form and no stepper, no preset grid and no Next/Back buttons. The first control is Service — a searchable menu (Choose a service, Custom endpoint, then a flat vendor list from models.dev including Xiaomi), not a native select, region grouping, or vendor-card grid. Open it, type to filter client-side, then choose **Custom endpoint**. Confirm Name and Base URL appear on one row, API Key and API format appear side by side on the next row (not behind Advanced), and that a focused field plus its 2px accent ring stays fully inside the dialog, including on a window narrower than 1040px. 3) Enter a name and a base URL for a service that publishes a `/models` route, then paste an API key. 4) Confirm the models section fills with the models THAT SERVICE returned, not with every model its vendor publishes; confirm a model the deployment does not host is absent. 5) Type in the filter box and confirm the list narrows client-side with no network request per keystroke. 6) Confirm each row shows the models.dev-derived context/output for models the catalog knows, and that a model with no catalog match still lists with generic defaults. 7) Select two models with the checkboxes. 8) Expand Advanced on one chosen row, override its limits and toggle thinking chips; confirm the label and optional hint sit above one compact grouped control and do not force the options onto a second row at normal dialog width; confirm all seven canonical levels are available, that published levels start selected for a known reasoning model, and that a non-reasoning or unknown row shows the same chips unselected with the manual-override hint; enable one level on that row and confirm the other row is unaffected. 9) Open the form-level Advanced and confirm the API format is present but pre-derived. 10) Add a free-form model ID the service did not return; confirm it is added with 128,000 / 8,192 / no-thinking defaults, then enable a thinking level if the endpoint supports it; confirm re-adding the same ID in different letter case is rejected as already added. 11) Save.
-- **Expected**: The service is asked first and models.dev only enriches the answer and seeds known-model defaults. The settings picker always offers the seven canonical thinking levels, and the Composer later renders the explicit levels saved in the same model binding; an empty or `off`-only binding resolves to `off`. Discovery is debounced ~600 ms, does not mark loading until that window elapses, and a slow reply from an earlier keystroke never replaces a newer list; named add-path discovery waits for an API key, while an unsaved custom provider is probed with the typed base URL (and key, if any) before it exists. The user never types a token limit on the common path. Custom endpoint keeps API format beside the key; named endpoints do not show format. Point a second provider at a base URL with no `/models` route and confirm the list falls back to the catalog, is labelled as coming from models.dev rather than the service, and still saves. The provider appears as a row with its host, model count and secret badge; the key is stored securely (not in plaintext config); `models` contains both bindings and `models[0]` remains the provider default.
+- **Steps**: 1) Open Settings → Model configuration and choose Add provider. 2) Confirm the dialog is ONE form and no stepper, no preset grid and no Next/Back buttons. The first control is Service — a searchable menu (Choose a service, Custom endpoint, then a flat vendor list from models.dev including Xiaomi), not a native select, region grouping, or vendor-card grid. Open it, type to filter client-side, then choose **Custom endpoint**. Confirm Name and Base URL appear on one row with no helper paragraph under the URL (placeholder only), API Key and API format appear side by side on the next row (not behind Advanced), and that a focused field plus its 2px accent ring stays fully inside the dialog, including on a window narrower than 1040px. 3) Enter a name and a base URL for a service that publishes a `/models` route, then paste an API key. 4) Confirm the models section fills with the models THAT SERVICE returned, not with every model its vendor publishes; confirm a model the deployment does not host is absent. 5) Type in the filter box and confirm the list narrows client-side with no network request per keystroke. 6) Confirm each row shows the models.dev-derived context/output for models the catalog knows, and that a model with no catalog match still lists with generic defaults. 7) Select two models with the checkboxes. 8) Expand Advanced on one chosen row, override its limits and toggle thinking chips; confirm the label and optional hint sit above one compact grouped control and do not force the options onto a second row at normal dialog width; confirm all seven canonical levels are available, that published levels start selected for a known reasoning model, and that a non-reasoning or unknown row shows the same chips unselected with the manual-override hint; enable one level on that row and confirm the other row is unaffected. 9) Open the form-level Advanced and confirm the API format is present but pre-derived. 10) Add a free-form model ID the service did not return; confirm it is added with 128,000 / 8,192 / no-thinking defaults, then enable a thinking level if the endpoint supports it; confirm re-adding the same ID in different letter case is rejected as already added. 11) Save.
+- **Expected**: The service is asked first and models.dev only enriches the answer and seeds known-model defaults. The settings picker always offers the seven canonical thinking levels, and the Composer later renders the explicit levels saved in the same model binding; an empty or `off`-only binding resolves to `off`. Discovery is debounced ~600 ms, does not mark loading until that window elapses, and a slow reply from an earlier keystroke never replaces a newer list; named add-path discovery waits for an API key, while an unsaved custom provider is probed with the typed base URL (and key, if any) before it exists. The user never types a token limit on the common path. Custom endpoint keeps API format beside the key and omits Base URL helper copy; named endpoints do not show format. Point the same custom form at an unreachable or unauthorized URL and confirm the left pane shows a classified error (not a raw JSON/HTML dump and not a second “no models” empty state); with cached rows from a later edit, the same error is a one-line banner above the list. Point a second provider at a base URL with no `/models` route and confirm the list falls back to the catalog, is labelled as coming from models.dev rather than the service, and still saves. The provider appears as a row with its host, model count and secret badge; the key is stored securely (not in plaintext config); `models` contains both bindings and `models[0]` remains the provider default.
 - **Specs linked**: `03-runtime/11-provider-model-system.md`, `03-runtime/12-provider-config-schema.md`, `03-runtime/13-model-catalog-and-selection.md`, `03-runtime/14-secrets-storage.md`, `04-ux/06-settings-ia.md`
 - **Acceptance**: B (multi-model provider configuration, save key)
 - **Milestone**: M2
@@ -207,8 +236,8 @@ Each scenario is documented in this format:
 #### E2E-005A: Edit provider model bindings and migrate a legacy model
 
 - **Preconditions**: One provider saved with two model bindings; one fixture provider row exists with only the legacy `default_model_id` and no `config_json.models`.
-- **Steps**: 1) Reopen the saved provider; confirm the single form opens with its cached model list painted immediately, and that the API key field explains an unchanged key is kept. 2) Confirm the live probe then refreshes that list without a retyped key, because the stored secret is reused. 3) Confirm both existing bindings are still chosen and check-marked, with their limits, thinking chips and defaults intact. 4) Enable a level the fixture catalog does not publish, edit one row's limits and save. 5) Reopen the fixture provider and confirm its legacy model appears as one chosen row with 128,000 context, 8,192 max output and all seven thinking choices available but unselected. 6) Save the fixture provider without changing the model. 7) Make the edited provider the global default, reopen it, remove its first model so a different binding becomes the head, and save. 8) Take the service offline or revoke the key, reopen the provider, and confirm the cached rows stay visible with the discovery error shown rather than an empty list.
-- **Expected**: Editing never drops an unmodified binding. An explicitly enabled level remains saved even when the catalog does not publish it, so the Composer reads the same binding rather than silently narrowing it; a binding whose model discovery is unavailable keeps its stored levels untouched. Legacy read materializes one binding without losing the old model ID; the subsequent write stores `config_json.models` and keeps `defaultModelId` equal to the first binding for older readers. When the edited provider is the global default and its first model changed, `settings.defaultModelId` is re-synced to the new head binding. A failed live probe degrades to the cached list plus an error, never to a blank picker, and a catalog fallback is never written into the model cache.
+- **Steps**: 1) Reopen the saved provider; confirm the single form opens with its cached model list painted immediately, and that the API key field explains an unchanged key is kept. 2) Confirm the live probe then refreshes that list without a retyped key, because the stored secret is reused. 3) Confirm both existing bindings are still chosen and check-marked, with their limits, thinking chips and defaults intact. 4) Enable a level the fixture catalog does not publish, edit one row's limits and save. 5) Reopen the fixture provider and confirm its legacy model appears as one chosen row with 128,000 context, 8,192 max output and all seven thinking choices available but unselected. 6) Save the fixture provider without changing the model. 7) Make the edited provider the global default, reopen it, remove its first model so a different binding becomes the head, and save. 8) Take the service offline or revoke the key, reopen the provider, and confirm the cached rows stay visible with a compact classified discovery error rather than an empty list or a raw host dump.
+- **Expected**: Editing never drops an unmodified binding. An explicitly enabled level remains saved even when the catalog does not publish it, so the Composer reads the same binding rather than silently narrowing it; a binding whose model discovery is unavailable keeps its stored levels untouched. Legacy read materializes one binding without losing the old model ID; the subsequent write stores `config_json.models` and keeps `defaultModelId` equal to the first binding for older readers. When the edited provider is the global default and its first model changed, `settings.defaultModelId` is re-synced to the new head binding. A failed live probe degrades to the cached list plus a compact classified error, never to a blank picker or a raw HTTP/JSON dump, and a catalog fallback is never written into the model cache.
 - **Specs linked**: `03-runtime/11-provider-model-system.md`, `03-runtime/12-provider-config-schema.md`, `03-runtime/13-model-catalog-and-selection.md`, ADR 0114
 - **Acceptance**: F (provider persistence and migration)
 - **Milestone**: M2
@@ -320,33 +349,106 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Unit-covered; rendered UI scenario pending
 
-#### E2E-005G: Per-provider custom User-Agent
+#### E2E-005G: Per-provider custom HTTP headers
 
 - **Preconditions**: One API-key AI service (including an OpenCode Go row) and
   one signed-in vendor (OAuth) account; a capture proxy records outbound HTTP
   headers, including Codex and Anthropic adapters.
-- **Steps**: 1) Open the AI service, expand Advanced, set User-Agent to
-  `CustomAgent/1.0`, and save. 2) Start an Agent turn, a follow-up, prompt
-  enhancement, and a plugin one-shot. 3) Refresh `/models` from the form
-  before saving a second change and confirm the unsaved value is sent. 4)
-  Clear the field and save; confirm adapter defaults return. 5) Edit the
-  OAuth account Advanced User-Agent, save, then run a turn that refreshes
-  the access token. 6) Repeat against OpenCode Go and confirm
-  `x-opencode-session` is still present. 7) Repeat against Codex/Anthropic
-  OAuth inference.
-- **Expected**: A non-empty User-Agent is the last writer on that row's
+- **Steps**: 1) Open the AI service and click the upper-right Advanced settings
+  action. Confirm a separate modal opens without changing the main form layout,
+  and that its header close action is the only close control (no footer action
+  row). Use the common-header preset to add User-Agent, then import a JSON object
+  containing `X-Gateway: alpha` and enough headers to exceed five visible rows.
+  Copy headers as JSON and confirm the clipboard is the pretty-printed persisted
+  record (blank names omitted, last write wins) with localized success feedback.
+  Confirm the header list scrolls inside the modal while the underlying model
+  panes keep their working area, close the modal, then save. 2) Start an Agent
+  turn, a follow-up, prompt enhancement, and a plugin one-shot. 3) Refresh
+  `/models` from the form before saving a second change and confirm the
+  unsaved headers are sent. 4) Clear the rows and save; confirm adapter
+  defaults return. 5) Edit the OAuth account Advanced headers, save, then
+  run a turn that refreshes the access token. 6) Repeat against OpenCode Go
+  and confirm `x-opencode-session` is still present. 7) Repeat against
+  Codex/Anthropic OAuth inference. 8) Attempt `Authorization` and CR/LF
+  values; save is rejected.
+- **Expected**: Non-empty custom headers are the last writer on that row's
   outbound HTTP (turns, subagents, one-shots, discovery, connection test,
   OAuth refresh). Empty restores pi-ai / `claude-cli` / OpenCode defaults.
-  OpenCode still sends `x-opencode-session` and `x-opencode-client`. Codex
-  and Anthropic still send the custom value despite adapter last-writes.
-  First OAuth login does not collect a User-Agent. CR/LF is rejected.
+  Advanced keeps up to five header rows visible and scrolls additional rows in its
+  own bounded area, so they do not compress or hide the model panes. Escape and outside-click close
+  only the Advanced modal while it is open. The preset adds the expected
+  User-Agent value, Copy JSON serializes the same `pairsToRecord` map saved on
+  the row, JSON import accepts both supported object shapes, and
+  case-insensitive duplicate keys are merged rather than duplicated.
+  Toolbar actions wrap at the narrow dialog breakpoint instead of overflowing.
+  OpenCode still sends
+  `x-opencode-session` and `x-opencode-client`. Codex
+  and Anthropic still send the custom User-Agent despite adapter last-writes.
+  First OAuth login does not collect headers. Reserved keys and CR/LF are
+  rejected. Advanced is a compact key/value editor, not a lone User-Agent
+  field.
 - **Specs linked**: `03-runtime/12-provider-config-schema.md`,
   `03-runtime/11-provider-model-system.md`, `03-runtime/02-agent-runtime.md`,
-  ADR 0176
+  `04-ux/06-settings-ia.md`, ADR 0178
 - **Acceptance**: B (model configuration), F (runtime provider requests)
 - **Milestone**: M2
 - **Status**: Unit-covered (host persistence, fetch wrapper, discovery,
   form Advanced); rendered UI scenario pending
+
+#### E2E-005H: Select every visible model from a long service list
+
+- **Preconditions**: App running; the add-provider or edit-provider dialog is
+  open against a service (or vendor account) that returns a long model list,
+  including at least one model whose id would not match a later search.
+- **Steps**: 1) Wait until the left pane lists the service's models. Confirm
+  the list header shows a checkbox beside the pane title, unchecked while no
+  rows are chosen. 2) Tick that header checkbox. Confirm every listed row is
+  checked and the right pane lists a chosen binding for each, keeping any
+  already-configured advanced overrides. 3) Untick one row, then confirm the
+  header checkbox is indeterminate. Tick it again and confirm the remaining
+  visible rows are chosen without duplicating already-chosen ones. 4) Type a
+  filter that matches a subset. Untick the header checkbox and confirm only
+  the matching chosen rows disappear; a model hidden by the filter stays on
+  the right. 5) Tick the header checkbox again and confirm only the matching
+  rows are added back. Clear the filter and confirm the previously hidden
+  chosen model is still present. 6) Save.
+- **Expected**: One header checkbox selects or clears the currently visible
+  list. A search filter narrows which rows "all" means. Models already chosen
+  outside the filter stay chosen. Newly added rows adopt published limits and
+  thinking levels; existing bindings are not rebuilt. The same control is
+  present in the vendor-account editor because both dialogs render the shared
+  picker.
+- **Specs linked**: `03-runtime/13-model-catalog-and-selection.md`,
+  `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: B (multi-model provider configuration)
+- **Milestone**: M2
+- **Status**: Unit-covered (shared picker source contract); rendered UI
+  scenario pending
+
+#### E2E-005I: Fetch the service model list from the picker header
+
+- **Preconditions**: The add-provider or edit-provider dialog is open against a
+  reachable service (or vendor account) that publishes a `/models` list.
+- **Steps**: 1) Confirm the left-pane header shows a Fetch list action beside
+  the title, disabled before a valid endpoint is ready. 2) Enter a valid
+  endpoint. Confirm Fetch list enables during the 600 ms debounce wait. Click
+  it immediately; confirm it does not wait for that window, shows the loading
+  label while the probe is in flight, and then shows rows. 3) Click Fetch list
+  again. Confirm it keeps the current rows on screen and replaces them with the
+  live answer. 4) Take the service offline and click Fetch list; confirm the
+  classified error appears and the previous rows remain. 5) Restore the
+  service, click Fetch list, and confirm the live list returns. 6) Repeat in
+  the vendor-account editor.
+- **Expected**: The header action probes the service immediately, including
+  during the edit debounce after a URL becomes valid. Automatic discovery on
+  credential edits is unchanged. The same control is present for both
+  credential kinds because both dialogs render the shared picker.
+- **Specs linked**: `03-runtime/13-model-catalog-and-selection.md`,
+  `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: B (multi-model provider configuration)
+- **Milestone**: M2
+- **Status**: Unit-covered (discovery hook + picker source contract); rendered
+  UI scenario pending
 
 #### E2E-005D: Configure a Zhipu / Z.AI named endpoint preset
 
@@ -1196,7 +1298,9 @@ Each scenario is documented in this format:
   recent-activity ordering do not change, and historical notification title
   snapshots are unchanged. Empty and overlong values are rejected. A custom
   title is not replaced by first-prompt auto-title; a still-default session
-  continues to receive its automatic title.
+  continues to receive its automatic title. After its first turn, the default
+  session first shows the prompt fallback and then adopts the concise
+  background LLM summary when the provider returns one.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `03-runtime/04-data-storage.md`, `03-runtime/06-host-rpc-protocol.md`,
   `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`, ADR 0143
@@ -1237,7 +1341,9 @@ Each scenario is documented in this format:
 
 #### E2E-091: Appearance card selects searchable theme and language pickers
 
-- **Preconditions**: App running on macOS with a Simplified Chinese system locale.
+- **Preconditions**: App running on macOS; the harness can exercise English,
+  Simplified Chinese, Traditional Chinese, Turkish, German, Spanish, French,
+  and Korean system locales.
 - **Steps**:
   1) Open Settings → General.
   2) In the Appearance card, open the Theme picker. Confirm System, Light, and
@@ -1245,12 +1351,14 @@ Each scenario is documented in this format:
      and the UI switches to dark.
   3) Select Light and confirm the UI switches to light.
   4) In the Language row, open the searchable picker. Confirm Auto is pinned
-     at the top with the detected native name (简体中文) and that English,
-     简体中文, and Türkçe are listed by native name; with the OS locale set to
-     Chinese, selecting Auto applies Simplified Chinese.
-  5) Select English and confirm the UI switches to English; select 简体中文 and
-     confirm it switches back; select Türkçe and confirm shell chrome is
-     Turkish without a reload.
+     at the top with the detected native name and that English, 简体中文,
+     繁體中文, Türkçe, Deutsch, Español, Français, and 한국어 are listed by native name. With Simplified Chinese
+     selected as the OS locale, selecting Auto applies Simplified Chinese;
+     with Traditional Chinese selected, Auto applies Traditional Chinese.
+  5) Select English, 简体中文, 繁體中文, Türkçe, Deutsch, Español, Français,
+     and 한국어 in turn and confirm shell chrome switches to each locale without
+     a reload. Confirm `zh-Hant` and `zh-HK` resolve to 繁體中文, `de-DE` to
+     Deutsch, `es-MX` to Español, `fr-CA` to Français, and `ko-KR` to 한국어.
   6) Type a native name or English name into the language search and confirm
      unmatched locales disappear. Type a theme name into the theme search and
      confirm unmatched options disappear.
@@ -1260,11 +1368,23 @@ Each scenario is documented in this format:
   then any plugin themes after a divider. Auto resolves the OS locale through
   the main process (`app.getLocale()`), passes it safely through the sandboxed
   preload bridge, and reflects the detected native name inline in the menu;
-  switching options updates the live UI without a reload.
+  zh-TW, Turkish, German, Spanish, French, and Korean are complete shell
+  catalogs, including release-note copy; switching options updates the live UI
+  without a reload.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/02-i18n-english-first.md`
 - **Acceptance**: A (core shell), H (localization)
 - **Milestone**: M4
 - **Status**: Documented
+
+#### E2E-091a: Theme changes keep the Windows frameless background aligned
+
+- **Preconditions**: App running windowed on Windows with the OS in light mode.
+- **Steps**: 1) Select Dark in Settings → General → Appearance. 2) Inspect the lower-left, lower-right, and resize edges while the shell settles and while collapsing/expanding the sidebar. 3) Select Light and repeat. 4) Switch the OS color preference and select System; repeat after the app resolves the system theme.
+- **Expected**: The native BrowserWindow background follows the resolved application theme (`#181818` for dark and `#ffffff` for light), so no white strip appears around the frameless renderer during theme changes or shell animations. macOS keeps its transparent vibrancy behavior unchanged.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `02-architecture/01-architecture.md`
+- **Acceptance**: A (core shell)
+- **Milestone**: M5
+- **Status**: Documented; native Windows validation pending
 
 #### E2E-039: Settings titlebar drag moves the window
 
@@ -1454,7 +1574,7 @@ Each scenario is documented in this format:
 
 - **Preconditions**: Network available to `cnb.cool`.
 - **Steps**: 1) Open Extensions → Marketplace. 2) Switch Marketplace source from GitHub (official) to Mirror (cnb.cool). 3) Confirm the catalog refreshes in the same surface. 4) Install a plugin.
-- **Expected**: Switching triggers a refresh and reports the new plugin count; the active-source status shows the cnb.cool catalog URL; the install downloads its package from the mirror and passes shasum verification. Switching back to official restores the GitHub source. Choosing Custom URL with an empty value falls back to the official default rather than an empty endpoint.
+- **Expected**: Switching triggers a refresh and reports the new plugin count; the source selector remains the only source-status control, with no redundant provider explanation or active-source status line; the install downloads its package from the mirror and passes shasum verification. Switching back to official restores the GitHub source. Choosing Custom URL with an empty value falls back to the official default rather than an empty endpoint.
 - **Specs linked**: `07-plugins/07-plugin-marketplace.md`
 - **Acceptance**: G (remote marketplace source)
 - **Status**: Documented / host-core unit covered
@@ -1556,8 +1676,8 @@ Each scenario is documented in this format:
 #### E2E-024D: Isolated plugin panel host bridge
 
 - **Preconditions**: Plugin with `ui.panel` enabled.
-- **Steps**: 1) Set the app language to English and open a panel whose manifest declares localized `ui.title.en` and `ui.title.zh-CN`; confirm the native window/launcher identity remains available without a host-rendered title. 2) Set the app language to Simplified Chinese and reopen the panel; confirm the panel content remains plugin-owned. 3) Open the panel on macOS, Windows, and Linux; confirm the same frameless 46px drag band, fixed top-right capsule fully contained inside that band, and exactly three accessible controls. 4) Exercise minimize, maximize, restore, close, keyboard focus, light/dark themes, page-defined light/dark backgrounds, and reduced motion on every platform. 5) Render a plugin-owned titlebar/toolbar; verify fixed/sticky UI uses `--pi-plugin-titlebar-height`, its interactive controls use `no-drag`, and clicks outside the capsule in the top 46px are treated as window dragging. 6) On Windows with classic scrollbars, scroll a panel with content overflow and inspect the right edge. 7) Open a development plugin and confirm the localized reminder explains that the top 46px is not clickable outside the capsule. 8) Reopen a minimized panel. 9) Invoke panel bridge APIs (`ui.showToast`, optional fs/net with grants).
-- **Expected**: Panel runs in its sandboxed window/partition; all three platforms use one host-owned frameless chrome contract with no native traffic lights, host-rendered title, or application menu; the top drag band is exactly 46px, and the minimal capsule stays fixed at the top-right without exceeding it. The capsule contains minimize/maximize-or-restore/close, follows the plugin page's surface/text colors, and never forces a black surface onto a light page. A v2 page marked `pi-plugin-chrome` uses `--pi-plugin-titlebar-height` and starts its own content directly below the 46px band without an additive duplicate spacer; a legacy page keeps the compatibility offset. A panel's stable scrollbar gutter is scoped to its actual content scroller; Windows does not show a second root-level empty side rail outside the page surface. The plugin owns its title and toolbar; the host drag strip remains usable, blocks clicks outside the capsule, and development panels alone show the reminder. Reopening restores the existing panel; bridge calls remain permission-checked and the host remains stable on panel close.
+- **Steps**: 1) Set the app language to English and open a panel whose manifest declares localized `ui.title.en` and `ui.title.zh-CN`; confirm the native window/launcher identity remains available without a host-rendered title. 2) Set the app language to Simplified Chinese and reopen the panel; confirm the panel content remains plugin-owned. 3) While the panel stays open, switch the app language to Korean and confirm the live `appearance:changed` event updates the panel controls, safe-area reminder, and accessible labels without reopening it. 4) Open the panel on macOS, Windows, and Linux; confirm the same frameless 46px drag band, fixed top-right capsule fully contained inside that band, and exactly three accessible controls. 5) Exercise minimize, maximize, restore, close, keyboard focus, light/dark themes, page-defined light/dark backgrounds, and reduced motion on every platform. 6) Render a plugin-owned titlebar/toolbar; verify fixed/sticky UI uses `--pi-plugin-titlebar-height`, its interactive controls use `no-drag`, and clicks outside the capsule in the top 46px are treated as window dragging. 7) On Windows with classic scrollbars, scroll a panel with content overflow and inspect the right edge. 8) Open a development plugin and confirm the localized reminder explains that the top 46px is not clickable outside the capsule. 9) Reopen a minimized panel. 10) Invoke panel bridge APIs (`ui.showToast`, optional fs/net with grants).
+- **Expected**: Panel runs in its sandboxed window/partition; all three platforms use one host-owned frameless chrome contract with no native traffic lights, host-rendered title, or application menu; the top drag band is exactly 46px, and the minimal capsule stays fixed at the top-right without exceeding it. The capsule contains minimize/maximize-or-restore/close, follows the plugin page's surface/text colors, and never forces a black surface onto a light page. A v2 page marked `pi-plugin-chrome` uses `--pi-plugin-titlebar-height` and starts its own content directly below the 46px band without an additive duplicate spacer; a legacy page keeps the compatibility offset. A panel's stable scrollbar gutter is scoped to its actual content scroller; Windows does not show a second root-level empty side rail outside the page surface. The plugin owns its title and toolbar; the host drag strip remains usable, blocks clicks outside the capsule, and development panels alone show the reminder. Reopening restores the existing panel; switching to Korean while the panel remains open updates the host capsule, reminder, and accessible labels in place; bridge calls remain permission-checked and the host remains stable on panel close.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`, `04-ux/07-ui-design-system.md`, `07-plugins/01-plugin-system.md`, `07-plugins/03-plugin-api.md`, `07-plugins/04-plugin-security.md`, ADR 0081, ADR 0082, ADR 0092, ADR 0093
 - **Acceptance**: G (isolated panel)
 - **Status**: Documented
@@ -1819,6 +1939,44 @@ Each scenario is documented in this format:
 - **Acceptance**: H (diagnostics)
 - **Milestone**: M5
 - **Status**: Documented
+
+#### E2E-194: Broken stdout does not crash the main process
+
+- **Preconditions**: Packaged or development app; a session can send a prompt.
+- **Steps**: 1) Launch so stdout/stderr are a closed pipe (Linux AppImage from
+  a desktop entry, or with the stdout reader closed). 2) Send a chat message.
+  3) Confirm the main process stays up and the uncaught-exception dialog does
+  not appear. 4) Quit and relaunch.
+- **Expected**: No Electron "A JavaScript error occurred in the main process"
+  dialog with `Error: write EPIPE` from `Logger.log`. NDJSON category logs still
+  receive the prompt records. Relaunch still reaches the local host service
+  instead of a fatal "Can't reach the local service" / “无法连接本地服务”
+  status caused by a previous main-process crash.
+- **Specs linked**: `03-runtime/09-logging-and-observability.md`,
+  `03-runtime/07-process-model.md`
+- **Acceptance**: H (diagnostics), Quality (main path no crash)
+- **Milestone**: M5
+- **Status**: Unit-covered (`logger-routing.test.mjs`); packaged AppImage
+  journey Documented
+
+#### E2E-195: Linux glibc below 2.35 names supported distros
+
+- **Preconditions**: Linux x64 packaged app; the machine glibc is older than
+  2.35 (for example Ubuntu 20.04 / Debian 11 / Fedora 35), or a test doubles
+  `process.report` to `2.31`.
+- **Steps**: 1) Launch the AppImage or deb. 2) Observe the main window and
+  fatal banner. 3) Confirm host-core is not restarted in a loop.
+- **Expected**: Electron still opens. There is no uncaught `write EPIPE`
+  dialog. The fatal banner says the build needs glibc 2.35 or newer and names
+  Ubuntu 22.04, Debian 12, and Fedora 36+. Restart supervision does not spin.
+  A host-core binary whose symbols need glibc 2.39 fails
+  `scripts/check-linux-host-glibc.mjs`.
+- **Specs linked**: `03-runtime/07-process-model.md`,
+  `01-product/01-product-scope.md`, `06-delivery/06-release-runbook.md`
+- **Acceptance**: H (diagnostics), Quality (main path no crash)
+- **Milestone**: M5
+- **Status**: Unit-covered (`linux-glibc.test.mjs`); packaged distro journey
+  Documented
 
 #### E2E-035: Bash tool uses the effective catalog shell
 
@@ -2479,24 +2637,29 @@ Each scenario is documented in this format:
   usage; another completed assistant message has content but no usage. The
   selected model has a published 1m-class context window, while its provider
   binding still contains the legacy 128k generic seed.
-- **Steps**: 1) Open the session. 2) Hover the completed assistant turn that has
-  usage, confirm the panel stays closed, then click its Context inspector
-  trigger. 3) Inspect the compact remaining-token header, used/window counts,
+- **Steps**: 1) Open the session. 2) Confirm the completed turn shows a model
+  badge and no context inspector under the answer. 3) Hover the composer
+  toolbar inspector trigger, confirm the panel stays closed, then click it.
+  4) Inspect the remaining-token-plus-percentage heading, used/window counts,
   unboxed turn/speed values, one inline provider-usage summary, and one
-  aggregate tool-usage summary. 4) Scroll the transcript until the trigger is
-  close to the top, bottom, and right viewport edges, and resize the window
-  while the panel is open. 5) Move the pointer away from the panel, then
-  dismiss it by clicking the trigger again, clicking outside it, and pressing
-  Escape from the keyboard. 6) Click Retry on that turn while idle. 7) Confirm
-  a turn without usage still offers Retry and omits the inspector.
-- **Expected**: Model badge and compact Context inspector appear under completed
-  assistant answers when data exists; the trigger shows remaining capacity and
-  low-space warning/error states, and click or keyboard activation toggles the
-  same compact summary while pointer hover alone never opens or closes it. An
-  open panel survives the pointer leaving it and closes on a second trigger
-  activation, an outside click, or Escape, which returns focus to the trigger.
-  Provider values remain exact, tool values remain visibly approximate through
-  the `~` aggregate total, and no per-tool list, source badge, progress bar, or
+  aggregate tool-usage summary, with no doubled heading rule and no inner
+  section hairlines. 5) Scroll the transcript and resize the window while the
+  panel is open. 6) Move the pointer away from the panel, then dismiss it by
+  clicking the trigger again, clicking outside it, and pressing Escape from
+  the keyboard. 7) Click Retry on that turn while idle. 8) Confirm a session
+  without usage still offers Retry on completed turns and omits the composer
+  inspector.
+- **Expected**: Model badge appears under completed assistant answers when a
+  model id exists. The compact Context inspector appears in the composer
+  right toolbar, left of the model picker, once any usage exists, and always
+  mirrors the newest usage-bearing assistant turn. The trigger shows the ring
+  plus remaining-capacity percentage (no Context label) and low-space
+  warning/error states; click or keyboard activation toggles the same compact
+  summary while pointer hover alone never opens or closes it. An open panel
+  survives the pointer leaving it and closes on a second trigger activation,
+  an outside click, or Escape, which returns focus to the trigger. Provider
+  values remain exact, tool values remain visibly approximate through the `~`
+  aggregate total, and no per-tool list, source badge, progress bar, or
   explanatory estimate paragraph is rendered. The cache hit rate is omitted
   when cache-read metadata is absent rather than inferred. A published 1m-class
   limit (for example `gpt-5.6-luna` at 1,050,000 tokens) is shown instead of
@@ -2505,14 +2668,15 @@ Each scenario is documented in this format:
   value and does not update during streaming; Retry
   re-sends the nearest preceding user prompt and is disabled while a turn is
   running; the portaled panel remains fully visible within the viewport, never
-  clipped by transcript scrolling, and follows the trigger after scrolling or
-  resize; Copy still excludes thinking text.
+  clipped by the composer or transcript, and follows the trigger after
+  scrolling or resize; Copy still excludes thinking text.
 - **Specs linked**: `04-ux/08-component-spec.md`,
   `04-ux/10-workbuddy-benchmark-ux.md`, `03-runtime/01-ipc-protocol.md`
 - **Acceptance**: C (chat stream), Quality
 - **Milestone**: M5
 - **Status**: Unit-covered (`transcript-style.test.mjs`,
-  `context-usage.test.mjs`, runtime usage mapping); full scenario Draft
+  `context-usage.test.mjs`, `latest-turn-context.test.mjs`, runtime
+  usage mapping); full scenario Draft
 
 #### E2E-061a: Regenerate replaces the current turn in place
 
@@ -2734,7 +2898,9 @@ Each scenario is documented in this format:
   references until the selected transport exposes a native PDF block. A
   provider-discovered or explicitly configured ID absent from models.dev remains
   runnable with the generic text-only, non-reasoning shape; pi-ai supplies only
-  the selected wire adapter, OAuth flow, and account model availability.
+  the selected wire adapter, OAuth flow, and account model availability. A
+  ChatGPT Plus/Pro or GitHub Copilot account lists `gpt-6-astra` from the
+  pinned pi-ai 0.85.1 catalog; models.dev then supplies its published metadata.
 - **Specs linked**: `02-architecture/02-tech-stack.md`,
   `03-runtime/11-provider-model-system.md`,
   `03-runtime/13-model-catalog-and-selection.md`, ADR 0134
@@ -2882,22 +3048,23 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (`auto-update.test.mjs` asserts
   `allowPrerelease = false`); packaged discovery scenario Draft
 
-#### E2E-067B: Dual-locale update notes and full changelog dialog (D164)
+#### E2E-067B: Shipped-locale update notes and full changelog dialog (D164/D345/D349)
 
 - **Preconditions**: The shipped `packages/shared` CHANGELOG contains aligned
-  `en` and `zh-CN` stable history; product language can be switched. For the
-  compact update path, use a packaged or fixture updater state with a
+  `en`, `zh-CN`, `zh-TW`, and `ko` stable history; product language can be
+  switched.
+  For the compact update path, use a packaged or fixture updater state with a
   catalogued `availableVersion`.
 - **Steps**: 1) With no available update, open Settings → Info and open Release
   notes. 2) Inspect the complete history, current-version marker, scrolling,
   and close behavior by close control, Escape, and backdrop. 3) Force or wait
   for update discovery so status is manual `available`, in-app `downloading`,
   or `downloaded`; inspect the ambient banner and Settings Updates row, then
-  reopen Release notes. 4) Switch UI language to zh-CN and re-inspect without
-  invoking a new check. 5) Repeat the compact update path with a version absent
-  from the catalog.
+  reopen Release notes. 4) Switch UI language to zh-CN, then zh-TW, then ko and
+  re-inspect without invoking a new check. 5) Repeat the compact update path
+  with a version absent from the catalog.
 - **Expected**: `UpdateState.releaseNotes` is plain multi-line product
-  highlights selected by Main from the dual-locale catalog — never a
+  highlights selected by Main from the shipped-locale catalog — never a
   renderer-supplied URL. Both surfaces show a localized "What's new" block
   when notes exist and hide it when they do not. Locale change refreshes notes
   for the same version. The Release notes action remains available in every
@@ -3170,16 +3337,19 @@ Each scenario is documented in this format:
   forward again. 6) Reload the session. 7) Choose Edit on the slash-command
   turn and inspect the seeded text. 8) Try Edit while a turn is running.
 - **Expected**: Every toolbar chip shows its glyph only, with the label
-  appearing as a tooltip on hover and on keyboard focus; no chip renders
-  caption text. The assistant toolbar offers Copy, Fork, Regenerate; the user
-  toolbar offers the pager (when variants exist), Copy, Edit, Delete. Edit
-  replaces the prompt bubble with a wider inline textarea with Retry and Cancel
-  controls; Escape or Cancel restores the bubble unchanged. Retry truncates the
-  transcript from that prompt and streams a new answer whether or not the text
-  changed, leaving a `current / total` pager on the user turn that restores the
-  original prompt with its full answer tail in place — surviving reload.
-  The slash turn seeds the typed `/command` form and re-expands the template on
-  retry. Edit is disabled while a turn is running.
+  appearing as a fully visible tooltip 8px above the chip on hover and on
+  keyboard focus (#74); no chip renders caption text. The tooltip uses the
+  compact raised shadow rather than the composer glow so its surface stays
+  visually separate from `--ds-bg-hover`. The assistant toolbar offers Copy,
+  Fork, Regenerate; the user toolbar offers the pager (when variants exist),
+  Copy, Edit, Delete. Edit replaces the prompt bubble with a wider inline
+  textarea with Retry and Cancel controls; Escape or Cancel restores the
+  bubble unchanged. Retry truncates the transcript from that prompt and
+  streams a new answer whether or not the text changed, leaving a
+  `current / total` pager on the user turn that restores the original prompt
+  with its full answer tail in place — surviving reload. The slash turn seeds
+  the typed `/command` form and re-expands the template on retry. Edit is
+  disabled while a turn is running.
 - **Specs linked**: `04-ux/08-component-spec.md`,
   `03-runtime/01-ipc-protocol.md`, `03-runtime/04-data-storage.md`,
   `08-meta/decisions-log.md` (D137, D274)
@@ -3453,10 +3623,15 @@ Each scenario is documented in this format:
 - **Expected**:
   - Before ready: full-window splash with brand mark, shell name, tagline, and accessible starting status (`data-testid="startup-splash"`).
   - After ready: splash exits with a short fade (or instantly under reduced motion) and the main shell (or settings page) is interactive underneath.
-  - On macOS the splash uses the same glass tint and sheen as the sidebar over native `under-window` vibrancy; the mounted shell stays hidden until the splash exit fade, then cross-fades in. Other platforms keep the opaque `--ds-bg-primary` fill.
+  - On macOS the splash uses the same glass tint and sheen as the sidebar over native `sidebar` vibrancy; the mounted shell stays hidden until the splash exit fade, then cross-fades in. Other platforms keep the opaque `--ds-bg-primary` fill.
   - No plain unbranded “Starting…” centered text as the only boot UI.
   - Overlay/dialog enter motion uses shared tokens; reduced motion keeps state changes without decorative duration.
-- **Specs linked**: `04-ux/07-ui-design-system.md` §8, `04-ux/02-i18n-english-first.md`, decisions-log D146 / D304
+  - If a non-settings bootstrap request fails while the settings read is still
+    in flight, opening Settings still renders the loaded controls. If the
+    settings request itself fails, the active section shows a loading/failure
+    state and retry action rather than a blank content pane; retrying after the
+    local service recovers restores the controls without leaving Settings.
+- **Specs linked**: `04-ux/07-ui-design-system.md` §8, `04-ux/02-i18n-english-first.md`, decisions-log D146 / D304 / D348
 - **Acceptance**: A (app startup), Quality
 - **Milestone**: M5
 #### E2E-099: Brand logo follows the active theme
@@ -4840,6 +5015,38 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (`apps/desktop/test/composer-paste-files.test.mjs`);
   full UI journey Draft (do not run E2E locally unless explicitly requested)
 
+#### E2E-102h: Composer picker imports files into session scratch
+
+- **Preconditions**: The app is running with a home or Agent composer and a
+  durable session. The native picker can select a text file and an image outside
+  the active workspace.
+- **Steps**: 1) Click the Composer `+` button; confirm it opens the native file
+  picker directly without an intermediate type-choice menu. 2) Select both
+  fixtures. 3) Inspect the draft chips and send a prompt asking the agent to
+  read the text fixture and identify the image marker. 4) Inspect the renderer
+  request, session transcript, and the session scratch directory.
+- **Expected**: The native picker returns a short-lived one-shot token, never a
+  source absolute path, and the selections are copied into
+  `<data_dir>/scratch/<sessionId>/pasted/` before they enter the draft. The app
+  classifies each selected item from its MIME/extension metadata, so the same
+  picker handles both regular files and images. Chips show sanitized leaf names
+  while prompt attachments reference only the copied paths; the workspace is
+  unchanged. The agent can call `Read` on the text fixture, and a
+  vision-capable model receives the image as an image block. Durable messages
+  retain metadata and refs only, never the source absolute path or binary bytes.
+  The file picker does not offer directory selection; missing files,
+  expired/replayed tokens, and oversized files return a visible IPC error and
+  write nothing.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md` §13c,
+  `03-runtime/04-data-storage.md`, `04-ux/08-component-spec.md` §11.7–11.8,
+  ADR 0059, ADR 0101
+- **Acceptance**: B (model config), C (conversation & stream), E (tools &
+  permissions), F (persistence), Security, Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`apps/desktop/test/composer-paste-files.test.mjs`);
+  provider/UI journey Draft (do not run E2E locally unless explicitly
+  requested)
+
 #### E2E-102a: Composer file reference results use compact leaf names
 
 - **Preconditions**: The app is running with an Agent session in a workspace
@@ -5388,6 +5595,27 @@ Each scenario is documented in this format:
   needs live vendor accounts (do not run E2E locally unless explicitly
   requested)
 
+#### E2E-197: GitHub Copilot accepts the default Enterprise domain
+
+- **Preconditions**: A build with the GitHub Copilot OAuth flow registered;
+  the device-code login can reach the GitHub endpoint.
+- **Steps**: 1) Open Settings -> Model configuration -> Add account and choose
+  GitHub Copilot. 2) Leave the Enterprise URL/domain field empty. 3) Confirm
+  Continue is enabled and submit the empty value. 4) Complete the device-code
+  login and inspect the resulting account row.
+- **Expected**: The empty text prompt is submitted as an empty string, the
+  provider uses github.com, and the device-code flow completes normally. Secret
+  and manual-code prompts remain disabled while empty. No OAuth token or device
+  credential is rendered or logged.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §19, `03-runtime/12-provider-config-schema.md`
+  §3, `08-meta/decisions-log.md` (D237/D240)
+- **Acceptance**: B (model config), Security, Quality
+- **Milestone**: M6+
+- **Status**: Unit-covered (`apps/desktop/test/oauth-login-prompt.test.mjs`);
+  live device-code journey Draft (do not run E2E locally unless explicitly
+  requested)
+
 #### E2E-152: A plugin contributes a work panel view
 
 - **Preconditions**: A development plugin declaring `ui.view` and one
@@ -5530,15 +5758,15 @@ Each scenario is documented in this format:
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004, E2E-067, E2E-076, E2E-079, E2E-092, E2E-097, E2E-143, E2E-150, E2E-168 |
-| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-005G |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-197, E2E-005G |
 | C — Conversation & stream | E2E-008, E2E-008a, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-031, E2E-040, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-059a, E2E-060c, E2E-060d, E2E-061, E2E-061a, E2E-062, E2E-064, E2E-065, E2E-068, E2E-071, E2E-073, E2E-074, E2E-075, E2E-081, E2E-083, E2E-084, E2E-086, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-106, E2E-109, E2E-111, E2E-114, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-121, E2E-AGENTS-001, E2E-142, E2E-144, E2E-145, E2E-146, E2E-147, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-161, E2E-162, E2E-166, E2E-172, E2E-173, E2E-174, E2E-177, E2E-178, E2E-179, E2E-180, E2E-182, E2E-183, E2E-187 |
 | D — Workspace | E2E-012, E2E-013, E2E-022B, E2E-024I, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060, E2E-068, E2E-075, E2E-078, E2E-153, E2E-158, E2E-182, E2E-187 |
 | E — Tools & permissions | E2E-008a, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-024I, E2E-024K, E2E-040, E2E-049, E2E-074, E2E-093, E2E-097, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102d, E2E-102e, E2E-102g, E2E-103, E2E-105, E2E-106, E2E-107, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-119, E2E-121, E2E-122, E2E-142, E2E-145, E2E-147, E2E-155, E2E-158, E2E-166, E2E-181 |
 | F — Persistence | E2E-020, E2E-021, E2E-021a, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062, E2E-064, E2E-066, E2E-068, E2E-071, E2E-072, E2E-073, E2E-082, E2E-084, E2E-096, E2E-098, E2E-102, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-103, E2E-AGENTS-001, E2E-061a, E2E-073a, E2E-104, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-118, E2E-119, E2E-120, E2E-121, E2E-123, E2E-142, E2E-146, E2E-148, E2E-151, E2E-158, E2E-160, E2E-168, E2E-171, E2E-177, E2E-178, E2E-183, E2E-186 |
 | G — Plugins | E2E-022, E2E-022A, E2E-022B, E2E-022C, E2E-023, E2E-024, E2E-024B, E2E-024C, E2E-024D, E2E-024E, E2E-024W, E2E-024F, E2E-024G, E2E-024H, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M, E2E-024N, E2E-024O, E2E-024P, E2E-025, E2E-026, E2E-105, E2E-117, E2E-120, E2E-122, E2E-123, E2E-024Q, E2E-148, E2E-152, E2E-153 |
-| H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042, E2E-096, E2E-098, E2E-104, E2E-107, E2E-108, E2E-109, E2E-110, E2E-113, E2E-115, E2E-116, E2E-118, E2E-121, E2E-146, E2E-155, E2E-159, E2E-176 |
+| H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042, E2E-096, E2E-098, E2E-104, E2E-107, E2E-108, E2E-109, E2E-110, E2E-113, E2E-115, E2E-116, E2E-118, E2E-121, E2E-146, E2E-155, E2E-159, E2E-176, E2E-194, E2E-195 |
 | Security | E2E-028, E2E-029, E2E-030, E2E-024J, E2E-024K, E2E-024M, E2E-049, E2E-068, E2E-086, E2E-102c, E2E-102d, E2E-102e, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-113, E2E-115, E2E-116, E2E-117, E2E-119, E2E-121, E2E-122, E2E-123, E2E-142, E2E-148, E2E-151, E2E-153, E2E-158, E2E-187 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-024O, E2E-059a, E2E-060b, E2E-060c, E2E-060d, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-024O, E2E-059a, E2E-060b, E2E-060c, E2E-060d, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -5546,7 +5774,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-020, E2E-021, E2E-021a, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-144 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-008a, E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-AGENTS-001, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-094, E2E-095, E2E-143, E2E-145, E2E-146, E2E-147, E2E-177, E2E-178, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187 |
+| M5 | E2E-008a, E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-AGENTS-001, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-094, E2E-095, E2E-143, E2E-145, E2E-146, E2E-147, E2E-177, E2E-178, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195 |
 | M6 | E2E-104, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-103, E2E-172 |
 | M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179 |
 | Post-MVP | E2E-022A, E2E-022B, E2E-022C, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M (plugin roadmap R2/R3/R6) |
@@ -5554,6 +5782,8 @@ Each scenario is documented in this format:
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
 rather than the A–H criteria; their gold source is the capture suite.
+
+The release artifact path is covered by E2E-192 (Quality, M6+).
 
 ---
 
@@ -5637,9 +5867,10 @@ This test plan spec is accepted when:
 
 ### US-UI-06 Session auto-title
 - Create a new task and send a first prompt such as "同步代码".
-- Expect its project or temporary session row title to become a truncated form
-  of that prompt instead of remaining "New task".
-- Rename a task from its session menu, then send a first prompt if it was still
+- Expect its project or temporary session row to show the normalized prompt
+  fallback immediately, then adopt a concise LLM summary after the first turn.
+- Restart before/after the summary and confirm the current title is retained;
+  rename a task from its session menu and send a first prompt if it was still
   using a default title. Expect the custom label to remain unchanged while the
   default-title task receives the normal first-prompt title.
 
@@ -6133,19 +6364,21 @@ This test plan spec is accepted when:
 - Click **Continue** and expect the app to append the localized continuation prompt (`Continue the user's unfinished task.` / `继续用户未完成的任务`) to the same session and start the next turn without truncating the failed turn.
 
 
-### US-UI-61 Assistant context summary + retry (D103, D184, D244)
+### US-UI-61 Assistant context summary + retry (D103, D184, D244, D347)
 - Complete an assistant turn that reports usage.
-- Expect a model badge and compact Context inspector under the answer. The
-  trigger shows the remaining context percentage; clicking it (or activating it
-  from the keyboard) shows used/remaining/window tokens, two unboxed turn/speed
-  values, one inline exact provider-usage summary, and one aggregate tool-usage
-  summary with types, calls, and approximate tokens. Per-tool rows, bars,
-  badges, and explanatory estimate copy are not shown.
+- Expect a model badge under the answer and the compact Context inspector in
+  the composer toolbar, left of the model picker. The trigger shows the
+  remaining-capacity ring and percentage; clicking it (or activating it from
+  the keyboard) shows remaining tokens plus percentage, used/window counts,
+  two unboxed turn/speed values, one inline exact provider-usage summary, and
+  one aggregate tool-usage summary with types, calls, and approximate tokens.
+  Per-tool rows, bars, badges, explanatory estimate copy, and inner section
+  hairlines are not shown.
 - Hovering the trigger changes nothing; the open panel closes on a second
   activation, an outside click, or Escape.
-- Move the trigger near each viewport edge and scroll or resize while the panel
-  is open; expect the body-level overlay to flip, clamp, and remain fully
-  visible instead of being clipped by the transcript scroll container.
+- Scroll or resize while the panel is open; expect the body-level overlay to
+  flip, clamp, and remain fully visible instead of being clipped by the
+  composer or transcript.
 - Hover the action row and click Retry; the nearest preceding user prompt is
   re-sent.
 
@@ -6311,17 +6544,21 @@ This test plan spec is accepted when:
 ### US-UI-74 macOS native sidebar vibrancy
 - Open the desktop app on macOS in both light and dark appearances with the
   sidebar expanded, then exercise the existing collapse/expand path.
-- Expect the main window to use native `under-window` vibrancy with a thin
-  theme tint behind `.sidebar` and any rendered `.sidebar-rail`: desktop
-  content stays perceptible through the material and the surface carries a
-  top-to-bottom sheen rather than a flat fill. The dock carries no seam or
-  hairline — the glass meets the opaque main pane flush, so no hard divider
-  separates the two panes.
+- Expect the main window to use native `sidebar` vibrancy with a thin
+  theme tint behind `.sidebar` and any rendered `.sidebar-rail`: the material
+  follows the app theme (`nativeTheme.themeSource`), so a dark shell stays on a
+  dark plate and a light shell stays on a light plate. Desktop content stays
+  perceptible through the material and the surface carries a top-to-bottom
+  sheen rather than a flat fill. The dock carries no seam or hairline — the
+  glass meets the opaque main pane flush, so no hard divider separates the two
+  panes. Switching language or other non-theme settings does not rebuild the
+  glass. Disabling or uninstalling a selected plugin theme returns native
+  chrome to `system`.
 - Expect `.main-pane`, `.main-titlebar`, and `.conversation-topbar` to remain
   solid theme surfaces without whole-window transparency or a strong artificial
   blur/card treatment. Sidebar collapse/expand, resize, traffic-light placement,
   and drag/no-drag hit regions remain unchanged.
-- **Specs linked**: `04-ux/08-component-spec.md` §1.7, §3.4
+- **Specs linked**: `04-ux/08-component-spec.md` §1.7, §3.4; decisions-log D304 / D348
 - **Milestone**: M6
 - **Status**: Partially automated (`macos-sidebar-vibrancy.test.mjs` source contract); native visual verification Draft
 
@@ -6496,6 +6733,40 @@ This test plan spec is accepted when:
 - **Acceptance**: A (core shell), H (localization)
 - **Milestone**: M5+
 - **Status**: Documented
+
+#### E2E-193: Appearance card sets a global type scale
+
+- **Preconditions**: App running with a clean `~/.pi-desktop` profile and an
+  open conversation that shows transcript text, the composer, and the sidebar.
+- **Steps**:
+  1) Open Settings → General and confirm the Appearance card shows a Font
+     size row below Font, with Grande selected and the slider at 100%.
+  2) Choose Venti. Confirm chat transcript, composer, settings labels,
+     sidebar session titles, and Lucide chrome icons all enlarge without a
+     reload, keeping their relative steps, and that the control shows 115%.
+  3) Drag the slider to 125%. Confirm Trenta becomes selected and
+     every `--text-*` surface and icon grows further. Confirm the UI never
+     shows a px field.
+  4) Use Zoom In, then Reset Zoom. Confirm window zoom still scales chrome
+     and that the type scale remains 125% after reset.
+  5) Restart the app and confirm the 125% scale is still applied
+     (`AppSettings.fontScale` = 1.25).
+  6) Choose Grande. Confirm the whole UI returns to 100% immediately;
+     restart and confirm the default remains.
+- **Expected**: Font size is Starbucks-style cup presets Tall / Grande /
+  Venti / Trenta
+  plus a percentage slider 80%–150% in 2.5% steps. Selection persists as
+  `AppSettings.fontScale` (absent means 1) and sets `--font-scale`, multiplying
+  every `--text-*` token and shared Lucide icon. Window Zoom In/Out/Reset remains
+  independent.
+  Invalid values are rejected or clamped. No protocol or schema version bump.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/07-ui-design-system.md`,
+  ADR 0180, D343
+- **Acceptance**: A (core shell), B (settings), H (localization)
+- **Milestone**: M5+
+- **Status**: Unit-covered (`packages/shared/src/font-size.test.ts`,
+  `apps/desktop/test/settings-font-size.test.mjs`); full UI journey Draft
+  (do not run E2E locally unless explicitly requested)
 
 #### E2E-127: macOS keeps the app in the Dock and Cmd+Tab
 
@@ -7357,7 +7628,7 @@ This test plan spec is accepted when:
   output and thinking chips; cancel. 3) Edit the vendor account and do the same
   on one of its chosen models. 4) Toggle a thinking level on a reasoning-capable
   account model and save. 5) Reopen the account editor and read that model's
-  chips. 6) For an OpenAI Codex account, inspect `gpt-5.6-sol` (or another
+  chips. 6) For an OpenAI Codex account, inspect `gpt-6-astra` (or another
   account model also published under models.dev's `openai` provider) and confirm
   its published context/output limits and reasoning levels are present. 7) In
   the account editor, hand-type a custom model ID the catalog does not publish,
@@ -7368,8 +7639,10 @@ This test plan spec is accepted when:
   longer missing the advanced controls. A level enabled on an account model
   persists and reappears when the editor is reopened, including a level the
   catalog does not publish. OpenAI Codex's `openai-codex` adapter key resolves
-  the matching `openai` models.dev record, so `gpt-5.6-sol` is not shown with
-  generic 128,000 / 8,192 / no-reasoning defaults. A model with no published
+  the matching `openai` models.dev record, so `gpt-6-astra` is not shown with
+  generic 128,000 / 8,192 / no-reasoning defaults. The authenticated ChatGPT
+  list itself comes from the pinned pi-ai catalog (0.85.1 includes
+  `gpt-6-astra`); models.dev cannot add a missing OAuth ID. A model with no published
   record keeps its explicit levels and starts with all choices available for
   manual opt-in. The account's default model stays the head binding.
 - **Specs linked**: `04-ux/06-settings-ia.md`,
@@ -7483,20 +7756,26 @@ are withdrawn with ADR 0165.
   model that is not configured at all. 6) Delegate a Task with no `model:`
   parameter and a definition that has a frontmatter model pin. 7) Delegate a
   Task with no `model:` parameter and a definition that has no frontmatter
-  model pin.
+  model pin. 8) With no enabled delegation models, delegate a Task once with
+  no `model:` and once with `model:` repeating the current session's
+  `provider/modelId`.
 - **Expected**:
   1. Saving and reopening the provider preserves the
      `availableForSubagents` opt-in, including after an application restart.
   2. The delegation model summary appears in the parent's system prompt listing
      every model marked `availableForSubagents`.
   3. The Task tool accepts the `model` parameter and the delegate runs on the
-     specified model, not the session model.
+     specified model, not the session model; its delegation node shows the
+     effective model id immediately after the subagent name.
   4. If the model is not configured or not enabled for delegation, the Task
      returns a tool error listing available models.
   5. Resolution priority is Task.model parameter → definition frontmatter pin →
      session model.
   6. On-demand resolution succeeds for models enabled in provider settings via
      the `provider.resolveSubagentModel` RPC.
+  7. When no delegation model is configured, omitting `model:` and explicitly
+     repeating the current session `provider/modelId` both start the delegate
+     on the session model; the latter is not reported as an unavailable model.
 - **Specs linked**: `03-runtime/02-agent-runtime.md` §5f,
   `03-runtime/11-provider-model-system.md` §7,
   `03-runtime/12-provider-config-schema.md` §2,
@@ -7969,8 +8248,8 @@ are withdrawn with ADR 0165.
 #### E2E-190: Settings Network proxy applies to app-owned HTTP
 
 - **Preconditions**: A reachable local HTTP or SOCKS5 proxy, or a known-bad
-  port for the failure path. At least one configured provider is optional for
-  the settings-only steps.
+  port for the failure path. A configured provider/model whose endpoint is
+  reachable through the proxy is available for the model-request step.
 - **Steps**:
   1. Open Settings → General. Confirm a Network card with Proxy modes
      System, Direct, and Custom. System is selected on a profile that never
@@ -7985,25 +8264,28 @@ are withdrawn with ADR 0165.
   4. Click Test against a listening proxy. Confirm a Connected status. Click
      Test against a closed port. Confirm a failure status without changing
      the saved URL.
-  5. With Custom saved, confirm a subsequent marketplace refresh and a
-     models.dev catalog refresh use the proxy (host-core curl `--proxy`,
-     Electron `net.fetch`). Confirm a loopback URL in Bypass is not
-     proxied.
+  5. With Custom saved, send a short prompt through the configured provider.
+     Confirm the provider request and response pass through the proxy,
+     including when a SOCKS5 proxy returns the complete bind response in one
+     TCP chunk. Confirm a subsequent marketplace refresh and a models.dev
+     catalog refresh use the proxy (host-core curl `--proxy`, Electron
+     `net.fetch`), and confirm a loopback URL in Bypass is not proxied.
   6. Switch to Direct, then System. Confirm Chromium returns to
      `mode: "direct"` then `mode: "system"`, and the sidecar is reconfigured
      without an app restart.
 - **Expected**: Custom covers model calls, marketplace, updates, plugin
   `net.fetch`, and the in-app browser. Workspace Bash `env` does not show
   `HTTP_PROXY` / `ALL_PROXY` from the setting. OAuth still opens the system
-  browser. Invalid schemes (`file:`, `ftp:`) are rejected. No protocol or
-  schema version bump.
+  browser. Invalid schemes (`file:`, `ftp:`, and SOCKS4) and malformed
+  percent-encoded credentials are rejected. No protocol or schema version bump.
 - **Specs linked**: `04-ux/06-settings-ia.md`,
   `03-runtime/07-process-model.md`, ADR 0177, D340
 - **Acceptance**: B (settings), F (providers), Security
 - **Milestone**: M5
-- **Status**: Unit-covered (`network-proxy.test.ts`,
-  `settings-general.test.mjs`, host-core `network_proxy` tests); full UI
-  journey Draft (do not run E2E locally unless explicitly requested)
+- **Status**: Unit-covered (`network-proxy.test.ts`, `node-proxy.test.ts`,
+  `settings-general.test.mjs`, host-core `network_proxy` tests); malformed
+  credentials and unsupported SOCKS4 schemes are covered by the shared parser
+  tests; full UI journey Draft (do not run E2E locally unless explicitly requested)
 
 #### E2E-191: Newly emitted AppError codes stay registered
 
@@ -8020,3 +8302,89 @@ are withdrawn with ADR 0165.
 - **Milestone**: M5
 - **Status**: Unit-covered (`packages/shared/src/errors.test.ts`); full UI
   journey not applicable
+
+#### E2E-192: Import copies model configuration from local agent stores
+
+- **Preconditions**: At least one supported local config exists among
+  `~/.claude/settings.json`, `~/.codex/config.toml` `[model_providers.*]`,
+  `~/.config/opencode/opencode.json`, `~/.pi/agent/models.json`, or
+  `~/.cc-switch/cc-switch.db`, including one API-key provider and optionally
+  one OAuth-only vendor. PI-Desktop may already have an equivalent endpoint.
+- **Steps**:
+  1. Open Settings → Import. Confirm a Sessions card and a Model
+     configuration card, each with its own Scan.
+  2. Scan model configuration. Confirm groups start collapsed, rows show
+     name, model count, host, and an API key / No API key badge, and that
+     no secret value appears in the UI or in the scan IPC payload.
+  3. Import the selected providers. Confirm new rows appear under Settings
+     → Models. Re-import the same selection and confirm they are skipped.
+  4. If the app had no default model, confirm the first imported provider
+     becomes the default. If a default already existed, confirm it is
+     unchanged.
+  5. Confirm an OAuth-only source account is absent from the candidate
+     list and that session import still works independently.
+- **Expected**: Explicit scan only (D007). Stored API keys land in the host
+  secret store. Equivalent endpoints (normalized URL + API style) skip.
+  No protocol or schema version bump.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §18.5, `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/11-provider-model-system.md`, ADR 0179, D342
+- **Acceptance**: B (model configuration), F (session import)
+- **Milestone**: M4
+- **Status**: Unit-covered (`packages/shared/src/model-config-import.test.ts`,
+  `apps/desktop/test/model-config-import.test.mjs`); full UI journey Draft
+  (do not run E2E locally unless explicitly requested)
+
+#### E2E-193: Documentation screenshots resolve from GitHub and VitePress
+
+- **Preconditions**: The repository contains the gallery assets under
+  `docs/public/screenshots/app/`; documentation dependencies are installed.
+- **Steps**:
+  1. Open `docs/guide/screenshots.md` and
+     `docs/zh-CN/guide/screenshots.md` from the GitHub file view. Confirm the
+     gallery images resolve to files under `docs/public/screenshots/`.
+  2. Open the English and Chinese screenshot pages in the VitePress preview.
+     Confirm representative images from the home, panel, and settings sections
+     render.
+  3. Run `pnpm docs:build` and inspect the generated pages for image load
+     failures.
+- **Expected**: GitHub renders every gallery image instead of requesting a
+  repository-root `/screenshots/` path; both VitePress locale pages continue to
+  render the gallery from the same checked-in assets; the docs build succeeds.
+- **Specs linked**: ADR 0079, `docs/README.md`,
+  `docs/guide/screenshots.md`, `docs/zh-CN/guide/screenshots.md`
+- **Acceptance**: Quality
+- **Milestone**: M5
+- **Status**: Static/documentation check covered (`pnpm docs:build` and path
+  audit); remote GitHub and browser journey pending
+
+#### E2E-196: Chat links honor destination settings and context menu actions
+
+- **Preconditions**: A chat transcript can render an HTTP(S) Markdown link. The
+  work-panel Browser view and the system browser opener are available. The
+  clipboard can be observed or stubbed for the copy action.
+- **Steps**:
+  1. In Settings → AI → Defaults, select **Work panel browser** and click the
+     link from a chat reply.
+  2. Select **Default OS browser** and click the same link again.
+  3. Right-click the link and activate each context-menu item with the pointer:
+     Open in default browser, Open in work panel, and Copy link address. Repeat
+     the menu actions with keyboard focus and Arrow/Home/End navigation.
+  4. Repeat a link click with Ctrl/Cmd, Shift, and Alt held.
+- **Expected**:
+  - The Work panel browser is the default plain-click destination.
+  - The Default OS browser setting routes plain HTTP(S) clicks through the
+    main-owned external opener; changing the setting persists after reload.
+  - The body-level context menu remains interactive when clicked. Its external
+    and work-panel actions open the requested destination, and Copy link address
+    updates the clipboard before showing the success toast. A rejected clipboard
+    write shows an error toast instead of a success toast.
+  - Modifier clicks continue to open links externally regardless of the setting.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §8.3, `03-runtime/01-ipc-protocol.md`,
+  `08-meta/decisions-log.md` (D330)
+- **Acceptance**: B (settings), C (conversation & stream), Security, Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`apps/desktop/test/markdown-link-menu.test.mjs` and
+  locale catalog tests); full UI journey Draft (do not run E2E locally unless
+  explicitly requested)

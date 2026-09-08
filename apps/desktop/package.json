@@ -1,6 +1,6 @@
 {
   "name": "@pi-desktop/desktop",
-  "version": "0.13.11",
+  "version": "0.14.1",
   "private": true,
   "description": "PI-Desktop Electron application",
   "homepage": "https://github.com/vastsa/PI-Desktop",
@@ -33,7 +33,7 @@
     "electron-updater": "^6.8.9"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "0.85.0",
+    "@earendil-works/pi-ai": "0.85.1",
     "@pi-desktop/agent-runtime": "workspace:*",
     "@pi-desktop/i18n": "workspace:*",
     "@pi-desktop/plugin-devkit": "workspace:*",
@@ -95,7 +95,13 @@
       "en-US",
       "zh-CN",
       "zh_CN",
-      "tr"
+      "zh-TW",
+      "zh_TW",
+      "tr",
+      "de",
+      "es",
+      "fr",
+      "ko"
     ],
     "extraResources": [
       {

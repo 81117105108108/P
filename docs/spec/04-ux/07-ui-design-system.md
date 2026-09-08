@@ -348,6 +348,12 @@ system families are enumerated by Electron main. Every custom stack appends a
 CJK fallback tier so Chinese text stays readable. The mono stack
 (`--font-mono`) is not user-configurable.
 
+The Font size row (D343 / ADR 0180) persists an optional multiplier in
+`AppSettings.fontScale` (default 1, range 0.8–1.5). The renderer sets
+`--font-scale` on the root so every `--text-*` token (and `--leading-row`)
+scales in proportion. Shared Lucide icons use the same multiplier. Window
+zoom remains independent. The UI never asks for a px value.
+
 ### 5.2 Type scale
 
 All font sizes come from the `--text-*` ramp defined in the `@theme` block of `styles/tokens.css` (imported first by `styles/globals.css`, which is now only an import sequence — see D170). Raw px literals for `font-size`, `font-weight`, `line-height`, and `letter-spacing` are **forbidden** in component CSS and TSX arbitrary utilities (`text-[13px]` etc.) — enforced by `scripts/check-style-tokens.mjs` (runs in `pnpm lint`). `-plus` suffixed tokens are the Codex half-steps between named sizes.
@@ -373,6 +379,8 @@ Line-height tokens: `--leading-none` 1, `--leading-heading` 1.15, `--leading-tig
 Letter-spacing tokens: `--tracking-tighter` −0.03em, `--tracking-tight` −0.02em, `--tracking-normal` 0, `--tracking-wide` 0.02em.
 
 > Note: 14px base is intentional for developer-density. Do not bump to 16px default.
+> Users who want larger or denser type change Font size in Appearance; that
+> multiplies the whole `--text-*` ramp through `--font-scale`.
 >
 > Sidebar primary chrome (nav items, footer identity, profile menu actions)
 > uses `--text-base` so the left rail matches main body readability.
@@ -616,9 +624,9 @@ plain status text:
 - Exit: 280ms opacity fade (`startup-splash-out`) once `ready` is true, revealing
   the already-mounted shell underneath
 - Reduced motion: near-zero enter/exit and a static full-width bar
-- macOS: the splash is the same glass as the sidebar (D304) — the
+- macOS: the splash is the same glass as the sidebar (D304 / D348) — the
   `--ds-sidebar-glass-tint` fill plus top/bottom sheen over the native
-  `under-window` vibrancy, so the boot surface never flashes an opaque panel
+  `sidebar` vibrancy, so the boot surface never flashes an opaque panel
   ahead of the translucent sidebar. The mounted shell stays hidden under
   the glass until the exit fade, then cross-fades in. Other platforms keep
   the opaque `--ds-bg-primary` fill

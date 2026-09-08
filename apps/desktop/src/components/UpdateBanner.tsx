@@ -10,7 +10,7 @@ import { IconClose, IconCloudDown, IconExternal } from "./icons";
  * Ambient update notice in the main pane's top safe area. Appears when an
  * update is ready to install (in-app mode) or newly detected (manual mode);
  * silent otherwise. The Settings → Info tab owns explicit checks and status.
- * When Main attaches dual-locale release notes, they appear under the status
+ * When Main attaches localized release notes, they appear under the status
  * message as a compact "What's new" list (D164).
  */
 export function UpdateBanner() {

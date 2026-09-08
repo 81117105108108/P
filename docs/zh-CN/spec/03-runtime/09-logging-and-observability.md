@@ -22,15 +22,15 @@
 - 开发者：`debug`
 - 发布：`info`
 
-## 3. 渠道
+## 3. 通道
 
-| 频道 | 内容 | 位置 |
+| 通道 | 内容 | 位置 |
 |---|---|---|
-| 应用程序 | 启动、ipc、窗口、进程监控 | `~/.pi-desktop/logs/app/<category>.log` |
-| 主机 | rust host-core 事件（stderr 捕获） | `~/.pi-desktop/logs/host/<category>.log` |
-| 代理人 | pi sidecar turn/provider 事件（stderr 捕获） | `~/.pi-desktop/logs/agent/<category>.log` |
-| 审计 | permissions/tools/plugins 敏感操作 | host-core SQLite `audit_log` 表 |
-| 插件 | 每个插件的日志 | `~/.pi-desktop/plugins/logs/<id>.log` |
+| app | 启动、ipc、窗口、进程监控 | `~/.pi-desktop/logs/app/<category>.log` |
+| host | rust host-core 事件（stderr 捕获） | `~/.pi-desktop/logs/host/<category>.log` |
+| agent | pi sidecar turn/provider 事件（stderr 捕获） | `~/.pi-desktop/logs/agent/<category>.log` |
+| audit | permissions/tools/plugins 敏感操作 | host-core SQLite `audit_log` 表 |
+| plugin | 每个插件的日志 | `~/.pi-desktop/plugins/logs/<id>.log` |
 
 注意事项：
 
@@ -41,7 +41,7 @@
   平面文件：它需要可查询性和比调试日志更长的保留时间。
   `logs folder` 诊断仍然适用于三个文件通道。
 
-### 3a。类别路由
+### 3a. 类别路由
 
 三个进程通道是目录，而不是聚合文件。主要
 进程将每条记录写入 `<channel>/<category>.log`，因此大容量
@@ -59,11 +59,13 @@
 - `updater` — 电子更新器诊断
 - `diagnostics` — 阻止导航、菜单和模板诊断
 - `runtime` — host/sidecar 生命周期事件
+- `timing` — 启动阶段、剪贴板采样耗时、更新检查耗时
 
 主机和代理stderr在线路时被归为同一类别
-包含可识别的子系统标记。时间线总是路由到
+包含可识别的子系统标记。子进程 stderr 中的时间线总是路由到
 `host/timing.log` 或 `agent/timing.log`；未知子输出到那个
-频道的 `runtime.log`。每条记录都包含其 `category` 字段。
+频道的 `runtime.log`。Electron 主进程把启动、剪贴板和更新检查
+打点写到 `app/timing.log`。每条记录都包含其 `category` 字段。
 
 不再写入平面 `app.log`、`host.log` 和 `agent.log` 名称。
 现有的旧文件在布局转换期间保持不变。
@@ -93,7 +95,7 @@ type LogRecord = {
 
 ## 5. 必须记录的内容
 
-### 总是
+### 始终记录
 - 应用程序 boot/shutdown
 - host/agent 生成 + 握手结果
 - 会话 create/delete
@@ -108,20 +110,20 @@ type LogRecord = {
 - 工具准入拒绝、队列深度、活动类预算和 shell 生成
   资源耗尽
 
-### 从来没有
+### 绝不记录
 - API 密钥/原始秘密
 - 完全安全的存储有效负载
 - 审计中大量读取不必要的完整文件内容（使用 hashes/previews）
 
-## 6. 编辑规则
+## 6. 脱敏规则
 
-1. 与 `/token|secret|password|api[_-]?key/i` 匹配的密钥经过编辑
-2. 编辑授权标头
+1. 与 `/token|secret|password|api[_-]?key/i` 匹配的键名做脱敏处理
+2. Authorization 标头做脱敏处理
 3. 工具参数预览被截断（例如 2KB）
-4、审计时长命令输出为counted/truncated； stdout/stderr 块是
-   从未在正规渠道批发过
+4. 审计中对长命令输出做计数/截断；stdout/stderr 数据块绝不整体写入
+   常规通道
 
-## 7. 迹线相关性
+## 7. 追踪关联
 
 尽可能为每个用户可见的操作使用一个 `traceId`：
 
@@ -131,7 +133,7 @@ type LogRecord = {
 
 Renderer、Electron、主机、代理应传播这些 ID。
 
-## 7a。延迟分段 (D183)
+## 7a. 延迟分段 (D183)
 
 缓慢的代理转动在该工具内几乎从不慢。等待属于
 三个阶段之一，每个阶段都单独记录，以便可以告诉他们
@@ -182,6 +184,29 @@ Plan 和 shell 记录使用相同的 `sessionId`、`turnId` 和 `toolCallId`
 `.pi/plan/`、哈希值和大小； shell 日志包括目录 ID 和方言，
 绝不是来自渲染器的任意可执行命令行或路径哈希。
 
+## 7b. 启动、剪贴板与更新器计时
+
+首个窗口变慢几乎从来不是单个数字能解释的。请通过 `app/timing.log` 中可 grep 的
+`[timing] kind=<boot|clipboard|updater>` 行来归因：
+
+| kind | phase | 测量内容 |
+|---|---|---|
+| boot | `when-ready` | 进程模块加载 → Electron `app.whenReady` |
+| boot | `clipboard-history-start` | 首次原生剪贴板采样（基线） |
+| boot | `host` | host-core 生成 + 握手（`spawnedMs`、`handshakeMs`） |
+| boot | `sidecar` | agent sidecar 生成 + `sidecar.configure` |
+| boot | `plugin-restore` | 每个已启用插件的 `utilityProcess` 加载 |
+| boot | `window-created` / `window-loaded` / `window-shown` | BrowserWindow 分配、`loadFile`、`ready-to-show` |
+| boot | `renderer-bootstrap` | 渲染器 settings/snapshot IPC 直到 `ready` |
+| clipboard | `poll` | 一次历史采样（`formatsMs`、`readImageMs`、`toPngMs`、`bytes`） |
+| updater | `check-start` / `check-done` | GitHub 更新源检查，附带 `outcome=ok\|timeout\|error` |
+
+- `elapsedMs` 从进程启动开始计时；`durationMs` 只计该阶段本身。
+- 剪贴板采样始终记录第一次轮询。之后的轮询仅在超过 25ms（限流）或 100ms
+  （始终记录）时才记录，并且绝不包含剪贴板内容。
+- 自动更新检查在首个窗口存在之后才调度，不在启动路径上等待，并把等待时间限制
+  在 8s，使 Chromium 约 60s 的 GitHub 超时无法把更新器状态钉在 `checking` 上。
+
 ## 8. 面向用户的诊断
 
 MVP 提供：
@@ -202,6 +227,10 @@ MVP 提供：
   `<category>.2.log`）
 - 审核日志（SQLite）：与数据库一起保留；比调试日志长
 - 轮换决不能让调用者失败；磁盘故障被吞噬
+- 控制台镜像是尽力而为：关闭的 stdout/stderr（`EPIPE`/`EIO`，常见于 Linux
+  AppImage 以及没有 TTY 的 GUI 启动）会被吞掉，绝不会变成主进程未捕获异常。
+  Main 也会忽略 `process.stdout` / `process.stderr` 上的这类流错误，以免其他
+  写入触发 Electron 的未捕获异常对话框。
 
 ## 10. 验收
 
@@ -215,3 +244,4 @@ MVP 提供：
 6. Plan 启动中断和 shell changed-selection/timeout/process 中止
    可以从session/turn/tool-call相关性和稳定误差进行诊断
    代码
+7. 当 stdout 是断开的管道时，日志或控制台镜像绝不能让主进程崩溃

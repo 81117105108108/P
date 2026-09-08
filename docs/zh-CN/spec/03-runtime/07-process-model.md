@@ -60,6 +60,15 @@ queued/running `plan_approvals` 执行状态已中断并中止它们
 | Node 代理崩溃 | 中止活动轮次和实时批准 waiters/queue 条目，在合同模式下保留待处理会话，在 Rust 中保留已批准的 Agent 模式，重新启动 sidecar，并且从不重播执行 |
 | Electron 主要崩溃 | 完整的应用程序退出 |
 
+断开的 stdout/stderr（`EPIPE`/`EIO`）不是主进程崩溃。Main 会忽略这些写入，
+因此 Linux AppImage 或没有活动 TTY 的 GUI 启动会继续监管 host/sidecar，而不是
+弹出 Electron 的未捕获异常对话框。
+
+Linux 打包的 host-core 在 Ubuntu 22.04 上构建，需要 glibc 2.35 或更高版本
+（Ubuntu 22.04、Debian 12、Fedora 36+）。更低的 glibc 是致命 host 状态，而不是
+重启循环：界面会列出这些发行版，而不是只显示“无法连接本地服务”。Linux 标签
+作业不得换用会抬高所需 glibc 的更新 runner。
+
 监管参数（在Electron main中实现）：
 
 - 子进程退出立即拒绝该子进程的所有正在进行的 RPC（无 130 秒超时等待）。

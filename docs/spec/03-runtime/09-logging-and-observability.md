@@ -56,11 +56,14 @@ The app channel uses these categories:
 - `updater` — electron-updater diagnostics
 - `diagnostics` — blocked navigation, menu, and template diagnostics
 - `runtime` — host/sidecar lifecycle events
+- `timing` — boot spans, clipboard-sample cost, and updater-check duration
 
 Host and agent stderr is classified into the same categories when the line
-contains a recognizable subsystem marker. Timing lines are always routed to
-`host/timing.log` or `agent/timing.log`; unknown child output goes to that
-channel's `runtime.log`. Every record includes its `category` field.
+contains a recognizable subsystem marker. Timing lines in child stderr are
+always routed to `host/timing.log` or `agent/timing.log`; unknown child output
+goes to that channel's `runtime.log`. Electron main writes its own boot,
+clipboard, and updater timing lines to `app/timing.log`. Every record includes
+its `category` field.
 
 The flat `app.log`, `host.log`, and `agent.log` names are no longer written.
 Existing legacy files are left untouched during the layout transition.
@@ -104,6 +107,10 @@ Format MVP: NDJSON files.
 - plugin enable/disable/load/error
 - tool admission rejection, queue depth, active class budgets, and shell spawn
   resource exhaustion
+- boot phase spans (`when-ready`, `host`, `sidecar`, `plugin-restore`,
+  `window-shown`, `renderer-bootstrap`) with `elapsedMs` / `durationMs`
+- clipboard poll cost when a sample is slow (`kind`, `bytes`, `toPngMs`)
+- updater check start/done, including a bounded timeout outcome
 
 ### Never
 - API keys / raw secrets
@@ -181,6 +188,31 @@ correlation fields. Artifact logs include only the unique relative path under
 `.pi/plan/`, hash, and size; shell logs include the catalog ID and dialect,
 never an arbitrary executable command line or path hash from the renderer.
 
+## 7b. Boot, clipboard, and updater timing
+
+A slow first window is almost never one number. Attribute it from
+`app/timing.log` greppable `[timing] kind=<boot|clipboard|updater>` lines:
+
+| kind | phase | what it measures |
+|---|---|---|
+| boot | `when-ready` | process module load → Electron `app.whenReady` |
+| boot | `clipboard-history-start` | first native clipboard sample (baseline) |
+| boot | `host` | host-core spawn + handshake (`spawnedMs`, `handshakeMs`) |
+| boot | `sidecar` | agent sidecar spawn + `sidecar.configure` |
+| boot | `plugin-restore` | each enabled plugin `utilityProcess` load |
+| boot | `window-created` / `window-loaded` / `window-shown` | BrowserWindow allocation, `loadFile`, `ready-to-show` |
+| boot | `renderer-bootstrap` | renderer settings/snapshot IPC until `ready` |
+| clipboard | `poll` | one history sample (`formatsMs`, `readImageMs`, `toPngMs`, `bytes`) |
+| updater | `check-start` / `check-done` | GitHub feed check, with `outcome=ok\|timeout\|error` |
+
+- `elapsedMs` is from process start; `durationMs` is the phase itself.
+- Clipboard samples always log the first poll. Later polls log only when they
+  exceed 25ms (rate-limited) or 100ms (always), and never include clipboard
+  contents.
+- Auto-update checks are scheduled after the first window exists, are not
+  awaited on the boot path, and bound their wait at 8s so Chromium's ~60s
+  GitHub timeout cannot pin updater state on `checking`.
+
 ## 8. User-facing diagnostics
 
 MVP provides:
@@ -201,6 +233,11 @@ Not in MVP:
   `<category>.2.log`)
 - audit log (SQLite): retained with the database; longer than debug logs
 - rotation must never fail the caller; disk trouble is swallowed
+- console mirroring is best-effort: a closed stdout/stderr (`EPIPE`/`EIO`,
+  typical of Linux AppImage and GUI launches without a TTY) is swallowed and
+  is never an uncaught main-process exception. Main also ignores those stream
+  errors on `process.stdout` / `process.stderr` so other writers cannot surface
+  Electron's uncaught-exception dialog.
 
 ## 10. Acceptance
 
@@ -214,3 +251,9 @@ Not in MVP:
 6. Plan startup interruption and shell changed-selection/timeout/process abort
    can be diagnosed from session/turn/tool-call correlation and stable error
    code
+7. logging or console mirroring never crashes the main process when stdout is
+   a broken pipe
+8. a slow first window or a hung GitHub update check can be attributed from
+   `app/timing.log` boot/updater spans without a profiler
+9. a high-CPU idle session that correlates with clipboard images shows
+   `kind=clipboard` poll lines with `toPngMs` / `bytes`, never payload bytes

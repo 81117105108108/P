@@ -276,7 +276,7 @@ describe("DesktopAgentRuntime configuration matching", () => {
     ).toBe(false);
     expect(
       runtimeMatches(runtime, {
-        provider: { ...oauthProvider, userAgent: "Custom/1" },
+        provider: { ...oauthProvider, headers: { "User-Agent": "Custom/1" } },
       }),
     ).toBe(false);
 
@@ -1239,6 +1239,25 @@ describe("DesktopAgentRuntime configuration matching", () => {
 });
 
 describe("DesktopAgentRuntime live activity", () => {
+  it("keeps retry diagnostics bounded and falls back to captured HTTP status", async () => {
+    const runtime = createRuntime({ onEvent: vi.fn() });
+    (runtime as any).providerResponseStatus = 503;
+
+    expect(
+      (runtime as any).retryActivityError({
+        code: "PROVIDER_ERROR",
+        message: "503: upstream unavailable",
+        retriable: true,
+      }),
+    ).toEqual({
+      code: "PROVIDER_ERROR",
+      message: "503: upstream unavailable",
+      providerStatus: 503,
+    });
+
+    await runtime.dispose();
+  });
+
   it("emits status phases for quiet provider and delegation intervals", async () => {
     const onEvent = vi.fn();
     const runtime = createRuntime({ onEvent });
@@ -1250,6 +1269,11 @@ describe("DesktopAgentRuntime live activity", () => {
       since: 200,
       attempt: 2,
       retryDelayMs: 4000,
+      error: {
+        code: "PROVIDER_RATE_LIMITED",
+        message: "429: too many requests",
+        providerStatus: 429,
+      },
     });
     setActivity({
       phase: "waiting-subagents",
@@ -1263,7 +1287,17 @@ describe("DesktopAgentRuntime live activity", () => {
       .map((event) => event.status.activity);
     expect(statuses).toEqual([
       { phase: "waiting-model", since: 100 },
-      { phase: "retrying", since: 200, attempt: 2, retryDelayMs: 4000 },
+      {
+        phase: "retrying",
+        since: 200,
+        attempt: 2,
+        retryDelayMs: 4000,
+        error: {
+          code: "PROVIDER_RATE_LIMITED",
+          message: "429: too many requests",
+          providerStatus: 429,
+        },
+      },
       { phase: "waiting-subagents", since: 300, subagentCount: 2 },
     ]);
     expect(runtime.getStatus().activity).toEqual({
@@ -4704,6 +4738,28 @@ describe("DesktopAgentRuntime subagents", () => {
     await runtime.dispose();
   });
 
+  it("inherits the session model when the parent echoes it as an override", async () => {
+    const current = { ...provider, vendorKey: "openai", modelId: "gpt-4o-mini" };
+    const runtime = createRuntime({ provider: current, subagents: [explorer] });
+    const tool = taskTool(runtime);
+    subagentRuns.calls.length = 0;
+    subagentRuns.result = undefined;
+
+    expect((runtime as any).agent.state.systemPrompt).toContain(
+      "Omit the `model` parameter on Task to inherit the parent conversation's selected model.",
+    );
+    const result = await tool.execute("task-1", {
+      agent: "explorer",
+      task: "Inspect the project.",
+      model: "openai/gpt-4o-mini",
+    });
+
+    expect(subagentRuns.calls).toHaveLength(1);
+    expect(subagentRuns.calls[0].provider).toBe(current);
+    expect(result.content[0].text).toContain("in the background");
+    await runtime.dispose();
+  });
+
   it("refuses to silently downgrade an unresolved pinned model", async () => {
     const runtime = createRuntime({ subagents: [pinned] });
     const tool = taskTool(runtime);
@@ -4811,6 +4867,7 @@ describe("DesktopAgentRuntime subagents", () => {
     expect(result.details).toMatchObject({
       agent: "reviewer",
       status: "running",
+      modelId: "remote-model",
     });
     const delegationId = (result.details as any).delegationId as string;
     expect(delegationId.length).toBeGreaterThan(0);

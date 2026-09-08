@@ -84,7 +84,16 @@ export function resolvePluginLocalizedString(
 ): string {
   if (typeof value === "string") return value || fallback;
   if (!value) return fallback;
-  const preferred = locale?.toLowerCase().startsWith("zh") ? value["zh-CN"] : value.en;
+  const normalized = locale?.replaceAll("_", "-").toLowerCase();
+  const simplifiedChinese =
+    normalized === "zh" ||
+    normalized === "zh-cn" ||
+    normalized?.startsWith("zh-cn-") ||
+    normalized === "zh-hans" ||
+    normalized?.startsWith("zh-hans-") ||
+    normalized === "zh-sg" ||
+    normalized?.startsWith("zh-sg-");
+  const preferred = simplifiedChinese ? value["zh-CN"] : value.en;
   return preferred || value.en || value["zh-CN"] || fallback;
 }
 

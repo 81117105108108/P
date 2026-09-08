@@ -289,9 +289,19 @@ Download the latest build from **[GitHub Releases](https://github.com/vastsa/PI-
 | macOS    | Apple Silicon | `.dmg` / `.zip`      |
 | macOS    | Intel         | `.dmg` / `.zip`      |
 | Windows  | x64           | NSIS installer       |
-| Linux    | x64           | `.AppImage` / `.deb` |
+| Linux    | x64           | `.AppImage` / `.deb` / `.asar` |
 
-Packaged builds can check GitHub Releases for updates and surface new versions inside the application.
+Packaged builds can check GitHub Releases for updates and surface new versions inside the application. The Linux `.asar` asset is available for repackaging with a system Electron; launch it with `electron PI-Desktop-<version>-linux-x64.asar` after adding the native host and packaged resources required by the target distribution.
+
+### Linux
+
+Linux x64 packages need **glibc 2.35** or newer. That is the library shipped with:
+
+* Ubuntu 22.04 or later
+* Debian 12 or later
+* Fedora 36 or later
+
+Ubuntu 20.04, Debian 11, Fedora 35, and older releases cannot load the bundled host. Check with `ldd --version`.
 
 ### macOS
 
@@ -355,7 +365,7 @@ The **Rust Host Core** owns privileged workspace operations, permissions, persis
 
 PI-Desktop is an early preview under active development.
 
-The current **0.13.x** line includes the desktop shell, streaming agent runtime, Agent / Plan / Goal workflows, permission-aware workspace tools, projects and sessions, session imports, MCP / Skills / Subagents, background delegation, multi-provider model configuration, plugins and marketplace support, context checkpoints, notifications, release notes, and cross-platform packaging.
+The current **0.14.x** line includes the desktop shell, streaming agent runtime, Agent / Plan / Goal workflows, permission-aware workspace tools, projects and sessions, session imports, MCP / Skills / Subagents, background delegation, multi-provider model configuration, plugins and marketplace support, context checkpoints, notifications, release notes, and cross-platform packaging.
 
 Current priorities include:
 

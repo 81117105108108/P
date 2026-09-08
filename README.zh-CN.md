@@ -289,9 +289,19 @@ PI-Desktop 是 **本地优先**，不是“永远不碰网络”。
 | macOS | Apple Silicon | `.dmg` / `.zip` |
 | macOS | Intel | `.dmg` / `.zip` |
 | Windows | x64 | NSIS 安装程序 |
-| Linux | x64 | `.AppImage` / `.deb` |
+| Linux | x64 | `.AppImage` / `.deb` / `.asar` |
 
-打包版本会检查 GitHub Releases 上的更新，并在应用内提示新版本。
+打包版本会检查 GitHub Releases 上的更新，并在应用内提示新版本。Linux `.asar` 文件用于配合系统 Electron 重新打包；补齐目标发行版所需的原生 host 和资源后，可运行 `electron PI-Desktop-<version>-linux-x64.asar` 启动。
+
+### Linux
+
+Linux x64 安装包需要 **glibc 2.35** 或更高版本，对应：
+
+* Ubuntu 22.04 及以上
+* Debian 12 及以上
+* Fedora 36 及以上
+
+Ubuntu 20.04、Debian 11、Fedora 35 及更旧的发行版无法加载自带的 host。可用 `ldd --version` 查看本机 glibc。
 
 ### macOS
 
@@ -355,7 +365,7 @@ flowchart TB
 
 PI-Desktop 处于积极开发中的早期预览阶段。
 
-当前 **0.13.x** 版本线包含：桌面外壳、流式智能体运行时、智能体 / 规划 / 目标工作流、带权限的工作区工具、项目与会话、会话导入、MCP / Skills / 子智能体、后台委派、多服务商模型配置、插件与市场、上下文检查点、通知、更新日志，以及跨平台打包。
+当前 **0.14.x** 版本线包含：桌面外壳、流式智能体运行时、智能体 / 规划 / 目标工作流、带权限的工作区工具、项目与会话、会话导入、MCP / Skills / 子智能体、后台委派、多服务商模型配置、插件与市场、上下文检查点、通知、更新日志，以及跨平台打包。
 
 当前优先事项包括：
 

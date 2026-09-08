@@ -162,8 +162,8 @@ Desktop package must ship:
 - one target-native Rust host binary
 - one bundled pi sidecar entry under `Resources/agent-runtime/sidecar.js`, run
   by the Electron binary with `ELECTRON_RUN_AS_NODE=1`
-- English and Simplified Chinese product locale catalogs, plus only the
-  Chromium locale packs needed for those product languages
+- Every shipped product locale catalog, plus only the Chromium locale packs
+  needed for those product languages
 - target-native runtime modules only when a retained capability cannot be
   bundled safely
 
