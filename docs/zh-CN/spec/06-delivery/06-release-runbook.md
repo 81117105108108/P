@@ -164,16 +164,17 @@ GitHub Release 工作流程启动所有本机平台运行程序，无需
 调用电子构建器。这避免了多余的桌面构建，而无需
 更改包脚本或发布工件。
 
-**`v0.14.2` 临时例外：** GitHub 标签工作流程暂时关闭 macOS 身份发现，
-在修复签名密钥期间生成未签名的 macOS DMG/ZIP。仅此标签跳过 macOS 装订和
-签名验证步骤。这不是可接受的稳定版发布策略；下一个稳定标签前必须恢复
-签名和公证流程。
-
 macOS 矩阵使用 arm64 的 `macos-15` 和 Intel x64 的
 `macos-15-intel`。每个作业验证 `uname -m`，向 electron-builder 传入匹配
 的 `--arm64` 或 `--x64`，并在同一本机运行器上构建
 `pi-desktop-host-core`。每个架构的 `latest-mac.yml` 会在上传前重命名，
 发布作业下载两个工件后再合并为一个更新源。
+
+Intel x64 打包命令会覆盖 macOS 目标的工件命名模板，使公开下载名明确区分：
+`PI-Desktop-<version>-Intel.dmg` 和 `PI-Desktop-<version>-Intel-mac.zip`。
+arm64 通道保留通用的 `PI-Desktop-<version>.dmg` 和
+`PI-Desktop-<version>-mac.zip` 名称。命名模板在 electron-builder 打包时生效，
+因此生成的 `latest-mac-x64.yml` 会引用带 Intel 后缀的工件及其匹配校验和。
 
 macOS 打包步骤仅从 GitHub Actions 密钥接收 `CSC_LINK`、
 `CSC_KEY_PASSWORD`、`APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD` 和
@@ -187,9 +188,6 @@ DMG、ZIP、NSIS、AppImage、deb、块图和更新程序提要输出已
 组装 GitHub 版本。
 
 ## 5. 验证门
-
-对于 `v0.14.2` 临时例外，不要将未签名的 macOS 工件视为通过 Gatekeeper
-资格验证；恢复签名流程后，以下签名和装订检查才重新适用。
 
 每次发布版本后运行：
 
@@ -321,8 +319,9 @@ macOS 软件包包括按本机架构构建的 `bin/pi-desktop-host-core`；Windo
 
 Native-runner 输出矩阵：
 
-- macOS arm64：DMG 和 ZIP
-- macOS Intel x64：DMG 和 ZIP
+- macOS arm64：`PI-Desktop-<version>.dmg` 和 `PI-Desktop-<version>-mac.zip`
+- macOS Intel x64：`PI-Desktop-<version>-Intel.dmg` 和
+  `PI-Desktop-<version>-Intel-mac.zip`
 - Windows x64：NSIS 安装程序
 - Linux x64：AppImage 和 deb
 - Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`

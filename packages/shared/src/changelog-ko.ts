@@ -2,6 +2,13 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const koEntries: ChangelogEntry[] = [
   {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "Intel macOS 다운로드에 명확한 표시를 추가해 설치 프로그램의 아키텍처를 쉽게 구분합니다.",
+    ],
+  },
+  {
     version: "0.14.2",
     date: "2026-09-08",
     highlights: [

@@ -1,9 +1,9 @@
 # ADR 0145: Publish Native macOS Intel Artifacts
 
-- Status: Accepted
+- Status: Accepted (amended by D353)
 - Date: 2026-09-01
 - Deciders: PI-Desktop core
-- Related: D126, D285, ADR 0022, E2E-092
+- Related: D126, D285, D353, ADR 0022, E2E-092
 
 ## Context
 
@@ -28,7 +28,11 @@ unless the sidecar architecture is independently managed and verified.
 4. Each macOS job renames its generated `latest-mac.yml` before uploading. The
    publish job validates both feeds, merges their files, and publishes one
    combined `latest-mac.yml` alongside both architectures' installers.
-5. macOS update behavior remains notify-and-link until a signed in-app channel
+5. The Intel x64 job passes target-specific artifact patterns to electron-builder,
+   publishing `PI-Desktop-<version>-Intel.dmg` and
+   `PI-Desktop-<version>-Intel-mac.zip`. The generated x64 updater feed keeps
+   those names and checksums aligned; arm64 keeps the generic macOS names.
+6. macOS update behavior remains notify-and-link until a signed in-app channel
    is qualified. This decision changes release artifact coverage and native
    packaging only; it does not change updater ownership or signing policy.
 
@@ -39,6 +43,8 @@ unless the sidecar architecture is independently managed and verified.
   architecture on both macOS lanes.
 - Release publication needs one metadata merge step because electron-builder
   emits one macOS updater feed per architecture.
+- Intel downloads carry an explicit `Intel` marker, while the arm64 download
+  names remain compatible with the existing generic macOS names.
 - Intel package footprint and native launch qualification must be recorded
   separately from the existing arm64 baseline.
 - A developer cannot use the signed local lane to cross-build the other macOS

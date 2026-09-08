@@ -177,12 +177,6 @@ runtime, verifying the host build, building the Desktop application once, and
 invoking electron-builder. This avoids a redundant Desktop build without
 changing the package scripts or release artifacts.
 
-**Temporary `v0.14.2` exception:** the GitHub tag workflow disables macOS
-identity discovery and packages macOS DMG/ZIP artifacts unsigned while the
-signing secrets are repaired. The macOS staple and signature-verification steps
-are skipped for this tag only. This is not an acceptable stable-release policy;
-restore the signed and notarized lane before the next stable tag.
-
 The macOS matrix uses `macos-15` for arm64 and `macos-15-intel` for Intel x64.
 Each job verifies `uname -m`, passes the matching `--arm64` or `--x64` flag to
 electron-builder, and builds `pi-desktop-host-core` on that same native
@@ -195,6 +189,14 @@ before any artifact upload. The per-architecture
 `latest-mac.yml` files are renamed before upload; the publish job merges them
 into one feed after downloading both artifacts.
 
+The Intel x64 package command overrides the macOS target-specific artifact
+patterns so the public assets are unambiguous: `PI-Desktop-<version>-Intel.dmg`
+and `PI-Desktop-<version>-Intel-mac.zip`. The arm64 lane keeps the generic
+`PI-Desktop-<version>.dmg` and `PI-Desktop-<version>-mac.zip` names. Because
+the patterns are applied during electron-builder execution, the generated
+`latest-mac-x64.yml` feed references the Intel asset names and their matching
+checksums.
+
 DMG, ZIP, NSIS, AppImage, deb, blockmap, and updater feed outputs are already
 compressed or compression-insensitive. The workflow therefore uploads their
 temporary Actions artifacts with compression level zero before the publish job
@@ -205,10 +207,6 @@ exact archive used by the Linux installers for downstream repackaging with a
 system Electron.
 
 ## 5. Verification gates
-
-For the temporary `v0.14.2` exception, do not treat unsigned macOS artifacts as
-Gatekeeper-qualified; the signature and staple checks below apply again once the
-signed lane is restored.
 
 Run after every release build:
 
@@ -346,8 +344,9 @@ D126/D285.
 
 Native-runner output matrix:
 
-- macOS arm64: DMG and ZIP
-- macOS Intel x64: DMG and ZIP
+- macOS arm64: `PI-Desktop-<version>.dmg` and `PI-Desktop-<version>-mac.zip`
+- macOS Intel x64: `PI-Desktop-<version>-Intel.dmg` and
+  `PI-Desktop-<version>-Intel-mac.zip`
 - Windows x64: NSIS installer
 - Linux x64: AppImage and deb
 - Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`

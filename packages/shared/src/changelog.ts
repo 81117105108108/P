@@ -29,6 +29,13 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "Label Intel macOS release downloads explicitly so the installer architecture is clear.",
+    ],
+  },
+  {
     version: "0.14.2",
     date: "2026-09-08",
     highlights: [
@@ -705,6 +712,13 @@ const enEntries: ChangelogEntry[] = [
 
 const zhCNEntries: ChangelogEntry[] = [
   {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "为 Intel macOS 发布下载添加明确后缀，方便区分安装包架构。",
+    ],
+  },
+  {
     version: "0.14.2",
     date: "2026-09-08",
     highlights: [
@@ -1379,6 +1393,13 @@ const zhCNEntries: ChangelogEntry[] = [
 ];
 
 const zhTWEntries: ChangelogEntry[] = [
+  {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "為 Intel macOS 發布下載加入明確後綴，方便區分安裝包架構。",
+    ],
+  },
   {
     version: "0.14.2",
     date: "2026-09-08",

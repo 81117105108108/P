@@ -3210,7 +3210,11 @@ IPC 请求无法关闭。
   3. 对每个 macOS 软件包使用 `file`（或 `lipo -info`）检查应用程序
      可执行文件和 `Resources/bin/pi-desktop-host-core`；确认 arm64 和
      x86_64 软件包只包含声明的架构，且 Rust 主机与 Electron 应用一致。
-     确认发布目录包含 DMG、ZIP 和合并后的 `latest-mac.yml` 更新源。
+     确认 arm64 工件仍使用通用的 `PI-Desktop-X.Y.Z.dmg` 和
+     `PI-Desktop-X.Y.Z-mac.zip` 名称，而 Intel 工件使用
+     `PI-Desktop-X.Y.Z-Intel.dmg` 和 `PI-Desktop-X.Y.Z-Intel-mac.zip`；
+     确认发布目录包含 DMG、ZIP 和合并后的 `latest-mac.yml` 更新源，且
+     更新源中的 URL 和校验和与这些打包工件一致。
   4. 配置环回装置提供程序，禁用外部出口，然后
      从干净的配置文件启动。英文和简体切换
      中文，要求确定性响应，渲染通用
@@ -3219,7 +3223,9 @@ IPC 请求无法关闭。
      和代理边车健康状况。
 - **预期**：每个 macOS 软件包仅包含一个捆绑代理 sidecar、一个与声明
   架构匹配的 Rust 主机，并且仅包含配置的 Chromium 区域设置包。发布
-  输出包含两个本机 macOS 架构、DMG/ZIP 工件和一个合并的更新源。该
+  输出包含两个本机 macOS 架构、DMG/ZIP 工件和一个合并的更新源。Intel
+  DMG 和 ZIP 带有 `-Intel` 标记，x64 更新元数据指向这些名称，不会与
+  arm64 工件冲突。该
   软件包仅包含一个捆绑代理 sidecar，即
   目标本机 Rust 主机，并且仅配置了 Chromium 区域设置
   包。 Renderer 依赖关系通过 Vite 输出存在，而不是重复

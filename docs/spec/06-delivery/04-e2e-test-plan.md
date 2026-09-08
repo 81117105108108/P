@@ -157,7 +157,8 @@ Each scenario is documented in this format:
 - **Specs linked**: `06-delivery/06-release-runbook.md`
 - **Acceptance**: Quality (temporary release recovery)
 - **Milestone**: M6+
-- **Status**: Temporary for `v0.14.2`; do not reuse for later stable releases
+- **Status**: Completed for `v0.14.2` only; superseded by the restored signed
+  macOS lane before `v0.14.3`
 
 #### E2E-196: macOS tag artifacts pass Gatekeeper without a quarantine bypass
 
@@ -4111,8 +4112,12 @@ Each scenario is documented in this format:
   3. On each macOS package, run `file` (or `lipo -info`) against the app
      executable and `Resources/bin/pi-desktop-host-core`; confirm arm64 and
      x86_64 packages contain only their declared architecture and that the
-     Rust host matches the Electron app. Confirm the release directory has
-     both DMG and ZIP artifacts and one merged `latest-mac.yml` feed.
+     Rust host matches the Electron app. Confirm the arm64 assets retain the
+     generic `PI-Desktop-X.Y.Z.dmg` and `PI-Desktop-X.Y.Z-mac.zip` names while
+     the Intel assets use `PI-Desktop-X.Y.Z-Intel.dmg` and
+     `PI-Desktop-X.Y.Z-Intel-mac.zip`; confirm the release directory has both
+     DMG and ZIP artifacts and one merged `latest-mac.yml` feed whose URLs and
+     checksums match those generated assets.
   4. Inspect the renderer output for its size controls: emitted JS is minified,
      no `.woff` or `.ttf` files are present, the KaTeX `woff2` faces remain, and
      the brand marks are the renderer-sized `assets/brand/logo-*.png` rather
@@ -4130,8 +4135,10 @@ Each scenario is documented in this format:
 - **Expected**: Each macOS package contains exactly one bundled agent sidecar,
   one Rust host matching its declared architecture, and only configured
   Chromium locale packs. The release output contains both native macOS
-  architectures, DMG/ZIP artifacts, and one merged updater feed. Renderer
-  dependencies exist through Vite output rather than duplicate raw
+  architectures, DMG/ZIP artifacts, and one merged updater feed. The Intel
+  DMG and ZIP carry the `-Intel` marker and the x64 updater metadata points to
+  those names without colliding with the arm64 assets. Renderer dependencies
+  exist through Vite output rather than duplicate raw
   `node_modules`; dependency source maps, tests, examples, declarations,
   a second agent-runtime tree, and reliably excludable non-target native assets
   are absent. Curated Shiki grammars highlight locally while an unknown fence

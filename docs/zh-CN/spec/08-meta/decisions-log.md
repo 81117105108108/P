@@ -2800,3 +2800,14 @@ D193 和 D194。
 - D328 让父级空闲后残留委托继续跑，好让长任务收尾。父级 429 耗尽后持久回合已经以 `error` 结束并显示“继续”，另一个模型上的子智能体却仍把 sidecar 标成忙碌。
 - 决策 D352 修订 D328 / ADR 0166。父级空闲行为不变。父级终态错误会中止残留委托、跳过续跑提示，并把会话恢复为空闲，这样“继续”会被接受。失败的 TurnOutcomeCard 不会被随后的 `agent_end` 盖成已完成。
 - 见 ADR 0189、`03-runtime/02-agent-runtime.md` §5f 与 E2E-155。
+
+## 2026-09-09 —— 区分 Intel macOS 发布工件（D353）
+
+- 原生 macOS 通道可能生成只有版本号的通用安装包名称，用户容易把 Intel
+  下载误认为 arm64 下载。
+- 决策 D353 修订 D285 / ADR 0145：Intel x64 通道向 electron-builder 传入
+  目标专用命名模板，发布 `PI-Desktop-<version>-Intel.dmg` 和
+  `PI-Desktop-<version>-Intel-mac.zip`。x64 更新源保留这些 URL 和校验和，
+  arm64 继续使用通用 macOS 名称。
+- 这只改变发布工件命名；更新器归属、签名和通知加链接交付模式保持不变。
+  见 E2E-092。

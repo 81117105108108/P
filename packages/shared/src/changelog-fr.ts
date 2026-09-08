@@ -2,6 +2,13 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const frEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.3",
+    "date": "2026-09-09",
+    "highlights": [
+      "Identifiez clairement les téléchargements macOS Intel afin que l’architecture de l’installeur soit évidente."
+    ]
+  },
+  {
     "version": "0.14.2",
     "date": "2026-09-08",
     "highlights": [
