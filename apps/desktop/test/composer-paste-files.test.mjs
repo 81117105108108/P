@@ -24,6 +24,8 @@ test("composer converts oversized text paste and materializes clipboard files", 
   assert.match(composer, /!files\.length && textLength > largePasteThreshold/);
   assert.match(composer, /pasted-text-\$\{crypto\.randomUUID\(\)\.slice\(0, 8\)\}\.txt/);
   assert.match(composer, /mimeType: "text\/plain"/);
+  assert.match(composer, /recordHistory: true/);
+  assert.match(composer, /api\.recordClipboardPaste\(text\)/);
   // Oversized pastes attach as atomic inline chips: one sentinel character
   // inserted at the caret inside an editable draft, never an editable
   // @token that later edits could corrupt or silently drop.
@@ -83,14 +85,22 @@ test("chip sentinels stay unique inside the private-use range", () => {
 
 test("paste IPC is a typed renderer-to-main bridge", () => {
   assert.match(protocol, /composerPasteFiles: "pi-desktop\/composer\/pasteFiles"/);
+  assert.match(protocol, /clipboardRecordPaste: "pi-desktop\/clipboard\/recordPaste"/);
   assert.match(protocol, /composerImportFiles: "pi-desktop\/composer\/importFiles"/);
   assert.match(api, /pasteFiles: \(sessionId: string, files: ComposerPasteFile\[\]\)/);
   assert.match(api, /pickFiles: \(\) =>[\s\S]*token: string \| null/);
   assert.match(api, /importFiles: \(sessionId: string, token: string\)/);
   assert.match(api, /IPC\.invoke\.composerPasteFiles/);
+  assert.match(api, /recordClipboardPaste: \(text: string\)/);
+  assert.match(api, /IPC\.invoke\.clipboardRecordPaste/);
   assert.match(api, /IPC\.invoke\.composerImportFiles/);
   assert.match(main, /host\.call\("session\.get", \{ id: sessionId \}\)/);
   assert.match(main, /saveComposerPasteFiles\(dataDir, sessionId, files\)/);
+  assert.match(main, /recordPastedClipboardFiles\(files\)/);
+  assert.match(main, /assertMainWindowSender\(event\)/);
+  assert.match(main, /imageDimensions\(bytes\)/);
+  assert.match(main, /MAX_CLIPBOARD_IMAGE_PIXELS/);
+  assert.match(main, /clipboardHistory\.recordText\(input\.text\)/);
   assert.match(main, /rememberComposerPickerSelection\(result\.filePaths, event\.sender\.id\)/);
   assert.match(main, /consumeComposerPickerSelection\(input\.token, event\.sender\.id\)/);
   assert.match(main, /importComposerFiles\(\s*dataDir,\s*sessionId,\s*paths/);

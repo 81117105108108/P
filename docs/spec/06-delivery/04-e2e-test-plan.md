@@ -1741,20 +1741,22 @@ Each scenario is documented in this format:
 #### E2E-024W: Plugin clipboard history captures bounded text and images
 
 - **Preconditions**: The app is running; a test plugin declares and is granted
-  `clipboard.read`; the system clipboard can provide one text value and one
-  image value.
-- **Steps**: 1) Copy text, then copy an image, then invoke
-  `pi.clipboard.getHistory()`. 2) Invoke it again and mutate the returned image
-  bytes. 3) Copy the same text consecutively and invoke the API. 4) Revoke
-  `clipboard.read` and invoke it again. 5) Add fixtures over the text/image
-  caps and older than the retention window.
+  `clipboard.read`; the Composer can receive one text paste and one image paste.
+- **Steps**: 1) Paste text into the Composer, paste an image into the Composer,
+  then invoke `pi.clipboard.getHistory()`. 2) Invoke it again and mutate the
+  returned image bytes. 3) Paste the same text consecutively and invoke the API.
+  4) Leave the app idle with an image on the OS clipboard and verify no
+  clipboard sampling occurs. 5) Revoke `clipboard.read` and invoke it again.
+  6) Add fixtures over the text/image caps and older than the retention window.
 - **Expected**: The result is newest-first with text and image entries
   interleaved, ISO timestamps, PNG bytes, and image dimensions; mutating the
   result does not mutate host state. Consecutive duplicates collapse with a
   refreshed timestamp. Entries over the per-entry caps and expired entries are
-  absent, and the host total/entry caps are enforced. The API reuses the
-  `clipboard.read` grant, denied calls fail with `PERMISSION_DENIED`, and a
-  successful call emits an audit entry containing the returned entry count.
+  absent, and the host total/entry caps are enforced. A paste causes only the
+  event's already-read content to be recorded; the host does not reread the OS
+  clipboard or sample it while idle. The API reuses the `clipboard.read` grant,
+  denied calls fail with `PERMISSION_DENIED`, and a successful call emits an
+  audit entry containing the returned entry count.
 - **Specs linked**: `07-plugins/03-plugin-api.md`,
   `07-plugins/04-plugin-security.md`,
   `07-plugins/13-plugin-permissions-matrix.md`, ADR 0115

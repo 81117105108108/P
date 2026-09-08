@@ -150,7 +150,7 @@ import { PersistenceOutbox } from "./persistence-outbox";
 import { InflightCheckpointer } from "./inflight-checkpoint";
 import { AgentSidecar } from "./agent-sidecar";
 import { PluginRuntime } from "./plugin-runtime";
-import { ClipboardHistory, type ClipboardCapture } from "./clipboard-history";
+import { ClipboardHistory } from "./clipboard-history";
 import { createFsConsentService } from "./plugin-fs-consent";
 import { UserMcpRuntime } from "./user-mcp";
 import {
@@ -165,11 +165,7 @@ import { PluginViewHost, pluginViewKey } from "./plugin-view-host";
 import { parseAllowedExternalUrl } from "./safe-open-external";
 import type { PluginAppearance } from "../shared/plugin-panel-chrome";
 import { Logger, ignoreBrokenStdio } from "./logger";
-import {
-  BootTiming,
-  shouldLogClipboardSample,
-  timingMessage,
-} from "./boot-timing";
+import { BootTiming } from "./boot-timing";
 import {
   GLIBC_UNSUPPORTED_STATUS,
   assertLinuxGlibcSupported,
@@ -443,103 +439,96 @@ async function requestPluginNotificationPermission(): Promise<PluginNotification
   return result.permission;
 }
 
-let clipboardSampleIndex = 0;
-let lastClipboardSampleLogAt = 0;
+const clipboardHistory = new ClipboardHistory();
 
-async function readSystemClipboard(): Promise<ClipboardCapture | null> {
-  const started = Date.now();
-  let kind: "empty" | "text" | "image" = "empty";
-  let bytes = 0;
-  let width = 0;
-  let height = 0;
-  let formatsMs = 0;
-  let readImageMs = 0;
-  let toPngMs = 0;
-  try {
-    const { clipboard } = await import("electron");
-    const formatsStarted = Date.now();
-    const hasImage = clipboard
-      .availableFormats()
-      .some((format) => /^image\//i.test(format));
-    formatsMs = Date.now() - formatsStarted;
-    if (hasImage) {
-      const readStarted = Date.now();
-      const image = clipboard.readImage();
-      readImageMs = Date.now() - readStarted;
-      if (!image.isEmpty()) {
-        const size = image.getSize();
-        const pngStarted = Date.now();
-        const data = new Uint8Array(image.toPNG());
-        toPngMs = Date.now() - pngStarted;
-        kind = "image";
-        bytes = data.byteLength;
-        width = size.width;
-        height = size.height;
-        return {
-          type: "image",
-          // NativeImage provides a stable cross-platform PNG representation even
-          // when the source clipboard format is JPEG, WebP, or OS-native data.
-          format: "png",
-          data,
-          width: size.width,
-          height: size.height,
-        };
+const MAX_CLIPBOARD_IMAGE_PIXELS = 64_000_000;
+const MAX_UNKNOWN_CLIPBOARD_IMAGE_BYTES = 8 * 1024 * 1024;
+
+function bytesFromPaste(data: unknown): Uint8Array | null {
+  if (data instanceof Uint8Array) return data;
+  if (data instanceof ArrayBuffer) return new Uint8Array(data);
+  return null;
+}
+
+function imageDimensions(data: Uint8Array): { width: number; height: number } | null {
+  if (data.byteLength >= 24 && data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47) {
+    return {
+      width: new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(16),
+      height: new DataView(data.buffer, data.byteOffset, data.byteLength).getUint32(20),
+    };
+  }
+  if (data.byteLength >= 10 && data[0] === 0x47 && data[1] === 0x49 && data[2] === 0x46) {
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    return { width: view.getUint16(6, true), height: view.getUint16(8, true) };
+  }
+  if (data.byteLength >= 30 && data[0] === 0x52 && data[1] === 0x49 && data[2] === 0x46 && data[3] === 0x46 && data[8] === 0x57 && data[9] === 0x45 && data[10] === 0x42 && data[11] === 0x50 && data[12] === 0x56 && data[13] === 0x50 && data[14] === 0x38 && data[15] === 0x58) {
+    return {
+      width: 1 + data[24] + (data[25] << 8) + (data[26] << 16),
+      height: 1 + data[27] + (data[28] << 8) + (data[29] << 16),
+    };
+  }
+  if (data.byteLength >= 4 && data[0] === 0xff && data[1] === 0xd8) {
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    let offset = 2;
+    while (offset + 9 < data.byteLength) {
+      if (data[offset] !== 0xff) {
+        offset += 1;
+        continue;
       }
+      const marker = data[offset + 1];
+      offset += 2;
+      if (marker === 0xd8 || marker === 0xd9) continue;
+      if (offset + 2 > data.byteLength) return null;
+      const segmentLength = view.getUint16(offset);
+      if (segmentLength < 2 || offset + segmentLength > data.byteLength) return null;
+      if ((marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf)) {
+        if (segmentLength < 7) return null;
+        return { width: view.getUint16(offset + 5), height: view.getUint16(offset + 3) };
+      }
+      offset += segmentLength;
     }
-    const text = clipboard.readText();
-    if (text) {
-      kind = "text";
-      bytes = Buffer.byteLength(text, "utf8");
-      return { type: "text", text };
+  }
+  return null;
+}
+
+/** Record bytes already supplied by a user paste without reading the OS clipboard. */
+function recordPastedClipboardFiles(files: ComposerPasteFile[]): void {
+  for (const file of files) {
+    const bytes = bytesFromPaste(file?.data);
+    if (!bytes) continue;
+    const mimeType = typeof file.mimeType === "string" ? file.mimeType : "";
+    if (file.recordHistory && mimeType.toLowerCase() === "text/plain") {
+      clipboardHistory.recordText(new TextDecoder().decode(bytes));
+      continue;
     }
-    return null;
-  } finally {
-    const durationMs = Date.now() - started;
-    const sampleIndex = clipboardSampleIndex;
-    clipboardSampleIndex += 1;
+    const isImage =
+      mimeType.toLowerCase().startsWith("image/") ||
+      /\.(avif|bmp|gif|heic|jpe?g|png|tiff?|webp)$/i.test(file.name ?? "");
+    if (!isImage) continue;
+    const dimensions = imageDimensions(bytes);
     if (
-      shouldLogClipboardSample({
-        sampleIndex,
-        durationMs,
-        lastLoggedAt: lastClipboardSampleLogAt,
-      })
-    ) {
-      lastClipboardSampleLogAt = Date.now();
-      logger.app(
-        "timing",
-        durationMs >= 100 ? "warn" : "info",
-        timingMessage("clipboard", "poll", {
-          durationMs,
-          kind,
-          bytes,
-          width,
-          height,
-          formatsMs,
-          readImageMs,
-          toPngMs,
-          sampleIndex,
-        }),
-        {
-          data: {
-            kind: "clipboard",
-            phase: "poll",
-            durationMs,
-            sampleKind: kind,
-            bytes,
-            width,
-            height,
-            formatsMs,
-            readImageMs,
-            toPngMs,
-            sampleIndex,
-          },
-        },
-      );
+      (dimensions &&
+        (dimensions.width < 1 ||
+          dimensions.height < 1 ||
+          dimensions.width * dimensions.height > MAX_CLIPBOARD_IMAGE_PIXELS)) ||
+      (!dimensions && bytes.byteLength > MAX_UNKNOWN_CLIPBOARD_IMAGE_BYTES)
+    ) continue;
+    try {
+      const image = nativeImage.createFromBuffer(Buffer.from(bytes));
+      if (image.isEmpty()) continue;
+      const size = image.getSize();
+      if (size.width * size.height > MAX_CLIPBOARD_IMAGE_PIXELS) continue;
+      clipboardHistory.recordImage({
+        format: "png",
+        data: new Uint8Array(image.toPNG()),
+        width: size.width,
+        height: size.height,
+      });
+    } catch {
+      // Invalid image bytes must not make an otherwise valid paste fail.
     }
   }
 }
-
-const clipboardHistory = new ClipboardHistory({ read: readSystemClipboard });
 
 async function safeOpenExternal(rawUrl: unknown): Promise<void> {
   const url = parseAllowedExternalUrl(rawUrl);
@@ -5650,6 +5639,13 @@ function registerIpc() {
       wrap(() => fn(event, ...args)),
     );
   };
+  const assertMainWindowSender = (event: { sender: { id: number } }): void => {
+    if (event.sender.id !== mainWindow?.webContents.id) {
+      throw Object.assign(new Error("renderer is not the main window"), {
+        errorCode: "PERMISSION_DENIED",
+      });
+    }
+  };
 
   handle(IPC.invoke.pluginLauncherToggle, async () => {
     await togglePluginLauncher();
@@ -6927,9 +6923,24 @@ function registerIpc() {
     },
   );
 
-  handle(
+  handleWithEvent(
+    IPC.invoke.clipboardRecordPaste,
+    async (event, input: { text?: unknown } = {}) => {
+      assertMainWindowSender(event);
+      if (typeof input.text !== "string") {
+        throw Object.assign(new Error("text must be a string"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      clipboardHistory.recordText(input.text);
+      return { ok: true };
+    },
+  );
+
+  handleWithEvent(
     IPC.invoke.composerPasteFiles,
-    async (input: { sessionId?: unknown; files?: unknown } = {}) => {
+    async (event, input: { sessionId?: unknown; files?: unknown } = {}) => {
+      assertMainWindowSender(event);
       if (!host) throw new Error("host unavailable");
       const sessionId =
         typeof input.sessionId === "string" ? input.sessionId.trim() : "";
@@ -6952,7 +6963,9 @@ function registerIpc() {
         });
       }
       const files = input.files as ComposerPasteFile[];
-      return { files: await saveComposerPasteFiles(dataDir, sessionId, files) };
+      const saved = await saveComposerPasteFiles(dataDir, sessionId, files);
+      recordPastedClipboardFiles(files);
+      return { files: saved };
     },
   );
 
@@ -8828,13 +8841,6 @@ app.whenReady().then(async () => {
   if (!hasSingleInstanceLock) return;
   applyDevelopmentBranding();
   bootTiming.mark("when-ready");
-  try {
-    await bootTiming.span("clipboard-history-start", () => clipboardHistory.start());
-  } catch (error) {
-    logger.app("plugin", "warn", "clipboard history sampling unavailable", {
-      data: String(error),
-    });
-  }
   // Load the close-behavior preference before the first window exists: the
   // close handler reads `closeBehavior` synchronously, and a window created
   // while it still held the "ask" default would prompt a user who already
@@ -9079,7 +9085,6 @@ app.on("before-quit", (event) => {
   }
 
   quitting = true;
-  clipboardHistory.stop();
   tray?.destroy();
   tray = null;
   if (pluginLauncherAccelerator) {

@@ -469,6 +469,8 @@ export const api = {
       sessionId,
       files,
     }),
+  recordClipboardPaste: (text: string) =>
+    invoke<{ ok: boolean }>(IPC.invoke.clipboardRecordPaste, { text }),
   clearProject: () => invoke(IPC.invoke.projectClear),
   setProject: (path: string) =>
     invoke<{ workspace: ProjectWorkspace | null }>(IPC.invoke.projectSet, path),

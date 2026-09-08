@@ -300,16 +300,15 @@ storage, target, and network-interception methods fail with
 `PERMISSION_DENIED`. Session identity for agent calls comes from the in-flight
 `plugins.execute` `sessionId`, not from plugin arguments (D333 / ADR 0170).
 
-`getHistory` returns newest-first entries captured by the host while the app is
-running, with text and images interleaved in capture order. The first clipboard
-sample after startup establishes a baseline and is not added; content written
-through `writeText` is captured immediately. Consecutive identical content is
-collapsed and refreshes its timestamp. History is in-memory only and is
-bounded to 30 days, 500 entries, and 256 MiB total payload; individual entries
-are limited to 100 KiB of UTF-8 text or 50 MiB of image bytes. Images are
-returned as PNG bytes with their pixel dimensions, regardless of the source OS
-clipboard representation. The host samples for changes because Electron has
-no cross-platform clipboard-changed event.
+`getHistory` returns newest-first entries explicitly recorded by the host, with
+text and images interleaved in capture order. Content written through
+`writeText` and content supplied by the Composer's user-initiated `paste` event
+are recorded; the host does not poll or reread the OS clipboard in the
+background. Consecutive identical content is collapsed and refreshes its
+timestamp. History is in-memory only and is bounded to 30 days, 500 entries,
+and 256 MiB total payload; individual entries are limited to 100 KiB of UTF-8
+text or 50 MiB of image bytes. Images are returned as PNG bytes with their
+pixel dimensions. A copy that is never pasted is intentionally not captured.
 
 ### services (requires `background.service`)
 ```ts

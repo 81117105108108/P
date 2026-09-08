@@ -1639,6 +1639,8 @@ export type ComposerCommand = {
 export type ComposerPasteFile = {
   name?: string;
   mimeType?: string;
+  /** Set for generated large-text pastes so history can retain the text. */
+  recordHistory?: boolean;
   data: ArrayBuffer;
 };
 

@@ -64,26 +64,6 @@ export class BootTiming {
   }
 }
 
-/** Log a clipboard sample at info when it exceeds this cost. */
-export const CLIPBOARD_SAMPLE_SLOW_MS = 25;
-/** Always log a sample this slow, even inside the debounce window. */
-export const CLIPBOARD_SAMPLE_ALWAYS_MS = 100;
-/** Slow-but-not-extreme samples are rate-limited to this interval. */
-export const CLIPBOARD_SAMPLE_LOG_GAP_MS = 5_000;
-
-export function shouldLogClipboardSample(input: {
-  sampleIndex: number;
-  durationMs: number;
-  lastLoggedAt: number;
-  now?: number;
-}): boolean {
-  if (input.sampleIndex === 0) return true;
-  if (input.durationMs >= CLIPBOARD_SAMPLE_ALWAYS_MS) return true;
-  if (input.durationMs < CLIPBOARD_SAMPLE_SLOW_MS) return false;
-  const now = input.now ?? Date.now();
-  return now - input.lastLoggedAt >= CLIPBOARD_SAMPLE_LOG_GAP_MS;
-}
-
 export const UPDATE_CHECK_TIMEOUT_CODE = "UPDATE_CHECK_TIMEOUT";
 
 /**

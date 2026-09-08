@@ -37,11 +37,13 @@ Main risks:
    the in-flight tool session only (D336 / D019)
 
 Clipboard history is host-owned and remains in the Electron main process only.
-It is never written to the plugin data directory or the host database. A plugin
-can read it only through `clipboard.read`, which is also the permission used by
-`readText`; every `getHistory` call is audited with its returned entry count.
-The bounded in-memory retention limits the privacy exposure to the current app
-run and is cleared on exit.
+It is never written to the plugin data directory or the host database. The host
+records explicit clipboard writes and user-initiated Composer paste events; it
+does not poll the OS clipboard in the background. A plugin can read history only
+through `clipboard.read`, which is also the permission used by `readText`;
+every `getHistory` call is audited with its returned entry count. The bounded
+in-memory retention limits the privacy exposure to the current app run and is
+cleared on exit.
 
 ### Goals
 1. Plugin main runs in a separate process
