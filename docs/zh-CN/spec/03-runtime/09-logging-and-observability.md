@@ -59,11 +59,13 @@
 - `updater` — 电子更新器诊断
 - `diagnostics` — 阻止导航、菜单和模板诊断
 - `runtime` — host/sidecar 生命周期事件
+- `timing` — 启动阶段、剪贴板采样耗时、更新检查耗时
 
 主机和代理stderr在线路时被归为同一类别
-包含可识别的子系统标记。时间线总是路由到
+包含可识别的子系统标记。子进程 stderr 中的时间线总是路由到
 `host/timing.log` 或 `agent/timing.log`；未知子输出到那个
-频道的 `runtime.log`。每条记录都包含其 `category` 字段。
+频道的 `runtime.log`。Electron 主进程把启动、剪贴板和更新检查
+打点写到 `app/timing.log`。每条记录都包含其 `category` 字段。
 
 不再写入平面 `app.log`、`host.log` 和 `agent.log` 名称。
 现有的旧文件在布局转换期间保持不变。

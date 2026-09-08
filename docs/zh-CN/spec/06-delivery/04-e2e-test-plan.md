@@ -134,12 +134,17 @@ M5。
   host-core 和 Electron 启动。窗口首先显示品牌启动画面
   当 bootstrap 运行时，然后用当前的英文显示主 shell
   语言环境目录；没有编译错误、缺少菜单运行时错误或崩溃；
-  版本信息可见。
-- **链接规格**：`03-runtime/07-process-model.md`、`04-ux/01-ui-ia.md`
+  版本信息可见。`~/.pi-desktop/logs/app/timing.log` 含有可检索的
+  `[timing] kind=boot` 行（`when-ready`、`host`、`sidecar`、`window-shown`、
+  `renderer-bootstrap`）。GitHub 自动更新在首个窗口出现之后才开始，
+  且不会因约 60 秒的网络超时把状态钉在 `checking`。
+- **链接规格**：`03-runtime/07-process-model.md`、`04-ux/01-ui-ia.md`、
+  `03-runtime/09-logging-and-observability.md` §7b
 - **接受**：A（应用程序启动）
 - **里程碑**：M1
 - **状态**：部分自动化（`runtime-build-contract.test.mjs` 涵盖
-  依赖构建合约； Electron 窗口启动仍处于草案状态）
+  依赖构建合约；`boot-timing.test.mjs` 与 `auto-update.test.mjs` 覆盖打点
+  与限时自动检查；Electron 窗口启动仍处于草案状态）
 
 #### E2E-002：IPC 桥功能正常
 

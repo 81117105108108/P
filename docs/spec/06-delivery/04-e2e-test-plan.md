@@ -154,12 +154,19 @@ Each scenario is documented in this format:
   host-core and Electron startup. Window first shows the branded startup splash
   while bootstrap runs, then reveals the main shell in English with the current
   locale catalog; no compile error, missing-menu runtime error, or crash;
-  version info visible.
-- **Specs linked**: `03-runtime/07-process-model.md`, `04-ux/01-ui-ia.md`
+  version info visible. `~/.pi-desktop/logs/app/timing.log` contains greppable
+  `[timing] kind=boot` lines for `when-ready`, `host`, `sidecar`,
+  `window-shown`, and `renderer-bootstrap` with `elapsedMs` / `durationMs`.
+  GitHub auto-update is not started until after `ensureWindow`, and a hung
+  feed cannot keep updater status on `checking` for Chromium's ~60s timeout.
+- **Specs linked**: `03-runtime/07-process-model.md`, `04-ux/01-ui-ia.md`,
+  `03-runtime/09-logging-and-observability.md` §7b
 - **Acceptance**: A (app startup)
 - **Milestone**: M1
 - **Status**: Partially automated (`runtime-build-contract.test.mjs` covers the
-  dependency build contract; Electron window launch remains Draft)
+  dependency build contract; `boot-timing.test.mjs` and `auto-update.test.mjs`
+  cover timing helpers and the bounded auto-check contract; Electron window
+  launch remains Draft)
 
 #### E2E-002: IPC bridge is functional
 

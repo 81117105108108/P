@@ -28,7 +28,10 @@ broker; they do not receive Electron objects or a new capability.
 The host samples the system clipboard every 500ms because Electron has no
 cross-platform change event. The first sample after startup establishes a
 baseline. Host writes are recorded immediately. Consecutive identical content
-is collapsed with a refreshed timestamp.
+is collapsed with a refreshed timestamp. Slow samples (especially
+`clipboard.readImage()` + `toPNG()` on a screenshot) are recorded on
+`app/timing.log` as `[timing] kind=clipboard` with encode timings and byte
+size, never payload contents.
 
 The history is cleared on application exit and is bounded to:
 
