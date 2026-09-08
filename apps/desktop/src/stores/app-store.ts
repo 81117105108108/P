@@ -219,6 +219,37 @@ function viewingSessionIdForPrompt(
     : null;
 }
 
+function notifyInteractivePrompt(
+  sessionId: string,
+  kind: "ask" | "permission" | "plan",
+  payload?: { question?: string; toolName?: string },
+) {
+  const session = useAppStore.getState().sessions.find((s) => s.id === sessionId);
+  const sessionTitle = session?.title || i18n.t("chat.untitledTask");
+  let title = "";
+  let body = "";
+  if (kind === "ask") {
+    title = i18n.t("notifications.askTitle", { sessionTitle });
+    body = payload?.question?.trim() || i18n.t("notifications.askBodyFallback");
+  } else if (kind === "permission") {
+    title = i18n.t("notifications.permissionTitle", { sessionTitle });
+    body = i18n.t("notifications.permissionBody", {
+      toolName: payload?.toolName || "tool",
+    });
+  } else if (kind === "plan") {
+    title = i18n.t("notifications.planApprovalTitle", { sessionTitle });
+    body = i18n.t("notifications.planApprovalBody");
+  }
+  void api
+    .showNativeNotification({
+      id: crypto.randomUUID(),
+      sessionId,
+      title,
+      body,
+    })
+    .catch(() => undefined);
+}
+
 export type ToastVariant = "info" | "success" | "warning" | "error";
 
 export type ToastItem = {
@@ -3526,6 +3557,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           openPlanArtifact(checkpoint, get().openWorkPanelTabForSession);
         }
         void get().restorePendingPlan(envelope.sessionId);
+        notifyInteractivePrompt(envelope.sessionId, "plan");
       }
       if (event.state !== "awaiting_approval") {
         void drainQueuedPrompts(envelope.sessionId);
@@ -3608,10 +3640,16 @@ export const useAppStore = create<AppState>((set, get) => ({
             receivedAt: envelope.ts,
           }),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "permission", {
+          toolName: event.request.toolName,
+        });
       } else if (event.type === "asktool_request") {
         set((state) => ({
           pendingAsks: enqueueAsk(state.pendingAsks, event.request),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "ask", {
+          question: event.request.questions?.[0]?.question,
+        });
       } else if (event.type === "agent_end") {
         void get().refreshSessions();
       } else if (event.type === "planning_state") {
@@ -3815,11 +3853,17 @@ export const useAppStore = create<AppState>((set, get) => ({
             receivedAt: envelope.ts,
           }),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "permission", {
+          toolName: event.request.toolName,
+        });
         break;
       case "asktool_request":
         set((state) => ({
           pendingAsks: enqueueAsk(state.pendingAsks, event.request),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "ask", {
+          question: event.request.questions?.[0]?.question,
+        });
         break;
       case "error": {
         // A user-initiated stop is not an error; just settle the run state.
