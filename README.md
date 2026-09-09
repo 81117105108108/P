@@ -236,6 +236,12 @@ Skills can be installed globally or activated for individual projects.
 
 Connect external tools and services through Model Context Protocol servers without baking them into the desktop application.
 
+PI-Desktop can also be controlled by an external MCP Agent. Start the app with
+`PI_DESKTOP_MCP_CONTROL=1`; then read the loopback endpoint and bearer token
+from `mcp-control.json` in the Electron user-data directory. The endpoint
+supports project/session/Agent workflows and a reviewed desktop operation
+catalog. It is disabled by default and never binds a non-loopback address.
+
 ### Subagents
 
 Create specialized agents with their own instructions, tools, and model choices, then delegate work to them from another agent.
@@ -363,7 +369,7 @@ The **Rust Host Core** owns privileged workspace operations, permissions, persis
 
 PI-Desktop is an early preview under active development.
 
-The current **0.14.x** line includes the desktop shell, streaming agent runtime, Agent / Plan / Goal workflows, permission-aware workspace tools, projects and sessions, session imports, MCP / Skills / Subagents, background delegation, multi-provider model configuration, plugins and marketplace support, context checkpoints, notifications, release notes, and cross-platform packaging.
+The current **0.14.x** line includes the desktop shell, streaming agent runtime, Agent / Plan / Goal workflows, permission-aware workspace tools, projects and sessions, session imports, local MCP control, MCP / Skills / Subagents, background delegation, multi-provider model configuration, plugins and marketplace support, context checkpoints, notifications, release notes, and cross-platform packaging.
 
 Current priorities include:
 

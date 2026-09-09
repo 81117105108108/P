@@ -23,7 +23,8 @@
 - Hostile-plugin sandbox scenarios. Publisher provenance and the marketplace
   download boundary are now in scope (E2E-024R through E2E-024V); basic
   browse/install/update flows were already part of the catalog.
-- Remote gateway / control-plane scenarios (post-MVP — ADR 0004 / baseline #20).
+- Remote Gateway / browser control remains out of scope (ADR 0004 / baseline
+  #20); the bounded local loopback MCP control plane is covered by E2E-220.
 
 ---
 
@@ -9003,3 +9004,34 @@ are withdrawn with ADR 0165.
 - **Milestone**: M6+
 - **Status**: Unit/source-contract covered; full multi-provider rendered journey
   remains Draft (do not run E2E locally unless explicitly requested)
+
+#### E2E-220: Local MCP control drives a running desktop
+
+- **Preconditions**: Start PI-Desktop with
+  `PI_DESKTOP_MCP_CONTROL=1` and a clean profile. A local project directory is
+  available, the Electron user-data directory is writable, and the desktop
+  has completed backend boot.
+- **Steps**: 1) Read `mcp-control.json` and use its URL and bearer token. 2)
+  Call `initialize`, `tools/list`, and `pi_control_describe`. 3) Call
+  `pi_project_open` with the fixture project. 4) Call `pi_session_create`,
+  `pi_session_get`, and `pi_agent_status`. 5) Call `pi_agent_prompt` and
+  observe the existing desktop session-change event select the target session.
+  6) Call `pi_desktop_invoke` for a reviewed read operation. 7) Attempt
+  `pi_session_delete` without confirmation, then repeat with `confirm: true`.
+  8) Stop the app and inspect the manifest.
+- **Expected**: An unauthenticated request receives 401; the authenticated
+  MCP handshake and tool catalog succeed; project/session/Agent operations use
+  the same IPC validation and host permission boundaries as the renderer; the
+  visible desktop refreshes/selects the project and session; destructive
+  operations fail with a confirmation error until acknowledged; secret and
+  native-picker channels are absent from `pi_control_describe`; the endpoint
+  binds loopback only; disallowed Origins and unsupported protocol versions are
+  rejected; and the manifest changes to `active: false` on shutdown.
+- **Specs linked**: `02-architecture/01-architecture.md`,
+  `03-runtime/01-ipc-protocol.md`, `05-security/01-security.md`, ADR 0203,
+  D370
+- **Acceptance**: A (app control), C (sessions), Security, Quality
+- **Milestone**: M6+
+- **Status**: MCP protocol/unit-covered by `apps/desktop/test/mcp-control.test.mjs`;
+  full Electron journey documented and remains deferred by the no-local-E2E
+  policy

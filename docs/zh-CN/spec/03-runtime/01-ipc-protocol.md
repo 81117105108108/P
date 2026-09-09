@@ -1391,6 +1391,94 @@ Electron Main 构造固定的 GitHub bug 表单 URL
 由主进程版本信息填充。渲染器不能提供 URL。离开该 origin 或模板的构造会被拒绝。
 此通道不进入 host-core，也不改变 host RPC 协议版本。
 
+## 13d. 本地 MCP 控制 API（D370）
+
+PI-Desktop 可以为外部 Agent 暴露本地自动化接口，而不改变渲染器 preload
+契约或 host RPC 协议。服务默认关闭，只有 Electron 进程收到以下配置时才启动：
+
+```text
+PI_DESKTOP_MCP_CONTROL=1
+PI_DESKTOP_MCP_PORT=37123       # 可选；默认 37123
+```
+
+Electron Main 只绑定 `127.0.0.1`，并在 `/mcp` 提供 Streamable HTTP MCP。
+测试时端口可以设为 `0` 以请求临时端口；正常桌面配置使用默认端口或显式的本地端口。
+服务使用 MCP 协议版本 `2025-06-18`，支持 `initialize`、
+`notifications/initialized`、`ping`、`tools/list`、`tools/call`、
+`resources/list` 和 `logging/setLevel`。服务接受标准 POST 传输；由于不提供 SSE
+流，GET 会返回 405。
+
+### 连接与认证
+
+服务首次使用时生成 256 位随机 bearer token，并将其存储在 Electron 用户数据目录的
+`mcp-control.token` 中。当前连接记录写入 `mcp-control.json`：
+
+```json
+{
+  "active": true,
+  "serverName": "pi-desktop",
+  "protocol": "streamable-http",
+  "url": "http://127.0.0.1:37123/mcp",
+  "token": "<redacted>",
+  "pid": 12345,
+  "startedAt": "2026-09-09T00:00:00.000Z"
+}
+```
+
+在支持 POSIX 权限的平台上，两个文件都以 `0600` 模式写入。每个请求都必须包含
+`Authorization: Bearer <token>`（保留 `X-Pi-Desktop-Token` 头，方便简单的本地客户端）。
+其他路径、缺少 token 的请求，以及除 POST/DELETE/OPTIONS 以外的方法都会被拒绝。
+Electron 等待主机关闭之前会停止服务，并将清单标记为非活动。
+
+如果请求带有 `Origin` 头，其主机名必须是 `localhost`、`127.0.0.1` 或 `::1`；
+非浏览器 MCP 客户端可以省略 `Origin`。初始化后，请求必须携带服务端发出的
+`Mcp-Session-Id`，并且可以携带 `MCP-Protocol-Version` 的 `2025-06-18` 或兼容的
+`2025-03-26`。未知会话 id 和不支持的协议版本会在 HTTP 边界被拒绝。
+
+### 工具
+
+命名工具覆盖常见的 Agent 工作流：
+
+- `pi_app_info`
+- `pi_project_get`、`pi_project_list`、`pi_project_open`、`pi_project_clear`
+- `pi_session_list`、`pi_session_create`、`pi_session_get`、
+  `pi_session_rename`、`pi_session_fork`、`pi_session_delete`、
+  `pi_session_configure`
+- `pi_agent_prompt`、`pi_agent_status`、`pi_agent_stop`、`pi_agent_abort`、
+  `pi_agent_compact`
+- `pi_plans_pending`、`pi_plans_resolve`
+- `pi_workspace_diff`、`pi_fs_list`、`pi_fs_read`
+
+`pi_control_describe` 返回经过审查的操作目录。`pi_desktop_invoke` 接受操作 id
+和位置参数形式的 IPC 参数：
+
+```json
+{
+  "operation": "project/set",
+  "args": ["/path/to/project"]
+}
+```
+
+只有审查目录中注册到主进程的通道可用。不会暴露密钥读写通道，以及仅属于渲染器的
+原生选择器/对话框通道。每个目录项标记为 `read`、`write` 或 `dangerous`；通用危险
+操作，以及命名的删除会话/决议计划工具，都要求 `confirm: true`。所有调用仍会经过
+现有 IPC 处理器的校验、主机权限、工作区边界和错误模型。
+
+外部调用成功后，Electron Main 可以通过现有的
+`pi-desktop/session/event/changed` 事件发送附加字段：
+
+```ts
+{
+  reason?: string;
+  projectPath?: string | null;
+  selectSessionId?: string;
+}
+```
+
+渲染器会刷新会话，并根据该事件应用项目/会话选择，因此外部 Agent 创建会话、打开
+项目或提交提示词时，可见桌面会跟随相同状态。控制服务启动失败会记录日志，但不会阻止
+桌面启动。
+
 ## 14. 错误代码 — 初始注册表（可扩展）
 
 | 代码 | 含义 |

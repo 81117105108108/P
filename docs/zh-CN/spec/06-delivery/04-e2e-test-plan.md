@@ -25,7 +25,8 @@
   资格差距仍然记录在案）。
 - 市场发行商来源和恶意插件沙箱场景；基本的
   browse/install/update 流已成为目录的一部分。
-- 远程网关/控制平面场景（后 MVP — ADR 0004 / 基线 #20）。
+- 远程 Gateway / 浏览器控制仍在范围外（ADR 0004 / 基线 #20）；有界的本地回环
+  MCP 控制面由 E2E-220 覆盖。
 
 ---
 
@@ -6198,3 +6199,24 @@ IPC 请求无法关闭。
 - **验收**：质量（首帧稳定）、B（模型选择）
 - **里程碑**：M6+
 - **状态**：单元/源合同已覆盖（`composer-models.test.mjs`）；完整 UI 路径仍需运行器验证（除非明确要求，否则不要在本地运行 E2E）
+
+#### E2E-220：本地 MCP 控制驱动运行中的桌面
+
+- **前提条件**：使用 `PI_DESKTOP_MCP_CONTROL=1` 和干净配置启动 PI-Desktop。
+  有可用的本地项目目录，Electron 用户数据目录可写，桌面已完成后端启动。
+- **步骤**：1）读取 `mcp-control.json`，使用其中的 URL 和 bearer token。2）调用
+  `initialize`、`tools/list` 和 `pi_control_describe`。3）调用 `pi_project_open` 打开
+  fixture 项目。4）调用 `pi_session_create`、`pi_session_get` 和 `pi_agent_status`。
+  5）调用 `pi_agent_prompt`，观察现有桌面会话变更事件选中目标会话。6）使用
+  `pi_desktop_invoke` 调用一个已审查的只读操作。7）不带确认调用
+  `pi_session_delete`，再使用 `confirm: true` 重试。8）停止应用并检查清单。
+- **预期**：未认证请求返回 401；已认证的 MCP 握手和工具目录成功；项目、会话、Agent
+  操作使用与渲染器相同的 IPC 校验和主机权限边界；可见桌面刷新并选中项目/会话；破坏性
+  操作在确认前失败；`pi_control_describe` 不包含密钥或原生选择器通道；端点只绑定回环；
+  禁止的 Origin 和不支持的协议版本会被拒绝；关闭时清单变为 `active: false`。
+- **链接规格**：`02-architecture/01-architecture.md`、`03-runtime/01-ipc-protocol.md`、
+  `05-security/01-security.md`、ADR 0203、D370
+- **验收**：A（应用控制）、C（会话）、安全、质量
+- **里程碑**：M6+
+- **状态**：由 `apps/desktop/test/mcp-control.test.mjs` 覆盖 MCP 协议/单元；完整 Electron
+  旅程已记录，仍按策略延后

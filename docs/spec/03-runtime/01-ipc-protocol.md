@@ -1539,6 +1539,105 @@ supply a URL. Construction that leaves that origin or template is rejected.
 This channel does not cross into host-core and does not change the host RPC
 protocol version.
 
+## 13d. Local MCP control API (D370)
+
+PI-Desktop can expose a local automation surface for an external Agent without
+changing the renderer preload contract or host RPC protocol. The server is
+disabled by default and starts only when the Electron process receives:
+
+```text
+PI_DESKTOP_MCP_CONTROL=1
+PI_DESKTOP_MCP_PORT=37123       # optional; defaults to 37123
+```
+
+Electron Main binds `127.0.0.1` only and serves Streamable HTTP MCP at
+`/mcp`. The selected port may be `0` in tests to request an ephemeral port;
+normal desktop configuration uses the default or an explicit local port. The
+server uses MCP protocol version `2025-06-18` and supports `initialize`,
+`notifications/initialized`, `ping`, `tools/list`, `tools/call`,
+`resources/list`, and `logging/setLevel`. It accepts the standard POST
+transport; GET is handled with 405 because this server does not offer an SSE
+stream.
+
+### Connection and authentication
+
+The server creates a 256-bit random bearer token on first use and stores it in
+the Electron user-data directory as `mcp-control.token`. It writes the current
+connection record to `mcp-control.json`:
+
+```json
+{
+  "active": true,
+  "serverName": "pi-desktop",
+  "protocol": "streamable-http",
+  "url": "http://127.0.0.1:37123/mcp",
+  "token": "<redacted>",
+  "pid": 12345,
+  "startedAt": "2026-09-09T00:00:00.000Z"
+}
+```
+
+Both files are written with mode `0600` where the platform supports POSIX
+permissions. Every request must include `Authorization: Bearer <token>` (the
+`X-Pi-Desktop-Token` header is retained for simple local clients). Requests to
+other paths, requests without the token, and methods other than
+POST/DELETE/OPTIONS are rejected. The server is stopped before Electron waits
+for host shutdown and the manifest is marked inactive.
+
+When an `Origin` header is present, its hostname must be `localhost`,
+`127.0.0.1`, or `::1`; absent Origin is allowed for non-browser MCP clients.
+After initialization, requests must carry the issued `Mcp-Session-Id` and may
+carry `MCP-Protocol-Version` `2025-06-18` or the compatible `2025-03-26` value.
+Unknown session ids and unsupported protocol versions are rejected at the HTTP
+boundary.
+
+### Tools
+
+The named tools cover the common Agent workflow:
+
+- `pi_app_info`
+- `pi_project_get`, `pi_project_list`, `pi_project_open`, `pi_project_clear`
+- `pi_session_list`, `pi_session_create`, `pi_session_get`,
+  `pi_session_rename`, `pi_session_fork`, `pi_session_delete`,
+  `pi_session_configure`
+- `pi_agent_prompt`, `pi_agent_status`, `pi_agent_stop`, `pi_agent_abort`,
+  `pi_agent_compact`
+- `pi_plans_pending`, `pi_plans_resolve`
+- `pi_workspace_diff`, `pi_fs_list`, `pi_fs_read`
+
+`pi_control_describe` returns the reviewed operation catalog. `pi_desktop_invoke`
+accepts an operation id and positional IPC arguments:
+
+```json
+{
+  "operation": "project/set",
+  "args": ["/path/to/project"]
+}
+```
+
+Only main-process channels registered in the reviewed catalog are available.
+Secret reads/writes and renderer-only native picker/dialog channels are not
+exposed. Each catalog entry is tagged `read`, `write`, or `dangerous`;
+dangerous generic operations and the named session-delete/plan-resolution
+tools require `confirm: true`. All calls still pass through the existing IPC
+handler validation, host permissions, workspace boundaries, and error model.
+
+After successful external calls, Electron Main may emit the existing
+`pi-desktop/session/event/changed` event with additive fields:
+
+```ts
+{
+  reason?: string;
+  projectPath?: string | null;
+  selectSessionId?: string;
+}
+```
+
+The renderer refreshes sessions and applies project/session selection from that
+event, so an external Agent can create a session, open a project, or submit a
+prompt while the visible desktop follows the same state. A control-server
+startup failure is logged and does not prevent the desktop from launching.
+
 ## 14. Error Codes — Initial registry (extensible)
 
 | code | Meaning |

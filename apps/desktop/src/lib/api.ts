@@ -919,10 +919,24 @@ export const api = {
       listener((payload as { notification: AppNotification }).notification),
     );
   },
-  onSessionsChanged: (listener: (event: { reason?: string; pluginId?: string }) => void) => {
+  onSessionsChanged: (
+    listener: (event: {
+      reason?: string;
+      pluginId?: string;
+      projectPath?: string | null;
+      selectSessionId?: string;
+    }) => void,
+  ) => {
     if (!window.piDesktop?.on) return () => undefined;
     return window.piDesktop.on(IPC.event.sessionsChanged, (payload) =>
-      listener((payload ?? {}) as { reason?: string; pluginId?: string }),
+      listener(
+        (payload ?? {}) as {
+          reason?: string;
+          pluginId?: string;
+          projectPath?: string | null;
+          selectSessionId?: string;
+        },
+      ),
     );
   },
   onNotificationActivated: (

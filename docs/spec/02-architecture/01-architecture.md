@@ -16,6 +16,7 @@ PI-Desktop uses a layered desktop architecture:
 │ - window lifecycle │
 │ - IPC routing │
 │ - process supervision │
+│ - optional loopback MCP control │
 └───────────────▲─────────────────────────────▲────────────┘
  │ local RPC │ process bridge
 ┌───────────────┴──────────────┐ ┌──────────┴────────────┐
@@ -83,6 +84,23 @@ not pass through Rust host-core or the agent sidecar (D120 / ADR 0022).
 - plugin panels
 - permission grants
 
+### 3.6 Local MCP control plane
+
+When `PI_DESKTOP_MCP_CONTROL=1` is set, Electron Main starts an optional
+Streamable HTTP MCP server on `127.0.0.1`. The server exposes named tools for
+the common project/session/Agent/workspace flows and a reviewed catalog of
+generic desktop operations. Each call delegates to the same registered main
+process IPC handler used by the renderer; it does not create a second
+permission or persistence implementation.
+
+The server creates a persistent bearer token and a connection manifest in the
+Electron user-data directory. It never binds a non-loopback address, exposes
+no secret channels, and does not expose renderer-only native pickers. Dangerous
+generic operations require `confirm: true`. Successful project/session calls
+reuse the existing renderer session-change event so an external Agent and the
+visible desktop converge on the same active state. This is a local automation
+surface, not the deferred remote Gateway / WebUI architecture.
+
 ## 4. Request path (conversation + tool)
 
 ```text
@@ -138,7 +156,7 @@ Transport: Rust sidecar + stdio JSON-RPC (NDJSON).
 
 MVP target processes:
 
-1. Electron main
+1. Electron main (including the optional loopback MCP control server)
 2. Electron renderer
 3. Rust host core sidecar
 4. Node pi agent sidecar
@@ -147,7 +165,8 @@ Dev mode may colocate some services, but contracts stay the same.
 
 ## 7. Extension points
 
-- Tool providers (builtin / plugin / MCP later)
+- Tool providers (builtin / plugin / user MCP)
+- Local MCP control clients for reviewed desktop operations
 - Session backends
 - Model catalog sources
 - Permission policy packs

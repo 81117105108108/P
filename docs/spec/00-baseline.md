@@ -79,12 +79,14 @@
 > changes.
 
 > The current post-baseline amendments add the P0/P1 host-owned plugin session
-> API through ADR 0200 / D367 and explicit project ids plus host-owned session
-> refresh through ADR 0201 / D368. Protocol v11 remains unchanged; schema v14
-> adds the plugin origin sidecar and soft-delete marker. Session mutation,
-> arbitrary re-binding, provider/model binding, batch-delete, and tag operations
-> remain deferred; an explicit `projectId` is the limited project-binding
-> exception for imported sessions.
+> API through ADR 0200 / D367, explicit project ids plus host-owned session
+> refresh through ADR 0201 / D368, and the opt-in local MCP control plane
+> through ADR 0203 / D370. Protocol v11 remains unchanged; schema v14 adds the
+> plugin origin sidecar and soft-delete marker. Session mutation, arbitrary
+> re-binding, provider/model binding, batch-delete, and tag operations remain
+> deferred; an explicit `projectId` is the limited project-binding exception
+> for imported sessions. The local control plane is loopback-only and does not
+> reopen the deferred remote Gateway / WebUI scope.
 
 ## Frozen Decisions
 
@@ -109,7 +111,8 @@
 17. Permission timeout: **120s → deny**
 18. Session grant scope: **by toolName**
 19. `~/.pi` auto-import: **not in MVP**
-20. Not in MVP: **Gateway / remote WebUI control**
+20. Not in MVP: **Gateway / remote WebUI control**; local loopback MCP control
+    is the post-baseline, opt-in exception recorded by D370
 21. Extension model: **user-installable plugin system**
 22. Plugin first phase: **commands / panel / agentTools / skills**
 23. Plugin runtime target: **separate process**; M4 may use host-managed sandboxed runtime

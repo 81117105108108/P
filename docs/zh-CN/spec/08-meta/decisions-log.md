@@ -2919,3 +2919,17 @@ D193 和 D194。
   `com.pi-desktop.app`；在存在时递归删除唯一的 `com.apple.quarantine` 属性，
   然后打开 PI-Desktop。它不使用 `sudo`，不接受任意路径，也不替代 Developer ID
   签名或公证。打开说明保留可信来源警告和更窄范围的终端备用命令。参见 E2E-196b。
+
+## 2026-09-09 —— 桌面操作的本地 MCP 控制面（D370）
+
+- 外部 Agent 需要驱动运行中的桌面完成项目、会话、Agent、工作区和已审查的应用操作，
+  同时延后的远程 Gateway / WebUI 边界保持不变。
+- 决策 D370 / ADR 0203 在 Electron Main 内增加默认关闭的 Streamable HTTP MCP 服务。
+  服务只绑定 `127.0.0.1`，使用持久化随机 bearer token，校验回环 Origin，写入受权限保护
+  的连接清单，并委托给与渲染器相同的已注册 IPC 处理器。
+- 命名工具覆盖常见项目/会话/Agent 流程；`pi_desktop_invoke` 访问显式的风险标记操作目录。
+  排除密钥通道和渲染器专属原生选择器，危险操作要求 `confirm: true`。成功的外部变更复用
+  现有渲染器会话变更事件，使可见状态跟随控制调用。
+- 端点仅限本地并在启动失败时降级，不创建远程认证、云同步或第二套权限实现。参见
+  `02-architecture/01-architecture.md`、`03-runtime/01-ipc-protocol.md`、
+  `05-security/01-security.md` 和 E2E-220。

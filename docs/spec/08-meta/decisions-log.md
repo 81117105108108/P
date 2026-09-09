@@ -4064,6 +4064,26 @@ D193, and D194.
   `~/Applications/PI-Desktop.app`, verifies `CFBundleIdentifier` is
   `com.pi-desktop.app`, removes only `com.apple.quarantine` recursively when
   present, and opens PI-Desktop. It never uses `sudo`, accepts no arbitrary
-  path, and does not replace Developer ID signing or notarization.
-  The opening note keeps the explicit trusted-source warning and a narrow
-  Terminal fallback. See E2E-196b.
+  path, and does not replace Developer ID signing or notarization. The opening
+  note keeps the explicit trusted-source warning and a narrow Terminal
+  fallback. See E2E-196b.
+
+## 2026-09-09 — Local MCP control plane for desktop operations (D370)
+
+- An external Agent needs to drive the running desktop for project, session,
+  Agent, workspace, and reviewed application operations, while the deferred
+  remote Gateway / WebUI boundary remains unchanged.
+- Decision D370 / ADR 0203 adds an opt-in Streamable HTTP MCP server inside
+  Electron Main. It binds to `127.0.0.1`, authenticates with a persistent
+  random bearer token, validates supplied Origins against loopback hostnames,
+  writes a mode-restricted connection manifest, and delegates to the same
+  registered IPC handlers used by the renderer.
+- Named tools cover the common project/session/Agent flow; `pi_desktop_invoke`
+  reaches an explicit risk-tagged operation catalog. Secret channels and
+  renderer-only native pickers are excluded, while dangerous operations require
+  `confirm: true`. Successful external mutations reuse the existing renderer
+  session-change event so visible state follows the control call.
+- The endpoint is local-only and fail-soft at startup; it does not create a
+  remote authentication, cloud sync, or second permission implementation. See
+  `02-architecture/01-architecture.md`, `03-runtime/01-ipc-protocol.md`,
+  `05-security/01-security.md`, and E2E-220.

@@ -249,6 +249,7 @@ import {
   writeWindowState,
 } from "./window-preferences";
 import { createPlanUiProbe } from "./plan-ui-probe";
+import { McpControlServer } from "./mcp-control";
 
 // The shared error-code union is reconciled in the shared lane. Keep desktop
 // source type-safe while that lane is temporarily staged at main.
@@ -360,6 +361,7 @@ let workPanelChatResizeTimer: NodeJS.Timeout | null = null;
 let setWorkPanelChatWidthForWindow: ((width: number) => number) | null = null;
 let host: HostProcess | null = null;
 let sidecar: AgentSidecar | null = null;
+let mcpControl: McpControlServer | null = null;
 let quitting = false;
 let shutdownComplete = false;
 let shutdownPromise: Promise<void> | null = null;
@@ -5714,7 +5716,9 @@ async function bootBackends() {
 }
 
 function registerIpc() {
+  const ipcHandlers = new Map<string, (...args: any[]) => Promise<any>>();
   const handle = (channel: string, fn: (...args: any[]) => Promise<any>) => {
+    ipcHandlers.set(channel, fn);
     ipcMain.handle(channel, async (_event, ...args) => wrap(() => fn(...args)));
   };
   const handleWithEvent = (
@@ -8946,6 +8950,16 @@ function registerIpc() {
     else contents.closeDevTools();
     return { open };
   });
+
+  return async (channel: string, args: readonly unknown[] = []) => {
+    const handler = ipcHandlers.get(channel);
+    if (!handler) {
+      throw Object.assign(new Error(`IPC channel is not available to external agents: ${channel}`), {
+        errorCode: ErrorCodes.NOT_FOUND,
+      });
+    }
+    return handler(...args);
+  };
 }
 
 app.whenReady().then(async () => {
@@ -8975,7 +8989,7 @@ app.whenReady().then(async () => {
   // parallel with host/plugin boot, so the first post-boot Option+Space does
   // not race the renderer allocation just because backend startup was slow.
   prewarmPluginLauncher();
-  registerIpc();
+  const invokeIpc = registerIpc();
   // Load the local model snapshot immediately. A changed APP_VERSION marks the
   // snapshot stale, so every release performs one bounded update without
   // blocking the first window; Settings can force the same refresh on demand.
@@ -9013,6 +9027,79 @@ app.whenReady().then(async () => {
   }
   await ensureWindow();
   bootTiming.mark("window-ready");
+  if (process.env.PI_DESKTOP_MCP_CONTROL === "1") {
+    try {
+      mcpControl = new McpControlServer({
+        dataDir,
+        invoke: invokeIpc,
+        channels: IPC.invoke,
+        port: process.env.PI_DESKTOP_MCP_PORT
+          ? Number(process.env.PI_DESKTOP_MCP_PORT)
+          : undefined,
+        onOperationComplete: async (operation, result, args) => {
+          const payload = result as {
+            session?: { id?: string; projectPath?: string | null } | null;
+            workspace?: { path?: string | null } | null;
+          } | null;
+          const sessionId = payload?.session?.id?.trim();
+          if (
+            operation.id === "session/create" ||
+            operation.id === "session/fork"
+          ) {
+            if (sessionId) {
+              sendToRenderer(IPC.event.sessionsChanged, {
+                reason: "mcp.session",
+                selectSessionId: sessionId,
+                projectPath: payload?.session?.projectPath ?? null,
+              });
+            }
+            return;
+          }
+          const promptedSessionId =
+            operation.id === "agent/prompt" &&
+            args[0] &&
+            typeof args[0] === "object" &&
+            typeof (args[0] as { sessionId?: unknown }).sessionId === "string"
+              ? (args[0] as { sessionId: string }).sessionId.trim()
+              : "";
+          if (operation.id === "agent/prompt" && promptedSessionId) {
+            sendToRenderer(IPC.event.sessionsChanged, {
+              reason: "mcp.prompt",
+              selectSessionId: promptedSessionId,
+            });
+            return;
+          }
+          if (operation.id === "project/set") {
+            sendToRenderer(IPC.event.sessionsChanged, {
+              reason: "mcp.project",
+              projectPath: payload?.workspace?.path ?? null,
+            });
+            return;
+          }
+          if (operation.id === "project/clear") {
+            sendToRenderer(IPC.event.sessionsChanged, {
+              reason: "mcp.project",
+              projectPath: null,
+            });
+            return;
+          }
+          if (
+            operation.id.startsWith("session/") ||
+            operation.id === "plans/resolve"
+          ) {
+            sendToRenderer(IPC.event.sessionsChanged, { reason: "mcp.session" });
+          }
+        },
+        log: (level, message, data) => logger.app("runtime", level, message, { data }),
+      });
+      await mcpControl.start();
+    } catch (error) {
+      logger.app("runtime", "warn", "MCP control server failed to start", {
+        data: String(error),
+      });
+      mcpControl = null;
+    }
+  }
   // GitHub discovery is delayed and time-bounded. Never start it before the
   // first window exists: a hung feed used to sit in "checking" for ~60s and
   // compete with boot for the net stack.
@@ -9211,6 +9298,7 @@ app.on("before-quit", (event) => {
     // (D299). Bounded: a quit must not hang on an unresponsive provider.
     await settleRunningTurnsForQuit();
     const hostShutdown = host?.dispose();
+    const mcpShutdown = mcpControl?.stop();
     const pluginPanelShutdown = pluginPanels.closeAll();
     updater.dispose();
     logger.app("lifecycle", "info", "app shutdown");
@@ -9229,7 +9317,12 @@ app.on("before-quit", (event) => {
     } catch (error) {
       logger.app("lifecycle", "warn", "host shutdown failed", { data: String(error) });
     }
-    await Promise.allSettled([pluginPanelShutdown, pluginShutdown, sidecarShutdown]);
+    await Promise.allSettled([
+      pluginPanelShutdown,
+      pluginShutdown,
+      sidecarShutdown,
+      mcpShutdown,
+    ]);
   })();
 
   const releaseQuit = () => {

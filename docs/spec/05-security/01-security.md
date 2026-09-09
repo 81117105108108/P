@@ -157,7 +157,39 @@ replace an artifact.
 - The Developer ID + notarization lane remains documented in the
   [release runbook](../06-delivery/06-release-runbook.md).
 
-## 8. Host process attack surface
+## 8. Local MCP control plane
+
+The local MCP control server is an explicit automation boundary, not a general
+remote-control listener:
+
+- It is disabled by default and only starts with
+  `PI_DESKTOP_MCP_CONTROL=1`.
+- It binds `127.0.0.1` only. There is no configuration path for a LAN or public
+  interface, and the feature does not revive the deferred remote Gateway /
+  WebUI scope.
+- It validates any supplied `Origin` against local loopback hostnames to block
+  DNS-rebinding access from remote web content. Non-browser clients may omit
+  `Origin`.
+- A random 256-bit bearer token is persisted in the Electron user-data
+  directory. The token and connection manifest are mode `0600` where
+  supported, and the manifest is marked inactive during shutdown.
+- Secret get/set/delete channels and renderer-only native picker/dialog
+  channels are excluded. The reviewed catalog is explicit; newly added IPC
+  handlers are not exposed automatically.
+- Calls delegate to the existing main-process IPC handlers, so host
+  availability, workspace boundaries, permission checks, input validation, and
+  redacted logging remain authoritative. Dangerous generic operations and
+  destructive named tools require an explicit `confirm: true`.
+- Request and serialized-result sizes are bounded. Startup failure is fail-soft
+  for the desktop, while every accepted operation is logged through the normal
+  Electron runtime logger.
+
+An Agent using this endpoint has the same local-user authority as the running
+desktop for the operations it invokes. Users must protect the user-data
+directory and token; the endpoint is not intended for untrusted local users or
+remote clients.
+
+## 9. Host process attack surface
 
 - host-core speaks NDJSON JSON-RPC on stdio to the Electron main process
   only; it binds no network ports
@@ -170,7 +202,7 @@ replace an artifact.
   containment relies on the permission layer, catalog identity, process-group/
   job-tree shutdown, and workspace sandbox rather than OS sandboxing
 
-## 9. Threat model (summary)
+## 10. Threat model (summary)
 
 | Threat | Mitigation |
 |---|---|
@@ -179,7 +211,7 @@ replace an artifact.
 | Dependency poisoning | lockfiles, few deps, native-module review |
 | Malicious local plugin | declared permissions, no secret access, process isolation tracked post-MVP (ADR 0008) |
 
-## 10. Security acceptance gates
+## 11. Security acceptance gates
 
 1. Renderer cannot `require('fs')` (sandbox + no nodeIntegration) — verified
 2. Plan Write/Edit/plugin calls cannot run under any permission mode; Bash is
@@ -195,3 +227,5 @@ replace an artifact.
    pending/queued/running work; an approved interruption leaves the session Agent
 9. Invalid settings and stale shell ID/dialect fail closed; Bash output streams
    separately and timeout/abort kills the complete process tree
+10. Local MCP control is loopback-only, bearer-authenticated, opt-in, bounded,
+    and cannot expose secrets or renderer-only native pickers

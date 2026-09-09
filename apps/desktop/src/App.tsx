@@ -588,8 +588,21 @@ function AppShell() {
         })
         .catch(() => undefined);
     });
-    const offSessionsChanged = api.onSessionsChanged(() => {
-      void useAppStore.getState().refreshSessions().catch(() => undefined);
+    const offSessionsChanged = api.onSessionsChanged((event) => {
+      const store = useAppStore.getState();
+      void store
+        .refreshSessions()
+        .then(async () => {
+          if (event.projectPath) {
+            await useAppStore.getState().openProjectPath(event.projectPath);
+          } else if (event.projectPath === null && !event.selectSessionId) {
+            await useAppStore.getState().clearProject();
+          }
+          if (event.selectSessionId) {
+            await useAppStore.getState().selectSession(event.selectSessionId);
+          }
+        })
+        .catch(() => undefined);
     });
     const offNotificationActivated = api.onNotificationActivated(
       ({ id, sessionId }) => {
