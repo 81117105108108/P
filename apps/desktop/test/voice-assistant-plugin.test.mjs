@@ -5,10 +5,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const pluginRoot = join(here, "../resources/plugins/pi.voice");
+const pluginRoot = join(here, "../../../plugins/com.vastsa.voice-assistant");
 
-test("bundled voice assistant declares explicit microphone and desktop grants", () => {
+test("standalone voice assistant declares identity and explicit grants", () => {
   const manifest = JSON.parse(readFileSync(join(pluginRoot, "manifest.json"), "utf8"));
+  assert.equal(manifest.id, "com.vastsa.voice-assistant");
+  assert.match(manifest.repository, /github\.com\/vastsa\/PI-Desktop$/);
+  assert.equal(manifest.enabledByDefault, undefined);
+  assert.equal(manifest.contributes.commands[0].id, "com.vastsa.voice-assistant.open");
   assert.deepEqual(manifest.permissions, [
     "ui.panel",
     "ui.microphone",
@@ -16,7 +20,6 @@ test("bundled voice assistant declares explicit microphone and desktop grants", 
     "models.list",
     "desktop.control",
   ]);
-  assert.equal(manifest.enabledByDefault, false);
   const main = readFileSync(join(pluginRoot, "main.js"), "utf8");
   const panel = readFileSync(join(pluginRoot, "renderer/index.html"), "utf8");
   assert.match(main, /pi\.desktop\.listOperations/);

@@ -4120,7 +4120,7 @@ D193, and D194.
 - Users need a voice surface that can drive the same reviewed desktop actions
   as local MCP without exposing the MCP bearer token or creating a second IPC
   permission list.
-- Decision D374 / ADR 0206 adds the disabled-by-default `pi.voice` plugin,
+- Decision D374 / ADR 0206 adds the permission-gated Voice Assistant capability,
   `desktop.control` and `ui.microphone` permissions, and
   `pi.desktop.listOperations` / `pi.desktop.invoke`. Plugins and local MCP use
   one controller built from the same 150-operation registry; dangerous calls
@@ -4130,3 +4130,16 @@ D193, and D194.
   `07-plugins/03-plugin-api.md`, `07-plugins/04-plugin-security.md`,
   `07-plugins/12-plugin-ipc-and-host-services.md`,
   `07-plugins/13-plugin-permissions-matrix.md`, and E2E-231.
+
+## 2026-09-10 — Distribute Voice Assistant as a standalone plugin (D375)
+
+- The Voice Assistant uses only public plugin APIs, so coupling it to the
+  application bundle would make its release and permission review broader than
+  its host capability requires.
+- Decision D375 / ADR 0207 moves the plugin to the stable id
+  `com.vastsa.voice-assistant`, removes it from bundled resources, and defines a
+  standalone `.piplug` package with its own README, changelog, and LGPL-3.0
+  license. Users install and grant it independently; the shared desktop
+  controller and dangerous-operation confirmation remain unchanged. Official
+  marketplace publication still belongs in the publisher-owned distribution
+  repository.

@@ -83,12 +83,14 @@ argument count, and dangerous-operation confirmation before delegating to the
 existing IPC handler. It also runs the same successful-mutation event callback,
 so a plugin cannot silently create a second desktop state model.
 
-The bundled Voice Assistant plugin is disabled by default because it combines
-`ui.microphone`, `agent.complete`, and `desktop.control`. The panel gets only a
-media permission when `ui.microphone` is granted; camera and unrelated device
-permissions remain denied. The voice plugin routes text through a structured
-completion, shows a panel confirmation for every dangerous operation, and then
-uses `pi.desktop.invoke`. It does not open the MCP endpoint or handle its token.
+The standalone Voice Assistant package requests `ui.microphone`,
+`agent.complete`, and `desktop.control`, so installation and enabling require an
+explicit permission review. The panel gets only a media permission when
+`ui.microphone` is granted; camera and unrelated device permissions remain
+denied. The voice plugin routes text through a structured completion, shows a
+panel confirmation for every dangerous operation, and then uses
+`pi.desktop.invoke`. It does not ship in the application bundle, open the MCP
+endpoint, or handle its token.
 
 ## 4. Permission-grant UX
 

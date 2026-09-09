@@ -1,10 +1,12 @@
 /**
- * Voice Assistant — bundled first-party plugin.
+ * Voice Assistant — standalone third-party plugin.
  *
  * The panel owns microphone capture and speech synthesis. This process owns
  * model routing and calls the permission-gated desktop controller, so no MCP
  * bearer token is ever passed to the plugin.
  */
+
+const OPEN_COMMAND_ID = "com.vastsa.voice-assistant.open";
 
 const ROUTER_PREFIX = `You are the PI-Desktop voice command router.
 Return exactly one JSON object and no Markdown:
@@ -267,7 +269,7 @@ async function pollAgent() {
 
 async function onLoad() {
   await pi.commands.register({
-    id: "voice-assistant",
+    id: OPEN_COMMAND_ID,
     title: "Voice Assistant: open",
     keywords: ["voice", "assistant", "speech"],
     run: async () => pi.ui.openPanel({ title: "Voice Assistant" }),
@@ -275,7 +277,7 @@ async function onLoad() {
 }
 
 async function onUnload() {
-  await pi.commands.unregister("voice-assistant");
+  await pi.commands.unregister(OPEN_COMMAND_ID);
   operationCatalog = [];
   sessionId = "";
   pendingConfirmation = null;
