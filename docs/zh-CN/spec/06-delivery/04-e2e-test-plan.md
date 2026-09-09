@@ -4169,7 +4169,11 @@ IPC 请求无法关闭。
       没有项目选择器、也没有项目级控制。确认分组标题带有全局级别标签和数量，新建 /
       编辑 / 删除 / 在文件管理器中显示都能在页面内完成，回合上限留空会写出不含
       `maxTurns` 的定义，且空目录通过 `settings.subagentsEmpty` 解析为本地化空态文案，
-      不显示原始翻译键。
+      不显示原始翻译键。打开“新建子智能体”，确认模型字段是与 Composer 相同的已配置、
+      可运行模型下拉列表（按提供商分组，带沿用会话选项），而不是手打
+      `provider/model` 的输入框。固定一个已配置模型并保存，确认文档的 `model:`
+      frontmatter 为 `vendorKey-or-name/modelId`。编辑一个固定值已不在配置中的定义，
+      确认该固定值仍被选中，而不是跳回沿用会话。
   12. 把窗口收窄到工具栏的堆叠断点。确认分段控件占满宽度、搜索移到它下方、操作按钮
       靠左换行、分组标题隐去解析后的路径，且页面不产生横向溢出。在无法悬停的指针下，
       确认行的编辑和溢出控件无需悬停即可见。
@@ -4185,19 +4189,23 @@ IPC 请求无法关闭。
     操作，且不引入能力专属的配色体系。
   - 三种能力都能在设置内完成新建、编辑和删除。新能力落在筛选器当前指向的级别上，破坏性
     操作需要按下同一个改过文案的菜单项两次，显示项目级技能时打开的是该项目的文件，而不是
-    同 id 的全局文件。
+    同 id 的全局文件。子智能体编辑器的模型字段是已配置可运行模型的分组下拉（含沿用会话），
+    不是手打 id；保存写入 `vendorKey-or-name/modelId`，已不在配置中的固定值仍保持选中。
   - 能力文件只包含配置/frontmatter；启用状态存于应用本地 `agent-capabilities` 文件。
   - 项目项即使关闭也会按 ID 或名称遮蔽全局项，下一次运行时激活与界面一致。
   - 物理导入只复制一个文件且遵循级别，磁盘删除由扫描移除，不显示待清理行。
 - **关联规范**：`03-runtime/01-ipc-protocol.md` §12a–§12d、
-  `03-runtime/02-agent-runtime.md` §5f、`04-ux/01-ui-ia.md` §3.5–§3.6、
+  `03-runtime/02-agent-runtime.md` §5f、
+  `03-runtime/13-model-catalog-and-selection.md` §2（子智能体编辑器）、
+  `04-ux/01-ui-ia.md` §3.5–§3.6、
   `04-ux/06-settings-ia.md` §2（智能体能力页面）、§4.21–§4.25、
   `07-plugins/01-plugin-system.md` §12.2–§12.3、
   `08-meta/decisions-log.md`（D193、D194、D202、D257）、ADR 0112、ADR 0126
 - **验收**：D（工作区）、E（工具和权限）、F（持久性）、质量
 - **里程碑**：M6+
 - **状态**：由 `apps/desktop/test/agent-capability-settings.test.mjs`、
-  `apps/desktop/test/extensions-page.test.mjs` 和 host-core 能力测试覆盖源码/单元；
+  `apps/desktop/test/extensions-page.test.mjs`、
+  `apps/desktop/test/subagent-models.test.mjs` 和 host-core 能力测试覆盖源码/单元；
   原生选择器、渲染模态框、项目切换和运行时完整旅程仍为 Draft（除非明确要求，不在本地运行 E2E）
 
 #### E2E-120：全局插件启动、下一回合编辑和停止吞吐量

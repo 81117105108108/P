@@ -5457,7 +5457,13 @@ Each scenario is documented in this format:
       page, that leaving the turn limit empty writes a definition with no
       `maxTurns`, and that an empty directory resolves
       `settings.subagentsEmpty` to localized empty-state copy rather than
-      displaying a raw translation key.
+      displaying a raw translation key. Open New subagent and confirm the
+      Model field is a select of the same configured, runnable models as the
+      Composer, grouped by provider, with an inherit-session option, not a
+      free-typed `provider/model` input. Pin a configured model, save, and
+      confirm the document's `model:` frontmatter is `vendorKey-or-name/modelId`.
+      Edit a definition whose pin is no longer configured and confirm that pin
+      remains selected instead of snapping to inherit.
   12. Narrow the window to the toolbar's stacking breakpoint. Confirm the
       segmented control spans the width, search moves below it, actions wrap
       left-aligned, group headers drop the resolved path, and the page gains no
@@ -5485,7 +5491,10 @@ Each scenario is documented in this format:
     leaving Settings. New capabilities land at the level the filter points at,
     destructive actions require two presses of the same relabelled menu item,
     and revealing a project-level skill opens that project's file rather than a
-    global file sharing its id.
+    global file sharing its id. The Subagents editor Model field is a grouped
+    select of configured runnable models plus inherit-session, not a free-typed
+    id; saving writes `vendorKey-or-name/modelId`, and an unconfigured existing
+    pin remains selected.
   - Capability files contain configuration/frontmatter only; enablement is
     persisted in the app-local `agent-capabilities` state files.
   - Project records shadow global records by id or name even when disabled,
@@ -5493,7 +5502,9 @@ Each scenario is documented in this format:
   - Physical import is single-file and level-specific, and disk deletion is
     removed by scanning rather than represented as a pending row.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md` §12a–§12d,
-  `03-runtime/02-agent-runtime.md` §5f, `04-ux/01-ui-ia.md` §3.5–§3.6,
+  `03-runtime/02-agent-runtime.md` §5f,
+  `03-runtime/13-model-catalog-and-selection.md` §2 (Subagent editor),
+  `04-ux/01-ui-ia.md` §3.5–§3.6,
   `04-ux/06-settings-ia.md` §2 (Agent capability destinations), §4.21–§4.25,
   `07-plugins/01-plugin-system.md` §12.2–§12.3,
   `08-meta/decisions-log.md` (D193, D194, D202, D257), ADR 0112, ADR 0126
@@ -5502,7 +5513,8 @@ Each scenario is documented in this format:
 - **Milestone**: M6+
 - **Status**: Source/unit covered by
   `apps/desktop/test/agent-capability-settings.test.mjs`,
-  `apps/desktop/test/extensions-page.test.mjs`, and host-core capability tests;
+  `apps/desktop/test/extensions-page.test.mjs`,
+  `apps/desktop/test/subagent-models.test.mjs`, and host-core capability tests;
   full native-picker, rendered modal, project-switch, and runtime journey remain
   Draft (do not run E2E locally unless explicitly requested)
 

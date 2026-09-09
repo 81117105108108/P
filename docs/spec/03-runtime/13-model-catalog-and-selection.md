@@ -86,6 +86,16 @@ limit, timeout, network, invalid response, or HTTP status) plus a short hint
 to add an ID manually. A failed probe that still has cached rows keeps those
 rows and shows the same summary as a compact banner.
 
+### Subagent editor
+
+The Subagents create/edit sheet reuses the configured, runnable models the
+Composer already offers (enabled providers with a credential or `authKind:
+none`). The control is a grouped select, not a free-typed id: inherit-session
+is the empty value, options are `vendorKey-or-name/modelId` grouped by
+provider display name, and a pin that is no longer configured stays as an extra
+option so an edit cannot silently drop it. Custom model IDs remain allowed in
+the Markdown file edited outside the app.
+
 ### Advanced
 - “Use custom model ID”
 - “Refresh catalog”
