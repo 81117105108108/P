@@ -9,6 +9,7 @@ const [
   releaseWorkflowSource,
   desktopPackageSource,
   linuxPackageWorkflowSource,
+  mirrorToCnbWorkflowSource,
   agentRuntimePackageSource,
   i18nPackageSource,
   pluginSdkPackageSource,
@@ -20,6 +21,7 @@ const [
   read("../../../.github/workflows/release.yml"),
   read("../package.json"),
   read("../../../.github/workflows/linux-package.yml"),
+  read("../../../.github/workflows/mirror-to-cnb.yml"),
   read("../../../packages/agent-runtime/package.json"),
   read("../../../packages/i18n/package.json"),
   read("../../../packages/plugin-sdk/package.json"),
@@ -228,5 +230,41 @@ test("the signed local macOS lane selects the native runner architecture", () =>
     releaseMacScriptSource,
     /-c\.(?:dmg|zip)\.artifactName/,
     "the signed local macOS lane uses the shared artifact naming config",
+  );
+});
+
+test("GitHub releases trigger the CNB mirror pipeline with a JSON payload", () => {
+  assert.match(
+    mirrorToCnbWorkflowSource,
+    /release:\s+types:\s+\[published, edited\]/,
+  );
+  assert.match(
+    mirrorToCnbWorkflowSource,
+    /workflow_dispatch:\s+inputs:\s+tag:/,
+  );
+  assert.match(
+    mirrorToCnbWorkflowSource,
+    /if: github\.repository == 'vastsa\/PI-Desktop'/,
+  );
+  assert.match(
+    mirrorToCnbWorkflowSource,
+    /CNB_MIRROR_TOKEN: \$\{\{\s*secrets\.CNB_MIRROR_TOKEN\s*\}\}/,
+  );
+  assert.match(
+    mirrorToCnbWorkflowSource,
+    /Missing repository secret CNB_MIRROR_TOKEN/,
+  );
+  assert.match(
+    mirrorToCnbWorkflowSource,
+    /https:\/\/api\.cnb\.cool\/aixk\/Pi-Desktop\/-\/build\/start/,
+  );
+  assert.match(mirrorToCnbWorkflowSource, /event: "api_trigger_mirror"/);
+  assert.match(mirrorToCnbWorkflowSource, /env: \{ MIRROR_TAGS: \$tag \}/);
+  assert.match(mirrorToCnbWorkflowSource, /jq -n --arg tag "\$MIRROR_TAG"/);
+  assert.match(mirrorToCnbWorkflowSource, /curl --fail-with-body/);
+  assert.doesNotMatch(
+    mirrorToCnbWorkflowSource,
+    /-d ".*github\.event\.release\.tag_name/,
+    "JSON payload must not interpolate the release tag through YAML string escaping",
   );
 });
