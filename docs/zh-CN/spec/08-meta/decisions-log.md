@@ -2954,3 +2954,17 @@ D193 和 D194。
   HTTP/JSON + SSE 是浏览器绑定，TLS 上的 gRPC 是原生/Gateway 绑定。各绑定共享事件
   序列、快照、幂等、授权和错误语义。参见远程架构、协议、安全、发布规格以及
   E2E-221 至 E2E-230。
+## 2026-09-10 —— 在实现前修订远程 Agent Control 目标（D376）
+
+- 将 D373 草案与已上线的桌面对照评审后发现：远程审批词汇比本地的
+  `allow-once` / `allow-session` / `deny` 和 Plan/Goal 权限模式契约更窄；待处理的
+  权限请求是连接状态而不是 Host 状态；逐 token 的 delta 会耗尽回放窗口；三个必需
+  绑定加两套 IDL 超出 v1 的承受范围；浏览器无法在 WebSocket 和 SSE 上满足仅头部认证。
+- 决策 D376 修订 ADR 0205：`RACP-WS` 是 v1 唯一规范绑定，`RACP-HTTP` 是浏览器
+  profile，`RACP-GRPC` 保留；`packages/shared` 中的 typebox 是唯一契约来源；首个交付物
+  是无 Electron 依赖的 `packages/agent-host` 模块，桌面 IPC、本地 MCP 和 RACP 都调用它；
+  游标为 `{ epoch, sequence }`，delta 为瞬态事件，首个日志放在内存；回合队列移入 Host；
+  host-core 暴露 `permissions.pending`；远程审批携带完整本地决策词汇；远程权限上限默认
+  `ask`；审批寿命成为面向远程订阅者的有界 Host 策略；Host link 是中继 profile；浏览器
+  客户端使用 cookie profile；Gateway 身份源在 R3 时决定；首个部署为单租户。参见修订后的
+  远程架构、协议、安全、发布规格以及 E2E-221 至 E2E-230。

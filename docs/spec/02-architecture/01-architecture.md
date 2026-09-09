@@ -107,13 +107,14 @@ remote Gateway / WebUI architecture.
 
 Remote control is specified separately in
 [05-remote-agent-control](05-remote-agent-control.md). The target introduces
-an Agent Host boundary above the existing sidecars and exposes a
-transport-neutral RACP contract through WebSocket JSON-RPC, HTTP/JSON + SSE,
-and gRPC bindings. It does not expose Electron IPC, `host.proxy`, or
-host-core RPC, and it does not change the current MVP exclusion of a remote
-Gateway. The first implementation may place the facade in Electron Main for
-development; production deployment uses a standalone Host beside the
-workspace and an outbound Gateway link.
+a headless Agent Host module above the existing sidecars and exposes a
+transport-neutral RACP contract: WebSocket JSON-RPC is the normative v1
+binding, HTTP/JSON + SSE is its browser profile, and gRPC is reserved (D376).
+It does not expose Electron IPC, `host.proxy`, or host-core RPC, and it does
+not change the current MVP exclusion of a remote Gateway. The first
+implementation hosts the module inside Electron Main, where desktop IPC,
+local MCP, and RACP call it; production deployment moves the same module
+into a standalone Host beside the workspace with an outbound Gateway link.
 
 ## 4. Request path (conversation + tool)
 

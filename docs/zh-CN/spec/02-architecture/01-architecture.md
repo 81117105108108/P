@@ -102,11 +102,12 @@ Streamable HTTP MCP 服务。服务提供项目/会话/Agent/工作区常用命�
 ### 3.7 远程 Agent Control 目标（MVP 后）
 
 远程控制在 [05-remote-agent-control](/zh-CN/spec/02-architecture/05-remote-agent-control)
-中单独定义。目标是在现有 sidecar 之上增加 Agent Host 边界，并通过 WebSocket
-JSON-RPC、HTTP/JSON + SSE 与 gRPC 暴露与传输无关的 RACP 契约。它不暴露 Electron
-IPC、`host.proxy` 或 host-core RPC，也不改变当前 MVP 对远程 Gateway 的排除。开发阶段
-可以把 facade 放在 Electron Main 中；生产部署则使用工作区旁的独立 Host，并通过
-出站 Gateway 链路连接。
+中单独定义。目标是在现有 sidecar 之上增加无头 Agent Host 模块，并暴露与传输无关的
+RACP 契约：WebSocket JSON-RPC 是 v1 规范绑定，HTTP/JSON + SSE 是其浏览器 profile，
+gRPC 保留（D376）。它不暴露 Electron IPC、`host.proxy` 或 host-core RPC，也不改变当前
+MVP 对远程 Gateway 的排除。首个实现把该模块放在 Electron Main 内，桌面 IPC、本地 MCP
+和 RACP 都调用它；生产部署把同一模块移入工作区旁的独立 Host，并通过出站 Gateway
+链路连接。
 
 ## 4. 请求路径（对话+工具）
 

@@ -173,8 +173,9 @@ sidecar/host 关闭序列在更新程序替换应用程序之前运行。
 ## 7. 远程目标拓扑（MVP 后）
 
 远程控制不会给 Rust host-core 或当前 renderer IPC 表面增加公共监听器。目标 Agent
-Host 是围绕 Node pi sidecar 与 Rust host-core 的逻辑监督者，在其上提供已认证的
-RACP facade。生产环境中 Host 发起出站 Gateway 链路；Gateway 负责路由已认证客户，
+Host 是无头模块（`packages/agent-host`），拥有会话与回合准入、回合队列、审批代理和
+事件日志，与 Node pi sidecar、Rust host-core 一起受监督，其上是已认证的 RACP 服务
+（D376）。生产环境中 Host 发起出站 Gateway 链路；Gateway 负责路由已认证客户，
 但不拥有工作区状态。
 
 详细拓扑、所有权和迁移边界见

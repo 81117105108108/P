@@ -9067,35 +9067,53 @@ are withdrawn with ADR 0165.
 The following scenarios require the approved remote harness. They are
 documented now so the protocol and security work has an explicit acceptance
 target. Do not run them against a local desktop or a production Gateway unless
-the request explicitly authorizes that environment.
+the request explicitly authorizes that environment. D376 amended every
+scenario in this section to the revised contract: `{ epoch, sequence }`
+cursors, ephemeral deltas, the Host-owned turn queue, the full local approval
+vocabulary, the remote permission ceiling, the Host link relay, and the
+browser cookie profile.
 
-#### E2E-221: RACP initialization negotiates capabilities
+#### E2E-221: RACP initialization negotiates capabilities and policy
 
 - **Preconditions**: A test Agent Host and an authenticated client support
-  `RACP-WS` v1. The Host has one visible idle Session.
+  `RACP-WS` v1. The Host has one visible idle Session and a configured
+  `remoteMaxPermissionMode` and `approvalLifetimeMs`.
 - **Steps**: 1) Connect without initialization and send a request. 2) Send
-  `connection/initialize` with supported bindings and capabilities. 3) Send
+  `connection/initialize` with supported bindings and the `turnQueue`,
+  `hostEvents`, and `history` capabilities. 3) Send
   `notifications/initialized`. 4) Repeat with an unsupported major version.
+  5) Call `host/list` on the direct Host connection.
 - **Expected**: Pre-initialization requests are rejected; the valid handshake
-  returns the negotiated protocol, connection id, principal roles, limits, and
-  capabilities; the unsupported major version returns `PROTOCOL_MISMATCH`.
-- **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §3,
-  `05-security/02-remote-control-security.md` §3
+  returns the negotiated protocol, connection id, principal roles, limits
+  including `maxQueuedTurnsPerSession` and `replayWindowEvents`, the
+  advertised capabilities, and the informational `policy` block; the
+  unsupported major version returns `PROTOCOL_MISMATCH`; `host/list` returns
+  `METHOD_NOT_FOUND` because no Gateway is present.
+- **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §3 and
+  §7.7, `05-security/02-remote-control-security.md` §3
 - **Acceptance**: Security, Quality
 - **Milestone**: Post-MVP
 - **Status**: Draft; remote harness required
 
-#### E2E-222: Remote turn streams ordered events
+#### E2E-222: Remote turn streams ordered durable events and live deltas
 
 - **Preconditions**: An authenticated controller is attached to an idle
-  Session with a deterministic fixture Agent.
+  Session with a deterministic fixture Agent whose turn has two model rounds,
+  one tool call, and one compaction.
 - **Steps**: 1) Attach and subscribe from the current cursor. 2) Call
-  `turn/start`. 3) Collect all event envelopes until the terminal event. 4)
-  Compare the final snapshot with the event-applied state.
-- **Expected**: `turn/start` returns quickly with a `turnId`; the Agent emits
-  strictly increasing per-Session sequences; item and turn lifecycle events
-  are ordered; the terminal state is immutable; and the final snapshot equals
-  the state reconstructed from the event stream.
+  `turn/start`. 3) Collect every event envelope until the terminal event,
+  separating durable events (with `sequence`) from ephemeral events (with
+  `afterSequence`). 4) Compare the final snapshot with the state rebuilt from
+  durable events alone. 5) Compare each `payload.event` with the local
+  `AgentEvent` recorded by the desktop for the same turn.
+- **Expected**: `turn/start` returns quickly with a `turnId`; durable
+  sequences are strictly increasing inside one epoch; `item.delta`,
+  `tool.progress`, and `turn.activity` carry `afterSequence` and never a
+  `sequence`; exactly one `turn.completed` is emitted, at the local
+  `agent_end`, and none at the intermediate `turn_end`; the compaction appears
+  as an `item` with `itemType: "compaction"`; the terminal state is immutable;
+  and the final snapshot equals the state reconstructed from durable events
+  plus the content of `item.completed` payloads.
 - **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §§5–8,
   `03-runtime/10-session-state-machine.md`,
   `02-architecture/05-remote-agent-control.md` §8
@@ -9103,121 +9121,176 @@ the request explicitly authorizes that environment.
 - **Milestone**: Post-MVP
 - **Status**: Draft; remote harness required
 
-#### E2E-223: Reconnect replays or resynchronizes from a cursor
+#### E2E-223: Reconnect replays durable events or resynchronizes by epoch
 
-- **Preconditions**: A turn is producing at least five events and the test
-  harness can close and reopen the client connection.
-- **Steps**: 1) Record the last applied sequence. 2) Disconnect after a
-  partial event. 3) Reconnect and subscribe with `afterSequence`. 4) Repeat
-  after evicting the cursor from the bounded replay window.
-- **Expected**: A retained cursor replays every later event exactly once. An
-  expired cursor returns `resync.required` with a complete snapshot. A cursor
-  gap never causes the client to guess or apply out-of-order state.
-- **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §8,
-  `02-architecture/05-remote-agent-control.md` §8
+- **Preconditions**: A turn is producing at least five durable events and a
+  long streaming assistant message; the harness can close and reopen the
+  client connection and restart the Host.
+- **Steps**: 1) Record the last applied cursor. 2) Disconnect in the middle
+  of a streaming message. 3) Reconnect and subscribe with `after`. 4) Repeat
+  after evicting the cursor from the bounded replay window. 5) Restart the
+  Host during an idle period and reconnect with the old cursor. 6) Repeat
+  step 3 over `RACP-HTTP` using `Last-Event-ID` in the `epoch:sequence` form.
+- **Expected**: A retained cursor replays every later durable event exactly
+  once and no delta; the snapshot's `activeItems` carry the text streamed
+  before the disconnect; an evicted cursor returns `resync.required` with a
+  complete snapshot; a cursor from the previous epoch returns
+  `CURSOR_EXPIRED` and a snapshot with a new epoch; a durable gap never causes
+  the client to guess or apply out-of-order state; and the SSE path behaves
+  identically.
+- **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §§5.3,
+  5.4, 7.2, and 8, `02-architecture/05-remote-agent-control.md` §8
 - **Acceptance**: Recovery, Quality
 - **Milestone**: Post-MVP
 - **Status**: Draft; remote harness required
 
-#### E2E-224: Remote approval and input requests remain host-owned
+#### E2E-224: Remote approvals carry the local vocabulary and stay host-owned
 
-- **Preconditions**: A Session policy requires a tool approval and the fixture
-  Agent requests one user input during the same turn.
-- **Steps**: 1) Start the turn from a controller. 2) Observe the approval
-  request. 3) Attempt a decision from a viewer and with a stale revision. 4)
-  Resolve from an authorized approver. 5) Answer the input request. 6) Repeat
-  after expiry.
-- **Expected**: Unauthorized and stale responses fail closed; the valid
-  approval resumes the same turn; input is scoped to the same Session and turn;
-  expiry never executes the tool; and no client-supplied permission mode can
-  bypass Host policy.
-- **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §9,
-  `05-security/02-remote-control-security.md` §§4 and 7,
+- **Preconditions**: A Session policy requires a tool approval; the fixture
+  Agent submits a Plan and asks one multi-select asktool question in the
+  same run; Host policy allows remote session grants; a second Session is
+  configured with `permissionMode: "auto"` and the Host ceiling is `ask`.
+- **Steps**: 1) Start the turn from a controller. 2) Observe the tool
+  approval request. 3) Attempt a decision from a viewer, then with a stale
+  revision. 4) Resolve from an authorized approver with `allow-session`.
+  5) Attach a third client after the Plan approval is raised and read its
+  snapshot. 6) Resolve the Plan with `approve` and no `permissionMode`, then
+  with `permissionMode: "accept-edits"`. 7) Answer the input request with one
+  multi-select answer and one `null`. 8) Repeat step 4 after expiry.
+  9) Start a turn on the `auto` Session from a controller without `approver`.
+- **Expected**: The viewer and stale responses fail closed with `FORBIDDEN`
+  and `APPROVAL_STALE`; `allow-session` resumes the turn and a later call of
+  the same tool in that Session needs no approval; the late client's snapshot
+  lists the pending Plan approval; the mode-less approve is rejected and the
+  explicit one queues execution in Agent mode with `accept-edits`; the
+  desktop's own approval card closes when the remote decision lands; the
+  asktool answers reach the Agent as the local `AskToolResolution`; expiry
+  returns `APPROVAL_EXPIRED` and never executes the tool; and the `auto`
+  Session turn reports `effectivePermissionMode: "ask"` and raises an approval
+  while the durable session mode stays `auto`.
+- **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §§5.5,
+  7.3, 7.5, and 9, `05-security/02-remote-control-security.md` §§4 and 7,
   `03-runtime/10-session-state-machine.md`
 - **Acceptance**: E (tools & permissions), Security, Recovery
 - **Milestone**: Post-MVP
 - **Status**: Draft; remote harness required
 
-#### E2E-225: A turn continues when its client disconnects
+#### E2E-225: A turn continues when its client disconnects and the queue is host-owned
 
-- **Preconditions**: Two authenticated clients can access the same Session;
-  the fixture Agent has a delayed deterministic turn.
-- **Steps**: 1) Client A starts the turn. 2) Disconnect A while it is running.
-  3) Observe the Session from client B. 4) Reconnect A as a viewer. 5) Attempt
-  a second start while the first turn is active.
+- **Preconditions**: Two authenticated controllers can access the same
+  Session; the fixture Agent has a delayed deterministic turn; the local
+  desktop renderer is open on the same Session.
+- **Steps**: 1) Client A starts the turn. 2) Disconnect A while it is
+  running. 3) Observe the Session from client B. 4) Reconnect A as a viewer.
+  5) From B, call `turn/start` with `admission: "reject_if_busy"`, then with
+  `admission: "queue"` twice. 6) Cancel the second queued turn from B.
+  7) Call `turn/stop` from B. 8) Fill the queue to `maxQueuedTurnsPerSession`
+  and start once more.
 - **Expected**: The turn continues after A disconnects; B observes the same
-  turn and event sequence; A catches up by cursor; and a second start is
-  rejected with `AGENT_BUSY` rather than creating concurrent execution.
-- **Specs linked**: `02-architecture/05-remote-agent-control.md` §§5–10,
-  `03-runtime/19-remote-agent-control-protocol.md` §§7–8
+  turn and durable sequence; A catches up by cursor; the first start returns
+  `AGENT_BUSY`; the queued starts return `turn.queued` with positions and the
+  desktop renderer shows the same queued prompts; the cancel emits
+  `turn.canceled`; `turn/stop` ends the active turn as `completed` at the
+  next boundary and the remaining queued turn starts; the overflowing start
+  returns `AGENT_BUSY` with `details.queueFull`.
+- **Specs linked**: `02-architecture/05-remote-agent-control.md` §§6, 9,
+  and 10, `03-runtime/19-remote-agent-control-protocol.md` §§7.3–7.4 and 8
 - **Acceptance**: C (conversation & stream), Recovery
 - **Milestone**: Post-MVP
 - **Status**: Draft; remote harness required
 
-#### E2E-226: Roles and tenant boundaries are enforced
+#### E2E-226: Roles, scopes, and revocation are enforced
 
-- **Preconditions**: Two tenants, two Hosts, two Sessions, and principals with
-  viewer, controller, approver, and owner roles exist.
-- **Steps**: 1) Try every operation with each role. 2) Substitute a Session,
-  Host, tenant, and approval id from the other tenant. 3) Revoke a client and
-  retry its existing connection.
-- **Expected**: The role matrix is enforced; cross-tenant identifiers return
-  `FORBIDDEN` or `NOT_FOUND` without existence leakage; revocation closes the
-  connection and blocks new mutations; and audit records identify the denied
-  principal without recording prompt or secret content.
-- **Specs linked**: `05-security/02-remote-control-security.md` §§3–9,
-  `03-runtime/19-remote-agent-control-protocol.md` §13
+- **Preconditions**: One tenant, two Hosts, two Sessions, and principals with
+  viewer, controller, approver, and owner roles exist. A multi-tenant harness
+  profile, when available, adds a second tenant.
+- **Steps**: 1) Try every catalog operation, including `session/history`,
+  `turn/cancel`, and host-scope `events/subscribe`, with each role.
+  2) Substitute a Session, Host, and approval id from the other Host, and
+  from the other tenant when the multi-tenant profile is active. 3) Queue a
+  turn as a controller, then revoke that principal and retry its existing
+  connection.
+- **Expected**: The role matrix is enforced, including the `allow-session`
+  policy row; foreign identifiers return `FORBIDDEN` or `NOT_FOUND` without
+  existence leakage; revocation closes the connection, blocks new mutations,
+  and cancels the revoked principal's queued turn; and audit records identify
+  the denied principal without recording prompt or secret content. The
+  cross-tenant cases are required only under the multi-tenant profile.
+- **Specs linked**: `05-security/02-remote-control-security.md` §§3–9 and
+  §11, `03-runtime/19-remote-agent-control-protocol.md` §§6 and 13
 - **Acceptance**: Security, Quality
 - **Milestone**: Post-MVP
 - **Status**: Draft; remote harness required
 
-#### E2E-227: An outbound Host link works behind inbound firewall/NAT
+#### E2E-227: The Host link relays clients behind inbound firewall/NAT
 
 - **Preconditions**: The Agent Host runs behind a test firewall that rejects
-  inbound connections. The Gateway is publicly reachable by the test client.
+  inbound connections. The Gateway is publicly reachable by two test clients.
 - **Steps**: 1) Enroll the Host with a one-time credential. 2) Establish the
-  outbound mTLS/WebSocket or gRPC link. 3) Attach from a client and run a
-  turn. 4) Drop the link and allow it to reconnect.
+  outbound mTLS Host link. 3) Attach both clients and run a turn that raises
+  a tool approval. 4) Answer the relayed server request from the client that
+  received it, then attempt to answer it again from the other client.
+  5) Upload an attachment through the Gateway upload target and reference it
+  from a turn. 6) Drop the link and allow it to reconnect. 7) Revoke the Host
+  and attempt re-enrollment with the old credential.
 - **Expected**: No inbound desktop port is opened; the Gateway routes only to
-  the authenticated Host; local execution continues across a Gateway link
-  interruption; reconnect does not duplicate the turn; and revoking the Host
-  prevents re-enrollment with the old credential.
+  the authenticated Host; the approval request is delivered on exactly one
+  logical connection and the second answer returns the stored result with
+  `alreadyResolved`; attachment bytes cross the link in bounded chunks, the
+  Host verifies the hash, and the Gateway's copy is gone after
+  `attachment/complete`; local execution continues across the link
+  interruption and both clients resume from resumable cursors; reconnect does
+  not duplicate the turn; and the revoked credential cannot re-enroll.
 - **Specs linked**: `02-architecture/05-remote-agent-control.md` §5.3,
-  `05-security/02-remote-control-security.md` §3.2,
+  `03-runtime/19-remote-agent-control-protocol.md` §§10 and 11.4,
+  `05-security/02-remote-control-security.md` §§3.2 and 6,
   `06-delivery/07-remote-control-rollout.md` §2
 - **Acceptance**: Security, Recovery, Quality
 - **Milestone**: Post-MVP
 - **Status**: Draft; remote harness required
 
-#### E2E-228: Transport bindings preserve semantic behavior
+#### E2E-228: Shipped bindings and browser profiles preserve semantic behavior
 
-- **Preconditions**: The same deterministic command/event fixture is available
-  through WebSocket JSON-RPC, HTTP/JSON + SSE, and gRPC.
-- **Steps**: 1) Run the fixture through each binding. 2) Disconnect during
-  the event stream. 3) Retry a mutation with the same idempotency key. 4)
-  Compare normalized responses, errors, sequences, and final snapshots.
-- **Expected**: All bindings accept and reject the same operations, preserve
-  event order and terminal state, return the same semantic error codes, and
-  produce one mutation result despite retries.
+- **Preconditions**: The same deterministic command/event fixture is
+  available through `RACP-WS` and `RACP-HTTP`, and through `RACP-GRPC` only
+  if that reserved binding has shipped. A browser harness can hold a Gateway
+  session cookie.
+- **Steps**: 1) Run the fixture through each shipped binding on the header
+  profile. 2) Disconnect during the event stream. 3) Retry a mutation with
+  the same idempotency key. 4) Compare normalized responses, errors, durable
+  sequences, and final snapshots. 5) From the browser harness, open the
+  WebSocket and the SSE stream on the cookie profile with an allowed Origin,
+  then with a disallowed Origin, then with a token in the URL, then send a
+  mutation without a CSRF token.
+- **Expected**: All shipped bindings accept and reject the same operations,
+  preserve durable event order and terminal state, return the same semantic
+  error codes, and produce one mutation result despite retries; the cookie
+  profile succeeds only with an allowed Origin; the disallowed Origin, the
+  URL token, and the CSRF-less mutation are rejected.
 - **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §§11
-  and 14, `06-delivery/07-remote-control-rollout.md` §§3–4
-- **Acceptance**: Quality, Recovery
+  and 14, `05-security/02-remote-control-security.md` §§3.1 and 5,
+  `06-delivery/07-remote-control-rollout.md` §§3–4
+- **Acceptance**: Quality, Recovery, Security
 - **Milestone**: Post-MVP
 - **Status**: Draft; remote harness required
 
 #### E2E-229: Attachment and workspace boundaries are enforced remotely
 
 - **Preconditions**: A Session has a project root and private scratch root. A
-  controller can upload one valid fixture and one invalid fixture.
+  controller can upload one valid fixture and one invalid fixture, directly
+  and through a Gateway relay.
 - **Steps**: 1) Upload bytes with a correct hash and reference the attachment
   from a turn. 2) Repeat with a wrong hash, oversized body, local absolute
-  path, `file://` URL, and an expired upload target. 3) Attempt a tool path
-  outside the Session root.
+  path, `file://` URL, and an expired upload target. 3) Repeat step 2 through
+  the Gateway relay. 4) Attempt a tool path outside the Session root.
+  5) Call `project/list` and `session/create` without a path.
 - **Expected**: Only the verified attachment is accepted; invalid uploads
-  fail before turn admission; no local client path reaches the Host; and the
-  existing `PATH_OUTSIDE_WORKSPACE` boundary remains authoritative.
-- **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §10,
-  `05-security/02-remote-control-security.md` §6,
+  fail before turn admission on both paths; no local client path reaches the
+  Host; `project/list` returns labels and ids without absolute paths;
+  `session/create` binds the project by id; and the existing
+  `PATH_OUTSIDE_WORKSPACE` boundary remains authoritative.
+- **Specs linked**: `03-runtime/19-remote-agent-control-protocol.md` §§5.7,
+  7.7, and 10, `05-security/02-remote-control-security.md` §6,
   `03-runtime/03-tools-and-permissions.md`
 - **Acceptance**: E (tools & permissions), Security
 - **Milestone**: Post-MVP
@@ -9226,17 +9299,20 @@ the request explicitly authorizes that environment.
 #### E2E-230: Failure recovery does not replay admitted work
 
 - **Preconditions**: A deterministic Host, Gateway, and client can inject
-  process, link, and response-loss failures.
+  process, link, and response-loss failures; one turn is running and two are
+  queued.
 - **Steps**: 1) Drop the response after `turn/start` is admitted. 2) Retry
-  with the same idempotency key. 3) Crash the Host during a running turn. 4)
-  Restart the Host and reconnect from the last cursor. 5) Drop an approval
+  with the same idempotency key. 3) Crash the Host during the running turn.
+  4) Restart the Host and reconnect from the last cursor. 5) Drop an approval
   response after it is accepted and retry it.
 - **Expected**: The first retry returns the original turn; execution occurs
-  once; Host recovery marks interrupted work according to the local recovery
-  policy; no completed item is replayed as a new turn; and an accepted
-  approval remains terminal without executing twice.
+  once; Host recovery marks the interrupted turn according to the local
+  recovery policy; the reconnect receives a new epoch and a snapshot whose
+  queue is empty, and neither queued turn is started or replayed; no
+  completed item is replayed as a new turn; and the retried approval returns
+  the stored decision with `alreadyResolved` without executing twice.
 - **Specs linked**: `02-architecture/05-remote-agent-control.md` §10,
-  `03-runtime/19-remote-agent-control-protocol.md` §§7–8,
+  `03-runtime/19-remote-agent-control-protocol.md` §§7–8 and 9.3,
   `06-delivery/07-remote-control-rollout.md` §4
 - **Acceptance**: Recovery, Security, Quality
 - **Milestone**: Post-MVP

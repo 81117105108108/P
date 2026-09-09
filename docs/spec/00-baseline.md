@@ -88,7 +88,9 @@
 > for imported sessions. The local control plane is loopback-only and does not
 > reopen the deferred remote Gateway / WebUI scope. ADR 0205 / D373 defines the
 > remote Agent Host, Gateway, and multi-binding control-plane target for a
-> future post-MVP milestone; it does not change the current exclusion.
+> future post-MVP milestone; D376 amends that target to one normative
+> WebSocket binding, a headless Agent Host module, and the full local
+> approval vocabulary. Neither changes the current exclusion.
 
 ## Frozen Decisions
 

@@ -215,10 +215,12 @@ sidecar/host shutdown sequence runs before the updater replaces the app.
 ## 7. Remote target topology (post-MVP)
 
 Remote control does not add a public listener to Rust host-core or the current
-renderer IPC surface. The target Agent Host is a logical supervisor around the
-Node pi sidecar and Rust host-core, with an authenticated RACP facade above
-them. In production, the Host opens an outbound Gateway link; the Gateway
-routes authenticated clients and does not become the owner of workspace state.
+renderer IPC surface. The target Agent Host is a headless module
+(`packages/agent-host`) that owns session and turn admission, the turn queue,
+the approval broker, and the event log, supervised beside the Node pi sidecar
+and Rust host-core, with an authenticated RACP server above it (D376). In
+production, the Host opens an outbound Gateway link; the Gateway routes
+authenticated clients and does not become the owner of workspace state.
 
 The detailed topology, ownership, and migration boundary are specified in
 [`02-architecture/05-remote-agent-control.md`](../02-architecture/05-remote-agent-control.md).

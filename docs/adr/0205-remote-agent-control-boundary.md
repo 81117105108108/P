@@ -1,8 +1,8 @@
 # ADR 0205: Remote Agent Control Uses a Dedicated Host Boundary
 
-- Status: Accepted for implementation (post-MVP)
+- Status: Accepted for implementation (post-MVP); amended by D376
 - Date: 2026-09-09
-- Decision: D373
+- Decision: D373 (amended by D376)
 - Related: ADR 0004, ADR 0011, ADR 0203, ADR 0165,
   `02-architecture/05-remote-agent-control.md`,
   `03-runtime/19-remote-agent-control-protocol.md`,
@@ -114,3 +114,67 @@ binding parity that are outside the current MCP contract.
 Rejected. ADR 0165 removed it because subagent coordination was not a product
 requirement. The remote control protocol is client-to-host control, not
 subagent messaging.
+
+## Amendment (D376)
+
+Date: 2026-09-10. A pre-implementation review found that the D373 draft was
+right about its layering but did not match the desktop it has to wrap, and
+required more than v1 can carry. The following changes apply to decisions 3,
+4, and 6 above and to the four remote specifications.
+
+1. **One normative v1 binding.** `RACP-WS` is the only normative binding in
+   v1. `RACP-HTTP` is the browser profile of the same contract and must ship
+   before any browser client. `RACP-GRPC` is reserved, not required, and is
+   generated from the contract source if it is ever adopted. Decision 4's
+   "MUST share" rule applies to every shipped binding.
+2. **One IDL.** The RACP resources are authored as typebox schemas in
+   `packages/shared` (frozen decision 28). JSON Schema fixtures,
+   documentation tables, and any Protobuf file are generated from them. The
+   draft's "JSON normative, proto generated" direction is withdrawn.
+3. **Headless Agent Host module first.** Decision 6's Electron facade is
+   replaced by `packages/agent-host`, a module with no Electron dependency
+   that owns session and turn admission, the per-session turn queue, the
+   approval broker, the in-memory event log, and the snapshot builder.
+   Desktop IPC, local MCP, and RACP are three callers of that module, so the
+   standalone Host extraction moves a module rather than re-splitting Main.
+4. **Full local decision vocabulary.** Remote approvals offer `allow-once`,
+   `allow-session`, and `deny` for tools and `approve` with an explicit
+   permission mode, or `reject`, for Plan and Goal contracts; input requests
+   carry the asktool question and skip semantics. A Plan or Goal approval is
+   a session-level transition that outlives the submitting turn.
+5. **Cursors carry an epoch; deltas are ephemeral.** The cursor is
+   `{ epoch, sequence }`. Streaming deltas, tool progress, and activity
+   phases are delivered live, never sequenced, never replayed, and never
+   counted against the replay window; snapshots carry active items instead.
+   The first event log lives in Agent Host memory and a restart starts a new
+   epoch; moving it into host-core would need its own ADR.
+6. **Host-owned turn queue.** `turn/start` admits immediately or into a
+   bounded Host queue that every client, including the local desktop, sees.
+   The renderer's in-memory prompt queue is replaced before more than one
+   client can control a session. `turn/stop` (graceful) and
+   `turn/interrupt` (abort) are separate operations.
+7. **Pending requests are Host state.** Rust host-core exposes
+   `permissions.pending` so a late-attaching client receives open requests,
+   and a remote decision closes the local desktop card.
+8. **Remote permission ceiling and approval lifetime.** A remote-initiated
+   turn runs under the lower of the session mode and a Host-configured
+   ceiling that defaults to `ask`. The local 120-second deny timeout stays
+   the default; a Host with remote control enabled may configure a longer
+   bounded lifetime for approvals raised while a remote subscriber is
+   attached.
+9. **Host link relay profile.** The Gateway-to-Host connection multiplexes
+   logical client connections so server-initiated approval requests and
+   attachment bytes reach the right endpoint without an inbound port; the
+   Gateway buffers upload bytes only until the Host confirms them.
+10. **Browser authentication profiles.** Browsers cannot set headers on the
+    WebSocket and EventSource APIs, so the cookie profile (HttpOnly cookie,
+    Origin allowlist, CSRF token) is the browser path and the header profile
+    is the non-browser path; URL tokens remain forbidden in both.
+11. **Identity source and tenancy.** The Gateway may validate either an
+    OIDC/OAuth 2.0 provider or first-party product account tokens; the choice
+    is recorded when rollout R3 starts. The first deployment is
+    single-tenant; `tenantId` stays in every route and cross-tenant tests
+    run once a multi-tenant harness exists.
+12. **Catalog additions.** `host/list`, `project/list`, `session/history`,
+    host-scope event subscriptions, and `turn/cancel` are added; deferred
+    local operations are listed by name so no binding invents a substitute.

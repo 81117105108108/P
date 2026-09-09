@@ -1,8 +1,8 @@
 # Remote Agent Control Security Specification
 
 - Status: Target specification; post-MVP
-- Decision: D373 / ADR 0205
-- Applies to: RACP-WS, RACP-HTTP, RACP-GRPC, and Gateway-to-Host links
+- Decision: D373 / ADR 0205, amended by D376
+- Applies to: RACP-WS, RACP-HTTP, the reserved RACP-GRPC, and the Host link
 - Does not weaken: local MCP, host-core, plugin, or provider-secret boundaries
 
 ## 1. Security goals
@@ -15,8 +15,10 @@ Remote control MUST provide:
 4. no direct network access to Rust host-core;
 5. host-owned permission and workspace enforcement;
 6. revocation and auditability;
-7. bounded resource use and safe disconnect behavior; and
-8. no replay of a completed or previously admitted mutation.
+7. bounded resource use and safe disconnect behavior;
+8. no replay of a completed or previously admitted mutation; and
+9. a remote permission ceiling, so a remote controller cannot turn a session
+   into unattended execution.
 
 The security design assumes that an Agent can be prompt-injected. A prompt,
 tool result, attachment, or model output is untrusted data and MUST NOT grant
@@ -30,6 +32,7 @@ an authority that the authenticated principal does not already have.
 │ browser/native/CLI   │                         │ identity + routing  │
 └──────────────────────┘                         └──────────┬──────────┘
                                                            │ outbound mTLS
+                                                           │ Host link
                                                            ▼
                                                ┌─────────────────────────┐
                                                │ Agent Host               │
@@ -42,30 +45,45 @@ an authority that the authenticated principal does not already have.
 
 | Zone | Trust assumption | Required boundary |
 |---|---|---|
-| Remote Client | Authenticated but UI and prompt data are untrusted | Scoped bearer/OIDC token; no secret authority by default |
-| Gateway | Trusted product service, but routable and exposed | Authn, authz, rate limits, audit, no raw host RPC |
-| Agent Host | Trusted local authority beside the workspace | mTLS/device identity, signed capabilities, host policy |
+| Remote Client | Authenticated but UI and prompt data are untrusted | Scoped session or bearer credential; no secret authority by default |
+| Gateway | Trusted product service, but routable and exposed | Authn, authz, rate limits, audit, transient buffers only, no raw host RPC |
+| Agent Host | Trusted local authority beside the workspace | mTLS/device identity, signed route context, host policy, remote permission ceiling |
 | Node sidecar | Agent runtime, not policy owner | Main/Host proxy allowlist |
-| Rust host-core | Workspace, storage, tool, and secret authority | stdio only; no public listener |
+| Rust host-core | Workspace, storage, tool, permission, and secret authority | stdio only; no public listener |
 
 ## 3. Identity and enrollment
 
 ### 3.1 Client to Gateway
 
-The production Gateway MUST use an established user identity provider through
-OIDC/OAuth 2.0. Browser clients use Authorization Code + PKCE. Native clients
-use Authorization Code + PKCE or a product-approved device flow.
+The production Gateway MUST validate an established identity before routing.
+Two identity sources satisfy this section:
 
-- Access tokens are sent in the `Authorization` header.
-- Access tokens MUST NOT be placed in query strings, WebSocket URLs, SSE URLs,
-  attachment names, or event payloads.
-- Refresh tokens remain in the client identity boundary and are never forwarded
-  to the Agent Host.
-- The Gateway validates issuer, audience, signature, expiry, tenant, and
-  revocation state before routing.
-- A browser session MUST use an explicit Origin allowlist and CSRF protection
-  for cookie-backed login flows. Bearer-only APIs still validate Origin for
-  browser requests.
+- an OIDC/OAuth 2.0 provider, where browser clients use Authorization Code +
+  PKCE and native clients use Authorization Code + PKCE or a product-approved
+  device flow; or
+- the first-party product account service, whose user tokens the Gateway
+  validates as first-party JWTs.
+
+The choice is a recorded decision at the start of rollout R3. In both cases
+the Gateway validates issuer, audience, signature, expiry, tenant, and
+revocation state, and refresh tokens never leave the client identity boundary
+or reach the Agent Host.
+
+Because a browser cannot set request headers on the `WebSocket` and
+`EventSource` APIs, the Gateway offers two authentication profiles:
+
+- **Header profile** for non-browser clients: the access token is sent in the
+  `Authorization` header of every request and of the WebSocket upgrade.
+- **Cookie profile** for browser clients: after login the Gateway issues an
+  `HttpOnly`, `Secure`, `SameSite=Lax` or stricter session cookie; the
+  WebSocket upgrade and the SSE request are authorized by that cookie plus the
+  per-tenant Origin allowlist, and every mutation carries a CSRF token issued
+  with the session. A browser client MAY instead stream events through `fetch`
+  with the header profile.
+
+In both profiles access tokens MUST NOT be placed in query strings, WebSocket
+URLs, SSE URLs, attachment names, or event payloads. Bearer-only APIs still
+validate Origin for browser requests.
 
 For the first trusted-device prototype, a one-time pairing code MAY bootstrap
 the identity link. It MUST be short-lived, single-use, displayed out of band,
@@ -73,7 +91,7 @@ and exchanged over TLS. A pairing code MUST NOT become a long-lived API token.
 
 ### 3.2 Agent Host to Gateway
 
-The Agent Host MUST open the production connection outbound. The target link
+The Agent Host MUST open the production connection outbound. The Host link
 uses mutual TLS with a per-host identity certificate or an equivalent signed
 device credential.
 
@@ -84,6 +102,8 @@ device credential.
 - The Host rejects a Gateway connection whose server identity is not pinned to
   the configured product trust roots.
 - The Host never accepts an unauthenticated inbound control socket.
+- The Host link authenticates the Gateway only. User authority on a relayed
+  connection comes solely from the per-connection route context in §3.3.
 
 Direct LAN or development connections still use TLS and an expiring device
 token. Plain `ws://`, plain HTTP, and static shared tokens in URLs are not
@@ -92,13 +112,14 @@ supported.
 ### 3.3 Host capability context
 
 After the Gateway authenticates a user, it issues a short-lived signed route
-context containing:
+context for each logical client connection:
 
 ```ts
 type HostRouteContext = {
   tenantId: string
   hostId: string
   subject: string
+  clientConnectionId: string
   sessionScopes: string[]
   roles: string[]
   issuedAt: string
@@ -109,7 +130,8 @@ type HostRouteContext = {
 
 The Agent Host verifies the signature, audience, Host id, expiry, and session
 scope before executing any mutation. The Gateway's transport connection is not
-itself authorization for a session.
+itself authorization for a session, and a route context for one
+`clientConnectionId` cannot be replayed on another.
 
 ## 4. Authorization model
 
@@ -117,13 +139,16 @@ itself authorization for a session.
 
 | Operation | Viewer | Controller | Approver | Owner |
 |---|---:|---:|---:|---:|
-| List/get visible sessions | yes | yes | yes | yes |
-| Subscribe to events | yes | yes | yes | yes |
+| List/get visible hosts, projects, and sessions | yes | yes | yes | yes |
+| Subscribe to session or host events | yes | yes | yes | yes |
+| Read session history | yes | yes | yes | yes |
 | Create/attach as viewer | yes | yes | yes | yes |
-| Start a turn | no | yes | optional | yes |
-| Interrupt own/session turn | no | yes | optional | yes |
-| Resolve tool approval | no | no by default | yes | yes |
-| Resolve Plan/Goal approval | no | no by default | explicit policy | yes |
+| Start or queue a turn | no | yes | optional | yes |
+| Stop, interrupt, or cancel a session turn | no | yes | optional | yes |
+| Resolve tool approval (`allow-once`, `deny`) | no | no by default | yes | yes |
+| Resolve tool approval with `allow-session` | no | no | policy | yes |
+| Resolve Plan/Goal approval with permission mode | no | no by default | explicit policy | yes |
+| Answer an input request | no | yes | optional | yes |
 | Upload an attachment | no | yes | optional | yes |
 | Revoke membership | no | no | no | yes |
 | Archive a session | no | no | no | yes |
@@ -133,43 +158,67 @@ Role checks are necessary but not sufficient. The Host MUST additionally check:
 - the Session belongs to the requested tenant and Host;
 - the principal is allowed to use the Session's project;
 - the operation is legal in the Session state;
-- the durable permission/mode policy allows the proposed action; and
+- the durable permission/mode policy allows the proposed action;
+- the remote permission ceiling has been applied to the turn; and
 - the request's expected revision and idempotency key are valid.
 
 ### 4.2 No privilege escalation through protocol fields
 
 The following client fields are advisory only or forbidden:
 
-- `permissionMode` cannot upgrade a durable Session policy;
+- `permissionMode` cannot upgrade a durable Session policy; the only accepted
+  permission-mode field is the explicit selection on a Plan/Goal `approve`,
+  and it is validated against `allowedPermissionModes`;
+- `admission: "queue"` cannot bypass single-turn execution; it only places a
+  bounded, cancelable entry in the Host queue;
 - `workspaceRoot` cannot replace a Host-owned project binding;
 - `toolName` cannot select a tool outside the Host catalog;
 - `confirm` cannot replace an approval request or create an approval result;
 - `providerApiKey`, secret values, and secret references cannot be supplied in
   a turn payload; and
-- a client cannot claim another `principal`, `agentName`, or `connectionId`.
+- a client cannot claim another `principal`, `agentName`, `connectionId`, or
+  `clientConnectionId`.
 
 The Host chooses the effective model/provider configuration from its own
 session and provider state. Remote control does not become a credential relay.
+
+### 4.3 Remote permission ceiling
+
+A turn started by a remote principal runs under the lower of the Session's
+durable permission mode and the Host's configured `remoteMaxPermissionMode`,
+ordered `ask` < `accept-edits` < `auto`. The default ceiling is `ask`. The
+Host operator may raise it; a principal may exceed it only when the principal
+holds `approver` and Host policy allows approvers to use the session's own
+mode. The applied value is reported as `effectivePermissionMode` and never
+changes the durable session mode.
+
+`allow-session` is offered to a remote approver only when Host policy allows
+remote session grants; otherwise the request's `allowedDecisions` omit it. A
+session grant made remotely is the same by-tool-name grant as a local one
+(frozen decision 18) and ends with the Session.
 
 ## 5. Network and transport protections
 
 ### 5.1 TLS
 
-- Public HTTP, SSE, WebSocket, and gRPC endpoints MUST use TLS 1.2 or newer;
-  TLS 1.3 is preferred.
-- Production Host links MUST use mutual TLS or an equivalent device-bound
+- Public HTTP, SSE, and WebSocket endpoints MUST use TLS 1.2 or newer; TLS
+  1.3 is preferred. A reserved gRPC binding inherits the same rule.
+- The production Host link MUST use mutual TLS or an equivalent device-bound
   authenticated channel.
 - Certificate validation MUST include hostname or service identity validation;
   disabling verification is not a development shortcut supported by the
   product.
-- WebSocket upgrade credentials are validated before accepting the connection.
+- WebSocket upgrade credentials, header or cookie, are validated before
+  accepting the connection.
 
 ### 5.2 Origin and cross-site controls
 
-- The Gateway maintains an explicit browser Origin allowlist per tenant.
+- The Gateway maintains an explicit browser Origin allowlist per tenant and
+  checks it on every WebSocket upgrade and SSE request from a browser.
 - Local-only endpoints bind loopback and validate loopback Origin as required
   by ADR 0203.
-- Cookie-backed browser sessions use SameSite protection and CSRF tokens.
+- Cookie-profile sessions use `SameSite` protection and a CSRF token on every
+  mutation, including mutations sent over an already-open WebSocket.
 - A bearer token in a URL is always rejected.
 - CORS exposes only the required methods, headers, and response types.
 
@@ -198,6 +247,10 @@ connection fail before they reach the Agent runtime.
    SSRF through a remote-control request.
 8. Workspace reads and writes continue to use the current host sandbox,
    ignore rules, path checks, and permission policy.
+9. Behind a Gateway the upload target is served by the Gateway. The Gateway
+   enforces only the size bound, relays the bytes to the Host in bounded
+   chunks, deletes its copy when `attachment/complete` succeeds or the upload
+   expires, and never inspects, persists, or serves those bytes elsewhere.
 
 ## 7. Tool and approval security
 
@@ -213,16 +266,35 @@ NOT expose:
 
 Approval requests contain a bounded, redacted summary. The client submits a
 decision for a live request; it does not submit a tool invocation to be
-executed after approval. The Host verifies request id, Session id, turn id,
-principal role, expiry, allowed decision, and current state in one operation.
+executed after approval. The decision vocabulary is the local one:
+`allow-once`, `allow-session`, and `deny` for tools; `approve` with an
+explicit permission mode, or `reject`, for Plan and Goal contracts. The Host
+verifies request id, Session id, turn id, principal role, expiry, allowed
+decision, permission-mode selection, and current state in one operation.
+
+Pending requests are Host state. Rust host-core keeps the pending permission
+table and its timer; the Agent Host reads it through `permissions.pending`
+so a late-attaching client receives open requests. That read is redacted the
+same way as the request event and never returns tool arguments beyond the
+bounded preview.
+
+Approval lifetime is Host policy. The local default remains 120 seconds then
+deny (frozen decision 17). A Host with remote control enabled MAY configure a
+longer bounded lifetime for approvals raised while a remote subscriber is
+attached; the blocked tool waits for that whole lifetime, so the operator
+chooses the trade explicitly, and a client disconnect never extends it.
 
 An approval response that arrives after disconnect, expiry, abort, crash, or
 turn completion is a no-op or a structured stale/expired error. It never
-restarts the turn.
+restarts the turn. The first valid decision wins across local and remote
+clients; later valid responses receive the stored result.
 
 ## 8. Gateway and tenant isolation
 
 - Every route is keyed by `(tenantId, hostId, sessionId)`.
+- The first deployment is single-tenant. Routes already carry `tenantId` so a
+  second tenant is an operational change, not a protocol change; cross-tenant
+  isolation tests run once a multi-tenant harness exists.
 - A client cannot enumerate Host or Session ids outside its signed scope.
 - Gateway caches contain opaque ids and routing metadata, not provider secrets.
 - A Host reconnect replaces the old connection only after identity and tenant
@@ -239,29 +311,33 @@ The Gateway and Host enforce the lower of their configured limits:
 |---|---:|
 | Control requests per principal | 120/minute |
 | Turn starts per Session | 20/minute |
+| Queued turns per Session | 8 |
 | Concurrent clients per Host | 16 |
 | Concurrent subscriptions per connection | 8 |
 | Request/event frame | 1 MiB |
 | Prompt payload | 256 KiB |
 | Attachment | 50 MiB |
 | In-flight attachment uploads per principal | 4 |
-| Event send queue | 4 MiB or 1,000 events |
+| Event send queue | 4 MiB or 1,000 durable events |
 
 Rate-limit responses include a retry hint but never disclose another tenant's
-quota. Slow clients are disconnected with a resumable cursor. The Host never
-blocks the Agent turn indefinitely on a remote client that stopped reading.
+quota. Slow clients lose ephemeral events first and are disconnected with a
+resumable cursor before a durable event is lost. The Host never blocks the
+Agent turn indefinitely on a remote client that stopped reading.
 
 ## 10. Audit and observability
 
 Every remote control mutation produces a structured audit record containing:
 
-- `traceId`, `connectionId`, `principal`, `tenantId`, `hostId`;
+- `traceId`, `connectionId`, `clientConnectionId`, `principal`, `tenantId`,
+  `hostId`;
 - Session and turn ids;
-- operation and outcome;
+- operation and outcome, including the admission mode and
+  `effectivePermissionMode` of a started turn;
 - authorization decision and role;
 - idempotency key hash, not the raw key;
-- event sequence range, when applicable; and
-- error code or approval decision.
+- event epoch and sequence range, when applicable; and
+- error code, or approval decision with the selected permission mode.
 
 Audit records MUST NOT contain provider credentials, raw prompt text, raw tool
 arguments, raw tool output, attachment bytes, or approval secrets by default.
@@ -269,8 +345,9 @@ The runtime logger may record bounded redacted summaries under the existing
 redaction policy.
 
 Metrics SHOULD cover connection count, reconnects, authentication failures,
-authorization failures, event lag, replay/resync counts, turn admission
-latency, approval latency, queue drops, and Host availability.
+authorization failures, event lag, replay/resync counts, epoch changes, queue
+depth, turn admission latency, approval latency, queue drops, and Host
+availability.
 
 Trace propagation uses W3C `traceparent` where the selected transport supports
 it. A Gateway MUST preserve the trace id across the Host link.
@@ -285,10 +362,11 @@ The Gateway MUST be able to revoke:
 - a Session membership; and
 - a pending attachment or upload target.
 
-Revocation closes active connections, prevents new mutations, and leaves the
-Agent Host's local turn policy unchanged. A running turn is interrupted only
-when the revoked scope or incident policy explicitly requires it; revocation
-must not silently replay or roll back a completed turn.
+Revocation closes active connections, prevents new mutations, cancels queued
+turns the revoked principal submitted, and leaves the Agent Host's local turn
+policy unchanged. A running turn is interrupted only when the revoked scope or
+incident policy explicitly requires it; revocation must not silently replay or
+roll back a completed turn.
 
 Provider credential rotation remains an Agent Host operation. Remote clients
 cannot use the control protocol to export, test, or replace a secret unless a
@@ -307,9 +385,26 @@ separate, explicitly specified credential-management capability is added.
    role.
 6. Duplicate mutation keys cannot create duplicate turns or approvals.
 7. An expired/revoked credential cannot resume a connection or upload bytes.
-8. Cross-tenant Host, Session, event, attachment, and audit access is denied.
+8. Cross-tenant Host, Session, event, attachment, and audit access is denied
+   once a multi-tenant harness exists.
 9. Event replay never crosses a Session or principal scope.
 10. Gateway and Host logs contain no provider secrets or unredacted tool data.
 11. Slow clients cannot exhaust Host memory or stall an Agent turn.
 12. Host crash, Gateway reconnect, and client reconnect do not replay an
     already-admitted execution.
+13. A remote-initiated turn never reports an `effectivePermissionMode` above
+    the configured ceiling, and `allow-session` is absent unless policy
+    allows it.
+14. Browser WebSocket and SSE connections succeed only on the cookie profile
+    with Origin and CSRF checks, or on the header profile through `fetch`;
+    URL tokens fail in both.
+15. A relayed server-initiated approval request is answered exactly once, and
+    the answer reaches only the Host that raised it.
+
+## 13. Amendment history
+
+D376 (2026-09-10) added the browser cookie/header authentication profiles,
+the two accepted identity sources, the remote permission ceiling, the local
+decision vocabulary, the remote approval lifetime policy, the Host link and
+Gateway attachment relay rules, the single-tenant-first clause, and gates
+13–15.

@@ -4114,3 +4114,26 @@ D193, and D194.
   bindings share event sequences, snapshots, idempotency, authorization, and
   error semantics. See the remote architecture, protocol, security, and
   rollout specifications and E2E-221 through E2E-230.
+## 2026-09-10 — Amend the remote Agent Control target before implementation (D376)
+
+- A review of the D373 draft against the shipped desktop found that the
+  remote approval vocabulary was narrower than the local
+  `allow-once` / `allow-session` / `deny` and Plan/Goal permission-mode
+  contracts, that pending permission requests were connection state rather
+  than Host state, that per-token deltas would exhaust the replay window,
+  that three required bindings and two IDLs were more than v1 can carry, and
+  that browsers cannot satisfy header-only authentication on WebSocket and
+  SSE.
+- Decision D376 amends ADR 0205: `RACP-WS` is the only normative v1 binding
+  with `RACP-HTTP` as the browser profile and `RACP-GRPC` reserved; typebox
+  in `packages/shared` is the single contract source; the first deliverable
+  is the headless `packages/agent-host` module that desktop IPC, local MCP,
+  and RACP all call; cursors are `{ epoch, sequence }` with ephemeral deltas
+  and an in-memory first log; the turn queue moves into the Host; host-core
+  exposes `permissions.pending`; remote approvals carry the full local
+  decision vocabulary; a remote permission ceiling defaults to `ask`; the
+  approval lifetime becomes a bounded Host policy for remote subscribers;
+  the Host link is a relay profile; browser clients use a cookie profile;
+  the Gateway identity source is decided at R3; and the first deployment is
+  single-tenant. See the amended remote architecture, protocol, security,
+  and rollout specifications and E2E-221 through E2E-230.
