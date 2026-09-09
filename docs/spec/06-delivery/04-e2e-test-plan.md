@@ -3509,14 +3509,16 @@ Each scenario is documented in this format:
   the text, and retry with Cmd/Ctrl+Enter. 5) After the new answer completes,
   use the `current / total` pager to return to the original exchange and
   forward again. 6) Reload the session. 7) Choose Edit on the slash-command
-  turn and inspect the seeded text. 8) Try Edit while a turn is running.
+  turn and inspect the seeded text. 8) Start another response and inspect its
+  assistant toolbar while it is streaming and after it completes. 9) Try Edit
+  while a turn is running.
 - **Expected**: Every toolbar chip shows its glyph only, with the label
   appearing as a fully visible tooltip 8px above the chip on hover and on
-  keyboard focus (#74); no chip renders caption text. The tooltip uses the
-  compact raised shadow rather than the composer glow so its surface stays
-  visually separate from `--ds-bg-hover`. The assistant toolbar offers Copy,
-  Fork, Regenerate; the user toolbar offers the pager (when variants exist),
-  Copy, Edit, Delete. Edit replaces the prompt bubble with a wider inline
+  keyboard focus (#74); no chip renders caption text. While an assistant
+  response is streaming, its toolbar omits Copy; after the response settles,
+  the assistant toolbar offers Copy, Fork, Regenerate. The user toolbar offers
+  the pager (when variants exist), Copy, Edit, Delete. Edit replaces the prompt
+  bubble with a wider inline
   textarea with Retry and Cancel controls; Escape or Cancel restores the
   bubble unchanged. Retry truncates the transcript from that prompt and
   streams a new answer whether or not the text changed, leaving a

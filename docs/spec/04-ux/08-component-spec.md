@@ -1284,9 +1284,11 @@ Single message render — either user (plaintext) or assistant (markdown streami
   background or outer border. Its Sparkles/chevron trigger uses secondary text,
   and the expanded markdown is indented by a subtle theme-token left rule. It
   is never concatenated into answer markdown.
-- Hover actions: quiet icon-only action chips under the bubble — Copy always;
-  Fork and Regenerate on completed assistant turns; Edit and Delete on user
-  turns. Assistant rows expose neither Delete nor Edit. Chips render the glyph
+- Hover actions: quiet icon-only action chips under the bubble — Copy on idle
+  assistant turns; Fork and Regenerate on completed assistant turns; Edit and
+  Delete on user turns. A streaming assistant turn omits its Copy action until
+  the response settles. Assistant rows expose neither Delete nor Edit. Chips
+  render the glyph
   alone: the label is carried by `aria-label` plus a themed hover/focus
   tooltip 8px above the chip (compact raised shadow, not the composer glow),
   never as visible caption text (D137). Right-aligned

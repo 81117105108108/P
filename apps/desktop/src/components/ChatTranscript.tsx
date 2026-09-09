@@ -2375,7 +2375,9 @@ const AssistantTurn = memo(function AssistantTurn({
         ) : null}
         {(content || hasError) && actionMessage ? (
           <div className="message-actions">
-            {content ? <CopyButton text={content} label={t("chat.copy")} /> : null}
+            {complete ? (
+              <CopyButton text={content} label={t("chat.copy")} />
+            ) : null}
             {complete ? (
               <button
                 className="copy-btn icon"
