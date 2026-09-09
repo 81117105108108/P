@@ -56,6 +56,32 @@ test("work panel replaces the context panel overlay", async () => {
   assert.doesNotMatch(appSource, /key\.toLowerCase\(\) === "j"/);
 });
 
+test("a viewport-fixed toggle is the sole pointer collapse control", () => {
+  assert.match(appSource, /className="app-work-panel-toggle no-drag"/);
+  assert.match(appSource, /aria-pressed=\{workPanelOpen \|\| presentedWorkPanelOpen\}/);
+  assert.match(appSource, /togglePresentedWorkPanel/);
+  assert.match(appSource, /if \(store\.subagentPanel\) \{\s*store\.toggleWorkPanel\(\);/s);
+  assert.doesNotMatch(appSource, /onCollapse=/);
+  assert.doesNotMatch(panelSource, /onCollapse/);
+  assert.doesNotMatch(panelSource, /work-panel-toolbar-collapse/);
+  assert.match(
+    globalStyles,
+    /\.app-work-panel-toggle \{[^}]*position:\s*fixed;[^}]*z-index:\s*30;/s,
+  );
+  assert.match(
+    globalStyles,
+    /\.work-panel-header \{[^}]*padding:\s*0 46px 0 12px;/s,
+  );
+  assert.match(
+    globalStyles,
+    /:root\[data-platform="win32"\] \.work-panel-header,[\s\S]*:root\[data-platform="linux"\] \.work-panel-header\s*\{[^}]*padding-right:\s*calc\(var\(--ds-window-controls-width\) \+ 46px\);/,
+  );
+  assert.match(
+    globalStyles,
+    /:root\[data-platform="win32"\] \.conversation-topbar\.ct-work-panel-open,[\s\S]*:root\[data-platform="linux"\] \.conversation-topbar\.ct-work-panel-open\s*\{[^}]*right:\s*0;/,
+  );
+});
+
 test("the work panel shortcut closes the panel it opened", () => {
   assert.match(storeSource, /toggleWorkPanel:\s*\(\) => \{/);
   const toggleBody = storeSource.slice(
@@ -170,8 +196,8 @@ test("work panel header exposes one unified menu with no duplicated entries", ()
   assert.match(panelSource, /if \(existing\) activateTab\(existing\.id\)/);
   assert.doesNotMatch(panelSource, /collapsePanel/);
   assert.doesNotMatch(panelSource, /work-panel-collapse/);
-  assert.match(panelSource, /onCollapse/);
-  assert.match(panelSource, /work-panel-toolbar-collapse/);
+  assert.doesNotMatch(panelSource, /onCollapse/);
+  assert.doesNotMatch(panelSource, /work-panel-toolbar-collapse/);
   assert.match(panelSource, /data-work-panel-section="current"/);
   assert.match(panelSource, /panel\.tools/);
   assert.match(panelSource, /panel\.openItems/);

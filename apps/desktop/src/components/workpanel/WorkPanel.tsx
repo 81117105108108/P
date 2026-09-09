@@ -20,7 +20,6 @@ import type { WorkPanelTab } from "../../stores/app-store";
 import { cx } from "../ui";
 import {
   IconChevronDown,
-  IconChevronRight,
   IconClose,
   IconBot,
   IconDiff,
@@ -72,7 +71,6 @@ function tabLabel(
 
 export function WorkPanel({
   panelBlocked = false,
-  onCollapse,
   exiting = false,
   onExitAnimationEnd,
   subagentPanel = null,
@@ -84,7 +82,6 @@ export function WorkPanel({
    * blocking overlay must suppress them alike.
    */
   panelBlocked?: boolean;
-  onCollapse?: () => void;
   /** Plays work-panel-out; parent unmounts after animationend. */
   exiting?: boolean;
   onExitAnimationEnd?: () => void;
@@ -641,18 +638,6 @@ export function WorkPanel({
                 <IconClose size={14} />
               </button>
             ) : null}
-            {onCollapse && (
-              <button
-                type="button"
-                className="work-panel-toolbar-collapse"
-                data-action="collapse-work-panel"
-                title={t("panel.collapse")}
-                aria-label={t("panel.collapse")}
-                onClick={onCollapse}
-              >
-                <IconChevronRight size={16} />
-              </button>
-            )}
           </div>
         </header>
         <div className="work-panel-body">

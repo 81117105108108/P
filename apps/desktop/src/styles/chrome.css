@@ -491,6 +491,10 @@
   padding-right: 36px;
 }
 
+.conversation-topbar.ct-work-panel-open .ct-right {
+  padding-right: 0;
+}
+
 .conversation-topbar .ct-title-wrap {
   display: flex;
   align-items: center;
@@ -658,7 +662,8 @@
 
 :root[data-platform="win32"] .conversation-topbar.ct-work-panel-open,
 :root[data-platform="linux"] .conversation-topbar.ct-work-panel-open {
-  right: var(--ds-window-controls-width);
+  /* Window controls stay viewport-fixed over the panel, not this pane. */
+  right: 0;
 }
 
 .notification-center {
@@ -992,7 +997,7 @@
 
 :root[data-platform="win32"] .main-titlebar.work-panel-open,
 :root[data-platform="linux"] .main-titlebar.work-panel-open {
-  right: var(--ds-window-controls-width);
+  right: 0;
 }
 
 .sidebar-header {

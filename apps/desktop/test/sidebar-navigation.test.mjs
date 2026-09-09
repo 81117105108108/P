@@ -54,11 +54,11 @@ test("sidebar header retains non-mac branding and collapse without a search cont
   assert.doesNotMatch(appSource, /IconChevronLeft|IconChevronRight/);
 });
 
-test("work panel collapse control lives in the switcher menu", () => {
-  assert.match(panelSource, /onCollapse/);
-  assert.match(panelSource, /work-panel-toolbar-collapse/);
-  assert.match(panelSource, /IconChevronRight/);
+test("work panel collapse control is the viewport-fixed shell toggle", () => {
+  assert.match(appSource, /className="app-work-panel-toggle no-drag"/);
   assert.match(appSource, /collapseWorkPanel\(\)/);
+  assert.doesNotMatch(panelSource, /onCollapse/);
+  assert.doesNotMatch(panelSource, /work-panel-toolbar-collapse/);
   assert.doesNotMatch(panelSource, /work-panel-collapse/);
   assert.doesNotMatch(panelSource, /collapsePanel/);
   assert.match(
@@ -67,7 +67,7 @@ test("work panel collapse control lives in the switcher menu", () => {
   );
   assert.match(
     globalStyles,
-    /:root\[data-platform="win32"\] \.main-titlebar\.work-panel-open,[\s\S]*:root\[data-platform="linux"\] \.main-titlebar\.work-panel-open\s*\{[^}]*right:\s*var\(--ds-window-controls-width\);/,
+    /:root\[data-platform="win32"\] \.main-titlebar\.work-panel-open,[\s\S]*:root\[data-platform="linux"\] \.main-titlebar\.work-panel-open\s*\{[^}]*right:\s*0;/,
   );
   assert.doesNotMatch(globalStyles, /\.work-panel-header\s*\{[^}]*margin-right:/s);
 });

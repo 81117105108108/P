@@ -280,6 +280,11 @@ function AppShell() {
       store.openWorkPanel();
       return;
     }
+    // Close a visible subagent dock through the same path as Cmd/Ctrl+J.
+    if (store.subagentPanel) {
+      store.toggleWorkPanel();
+      return;
+    }
     // Prefer the visible presentation over a briefly stale session projection:
     // a second click on the same button must always collapse a panel the user
     // can currently see instead of routing through openWorkPanel again.
@@ -1947,14 +1952,6 @@ function AppShell() {
               }
               subagentPanel={subagentPanelOpen ? subagentPanel : null}
               onCloseSubagentPanel={closeSubagentPanel}
-              onCollapse={() => {
-                if (subagentPanelOpen) {
-                  closeSubagentPanel();
-                  useAppStore.getState().collapseWorkPanel();
-                  return;
-                }
-                useAppStore.getState().collapseWorkPanel();
-              }}
             />
           )}
 

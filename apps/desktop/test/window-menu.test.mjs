@@ -188,7 +188,7 @@ test("Windows and Linux use menu-free frameless chrome with window controls", ()
   );
   assert.match(
     stylesSource,
-    /:root\[data-platform="win32"\] \.main-titlebar\.work-panel-open,[\s\S]*:root\[data-platform="linux"\] \.main-titlebar\.work-panel-open\s*\{[^}]*right:\s*var\(--ds-window-controls-width\);/,
+    /:root\[data-platform="win32"\] \.main-titlebar\.work-panel-open,[\s\S]*:root\[data-platform="linux"\] \.main-titlebar\.work-panel-open\s*\{[^}]*right:\s*0;/,
   );
   assert.doesNotMatch(stylesSource, /\.work-panel-header\s*\{[^}]*margin-right:/s);
   assert.match(
