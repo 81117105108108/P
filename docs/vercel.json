@@ -3,5 +3,8 @@
   "framework": "vitepress",
   "buildCommand": "pnpm build",
   "outputDirectory": ".vitepress/dist",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "git": {
+    "deploymentEnabled": false
+  }
 }

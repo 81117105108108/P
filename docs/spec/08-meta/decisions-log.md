@@ -4039,3 +4039,15 @@ D193, and D194.
   activity-group capsule.
 - See ADR 0198, `03-runtime/01-ipc-protocol.md`, `03-runtime/02-agent-runtime.md`,
   `04-ux/09-interaction-patterns.md`, and E2E-008c / E2E-094.
+
+## 2026-09-09 — Deploy the documentation site only from releases (D366)
+
+- Pull request updates were triggering Vercel Git deployments for the VitePress
+  site even though the site is intended to publish with the desktop release.
+- Decision D366 / ADR 0199: `docs/vercel.json` sets
+  `git.deploymentEnabled` to `false` to disable Git-triggered deployments. The tag-based
+  Release workflow runs a separate `deploy-docs` job after the GitHub Release
+  is published and invokes Vercel CLI with `--prod`.
+- This keeps project and account identifiers in GitHub Actions secrets. Vercel
+  can remain connected to GitHub for source metadata while automatic Git
+  deployment is disabled. See E2E-213.

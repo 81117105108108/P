@@ -16,6 +16,7 @@ const [
   sharedPackageSource,
   releaseMacScriptSource,
   releaseAsarScriptSource,
+  vercelConfigSource,
 ] = await Promise.all([
   read("../../../.github/workflows/ci.yml"),
   read("../../../.github/workflows/release.yml"),
@@ -28,6 +29,7 @@ const [
   read("../../../packages/shared/package.json"),
   read("../../../scripts/release-macos.sh"),
   read("../../../scripts/export-linux-asar.mjs"),
+  read("../../../docs/vercel.json"),
 ]);
 
 test("CI skips documentation-only pushes and pull requests", () => {
@@ -267,4 +269,20 @@ test("GitHub releases trigger the CNB mirror pipeline with a JSON payload", () =
     /-d ".*github\.event\.release\.tag_name/,
     "JSON payload must not interpolate the release tag through YAML string escaping",
   );
+});
+
+test("Vercel documentation deployments only run from the release workflow", () => {
+  assert.deepEqual(JSON.parse(vercelConfigSource).git, {
+    deploymentEnabled: false,
+  });
+  assert.match(
+    releaseWorkflowSource,
+    /deploy-docs:[\s\S]*?needs: publish[\s\S]*?working-directory: docs[\s\S]*?pnpm dlx vercel@latest deploy --prod --yes --token "\$VERCEL_TOKEN"/,
+  );
+  for (const secret of ["VERCEL_TOKEN", "VERCEL_ORG_ID", "VERCEL_PROJECT_ID"]) {
+    assert.match(
+      releaseWorkflowSource,
+      new RegExp(`secrets\\.${secret}`),
+    );
+  }
 });

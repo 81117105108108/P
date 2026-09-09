@@ -258,6 +258,26 @@ Re-running the workflow for the same tag is safe if the CNB pipeline is
 idempotent. It does not rebuild desktop artifacts and does not change
 electron-updater feeds.
 
+### 4.5 Documentation site deployment
+
+The Vercel project uses `docs` as its Root Directory. Its
+`docs/vercel.json` sets `git.deploymentEnabled` to `false`, so Vercel's GitHub
+integration does not create Preview deployments or status checks for pull
+requests and ordinary branch pushes.
+
+The `deploy-docs` job in `.github/workflows/release.yml` runs after
+`softprops/action-gh-release` for `vX.Y.Z` tag runs. It calls Vercel CLI with
+`--prod`, so the documentation site is updated only as part of a release.
+Configure these repository Actions secrets before enabling the job:
+
+- `VERCEL_TOKEN`: a Vercel token that can deploy the project
+- `VERCEL_ORG_ID`: the Vercel team or account id
+- `VERCEL_PROJECT_ID`: the documentation project's id
+
+The project may remain connected to GitHub for source metadata; the disabled
+Git deployment setting prevents automatic builds. The release workflow's CLI
+deployment remains independent of the Git connection.
+
 ## 5. Verification gates
 
 For the default unsigned macOS lane, do not treat macOS artifacts as

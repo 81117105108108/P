@@ -55,6 +55,7 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
 | [ADR 0196：在进行中重试行显示 provider 原因](/adr/0196-retry-cause-in-active-turn-status) | 悬停或聚焦重试状态行时显示错误摘要、错误码和安全的 provider 消息 |
 | [ADR 0197：发布 Windows 免安装便携版](/adr/0197-windows-portable-exe) | Windows x64 通道额外发布 Portable exe，安装程序仍走应用内更新 |
 | [ADR 0198：为每个安静间隔命名活动行](/adr/0198-quiet-interval-activity-phases) | 补齐 starting / preparing / compacting / recovering，并在等待 Subagent 时展示各自的粗粒度动作 |
+| [ADR 0199：仅在发版时部署文档站](/adr/0199-release-only-vercel-docs-deployment) | 关闭 Git 触发的 Vercel 部署，由 Release 工作流部署 production |
 
 ## 什么时候看 ADR
 

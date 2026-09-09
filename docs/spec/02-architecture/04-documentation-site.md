@@ -18,10 +18,13 @@ The site exposes two locale entry points:
   page for every document under `docs/spec/`.
 
 For Vercel deployments whose Root Directory is `docs`, `docs/vercel.json`
-declares the VitePress build output as `.vitepress/dist` and enables Vercel's
-`cleanUrls` routing. This keeps extensionless links such as `/spec/README` and
-`/adr/README` working after a direct page refresh instead of becoming static
-hosting 404s.
+declares the VitePress build output as `.vitepress/dist`, enables Vercel's
+`cleanUrls` routing, and disables Git-triggered deployments through
+`git.deploymentEnabled: false`. This keeps extensionless links such as
+`/spec/README` and `/adr/README` working after a direct page refresh instead of
+becoming static hosting 404s, while avoiding preview builds and status checks
+for pull requests and ordinary branch pushes. The tag-based release workflow
+deploys the site to Vercel after the GitHub Release is published.
 
 Existing `spec/`, `adr/`, `project/`, and guide Markdown files remain in place
 so repository links and review history stay stable. Chinese specification pages

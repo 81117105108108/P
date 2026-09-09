@@ -2905,3 +2905,14 @@ D193 和 D194。
 - 参见 ADR 0198、`03-runtime/01-ipc-protocol.md`、
   `03-runtime/02-agent-runtime.md`、`04-ux/09-interaction-patterns.md`，
   以及 E2E-008c / E2E-094。
+
+## 2026-09-09 —— 仅在发版时部署文档站（D366）
+
+- VitePress 文档站原本会因 PR 更新触发 Vercel Git 部署，但文档站的目标是
+  随桌面应用发版更新。
+- 决策 D366 / ADR 0199：`docs/vercel.json` 将
+  `git.deploymentEnabled` 设为 `false`，关闭 Git 触发的部署。带标签的 Release
+  工作流会在 GitHub Release 发布后运行独立的 `deploy-docs` 作业，并使用带
+  `--prod` 的 Vercel CLI。
+- 项目和账户标识保存在 GitHub Actions secrets 中。Vercel 可以继续连接 GitHub
+  以保留源信息，同时关闭自动 Git 部署。参见 E2E-213。

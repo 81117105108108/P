@@ -213,3 +213,4 @@ Each ADR includes:
 | 0196 | Show provider retry causes in the active-turn status | Accepted (amends 0175) |
 | 0197 | Publish a Windows portable executable | Accepted (amends 0022 / D126) |
 | 0198 | Name every quiet interval on the live activity row | Accepted (amends 0175 / 0186) |
+| 0199 | Deploy the documentation site only from releases | Accepted |
