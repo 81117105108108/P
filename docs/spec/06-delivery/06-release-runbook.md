@@ -10,13 +10,15 @@
 | Lane | Command | Signing | Use |
 |---|---|---|---|
 | Dev | `pnpm dev` | none | daily development |
-| Local package | `pnpm --filter @pi-desktop/desktop pack` | unsigned (`identity: null`) | packaging smoke (`--dir` output) |
-| Local DMG | `pnpm --filter @pi-desktop/desktop dist` | unsigned | local install test |
-| Release | `scripts/release-macos.sh` | Developer ID + optional notarization | distributable artifact |
+| Local package | `pnpm --filter @pi-desktop/desktop pack` | unsigned without a configured certificate | packaging smoke (`--dir` output) |
+| Local DMG | `pnpm --filter @pi-desktop/desktop dist` | unsigned without a configured certificate | local install test |
+| Release | `scripts/release-macos.sh` | Developer ID + mandatory notarization | distributable artifact |
 
-The static electron-builder config stays unsigned-friendly (`identity: null`)
-so contributors without certificates can always package. The release script
-injects the real identity via `-c.mac.identity` at build time.
+The static electron-builder config does not embed a certificate identity, so
+contributors without certificates can still package locally. The release lane
+requires an injected Developer ID identity (local) or `CSC_LINK` certificate
+(CI), and fails before publication if signing or notarization verification does
+not pass.
 
 On macOS, `pnpm dev` creates and reuses a fingerprinted branded Electron host
 bundle under `.cache/electron-dev/`. Its bundle name, executable, identifier,
@@ -46,8 +48,8 @@ when macOS `iconutil` is available, without overwriting the canonical source.
    the login keychain.
 2. Environment variables:
    - `MAC_SIGNING_IDENTITY` — e.g. `Developer ID Application: <Name> (<TEAMID>)`
-   - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` — required only
-     for notarization; the script builds signed-but-unnotarized without them.
+   - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` — required for
+     notarization.
 3. Rust toolchain and pnpm workspace installed. The Rust toolchain must run on
    the native macOS runner: arm64 for Apple Silicon or x86_64 for Intel.
 
@@ -159,7 +161,7 @@ Artifacts land in `apps/desktop/release/` (DMG + ZIP + blockmaps).
 `MAC_ARCH=arm64` or `MAC_ARCH=x64` only when that architecture matches the
 host. This keeps the native Rust host sidecar and Electron package aligned.
 
-### 4.3 GitHub tag workflow
+### 4.3 GitHub tag and manual workflow
 
 The GitHub Release workflow starts all native platform runners without a
 separate validation-job barrier. Each runner validates that the pushed tag
@@ -175,11 +177,46 @@ runtime, verifying the host build, building the Desktop application once, and
 invoking electron-builder. This avoids a redundant Desktop build without
 changing the package scripts or release artifacts.
 
+**Default macOS release policy:** the GitHub Release workflow packages macOS
+DMG/ZIP artifacts unsigned by default. Tag pushes and manual runs with
+`sign_macos` omitted or set to `false` disable identity discovery, do not receive
+signing or notarization secrets, and skip macOS stapling and signature
+verification. To explicitly sign a run, manually dispatch the workflow for the
+target tag with `sign_macos: true`. The local `scripts/release-macos.sh` command
+remains the explicit signed lane.
+
 The macOS matrix uses `macos-15` for arm64 and `macos-15-intel` for Intel x64.
 Each job verifies `uname -m`, passes the matching `--arm64` or `--x64` flag to
 electron-builder, and builds `pi-desktop-host-core` on that same native
-runner. The per-architecture `latest-mac.yml` files are renamed before upload;
-the publish job merges them into one feed after downloading both artifacts.
+runner. The default macOS package step is unsigned. When a manual run explicitly
+sets `sign_macos: true`, it receives `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
+`APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` only from GitHub Actions
+secrets. It then forces code signing and notarization, verifies the Developer ID
+authority, code-signing integrity, Gatekeeper assessment, and stapled app
+ticket, and explicitly staples and validates the generated DMG before any
+artifact upload. The per-architecture
+`latest-mac.yml` files are renamed before upload; the publish job merges them
+into one feed after downloading both artifacts.
+
+The Intel x64 package command overrides the macOS target-specific artifact
+patterns so the public assets are unambiguous: `PI-Desktop-<version>-Intel.dmg`
+and `PI-Desktop-<version>-Intel-mac.zip`. The arm64 lane keeps the generic
+`PI-Desktop-<version>.dmg` and `PI-Desktop-<version>-mac.zip` names. Because
+the patterns are applied during electron-builder execution, the generated
+`latest-mac-x64.yml` feed references the Intel asset names and their matching
+checksums.
+
+Every macOS DMG and ZIP also includes
+`PI-Desktop-macOS-opening-help.txt` at the package root. It tells users how to
+clear the quarantine attribute for a trusted unsigned app if macOS reports that
+the app is damaged:
+
+```sh
+xattr -cr /Applications/PI-Desktop.app
+```
+
+This guidance is only for trusted unsigned artifacts. Signed and notarized
+builds should open without this command.
 
 DMG, ZIP, NSIS, AppImage, deb, blockmap, and updater feed outputs are already
 compressed or compression-insensitive. The workflow therefore uploads their
@@ -192,15 +229,20 @@ system Electron.
 
 ## 5. Verification gates
 
+For the default unsigned macOS lane, do not treat macOS artifacts as
+Gatekeeper-qualified. The signature and staple checks below apply only when a
+run explicitly enables `sign_macos: true`.
+
 Run after every release build:
 
 ```bash
 for APP in apps/desktop/release/mac-*/PI-Desktop.app; do
   codesign -dv --verbose=2 "$APP"          # identity + hardened runtime flags
   codesign --verify --deep --strict "$APP" # signature integrity
-  spctl -a -vv "$APP"                      # Gatekeeper assessment (notarized builds)
-  xcrun stapler validate "$APP"             # notarization staple (if notarized)
+  spctl -a -vv "$APP"                      # Gatekeeper assessment (notarized Developer ID)
+  xcrun stapler validate "$APP"             # notarization staple
 done
+xcrun stapler validate apps/desktop/release/*.dmg
 ```
 
 ### 5.1 Package footprint gate
@@ -327,8 +369,9 @@ D126/D285.
 
 Native-runner output matrix:
 
-- macOS arm64: DMG and ZIP
-- macOS Intel x64: DMG and ZIP
+- macOS arm64: `PI-Desktop-<version>.dmg` and `PI-Desktop-<version>-mac.zip`
+- macOS Intel x64: `PI-Desktop-<version>-Intel.dmg` and
+  `PI-Desktop-<version>-Intel-mac.zip`
 - Windows x64: NSIS installer
 - Linux x64: AppImage and deb
 - Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`
@@ -359,5 +402,6 @@ Shell smoke on each native runner:
   or newer (Ubuntu 22.04, Debian 12, Fedora 36+). The tag job runs
   `scripts/check-linux-host-glibc.mjs` and refuses a binary that needs a
   newer glibc.
-- Signed in-app macOS delivery, rollback, staged rollout, and prerelease
-  channel policy remain open release work.
+- In-app macOS delivery, rollback, staged rollout, and prerelease channel
+  policy remain open release work. Downloaded DMG and ZIP artifacts are
+  Developer ID-signed, notarized, and stapled before publication.

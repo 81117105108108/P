@@ -2,6 +2,33 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const deEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.4",
+    "date": "2026-09-09",
+    "highlights": [
+      "Fügen Sie begrenzte Bereichslesevorgänge für große Dateien und an echte Zieh-und-Ablegen-Gesten gebundene Dateifreigaben für Plugins hinzu.",
+      "Verlangen Sie für macOS-Signierung und Notarisierung eine ausdrückliche Aktivierung und liefern Sie Hinweise zum Öffnen vertrauenswürdiger unsignierter Builds."
+    ]
+  },
+  {
+    "version": "0.14.3",
+    "date": "2026-09-09",
+    "highlights": [
+      "Kennzeichnen Sie Intel-macOS-Downloads eindeutig, damit die Architektur des Installationsprogramms klar erkennbar ist."
+    ]
+  },
+  {
+    "version": "0.14.2",
+    "date": "2026-09-08",
+    "highlights": [
+      "Fügen Sie einen Kontextverbrauch-Inspektor hinzu, der dem ausgewählten Modell folgt und Hinweise zur Komprimierung anzeigt.",
+      "Verbessern Sie die Anbieter- und Modelleinstellungen mit durchsuchbarer Auswahl, Sammelaktionen und klareren Abruffehlern.",
+      "Fassen Sie Sitzungstitel automatisch zusammen und erlauben Sie dauerhafte Projektnamen.",
+      "Überarbeiten Sie das Subagent-Seitenpanel mit Live-Status, kompakten Aufgabenblasen, Modellinformationen und Navigation zur neuesten Ausgabe.",
+      "Senden Sie native Benachrichtigungen für interaktive Fragen und Freigaben, während normale Abschlüsse aus dem Posteingang fernbleiben.",
+      "Fügen Sie eine koreanische Oberflächenlokalisierung hinzu und verbessern Sie lokalisierte Einstellungen, Zwischenablageverlauf und sichere Links.",
+    ]
+  },
+  {
     "version": "0.14.1",
     "date": "2026-09-08",
     "highlights": [

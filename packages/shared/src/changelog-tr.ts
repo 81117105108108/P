@@ -2,6 +2,33 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const trEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.4",
+    "date": "2026-09-09",
+    "highlights": [
+      "Eklentiler için sınırlı büyük dosya aralığı okumaları ve gerçek sürükle-bırak hareketlerine bağlı dosya izinleri ekleyin.",
+      "macOS imzalama ve noter onayını açıkça seçilebilir hale getirin ve güvenilir imzasız derlemeleri açma yönergeleri ekleyin."
+    ]
+  },
+  {
+    "version": "0.14.3",
+    "date": "2026-09-09",
+    "highlights": [
+      "Intel macOS indirmelerini açıkça etiketleyerek yükleyici mimarisini anlaşılır hale getirin."
+    ]
+  },
+  {
+    "version": "0.14.2",
+    "date": "2026-09-08",
+    "highlights": [
+      "Seçili modeli izleyen ve sıkıştırma yönergelerini gösteren bir bağlam kullanımı denetçisi ekleyin.",
+      "Aranabilir seçim, toplu işlemler ve daha anlaşılır getirme hatalarıyla sağlayıcı ve model ayarlarını geliştirin.",
+      "Oturum başlıklarını otomatik olarak özetleyin ve yeniden başlatmalar arasında korunan proje adlarına izin verin.",
+      "Canlı durum, kompakt görev baloncukları, model kimliği ve en yeni çıktıya gitme özelliğiyle alt aracı panelini geliştirin.",
+      "Etkileşimli sorular ve onaylar için yerel bildirimler gönderin; normal tamamlanmaları gelen kutusunun dışında tutun.",
+      "Korece arayüz yerelleştirmesi ekleyin ve yerelleştirilmiş ayarları, pano geçmişini ve güvenli bağlantı işlemeyi geliştirin.",
+    ]
+  },
+  {
     "version": "0.14.1",
     "date": "2026-09-08",
     "highlights": [

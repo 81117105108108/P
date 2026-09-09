@@ -157,7 +157,7 @@ Each ADR includes:
 | 0141 | Make expanded sidebar width user-resizable | Accepted |
 | 0142 | Allow non-loopback HTTP MCP endpoints with explicit risk disclosure | Accepted |
 | 0144 | Allow user-configured thinking-level overrides | Accepted |
-| 0145 | Publish native macOS Intel artifacts | Accepted |
+| 0145 | Publish native macOS Intel artifacts | Accepted (amended by D353) |
 | 0146 | Assign outer and inner work-panel resize ownership by boundary | Superseded by 0151 |
 | 0147 | A2A protocol stack for subagent coordination | Superseded by 0165 |
 | 0148 | Explicitly disable application keyboard shortcuts | Accepted |
@@ -178,7 +178,7 @@ Each ADR includes:
 | 0163 | Transcript file references render as previewable chips | Accepted |
 | 0164 | Parent agents collaborate across conversations | Superseded by 0165 |
 | 0165 | Withdraw the A2A / Peer coordination stack | Accepted (supersedes 0147 / 0162 / 0164) |
-| 0166 | Parent-judged subagent lifetime | Accepted (amends 0089 / 0119 / 0129) |
+| 0166 | Parent-judged subagent lifetime | Accepted (amends 0089 / 0119 / 0129; fatal-error path amended by 0189) |
 | 0167 | Agent-chosen Bash timeout | Accepted (amends 0054 / D190 / D273) |
 | 0168 | Main-owned http(s)/mailto allowlist for `openExternal` | Accepted (amends 0109) |
 | 0169 | Classified file preview and live workspace events for plugin views | Accepted (amends 0104 / 0105 / 0109 / 0111) |
@@ -198,3 +198,8 @@ Each ADR includes:
 | 0183 | P0 international shell locales | Accepted (amends 0160 / 0182) |
 | 0184 | Dock the context usage inspector in the composer toolbar | Accepted (amends 0047 / 0103) |
 | 0185 | Korean shell locale | Accepted (amends 0160 / 0183) |
+| 0186 | Summarize first-turn session titles with a main-owned one-shot | Accepted |
+| 0187 | Focus-aware native task notifications | Accepted (amends 0107 / D117) |
+| 0188 | Preserve distinct credentials during model configuration import | Accepted (amends 0179 / D342) |
+| 0189 | Parent fatal error aborts leftover delegates | Accepted (amends 0166 / D328) |
+| 0190 | Host-gated large-file and dropped-file access | Accepted |

@@ -81,6 +81,7 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "settings.defaultsTitle",
       "settings.mode",
       "settings.commandShell",
+      "settings.linkOpenTarget",
       "settings.enterToSend",
       "settings.largePasteThreshold",
     ],

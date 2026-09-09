@@ -216,6 +216,13 @@ reject the request. First OAuth login does not collect headers; they are
 edited on the account after it exists. Advanced UI is a compact key/value
 editor, not a dedicated User-Agent field.
 
+Copilot OAuth rows also retain the static IDE identity headers from the pinned
+pi-ai transport model (`Editor-Version`, `Editor-Plugin-Version`, and
+`Copilot-Integration-Id`) even though runtime models use the local row id for
+account isolation. Agent-runtime supplies Copilot's context-sensitive request
+headers per call; a saved custom header with the same name overrides the
+default.
+
 ## 3. Built-in vendor presets
 
 Presets only prefill form defaults; they are not a closed world.
@@ -341,6 +348,9 @@ change for the raw snapshot.
 - schema version via `PRAGMA user_version` (04-data-storage §7)
 - provider records additive-evolved; per-provider extension fields land in `config_json`
 - unknown future protocol values should not crash older app versions (ignore/disable with warning)
+- an unknown or legacy `apiStyle` remains editable: the provider editor uses
+  `chat_completions` as its safe UI fallback, and a subsequent save repairs the
+  stored style instead of crashing while normalizing the base URL
 
 ## 8. SQL (Rust-owned SQLite)
 

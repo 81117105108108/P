@@ -41,6 +41,7 @@ import {
 import { DEFAULT_COMMAND_TIMEOUT_MS, OAUTH_AUTH_KIND } from "@pi-desktop/shared";
 import type {
   AgentActivity,
+  AgentActivityError,
   AgentEventEnvelope,
   AgentStatus,
   AgentPromptAttachment,
@@ -95,6 +96,7 @@ import { buildSessionContext } from "./session-context.js";
 import {
   apiBindingForProviderModel,
   buildProviderModel,
+  copilotRequestHeaders,
   createProviderModels,
   DEFAULT_CONTEXT_WINDOW,
   DEFAULT_MAX_TOKENS,
@@ -130,7 +132,11 @@ import {
   openCodeEndpointFromProvider,
   withOpenCodeSessionHeaders,
 } from "./opencode-session-headers.js";
-import { providerHeadersEqual, withProviderHeaders } from "./provider-headers.js";
+import {
+  mergeProviderHeaders,
+  providerHeadersEqual,
+  withProviderHeaders,
+} from "./provider-headers.js";
 import {
   captureProviderResponse,
   classifyProviderError,
@@ -275,6 +281,9 @@ export type DelegationRecord = {
   toolCalls: number;
   lastToolName?: string;
   lastActivityAt: number;
+  /** `prompt()` / `executeApprovedPlan()` generation that started this run.
+   * Resume-after-idle only waits for the current turn's delegates (D352). */
+  startedEpoch: number;
 };
 
 function delegationSummary(record: DelegationRecord): Record<string, unknown> {
@@ -1278,6 +1287,8 @@ export class DesktopAgentRuntime {
   private overflowRecoveryAttempted = false;
   private suppressOverflowRunEnd = false;
   private turnHadError = false;
+  /** Bumped at the start of each parent `prompt()` / `executeApprovedPlan()`. */
+  private turnEpoch = 0;
   private compactionAbort?: AbortController;
   private compactionInProgress = false;
   /** Set by the `new_context` tool, consumed at the next turn boundary. */
@@ -1427,7 +1438,10 @@ Delegation rules:
               sessionId: this.sessionId,
             },
           ),
-          this.provider.headers,
+          mergeProviderHeaders(
+            copilotRequestHeaders(this.provider, context),
+            this.provider.headers,
+          ),
         );
         return createProviderRetryStream(
           m,
@@ -1444,6 +1458,7 @@ Delegation rules:
                 since: Date.now(),
                 attempt,
                 retryDelayMs: delayMs,
+                error: this.retryActivityError(error),
               });
               logTiming("model", {
                 model: this.provider.modelId,
@@ -2932,9 +2947,10 @@ Delegation rules:
         // immediately with a delegation id, and TaskWait converges later.
         const delegationId = randomUUID();
         const controller = new AbortController();
-        // Only TaskStop, user Stop, and dispose abort a delegate (D328). The
-        // Task tool call returns immediately; tying the background run to that
-        // call's signal would kill it when the parent loop idled.
+        // Only TaskStop, user Stop, dispose, and a parent fatal error abort a
+        // delegate (D328 / D352). The Task tool call returns immediately; tying
+        // the background run to that call's signal would kill it when the parent
+        // loop idled.
         const abortSignal = controller.signal;
         let resolveCompletion: () => void = () => {};
         const completion = new Promise<void>((resolve) => {
@@ -2952,6 +2968,7 @@ Delegation rules:
           turns: 0,
           toolCalls: 0,
           lastActivityAt: startedAt,
+          startedEpoch: this.turnEpoch,
         };
         this.delegations.set(delegationId, record);
         const scopedTools = this.scopeDelegateTools(tools, definition);
@@ -3103,11 +3120,42 @@ Delegation rules:
     );
   }
 
-  /** Abort every running delegation (user Stop, dispose, not parent idle). */
+  /** Abort every running delegation (user Stop, dispose, parent fatal error). */
   private abortRunningDelegations(): void {
     for (const record of this.runningDelegations()) {
       record.abort();
     }
+  }
+
+  private currentTurnDelegations(): DelegationRecord[] {
+    return this.runningDelegations().filter(
+      (record) => record.startedEpoch === this.turnEpoch,
+    );
+  }
+
+  private abortDelegationsFromPreviousTurns(): void {
+    for (const record of this.runningDelegations()) {
+      if (record.startedEpoch !== this.turnEpoch) record.abort();
+    }
+  }
+
+  /**
+   * Parent fatal error: abort leftover delegates so the session can go idle
+   * and Continue is not rejected as `AGENT_BUSY` (D352).
+   */
+  private terminateParentTurn(): void {
+    this.turnHadError = true;
+    this.abortRunningDelegations();
+    this.clearAgentActivity();
+  }
+
+  /** D328 keeps the turn open on parent idle, not on a fatal parent error. */
+  private keepTurnOpenForDelegates(): boolean {
+    return (
+      this.runningDelegations().length > 0 &&
+      !this.runCancelled &&
+      !this.turnHadError
+    );
   }
 
   private noteDelegationActivity(
@@ -3129,22 +3177,38 @@ Delegation rules:
   /**
    * Keep the parent turn open until running delegates finish, then feed their
    * reports back so the main agent can continue (D328). User Stop / dispose
-   * set `runCancelled` and abort the delegates instead.
+   * set `runCancelled` and abort the delegates instead. A parent fatal error
+   * aborts leftover delegates and returns without a resume prompt (D352).
    */
   private async resumeAfterDelegations(): Promise<void> {
+    if (this.disposed || this.runCancelled || this.turnHadError) {
+      if (this.turnHadError) this.terminateParentTurn();
+      return;
+    }
+    const epoch = this.turnEpoch;
     while (
       !this.disposed &&
       !this.runCancelled &&
-      this.runningDelegations().length > 0
+      !this.turnHadError &&
+      epoch === this.turnEpoch &&
+      this.currentTurnDelegations().length > 0
     ) {
-      const targets = this.runningDelegations();
+      const targets = this.currentTurnDelegations();
       this.setAgentActivity({
         phase: "waiting-subagents",
         since: Date.now(),
         subagentCount: targets.length,
       });
       await this.waitForDelegations(targets, targets.length, null);
-      if (this.disposed || this.runCancelled) return;
+      if (
+        this.disposed ||
+        this.runCancelled ||
+        this.turnHadError ||
+        epoch !== this.turnEpoch
+      ) {
+        if (this.turnHadError) this.terminateParentTurn();
+        return;
+      }
       const settled = targets.filter((record) => record.status !== "running");
       if (settled.length === 0) return;
       const results = settled.map((record) => ({
@@ -3154,7 +3218,7 @@ Delegation rules:
         report:
           record.result?.report ?? `(${record.status} without a report)`,
       }));
-      const still = this.runningDelegations();
+      const still = this.currentTurnDelegations();
       const heartbeat =
         still.length > 0
           ? `Still running:\n${still.map(formatDelegationHeartbeat).join("\n")}`
@@ -3170,6 +3234,10 @@ Delegation rules:
       await this.agent.prompt(text);
       await this.agent.waitForIdle();
       if (!(await this.runPendingRecoveries())) return;
+      if (this.turnHadError || epoch !== this.turnEpoch) {
+        if (this.turnHadError) this.terminateParentTurn();
+        return;
+      }
     }
   }
 
@@ -3764,6 +3832,23 @@ Delegation rules:
     this.emit({ type: "status", status: this.getStatus() });
   }
 
+  private retryActivityError(
+    error: ReturnType<typeof classifyAgentError>,
+  ): AgentActivityError {
+    const detailStatus = isRecord(error.details)
+      ? error.details.providerStatus
+      : undefined;
+    const providerStatus =
+      typeof detailStatus === "number"
+        ? detailStatus
+        : this.providerResponseStatus;
+    return {
+      code: error.code,
+      message: error.message,
+      ...(typeof providerStatus === "number" ? { providerStatus } : {}),
+    };
+  }
+
   private clearAgentActivity(): void {
     if (!this.agentActivity) return;
     this.agentActivity = undefined;
@@ -3903,6 +3988,13 @@ Delegation rules:
               undefined,
               this.providerRetryHeaders,
             );
+      this.setAgentActivity({
+        phase: "retrying",
+        since: Date.now(),
+        attempt: retryAttempt,
+        retryDelayMs: delayMs,
+        error: this.retryActivityError(retryError),
+      });
       await delayWithAbort(delayMs, this.providerRetryAbort.signal);
       if (this.disposed) throw new Error("runtime disposed");
       // The failed attempt has already finished. Only its lifecycle events
@@ -3985,7 +4077,7 @@ Delegation rules:
         "active_turn",
       );
       if (!compacted) {
-        this.clearAgentActivity();
+        this.terminateParentTurn();
         this.emit({
           type: "error",
           error: {
@@ -5193,7 +5285,7 @@ Delegation rules:
             this.pendingOverflow = true;
             this.suppressOverflowRunEnd = true;
           } else if (diagnosticError) {
-            this.clearAgentActivity();
+            this.terminateParentTurn();
             this.emit({ type: "error", error: diagnosticError });
           }
         }
@@ -5252,7 +5344,7 @@ Delegation rules:
           this.suppressOverflowRunEnd ||
           this.suppressProviderRetryRunEnd ||
           this.suppressSilentTurnRunEnd ||
-          (this.runningDelegations().length > 0 && !this.runCancelled)
+          this.keepTurnOpenForDelegates()
         )
           break;
         const subagentUsage = this.turnSubagentUsage;
@@ -5267,7 +5359,7 @@ Delegation rules:
           this.suppressOverflowRunEnd ||
           this.suppressProviderRetryRunEnd ||
           this.suppressSilentTurnRunEnd ||
-          (this.runningDelegations().length > 0 && !this.runCancelled)
+          this.keepTurnOpenForDelegates()
         )
           break;
         this.clearAgentActivity();
@@ -5308,9 +5400,8 @@ Delegation rules:
           : {}),
       },
     };
-    this.turnHadError = true;
+    this.terminateParentTurn();
     this.finalizeCurrentAssistant("error", error);
-    this.clearAgentActivity();
     this.emit({ type: "error", error });
   }
 
@@ -5382,7 +5473,7 @@ Delegation rules:
     this.agent.state.messages = buildSessionContext(
       this.entriesWithCompaction(),
     ).messages;
-    this.turnHadError = true;
+    this.terminateParentTurn();
     this.finalizeCurrentAssistant("error", error);
     this.emit({ type: "error", error });
   }
@@ -5422,6 +5513,8 @@ Delegation rules:
     this.gracefulStopRequested = false;
     this.runCancelled = false;
     this.resetRunRecoveryState();
+    this.turnEpoch += 1;
+    this.abortDelegationsFromPreviousTurns();
     this.currentAssistant = undefined;
     this.requestStartedAt = Date.now();
     this.setMode("agent");
@@ -5470,6 +5563,10 @@ Delegation rules:
     // hits a retriable stream failure, or comes back silent must not end as a
     // run with no end events at all.
     if (!(await this.runPendingRecoveries())) return { turnId: this.turnId };
+    if (this.turnHadError) {
+      this.terminateParentTurn();
+      return { turnId: this.turnId };
+    }
     await this.resumeAfterDelegations();
     return { turnId: this.turnId };
   }
@@ -5491,6 +5588,8 @@ Delegation rules:
     this.pathInstructionClaims.clear();
     this.pendingUserMessageId = userMessageId;
     this.resetRunRecoveryState();
+    this.turnEpoch += 1;
+    this.abortDelegationsFromPreviousTurns();
     this.requestStartedAt = Date.now();
     this.setAgentActivity({ phase: "starting", since: Date.now() });
     try {
@@ -5528,6 +5627,10 @@ Delegation rules:
       await this.agent.waitForIdle();
 
       if (!(await this.runPendingRecoveries())) return { turnId: this.turnId };
+      if (this.turnHadError) {
+        this.terminateParentTurn();
+        return { turnId: this.turnId };
+      }
       await this.resumeAfterDelegations();
     } catch (err) {
       const classifiedError = classifyAgentError(err);
@@ -5541,6 +5644,7 @@ Delegation rules:
                 ? Math.max(0, Date.now() - this.requestStartedAt)
                 : undefined,
             );
+      this.terminateParentTurn();
       this.finalizeCurrentAssistant(
         classifiedError.code === "TURN_ABORTED" ? "aborted" : "error",
         classifiedError.code === "TURN_ABORTED" ? undefined : diagnosticError,
@@ -5577,8 +5681,8 @@ Delegation rules:
       isRunning:
         this.agent.state.isStreaming ||
         this.compactionInProgress ||
-        this.runningDelegations().length > 0 ||
-        this.agentActivity !== undefined,
+        this.agentActivity !== undefined ||
+        (!this.turnHadError && this.runningDelegations().length > 0),
       currentTurnId: this.turnId,
       modelId: this.provider.modelId,
       pendingToolConfirmations: 0,

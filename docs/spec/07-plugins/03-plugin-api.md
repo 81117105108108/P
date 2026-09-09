@@ -102,6 +102,16 @@ the banner without changing the durable task notification inbox.
 pi.workspace.get(): Promise<{ path: string; name: string } | null>
 
 pi.fs.readText(pathFromRoot: string): Promise<string>
+pi.fs.stat(pathFromRoot: string, grantId?: string): Promise<{
+  size: number;
+  mtimeMs: number;
+}>
+pi.fs.readRange(
+  pathFromRoot: string,
+  byteOffset: number,
+  length: number,
+  grantId?: string,
+): Promise<{ bytes: Uint8Array; totalSize: number }>
 pi.fs.readPreview(pathFromRoot: string): Promise<{
   kind: "text" | "image" | "binary" | "tooLarge"
   content?: string     // UTF-8 when kind is "text"
@@ -117,6 +127,7 @@ pi.fs.list(pathFromRoot: string): Promise<Array<{
   path: string;        // root-relative, usable directly with readText / list
   isDirectory: boolean;
   size?: number;       // files only
+  mtimeMs?: number;    // files only; Unix epoch milliseconds
 }>>
 pi.fs.remove(pathFromRoot: string): Promise<void>
 pi.fs.requestDirectory(): Promise<{ path: string; name: string } | null>
@@ -136,6 +147,14 @@ host audits the operation and never accepts an absolute path from the plugin.
 manager and selects it when the platform supports that behavior. It uses the
 same `fs.read` checks, rejects directories, and audits both success and failure.
 The plugin receives and supplies only the root-relative path.
+
+`fs.stat` returns the size and modification time of one existing readable file
+without loading its contents. `fs.readRange` returns at most 8 MiB of bytes and
+the total file size. Both use the same root, symlink, protected-path, deny-list,
+scope, consent, and audit gates as `fs.readText`; offsets and lengths are
+non-negative safe integers. An offset at or beyond EOF returns an empty byte
+array. A `grantId` is only valid for a host-issued dropped-file grant and then
+requires the matching absolute path.
 
 Paths are relative to the mode's root — the workspace, or the directory the user
 picked through `requestDirectory()` when the mode declares
@@ -300,16 +319,15 @@ storage, target, and network-interception methods fail with
 `PERMISSION_DENIED`. Session identity for agent calls comes from the in-flight
 `plugins.execute` `sessionId`, not from plugin arguments (D333 / ADR 0170).
 
-`getHistory` returns newest-first entries captured by the host while the app is
-running, with text and images interleaved in capture order. The first clipboard
-sample after startup establishes a baseline and is not added; content written
-through `writeText` is captured immediately. Consecutive identical content is
-collapsed and refreshes its timestamp. History is in-memory only and is
-bounded to 30 days, 500 entries, and 256 MiB total payload; individual entries
-are limited to 100 KiB of UTF-8 text or 50 MiB of image bytes. Images are
-returned as PNG bytes with their pixel dimensions, regardless of the source OS
-clipboard representation. The host samples for changes because Electron has
-no cross-platform clipboard-changed event.
+`getHistory` returns newest-first entries explicitly recorded by the host, with
+text and images interleaved in capture order. Content written through
+`writeText` and content supplied by the Composer's user-initiated `paste` event
+are recorded; the host does not poll or reread the OS clipboard in the
+background. Consecutive identical content is collapsed and refreshes its
+timestamp. History is in-memory only and is bounded to 30 days, 500 entries,
+and 256 MiB total payload; individual entries are limited to 100 KiB of UTF-8
+text or 50 MiB of image bytes. Images are returned as PNG bytes with their
+pixel dimensions. A copy that is never pasted is intentionally not captured.
 
 ### services (requires `background.service`)
 ```ts
@@ -437,7 +455,7 @@ The host-owned preload forwards only fixed channels to the plugin runtime:
 | `ui.getNotificationPermission`, `ui.requestNotificationPermission`, `ui.showNativeNotification` | `notify` |
 | `plugin.getSettings`, `workspace.get`, `app.getAppearance` | None |
 | `models.list` | `models.list` |
-| `fs.readText`, `fs.readPreview`, `fs.openDefault`, `fs.reveal`, `fs.glob`, `fs.list` | `fs.read` |
+| `fs.readText`, `fs.stat`, `fs.readRange`, `fs.readPreview`, `fs.openDefault`, `fs.reveal`, `fs.glob`, `fs.list` | `fs.read` |
 | `fs.writeText` | `fs.write` |
 | `clipboard.readText`, `clipboard.getHistory` | `clipboard.read` |
 | `clipboard.writeText` | `clipboard.write` |
@@ -467,7 +485,7 @@ Delivered today:
 Any of the following calls must be logged for audit:
 
 - fs.writeText
-- fs.remove, fs.requestDirectory, and every refused fs call (with its path and
+- fs.stat, fs.readRange, fs.remove, fs.requestDirectory, and every refused fs call (with its path and
   `errorCode`), plus each consent answer and why it was asked (`scope` / `rate`)
 - fs.openDefault (with its root-relative path and whether the OS open succeeded)
 - fs.reveal (with its root-relative path and whether the file manager reveal succeeded)
@@ -504,7 +522,7 @@ Log fields:
 The desktop plugin runtime now implements the MVP host API surface used by local and marketplace plugins:
 
 - `app.*`, `plugin.*`, `commands.*`, `ui.*`, `workspace.*`
-- `fs.readText` / `fs.readPreview` / `fs.openDefault` / `fs.reveal` /
+- `fs.readText` / `fs.stat` / `fs.readRange` / `fs.readPreview` / `fs.openDefault` / `fs.reveal` /
   `fs.writeText` / `fs.glob` / `fs.list` / `fs.remove` / `fs.requestDirectory`,
   bounded by `manifest.fs` (ADR 0088)
 - `agent.registerTool` / `unregisterTool` / `agent.complete`

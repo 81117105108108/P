@@ -23,7 +23,7 @@ import {
   type ThinkingLevel,
 } from "@pi-desktop/shared";
 import { Button, Field, Input, cx } from "../ui";
-import { IconClose, IconHelp, IconPlus, IconSearch } from "../icons";
+import { IconClose, IconHelp, IconPlus, IconRefresh, IconSearch } from "../icons";
 import { describeModelsFetchError } from "./model-fetch-error";
 import type { ProviderModelsState } from "./useProviderModels";
 
@@ -138,13 +138,43 @@ export function useModelSelection(
   return { rows, models, publishedLevelsById, bindingsToPersist, setModels };
 }
 
+/**
+ * Add or drop every currently visible row in one step.
+ *
+ * The search box is a view over the live list, so "all" means the rows on
+ * screen: a filtered select-all does not touch hidden matches, and a filtered
+ * clear does not drop models that are still chosen off-screen. Already-chosen
+ * bindings keep their advanced overrides.
+ */
+export function applyVisibleModelSelection(
+  current: ModelBinding[],
+  visibleRows: ModelRow[],
+  select: boolean,
+): ModelBinding[] {
+  const visibleIds = new Set(visibleRows.map((row) => row.id.toLowerCase()));
+  if (!select) {
+    return current.filter((binding) => !visibleIds.has(binding.id.toLowerCase()));
+  }
+  const selected = new Set(current.map((binding) => binding.id.toLowerCase()));
+  const additions: ModelBinding[] = [];
+  for (const row of visibleRows) {
+    if (selected.has(row.id.toLowerCase())) continue;
+    additions.push(
+      row.info ? bindingFromModelInfo(row.info) : bindingForCustomModel(row.id),
+    );
+  }
+  return additions.length === 0 ? current : [...current, ...additions];
+}
+
 export type ModelSelectionPanesProps = {
-  discovery: ProviderModelsState;
+  discovery: ProviderModelsState & { canReload?: boolean };
   selection: ModelSelection;
   /** Heading of the discovered list: a service's models, or an account's. */
   listTitle: string;
   /** True while the caller saves, so the picker stops accepting input. */
   busy?: boolean;
+  /** Probe the service's model list now, skipping the edit debounce. */
+  onReload?: () => void;
 };
 
 /**
@@ -157,6 +187,7 @@ export function ModelSelectionPanes({
   selection,
   listTitle,
   busy = false,
+  onReload,
 }: ModelSelectionPanesProps) {
   const { t } = useTranslation();
   const { rows, models, publishedLevelsById, setModels } = selection;
@@ -181,6 +212,14 @@ export function ModelSelectionPanes({
     () => new Set(models.map((binding) => binding.id.toLowerCase())),
     [models],
   );
+  const visibleSelectedCount = useMemo(
+    () => visibleRows.filter((row) => selected.has(row.id.toLowerCase())).length,
+    [selected, visibleRows],
+  );
+  const allVisibleSelected =
+    visibleRows.length > 0 && visibleSelectedCount === visibleRows.length;
+  const someVisibleSelected =
+    visibleSelectedCount > 0 && visibleSelectedCount < visibleRows.length;
 
   // Published records for the chosen rows, so the capability switches can show
   // what models.dev says before the user overrides it.
@@ -203,6 +242,9 @@ export function ModelSelectionPanes({
         row.info ? bindingFromModelInfo(row.info) : bindingForCustomModel(row.id),
       ];
     });
+
+  const toggleVisibleModels = (select: boolean) =>
+    setModels((current) => applyVisibleModelSelection(current, visibleRows, select));
 
   const updateBinding = (id: string, update: Partial<ModelBinding>) =>
     setModels((current) =>
@@ -274,10 +316,47 @@ export function ModelSelectionPanes({
     <div className="provider-setup-panes">
       <div className="provider-models">
         <div className="provider-models-head">
-          <h4 className="provider-models-title">{listTitle}</h4>
-          {discovery.status === "loading" ? (
-            <span className="provider-models-state">{t("settings.modelsLoading")}</span>
-          ) : null}
+          <div className="provider-models-heading">
+            {visibleRows.length > 0 ? (
+              <input
+                type="checkbox"
+                className="provider-models-check provider-models-select-all"
+                checked={allVisibleSelected}
+                disabled={busy}
+                ref={(el) => {
+                  if (el) el.indeterminate = someVisibleSelected;
+                }}
+                aria-label={
+                  allVisibleSelected
+                    ? t("settings.deselectAllVisibleModels")
+                    : t("settings.selectAllVisibleModels")
+                }
+                title={
+                  allVisibleSelected
+                    ? t("settings.deselectAllVisibleModels")
+                    : t("settings.selectAllVisibleModels")
+                }
+                onChange={(event) => toggleVisibleModels(event.target.checked)}
+              />
+            ) : null}
+            <h4 className="provider-models-title">{listTitle}</h4>
+            {onReload ? (
+              <button
+                type="button"
+                className={cx(
+                  "provider-models-reload",
+                  discovery.status === "loading" && "is-loading",
+                )}
+                disabled={busy || !discovery.canReload}
+                onClick={onReload}
+              >
+                <IconRefresh size={13} aria-hidden />
+                {discovery.status === "loading"
+                  ? t("settings.modelsLoading")
+                  : t("settings.fetchModelList")}
+              </button>
+            ) : null}
+          </div>
           <div className="provider-models-search-wrap">
             <IconSearch size={13} aria-hidden />
             <input

@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain, session } from "electron";
 import { pathToFileURL } from "node:url";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { isNetUrlAllowed } from "@pi-desktop/plugin-sdk";
 import {
   isPluginPanelWindowControlAction,
@@ -38,11 +38,14 @@ const PANEL_LOCAL_SCHEMES = new Set([
   "chrome-extension:",
 ]);
 
+const DROPPED_PATH_TTL_MS = 30_000;
+
 
 type BridgeHandler = (
   pluginId: string,
   channel: string,
   payload?: Record<string, unknown>,
+  context?: { droppedPath?: string },
 ) => Promise<unknown>;
 
 /** Reports an egress attempt a panel was not allowed to make. */
@@ -111,6 +114,8 @@ export class PluginPanelHost {
   private bridge: BridgeHandler;
   private onBlockedRequest?: PluginPanelBlockedRequest;
   private handlerReady = false;
+  /** Paths reported by the preload for a real drop, keyed by web contents. */
+  private pendingDrops = new Map<number, Map<string, number>>();
   /**
    * Other owners of plugin web contents that may use the panel bridge — the
    * docked work-panel views. Kept separate from `windows` so window controls
@@ -144,9 +149,22 @@ export class PluginPanelHost {
           rawPayload && typeof rawPayload === "object"
             ? (rawPayload as Record<string, unknown>)
             : undefined;
-        return this.bridge(pluginId, channel, payload);
+        const droppedPath =
+          channel === "fs.registerDropped"
+            ? this.consumeDroppedPath(event.sender.id, payload?.path)
+            : undefined;
+        return this.bridge(pluginId, channel, payload, droppedPath ? { droppedPath } : undefined);
       },
     );
+
+    ipcMain.on("pi-plugin-panel-drop", (event, rawPaths: unknown) => {
+      const pluginId = this.pluginIdForSender(event.sender.id);
+      if (!pluginId || !Array.isArray(rawPaths)) return;
+      this.recordDroppedPaths(
+        event.sender.id,
+        rawPaths.filter((value): value is string => typeof value === "string"),
+      );
+    });
 
     // Legacy sync bridge used by older sample panels.
     ipcMain.on(
@@ -196,6 +214,34 @@ export class PluginPanelHost {
       if (pluginId) return pluginId;
     }
     return null;
+  }
+
+  private recordDroppedPaths(senderId: number, paths: readonly string[]): void {
+    const now = Date.now();
+    const pending = this.pendingDrops.get(senderId) ?? new Map<string, number>();
+    for (const rawPath of paths.slice(0, 32)) {
+      if (!rawPath) continue;
+      pending.set(resolve(rawPath), now + DROPPED_PATH_TTL_MS);
+    }
+    if (pending.size) this.pendingDrops.set(senderId, pending);
+  }
+
+  private consumeDroppedPath(senderId: number, rawPath: unknown): string | null {
+    if (typeof rawPath !== "string" || !rawPath) return null;
+    const pending = this.pendingDrops.get(senderId);
+    if (!pending) return null;
+    const now = Date.now();
+    for (const [path, expiresAt] of pending) {
+      if (expiresAt <= now) pending.delete(path);
+    }
+    const path = resolve(rawPath);
+    if (!pending.has(path)) {
+      if (!pending.size) this.pendingDrops.delete(senderId);
+      return null;
+    }
+    pending.delete(path);
+    if (!pending.size) this.pendingDrops.delete(senderId);
+    return path;
   }
 
   /**
@@ -307,6 +353,7 @@ export class PluginPanelHost {
     win.webContents.on("did-finish-load", sendWindowState);
 
     win.on("closed", () => {
+      this.pendingDrops.delete(win.webContents.id);
       this.windows.delete(request.pluginId);
     });
 

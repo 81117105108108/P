@@ -61,6 +61,23 @@ request. It does not cancel an active provider stream or running tool. An idle
 runtime returns `{ requested: false }`; immediate `abort()` remains the
 separate cancellation path.
 
+### 4.1 Session title summarization
+
+The renderer applies a short first-prompt fallback immediately so sending a
+prompt never waits on title generation. After the first turn emits `agent_end`,
+Electron main resolves the session's effective provider/model and invokes the
+runtime's `summarizeSessionTitle` one-shot path with thinking disabled. The
+runtime supplies the initial user prompt and an optional assistant reply,
+returns only sanitized title text, and treats an empty/failing completion as a
+non-fatal result. The renderer persists a successful title through the existing
+`session.rename` path.
+
+The renderer also persists a `manualTitle` marker in its local session metadata.
+Automatic summarization is skipped for that marker and for any persisted title
+that is neither a recognized default nor the deterministic first-prompt
+fallback, which protects manual and already-summarized titles after restart.
+No host RPC or storage schema change is required.
+
 ## 5. Prompt flow
 
 1. load the durable session and reject a missing session
@@ -174,8 +191,10 @@ state are untouched: the failed assistant is removed from the next model context
 and the same visible message id is reused, so a retry never restarts the turn or
 re-runs a completed tool call.
 Each retry is abortable and reports its current backoff through the normalized
-status event. The main session, builtin subagents, and one-shot composer
-enhancement use the same codes, budget size, and precedence.
+status event. The `retrying` activity carries the classified error code, the
+bounded/redacted provider message, and the HTTP status when known. The main
+session, builtin subagents, and one-shot composer enhancement use the same
+codes, budget size, and precedence.
 
 When the 429 budget is exhausted, the final assistant error and lifecycle
 `error` are emitted once. Provider failures carry bounded diagnostics in
@@ -618,8 +637,11 @@ runtime swallows that `agent_end`, keeps the durable turn open, waits for the
 delegates, and prompts the parent with their reports. Ending the parent loop
 does not abort them.
 
-Fatal provider/stream errors, parent aborts, and explicit `maxTurns` retain
-their existing `failed`, `aborted`, and `truncated` outcomes.
+Fatal provider/stream errors (including exhausted HTTP 429), parent aborts,
+and explicit `maxTurns` retain their existing `failed`, `aborted`, and
+`truncated` outcomes. A terminal parent error also aborts leftover delegates,
+skips the resume prompt, and returns the session to idle so Continue is not
+`AGENT_BUSY` (D352).
 
 **Model pins.** `model: <provider>/<model>` in the frontmatter is resolved once
 per launch in Electron main, where credentials and the models.dev snapshot live, against
@@ -641,8 +663,9 @@ exists to avoid.
 **Turn ownership.** A delegate's lifecycle never reaches Electron main's turn
 handling. The parent may keep working or talk to the user after `Task`. If it
 stops calling tools while delegates still run, the runtime keeps the durable
-turn open and delivers the reports when they finish. Only user Stop, `TaskStop`,
-or runtime dispose aborts a still-running delegate.
+turn open and delivers the reports when they finish. User Stop, `TaskStop`,
+runtime dispose, or a parent fatal error (D352) abort a still-running
+delegate.
 
 ### 5f.1 Delegate permission scope (ADR 0089)
 

@@ -949,7 +949,7 @@ Linux 保留淡入淡出和滑动退出。
 
 ### 11. 8 Toast
 
-完整的组件合同和使用规则：[08-component-spec.md §17](/zh-CN/spec/04-ux/08-component-spec#17-toast)。
+完整的组件合同和使用规则：[08-component-spec.md §17](/zh-CN/spec/04-ux/08-component-spec#_17-toast)。
 
 | 财产 | 价值 |
 |---|---|

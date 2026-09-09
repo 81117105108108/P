@@ -78,6 +78,15 @@ emit `x-opencode-session`. Each provider row (AI service or OAuth account)
 may set optional `headers`; empty keeps adapter defaults. A fetch wrapper is
 the last writer so Codex and Anthropic cannot overwrite them.
 
+When an OAuth vendor is rebuilt around a local provider-row id, runtime keeps
+the native pi-ai transport metadata instead of treating the row as a generic
+OpenAI endpoint. GitHub Copilot requests retain the pinned model's IDE identity
+headers, including `Editor-Version`, `Editor-Plugin-Version`, and
+`Copilot-Integration-Id`; agent-runtime adds the context-sensitive
+`X-Initiator`, `Openai-Intent`, and image-request header. The local row id still
+owns auth binding and transcript identity, and user-supplied provider headers
+remain the final override.
+
 Zhipu / GLM and Z.AI are named OpenAI-compatible endpoint presets among a
 short models.dev-backed Service list of first-party vendors (including
 Xiaomi). The add-provider Service picker persists the matching models.dev
@@ -446,8 +455,10 @@ type ModelDescriptor = {
 - Settings → Import can copy provider/model rows from Claude Code, Codex,
   OpenCode, Pi, and CC Switch. The scan is explicit. Stored API keys are
   copied into the host secret store; OAuth/subscription grants are not.
-  An equivalent endpoint (normalized URL + API style) is skipped on
-  re-import. No protocol or schema version bump (D342 / ADR 0179).
+  An equivalent provider (normalized URL + API style + same credential) is
+  skipped on re-import. Different credentials at one endpoint remain
+  independent providers. No protocol or schema version bump
+  (D342 / ADR 0179 / ADR 0188).
 
 ### Model selector
 - search all models across enabled providers

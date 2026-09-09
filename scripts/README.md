@@ -21,7 +21,7 @@ disagrees, so a green `check:release-docs` is a precondition, not a substitute.
 
 | Script | Alias | Purpose |
 |---|---|---|
-| `release-macos.sh` | `scripts/release-macos.sh` | Signed, and with Apple credentials notarized, local native macOS lane. Defaults to the host architecture; `MAC_ARCH=arm64` or `MAC_ARCH=x64` must match the host. Injects `MAC_SIGNING_IDENTITY` through `-c.mac.identity` because the static electron-builder config stays `identity: null` |
+| `release-macos.sh` | `scripts/release-macos.sh` | Signed and notarized local native macOS release lane. Requires `MAC_SIGNING_IDENTITY` and Apple notarization credentials; local package and distribution lanes remain unsigned when no signing identity is configured. |
 | `export-linux-asar.mjs` | `node scripts/export-linux-asar.mjs` | Copy the Linux `linux-unpacked/resources/app.asar` into the versioned release asset used for system-Electron repackaging |
 | `check-linux-host-glibc.mjs` | `node scripts/check-linux-host-glibc.mjs [bin]` | Fail a Linux host-core binary whose needed glibc is above 2.35 |
 | `make-icon.py` | `python3 scripts/make-icon.py` | Derive the package PNG, the macOS tray template, and the iconset/ICNS from the canonical PNG |
@@ -68,5 +68,7 @@ job uses Ubuntu 22.04 so host-core stays on glibc 2.35, then
 `scripts/check-linux-host-glibc.mjs` refuses a binary that needs a newer
 glibc. The Linux runner also exports the exact app.asar from `linux-unpacked`
 as a versioned release asset; the macOS matrix covers arm64 and Intel x64 and
-the publish job assembles the GitHub Release. See the
-[release runbook](../docs/spec/06-delivery/06-release-runbook.md).
+the publish job assembles the GitHub Release. The release workflow defaults to
+unsigned macOS artifacts; manually dispatch it with `sign_macos: true` to opt
+into signing and notarization. See the [release
+runbook](../docs/spec/06-delivery/06-release-runbook.md).

@@ -10,6 +10,8 @@ import type {
   AgentPromptResponse,
   PromptEnhancementRequest,
   PromptEnhancementResponse,
+  SessionSummarizeTitleRequest,
+  SessionSummarizeTitleResponse,
   AgentStopResponse,
   AgentStatus,
   AskToolResolution,
@@ -301,8 +303,10 @@ export const api = {
   showNativeNotification: (input: {
     id: string;
     sessionId: string;
+    kind: "task" | "interactive";
     title: string;
     body: string;
+    source?: "task" | "interactive";
   }) => invoke<{ shown: boolean }>(IPC.invoke.notificationShowNative, input),
   setNotificationViewingSession: (sessionId: string | null) =>
     invoke<{ ok: boolean }>(IPC.invoke.notificationSetViewingSession, {
@@ -338,6 +342,8 @@ export const api = {
     invoke<{ ok: boolean; path: string }>(IPC.invoke.projectOpenFolder, path),
   renameSession: (id: string, title: string) =>
     invoke<{ ok: boolean }>(IPC.invoke.sessionRename, id, title),
+  summarizeSessionTitle: (req: SessionSummarizeTitleRequest) =>
+    invoke<SessionSummarizeTitleResponse>(IPC.invoke.sessionSummarizeTitle, req),
   configureSession: (
     id: string,
     config: Pick<SessionSummary, "mode" | "providerId" | "modelId"> &
@@ -463,6 +469,8 @@ export const api = {
       sessionId,
       files,
     }),
+  recordClipboardPaste: (text: string) =>
+    invoke<{ ok: boolean }>(IPC.invoke.clipboardRecordPaste, { text }),
   clearProject: () => invoke(IPC.invoke.projectClear),
   setProject: (path: string) =>
     invoke<{ workspace: ProjectWorkspace | null }>(IPC.invoke.projectSet, path),

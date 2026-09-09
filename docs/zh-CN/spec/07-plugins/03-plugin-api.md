@@ -269,12 +269,11 @@ pi.browser.cdp(input: { method: string; params?: unknown }): Promise<unknown>
 `cdp` 默认拒绝；cookie、storage、target 和网络拦截方法以 `PERMISSION_DENIED` 失败。
 代理调用的会话身份来自进行中的 `plugins.execute` `sessionId`，而不是插件参数（D333 / ADR 0170）。
 
-`getHistory` 返回主机在应用运行期间捕获的条目，按最新优先排列，文本和图片按捕获
-时间混排。启动后的第一次采样只建立基线，不会把启动前的内容加入历史；通过
-`writeText` 写入的内容会立即记录。连续相同内容会合并并刷新时间戳。历史只保留在
+`getHistory` 返回由主机明确记录的条目，按最新优先排列，文本和图片按捕获时间混排。
+通过 `writeText` 写入的内容，以及 Composer 用户主动粘贴事件提供的内容会被记录；主机
+不会在后台轮询或重新读取系统剪贴板。连续相同内容会合并并刷新时间戳。历史只保留在
 内存中，最多保留 30 天、500 条和 256 MiB；单条文本最多 100 KiB UTF-8 字节，图片
-最多 50 MiB。图片统一返回 PNG 字节及像素尺寸。Electron 没有跨平台的剪贴板变化事件，
-因此由主机在运行期间采样。
+最多 50 MiB。图片统一返回 PNG 字节及像素尺寸。没有粘贴过的复制内容不会被记录。
 
 ### 服务（需要 `background.service`）
 ```ts

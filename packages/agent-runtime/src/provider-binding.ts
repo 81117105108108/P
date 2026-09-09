@@ -11,17 +11,23 @@ import {
   createModels,
   createProvider,
   type Api,
+  type Context,
   type Model,
   type ModelAuth,
   type Models,
   type ProviderStreams,
 } from "@earendil-works/pi-ai";
+import {
+  buildCopilotDynamicHeaders,
+  hasCopilotVisionInput,
+} from "@earendil-works/pi-ai/api/github-copilot-headers";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
 import { openAICodexResponsesApi } from "@earendil-works/pi-ai/api/openai-codex-responses.lazy";
 import { anthropicMessagesApi } from "@earendil-works/pi-ai/api/anthropic-messages.lazy";
 import { googleGenerativeAIApi } from "@earendil-works/pi-ai/api/google-generative-ai.lazy";
 import { piMessagesApi } from "@earendil-works/pi-ai/api/pi-messages.lazy";
+import { GITHUB_COPILOT_MODELS } from "@earendil-works/pi-ai/providers/github-copilot.models";
 import {
   OPENCODE_GO_API_STYLE,
   OPENCODE_GO_BASE_URL,
@@ -153,6 +159,38 @@ export function apiBindingForProviderModel(provider: RuntimeProviderConfig): Api
   return apiBindingForStyle(resolveApiStyle(provider.modelConfig?.api) ?? provider.apiStyle);
 }
 
+/**
+ * The desktop stores OAuth accounts under local row UUIDs, while pi-ai's
+ * native Copilot model records carry the required client identity headers.
+ * Preserve those transport defaults without changing the row identity used by
+ * auth binding and transcript ownership.
+ */
+function nativeCopilotHeaders(modelId: string): Record<string, string> | undefined {
+  const model = modelId
+    ? (GITHUB_COPILOT_MODELS as Record<string, Model<Api> | undefined>)[modelId]
+    : undefined;
+  if (model?.headers) return model.headers;
+
+  // A model returned by models.dev or a user's Copilot entitlement may not be
+  // present in pi-ai's pinned built-in catalog. Its transport still requires
+  // the same client identity headers as every other Copilot model.
+  return Object.values(GITHUB_COPILOT_MODELS).find((entry) => entry.headers)?.headers;
+}
+
+/** Add Copilot's request-context headers while retaining the local row id. */
+export function copilotRequestHeaders(
+  provider: Pick<RuntimeProviderConfig, "vendorKey">,
+  context: Pick<Context, "messages">,
+): Record<string, string> | undefined {
+  if (provider.vendorKey?.trim().toLowerCase() !== "github-copilot") {
+    return undefined;
+  }
+  return buildCopilotDynamicHeaders({
+    messages: context.messages,
+    hasImages: hasCopilotVisionInput(context.messages),
+  });
+}
+
 export function buildProviderModel(
   provider: RuntimeProviderConfig,
 ): Model<Api> {
@@ -169,6 +207,14 @@ export function buildProviderModel(
     vendorKey: provider.vendorKey,
     baseUrl,
   });
+  const copilotDefaults =
+    provider.vendorKey?.trim().toLowerCase() === "github-copilot"
+      ? nativeCopilotHeaders(provider.modelId)
+      : undefined;
+  const modelHeaders = {
+    ...(copilotDefaults ?? {}),
+    ...(catalogModel.headers ?? {}),
+  };
   // OpenAI-compatible gateways are not guaranteed to implement the newer
   // `developer` role, even when the selected model supports reasoning. Keep
   // the broadest Chat Completions wire shape as the default; a catalog/model
@@ -190,6 +236,7 @@ export function buildProviderModel(
     provider: provider.id,
     baseUrl,
     ...(compat ? { compat } : {}),
+    ...(Object.keys(modelHeaders).length > 0 ? { headers: modelHeaders } : {}),
   } as Model<Api>;
 }
 

@@ -93,7 +93,7 @@ test("expanded live tool output stays local to the changed row", () => {
   assert.match(transcript, /const \[open, setOpen\] = useState\(failed\);/);
   assert.match(
     transcript,
-    /const blocks =\s*open && hasDetails\s*\?\s*buildToolPresentation\(/,
+    /const blocks =\s*variant !== "topology" && open && hasDetails\s*\?\s*buildToolPresentation\(/,
   );
 });
 

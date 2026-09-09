@@ -135,7 +135,7 @@
 
 | 身份证号 | 主题 | 决定 | 基本原理 |
 |---|---|---|---|
-| D078 | macOS 签名通道 | **对于本地构建，静态配置保持未签名（`identity: null`）； `scripts/release-macos.sh` 注入开发者 ID + 强化运行时 + 来自 env** 的可选公证 | 贡献者无需证书即可构建；根据 06-delivery/06-release-runbook 发布标志 |
+| D078 | macOS 签名通道 | **静态配置不嵌入证书身份，因此未配置证书的本地构建保持未签名。发布通道需要 Developer ID 签名和 Apple 公证；CI 通过 Actions 密钥接收证书材料，并拒绝未装订的工件。** | 贡献者无需证书即可打包，同时已发布的 macOS 工件满足 Gatekeeper 要求。参见 06-delivery/06-release-runbook。 |
 | D079 | 应用程序图标/品牌标记 v1 | *（渲染器资源路径由 D221 细化）* **`build/icon_1024.png` 是规范的 PI-Desktop 徽标； `scripts/make-icon.py` 派生 `build/icon.icns` 而不覆盖 PNG；打包的 macOS 构建、`pnpm dev` 和渲染器 chrome 重用这些资源** | 在开发、渲染器和打包通道中保持一种视觉标识，同时防止派生脚本恢复过时的生成标记 |
 | D080 | 后台监管 | **子出口立即拒绝正在进行的 RPC；退避重新启动（0.5s→4s，每2分钟最多3次）； `hostStatus` 事件导致渲染器性能下降 UI** | 崩溃恢复，无挂起；失败是可见的，而不是沉默的 |
 | D081 | Renderer 沙箱 | **`sandbox: true` 与完全捆绑的 CJS preload；生产 CSP 删除 `unsafe-eval` 和 localhost connect-src** | Electron 安全基线；由 `test:e2e:boot` 验证 |
@@ -274,7 +274,9 @@
 
 | 身份证号 | 主题 | 决定 | 基本原理 |
 |---|---|---|---|
-| D117 | 持久任务通知收件箱 | **Rust host-core 独占拥有 schema-v6 `notifications` 表，并且仅在 Electron 报告结果尚未可见时，当 `session.endTurn` 将运行轮移至 completed/error 时，才会自动插入一个结构化 `task.completed` / `task.failed` 行。 Renderer 通过允许列表查看上下文 IPC 提供当前聊天会话；仅当其窗口为 visible/focused 并且该会话匹配时，Main 才会抑制插入，而未知、背景、隐藏或未聚焦状态无法安全通知。 `turn_id UNIQUE` 可以防止重复，中止是静默的，会话删除级联，并且只保留最新的 200 行。标题栏响铃显示准确的未读计数、All/Unread、行 mark-read/session 激活、标记所有已读以及通过完整的 keyboard/accessibility 行为进行清除。协议 v4 添加了单数 `notification.list/markRead/markAllRead/clear`； `session.endTurn` 返回插入的记录，Electron 发出渲染器 `notification.changed`，并且仅当主窗口未聚焦时，它才会显示本机系统通知，该通知单击 restores/focuses 窗口并发出 `notification.activated`。持久化行包含结构化 kind/session/turn/error 数据以及会话名称快照，从未本地化通知 title/body 散文。任务收件箱没有权限、计划提醒、偏好、云通知或插件通知源；插件本机通知是单独的 D213 表面。 D113 的个人资料页脚保持不变。** | 通知应该恢复用户没有看到的任务结果，而不是重复当前聊天中已经可见的结果。有界主机拥有的收件箱可保持 background/unfocused 结果的持久性和可导航性，而不会侵犯 SQLite 所有权、重复事件或将每个终端事件转变为通知历史记录。 |
+| D117 | 持久任务通知收件箱（本机投递条款由 D350 修订） | **Rust host-core 独占拥有 schema-v6 `notifications` 表，并且仅在 Electron 报告结果尚未可见时，当 `session.endTurn` 将运行轮移至 completed/error 时，才会自动插入一个结构化 `task.completed` / `task.failed` 行。 Renderer 通过允许列表查看上下文 IPC 提供当前聊天会话；仅当其窗口为 visible/focused 并且该会话匹配时，Main 才会抑制插入，而未知、背景、隐藏或未聚焦状态无法安全通知。 `turn_id UNIQUE` 可以防止重复，中止是静默的，会话删除级联，并且只保留最新的 200 行。标题栏响铃显示准确的未读计数、All/Unread、行 mark-read/session 激活、标记所有已读以及通过完整的 keyboard/accessibility 行为进行清除。协议 v4 添加了单数 `notification.list/markRead/markAllRead/clear`； `session.endTurn` 返回插入的记录，Electron 发出渲染器 `notification.changed`，并且仅当主窗口未聚焦时，它才会显示本机系统通知，该通知单击 restores/focuses 窗口并发出 `notification.activated`。持久化行包含结构化 kind/session/turn/error 数据以及会话名称快照，从未本地化通知 title/body 散文。任务收件箱没有权限、计划提醒、偏好、云通知或插件通知源；插件本机通知是单独的 D213 表面。 D113 的个人资料页脚保持不变。** | 通知应该恢复用户没有看到的任务结果，而不是重复当前聊天中已经可见的结果。有界主机拥有的收件箱可保持 background/unfocused 结果的持久性和可导航性，而不会侵犯 SQLite 所有权、重复事件或将每个终端事件转变为通知历史记录。 |
+
+| D350 | 按来源区分本机通知投递 | **修订 D117 / ADR 0107：渲染器在 `notification/showNative` 终端结果调用中标记 `source: "task"`，在 asktool、工具权限和 Plan 审批调用中标记 `source: "interactive"`。缺失或未知来源默认为 `task`。任务本机投递仍然仅在未聚焦时进行，包括聚焦的背景会话；交互投递仅在确切的询问会话已在聚焦窗口中可见时抑制，因此聚焦其他会话时可以收到横幅。交互询问从不创建持久任务收件箱行，插件本机通知仍使用独立的权限门控 API。不改变主机协议或存储架构版本。** | PR #84 扩展共享 handler 的门控时，使聚焦的背景终端完成也显示了本机横幅，同时实现了聚焦背景交互询问通知的目标。显式来源在同一个 Electron 边界隔离这两种用户可见策略。 |
 
 ## O. 桌面 shell 决定
 
@@ -2731,8 +2733,20 @@ D193 和 D194。
 ## 2026-09-08 —— 从本地智能体存储导入模型配置（D342）
 
 - 设置 → 导入已经能扫描会话。同一批工具还把提供商地址、模型 id 和 API 密钥写在本机配置里，用户否则要在模型页重填。
-- 增加独立的模型配置卡片：显式扫描 Claude Code / Codex / OpenCode / Pi / CC Switch，密钥留在主进程扫描缓存，通过 `providers.create` 写入。OAuth/订阅令牌不复制。等价端点跳过。D007 的禁止自动导入仍然有效。
+- 增加独立的模型配置卡片：显式扫描 Claude Code / Codex / OpenCode / Pi / CC Switch，密钥留在主进程扫描缓存，通过 `providers.create` 写入。OAuth/订阅令牌不复制。仅跳过相同归一化端点、API 风格和凭据的等价提供商；同一端点的不同凭据保持独立。D007 的禁止自动导入仍然有效（ADR 0188）。
 - 决策 D342 记录为 ADR 0179。见 `04-ux/06-settings-ia.md`、`04-ux/08-component-spec.md` §18.5 与 E2E-192。
+
+## 2026-09-08 —— 模型配置导入保留不同凭据（D351）
+
+- CC Switch 可以在同一个网关端点保存多个命名配置档案。仅按端点去重会
+  创建第一个记录，并静默跳过使用不同 API 密钥的其余档案。
+- 导入等价性现在同时比较归一化端点、API 风格和凭据。同一端点的不同密钥
+  创建独立提供商，并继续出现在 Composer 的模型菜单中；未变化的凭据仍会
+  幂等跳过。
+- Electron main 通过宿主密钥边界解析已有 API 密钥用于比较。原始值不会进入
+  渲染器、日志或提供商元数据。
+- 决策 D351 修订 D342 和 ADR 0179，记录为 ADR 0188，并由 E2E-192 覆盖。
+  不改变主机协议或存储 schema。
 
 ## 2026-09-08 —— 自定义全局文字缩放（D343）
 
@@ -2745,6 +2759,18 @@ D193 和 D194。
 - 紧凑上下文检查器原先挂在最新助手回合下方，会话一滚动就够不着。协作者同意把唯一入口移到模型选择器旁，而不是两处显示同一份数字。
 - 决策 D347：检查器放在输入框右侧工具栏、模型 × 推理芯片左侧，始终对应当前最新一条已报告用量的助手回合。触发器是圆环加百分比。弹层标题为剩余 tokens + 百分比；内部分隔线仍然禁止（D297）。答案下方的助理元只保留模型徽章。
 - 见 ADR 0184、`04-ux/08-component-spec.md` §8.3 / §11.3 与 E2E-060d。
+
+## 2026-09-08 —— 按来源区分本机通知投递（D350）
+
+- PR #84 为 asktool、工具权限和 Plan 审批询问增加本机通知时，扩大了现有
+  `showNative` handler 的范围。这也让聚焦的背景终端完成显示本机横幅，违反了
+  E2E-065。
+- 决策 D350：应用拥有的终端调用使用 `source: "task"`，仍然只在未聚焦时投递。
+  交互询问调用使用 `source: "interactive"`，仅在确切询问会话已在聚焦窗口中可见时
+  抑制，因此聚焦其他会话时可以通知。省略或未知来源默认为 `task`；交互询问仍在
+  持久任务收件箱之外，插件本机通知继续使用独立 API。
+- 决策 D350 记录为 ADR 0187。见 `03-runtime/01-ipc-protocol.md`、
+  `04-ux/08-component-spec.md`、`04-ux/09-interaction-patterns.md` 与 E2E-065a。
 
 ## 2026-09-08 —— macOS 侧边栏改用 source-list vibrancy 材质（D348）
 
@@ -2761,3 +2787,27 @@ D193 和 D194。
 - `macos-sidebar-vibrancy.test.mjs` 断言 sidebar 材质、偏好映射、设置/
   pluginChanged 路径，以及 darwin 存活窗口守卫。见
   `04-ux/08-component-spec.md` §1.7 与 US-UI-74 / E2E-076。
+
+## 2026-09-08 —— 会话标题摘要与按焦点区分的原生任务通知（D349/D350）
+
+- 首条提示会立即显示规范化的 48 字符回退标题。首轮完成后，Electron 根据会话的有效提供商/模型运行关闭推理的 `session/summarizeTitle` 单次请求；渲染器通过 `session.rename` 持久化成功结果。
+- 渲染器本地会话元数据持久化 `manualTitle`。自动标题会跳过该标记，也会跳过既不是已知默认标题、也不是首条提示回退标题的持久化标题，因此手动标题和已有摘要在重启后不会被覆盖。
+- 原生任务完成通知和交互式提示共用 Electron IPC 入口，但使用明确的 `kind`。主窗口可见且聚焦时（包括聚焦在后台会话时）抑制任务横幅；交互式提示仍只抑制当前可见会话，因此聚焦的后台请求仍会提醒。持久任务插入仍遵循 D117，插件通知保持独立。
+- 见 ADR 0186 / ADR 0187、`03-runtime/01-ipc-protocol.md`、`03-runtime/02-agent-runtime.md`、`04-ux/08-component-spec.md` 与 E2E-021a / E2E-065。
+
+## 2026-09-08 —— 父级终态错误中止残留委托（D352）
+
+- D328 让父级空闲后残留委托继续跑，好让长任务收尾。父级 429 耗尽后持久回合已经以 `error` 结束并显示“继续”，另一个模型上的子智能体却仍把 sidecar 标成忙碌。
+- 决策 D352 修订 D328 / ADR 0166。父级空闲行为不变。父级终态错误会中止残留委托、跳过续跑提示，并把会话恢复为空闲，这样“继续”会被接受。失败的 TurnOutcomeCard 不会被随后的 `agent_end` 盖成已完成。
+- 见 ADR 0189、`03-runtime/02-agent-runtime.md` §5f 与 E2E-155。
+
+## 2026-09-09 —— 区分 Intel macOS 发布工件（D353）
+
+- 原生 macOS 通道可能生成只有版本号的通用安装包名称，用户容易把 Intel
+  下载误认为 arm64 下载。
+- 决策 D353 修订 D285 / ADR 0145：Intel x64 通道向 electron-builder 传入
+  目标专用命名模板，发布 `PI-Desktop-<version>-Intel.dmg` 和
+  `PI-Desktop-<version>-Intel-mac.zip`。x64 更新源保留这些 URL 和校验和，
+  arm64 继续使用通用 macOS 名称。
+- 这只改变发布工件命名；更新器归属、签名和通知加链接交付模式保持不变。
+  见 E2E-092。

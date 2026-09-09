@@ -2,6 +2,33 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const frEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.4",
+    "date": "2026-09-09",
+    "highlights": [
+      "Ajoutez aux plugins des lectures par plage limitées pour les gros fichiers et des autorisations de fichiers liées à de vrais gestes de glisser-déposer.",
+      "Rendez explicites l’activation de la signature et de la notarisation macOS et ajoutez des indications pour ouvrir les versions non signées de confiance."
+    ]
+  },
+  {
+    "version": "0.14.3",
+    "date": "2026-09-09",
+    "highlights": [
+      "Identifiez clairement les téléchargements macOS Intel afin que l’architecture de l’installeur soit évidente."
+    ]
+  },
+  {
+    "version": "0.14.2",
+    "date": "2026-09-08",
+    "highlights": [
+      "Ajoutez un inspecteur de consommation du contexte qui suit le modèle sélectionné et affiche des indications de compression.",
+      "Améliorez la configuration des fournisseurs et des modèles avec une sélection recherchable, des actions groupées et des erreurs de récupération plus claires.",
+      "Résumez automatiquement les titres de session et permettez d’utiliser des noms de projet persistants.",
+      "Améliorez le panneau latéral des sous-agents avec l’état en direct, des bulles de tâches compactes, l’identité du modèle et la navigation vers la sortie la plus récente.",
+      "Envoyez des notifications natives pour les demandes et validations interactives, sans placer les complétions ordinaires dans la boîte de réception.",
+      "Ajoutez la localisation coréenne de l’interface et améliorez les réglages localisés, l’historique du presse-papiers et les liens sécurisés.",
+    ]
+  },
+  {
     "version": "0.14.1",
     "date": "2026-09-08",
     "highlights": [

@@ -29,6 +29,33 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "0.14.4",
+    date: "2026-09-09",
+    highlights: [
+      "Add bounded large-file range reads and gesture-bound dropped-file grants for plugins.",
+      "Make macOS signing and notarization explicit opt-in, with opening guidance for trusted unsigned builds.",
+    ],
+  },
+  {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "Label Intel macOS release downloads explicitly so the installer architecture is clear.",
+    ],
+  },
+  {
+    version: "0.14.2",
+    date: "2026-09-08",
+    highlights: [
+      "Add a context usage inspector that follows the selected model and shows compaction guidance.",
+      "Improve provider and model setup with searchable selection, bulk actions, and clearer fetch errors.",
+      "Summarize session titles automatically and let you rename projects with names that persist across restarts.",
+      "Refine the subagent side sheet with live status, compact task bubbles, model identity, and latest-output navigation.",
+      "Deliver native notifications for interactive asks and approvals while keeping routine completions out of the inbox.",
+      "Add Korean shell localization and improve localized settings, clipboard history, and safe link handling.",
+    ],
+  },
+  {
     version: "0.14.1",
     date: "2026-09-08",
     highlights: [
@@ -693,6 +720,32 @@ const enEntries: ChangelogEntry[] = [
 
 const zhCNEntries: ChangelogEntry[] = [
   {
+    version: "0.14.4",
+    date: "2026-09-09",
+    highlights: [
+      "为插件新增有上限的大文件范围读取和绑定真实拖拽手势的文件授权。",
+      "将 macOS 签名和公证改为明确的可选流程，并为可信未签名构建提供打开指引。",
+    ],
+  },
+  {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "为 Intel macOS 发布下载添加明确后缀，方便区分安装包架构。",
+    ],
+  },
+  {
+    version: "0.14.2",
+    date: "2026-09-08",
+    highlights: [
+      "新增上下文用量检查器，跟随当前模型显示上下文窗口和压缩提示。",
+      "改进服务商和模型配置，支持可搜索选择、批量操作，并提供更清晰的获取错误提示。",
+      "支持自动总结会话标题，并可重命名项目；项目名称会在重启后保留。",
+      "优化子智能体侧边面板，显示实时状态、紧凑任务气泡和模型信息，并支持跳转到最新输出。",
+      "为交互式提问和审批提供原生通知，同时不再将普通完成消息放入通知收件箱。",
+      "新增韩语界面，并改进本地化设置、剪贴板历史和安全链接处理。",    ],
+  },
+  {
     version: "0.14.1",
     date: "2026-09-08",
     highlights: [
@@ -1356,6 +1409,33 @@ const zhCNEntries: ChangelogEntry[] = [
 ];
 
 const zhTWEntries: ChangelogEntry[] = [
+  {
+    version: "0.14.4",
+    date: "2026-09-09",
+    highlights: [
+      "為外掛新增有上限的大型檔案範圍讀取，以及繫結真實拖放手勢的檔案授權。",
+      "將 macOS 簽署與公證改為明確的選用流程，並為可信的未簽署版本提供開啟指引。",
+    ],
+  },
+  {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "為 Intel macOS 發布下載加入明確後綴，方便區分安裝包架構。",
+    ],
+  },
+  {
+    version: "0.14.2",
+    date: "2026-09-08",
+    highlights: [
+      "新增上下文用量檢查器，跟隨目前模型顯示上下文視窗和壓縮提示。",
+      "改進服務商和模型設定，支援可搜尋選擇、批次操作，並提供更清晰的擷取錯誤提示。",
+      "支援自動總結會話標題，並可重新命名專案；專案名稱會在重新啟動後保留。",
+      "最佳化子智慧體側邊面板，顯示即時狀態、精簡任務氣泡和模型資訊，並支援跳轉到最新輸出。",
+      "為互動式提問和核准提供原生通知，同時不再將一般完成訊息放入通知收件匣。",
+      "新增韓語介面，並改進本地化設定、剪貼簿歷史和安全連結處理。",
+    ],
+  },
   {
     version: "0.14.1",
     date: "2026-09-08",

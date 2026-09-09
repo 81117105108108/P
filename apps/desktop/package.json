@@ -1,6 +1,6 @@
 {
   "name": "@pi-desktop/desktop",
-  "version": "0.14.1",
+  "version": "0.14.4",
   "private": true,
   "description": "PI-Desktop Electron application",
   "homepage": "https://github.com/vastsa/PI-Desktop",
@@ -136,7 +136,6 @@
       ],
       "category": "public.app-category.developer-tools",
       "icon": "build/icon.icns",
-      "identity": null,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
@@ -149,6 +148,30 @@
         {
           "from": "build/tray-icon-mac.png",
           "to": "tray-icon-mac.png"
+        }
+      ],
+      "extraDistFiles": [
+        "PI-Desktop-macOS-opening-help.txt"
+      ]
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 270,
+          "y": 330,
+          "type": "file",
+          "name": "PI-Desktop-macOS-opening-help.txt",
+          "path": "PI-Desktop-macOS-opening-help.txt"
         }
       ]
     },

@@ -69,7 +69,7 @@
 [16-tool-result-limits](/zh-CN/spec/03-runtime/16-tool-result-limits) 存在于磁盘上，已引用
 由 path/hash 提供。
 
-### 2. 0 消息拥有的评论快照 (ADR 0043)
+### 2.0 消息拥有的评论快照 (ADR 0043)
 
 成功的工作区 `PRAGMA user_version`/Plan/Goal 工具结果携带有界
 [03-工具和权限](/zh-CN/spec/03-runtime/03-tools-and-permissions) 中描述的 `details.review` 记录。
@@ -80,7 +80,7 @@
 启动时不再存在。快照永远不会从 Git 推断出来，所以稍后
 commit 不会删除历史审查证据。
 
-### 2. 1 成绩单文件 (D119)
+### 2.1 转录文件 (D119)
 
 `sessions/<sessionId>.jsonl` — 第一行是会话标头，然后是一行
 每条消息； `seq` 由行顺序隐含：
@@ -122,13 +122,11 @@ commit 不会删除历史审查证据。
   保持整数毫秒。
 - 读者跳过未知的 `type` 行和撕裂的尾行：新的行类型
   不需要迁移，并且附加过程中的崩溃不会毒害文件。
-- `compaction` 是一个模型上下文检查点，而不是一条消息 — 但它是
-  呈现为分隔行而不是聊天气泡 (D203)。读者归来
-  每条消息均保持不变并单独返回 **every** 仍然有效
-  检查点，最早的在前；最新的是活跃的，整个链是
-  转录本从什么中提取行，因此检查点比
-  产生它的压实。 `throughMessageId` 锚点编号为 1 的记录
-  读取和分叉时，每条记录的较长存在时间都会被删除。
+- `compaction` 是模型上下文检查点，不是消息；它会以分隔行而不是聊天气泡
+  呈现（D203）。读取时，每条消息都会原样返回，同时单独返回所有仍然有效的
+  检查点，并按从旧到新的顺序排列。最新检查点是活动检查点，整条检查点链会
+  参与转录本行的渲染，因此某个检查点的生命周期可以长于创建它的那次压缩。
+  如果某条记录的 `throughMessageId` 锚点已不存在，则在读取和分叉时按记录丢弃。
   `throughMessageId` 是持久转录本边界；
   `firstKeptMessageId` 和 `retainedTail` 重现摘要+适用的
   重启后的上下文。活动回合的 `retainedTail` 最多保存最新的用户消息；
@@ -136,22 +134,21 @@ commit 不会删除历史审查证据。
   `completed_turn`）持久化该边界；没有该字段的旧记录归一化为最新的用户消息。
   活动消息超过保留限制时，将以标记、截断的形式存储；UI/diagnostics 的原始消息行
   保持完整和权威。
-  自动压缩失败可能会存储`details.fallback = "retained_tail"`
-  以及简短的恢复摘要，而不是法学硕士生成的摘要；完整的
-  成绩单仍然具有权威性，后备尾部只是模型上下文
+  自动压缩失败可能会存储 `details.fallback = "retained_tail"`
+  以及简短的恢复摘要，而不是 LLM 生成的摘要；完整的
+  转录本仍然具有权威性，后备尾部只是模型上下文
 恢复视图。 `details` 还携带检查点生成和
   压缩族，两者对主机都是不透明的。
 - 写入者使用flush + fsync追加（消息持久性≈WAL
-  `synchronous=NORMAL`);完整的成绩单重写（regenerate/edit，修订
+  `synchronous=NORMAL`);完整的转录本重写（regenerate/edit，修订
   切换、导入）执行同级临时文件 + 原子重命名。一个正常的
   上下文检查点是一个附加行，并且永远不会重写可见消息。
   重写会延续每个仍然有效的检查点
   重写的消息，而不仅仅是最新的消息。
-- 排序：文件在数据库索引事务**之前**写入。一场车祸
-  两者之间的成本是一个派生索引行（从不满足）和下一个
-  完全重写自我修复；转录读取重复数据删除重复消息 ID
-  保持最后。
-- 成绩单文件是用户数据：仅在删除其会话时删除，
+- 排序：文件在数据库索引事务**之前**写入。两者之间发生崩溃时，最多只会丢失
+  一个派生索引行，不会丢失内容；下一次完整重写会自行修复。读取转录本时，
+  对重复的消息 ID 去重并保留最后一条。
+- 转录本文件是用户数据：仅在删除其会话时删除，
   绝不会被年龄或孤儿横扫（与 `scratch/` 不同）。
 
 ## 3. 连接引导
@@ -183,7 +180,7 @@ PRAGMA auto_vacuum = INCREMENTAL; -- set at creation, before any table
 
 ## 4. 架构
 
-### 4. 1 kv — 命名空间配置
+### 4.1 kv — 命名空间配置
 
 替换 v1 `settings` + `meta`，并托管插件设置（规范 07-11 §5）。
 
@@ -249,7 +246,7 @@ type SidebarPreferences = {
   主机拥有的 `kv(app, currentProjectId)` 并通过以下方式恢复
   `workspace.get`；渲染器不会保留竞争的活动路径。
 
-### 4. 2 项目——工作发生的地方
+### 4.2 projects — 工作发生的地方
 
 替换 v1 `workspace` 单例。提供设置项目存档索引
 (D066/D133)、侧边栏按项目分组（基准§3.8）以及未来的每个项目
@@ -280,7 +277,7 @@ CREATE TABLE projects (
   表，没有部分唯一标志。保留的选项卡不会添加更多当前项目
   字段。
 
-### 4. 3 提供商
+### 4.3 providers
 
 与v1作用相同； `headers_json` + `compatibility_json` 合二为一
 可扩展的 `config_json`（形状符合 [12-provider-config-schema](/zh-CN/spec/03-runtime/12-provider-config-schema)）。
@@ -304,7 +301,7 @@ CREATE TABLE providers (
 );
 ```
 
-### 4. 4 模型 — 目录缓存
+### 4.4 models — 目录缓存
 
 实现 [13 模型目录和选择](/zh-CN/spec/03-runtime/13-model-catalog-and-selection)
 （v1 已死，`provider_models` 从未死过）。
@@ -328,7 +325,7 @@ CREATE TABLE models (
 `source='user'`** 行。最新模型的 MRU 保留在 `kv(cache)` — 这是一个
 有界显示列表，而不是关系数据。
 
-### 4. 5 节课
+### 4.5 sessions
 
 ```sql
 CREATE TABLE sessions (
@@ -400,7 +397,7 @@ CREATE INDEX idx_sessions_project ON sessions(project_id) WHERE project_id IS NO
   子级现有 `message_revisions` 存储中的响应尾部；来源
   抄本和源版本的修订永远不会被重写。
 
-### 4. 6 圈 — 每个代理运行一行
+### 4.6 turns — 每次 agent 运行一行
 
 [10-session-state-machine](/zh-CN/spec/03-runtime/10-session-state-machine) 的持久性一半
 （旧逻辑模型中的 `turn_runs`）以及 usage/cost 的汇总点。
@@ -422,7 +419,7 @@ CREATE TABLE turns (
 CREATE INDEX idx_turns_session ON turns(session_id, started_at DESC);
 ```
 
-### 4. 6a plan_approvals — 不可变的检查点和执行字段（模式 v11）
+### 4.6a plan_approvals — 不可变的检查点和执行字段（模式 v11）
 
 主机将每个提交的 Markdown 快照写入到一个新的唯一文件中
 提案类型的目录：`<workspaceRoot>/.pi/plan/` 用于计划和
@@ -506,7 +503,7 @@ Renderer 重新加载
 每条消息成本芯片的会话汇总（基准§3.2），failed/aborted 徽章
 （§3.8），并重试谱系。
 
-### 4. 7 消息 — 文字记录索引
+### 4.7 messages — 转录索引
 
 脚本本身是每个会话的 JSONL 文件（第 2.1 节）；这张表是它的
 派生索引：每条消息一行携带排序、提升的过滤列，
@@ -564,7 +561,7 @@ type Block =
 - `mid`（显式整数主键）在 `VACUUM` 上引脚 rowid，其中
   FTS 外部内容映射取决于； `id` 保留有线格式 uuid。
 
-### 4. 7a 子代理归属（D201、ADR 0062）
+### 4.7a 子代理归属（D201、ADR 0062）
 
 子代理生成的行存储在相同的转录文件和相同的记录文件中
 作为父级的索引；标记它们的是文件行 `meta` 中的两个字段
@@ -593,7 +590,7 @@ meta.agentName?: string         // the definition name, e.g. "code-reviewer"
 用它委托行，并使用它们所属的分支重新生成存档
 到。
 
-### 4. 8 messages_fts — 全文搜索
+### 4.8 messages_fts — 全文搜索
 
 跨记录的全局搜索（WorkBuddy-基准搜索、命令
 调色板）。 Trigram 分词器涵盖 CJK 和子字符串匹配；查询更短
@@ -626,7 +623,7 @@ CREATE TRIGGER messages_au AFTER UPDATE OF text ON messages
 经过验证的端到端（insert/update/delete/cascade + CJK trigram match）
 `sqlite3` 3.43+。
 
-### 4. 9 message_revisions — 重新生成历史索引
+### 4.9 message_revisions — 重新生成历史索引
 
 归档丢弃的重新生成分支，以便用户可以分页以前的变体
 而不将它们堆叠在实时转录中（D105/D109）。一排就是一排
@@ -659,7 +656,7 @@ CREATE INDEX idx_message_revisions_root
   提示可能会携带新消息 `id`，但 `meta.revisionRootId` 会保留
   指向原始系列，以便稍后重新生成附加到一组。
 - Root 用户 `meta` 还存储 `revisionCount` / `activeRevision`
-  成绩单寻呼机；这些字段是表示元数据，而不是第二源
+  转录本寻呼机；这些字段是表示元数据，而不是第二源
   分支有效负载的真实性。
 - 完成一回合的分支由 `session.saveActiveRevision` 存档，
   它读取转录本，附加修订行，并标记根的
@@ -679,7 +676,7 @@ CREATE INDEX idx_message_revisions_root
   索引行的变体（其回合在归档前失败）作为新变体单独存储，绝不覆盖之前的
   变体。
 
-### 4. 10 工件 — 会话生成的文件
+### 4.10 artifacts — 会话生成的文件
 
 支持工件表面（基准§3.7）。 v1 计划从中得出这个
 `audit_log`，但审计有效负载从未记录文件路径；明确的
@@ -703,7 +700,7 @@ CREATE INDEX idx_artifacts_time ON artifacts(updated_at DESC);
 写入会话暂存目录 (D114) 被排除：工件列表
 仅工作区可交付成果。
 
-### 4. 11 Scheduled_tasks + task_runs — 自动化
+### 4.11 scheduled_tasks + task_runs — 自动化
 
 将计划任务移出 Electron 的 `scheduled-tasks.json`（D002 修复）并
 添加自动化页面所需的运行历史记录（定时任务/运行记录选项卡）。
@@ -750,7 +747,7 @@ JSON 值。
 背景。用户必须先将 task/session 显式切换为 Agent
 可以执行无人值守的运行。
 
-### 4. 12 Secrets_meta
+### 4.12 secrets_meta
 
 存在秘密的注册表（blob 文件以 sha256 命名，否则
 不可数）。 `owner_kind/owner_id` 将 v1 的仅提供商列概括为
@@ -770,7 +767,7 @@ CREATE TABLE secrets_meta (
 秘密*值*永远不会进入数据库（D028/D031）：操作系统安全存储主，
 `secrets/` 下的 AES-GCM 文件回退。
 
-### 4. 13 审计日志
+### 4.13 audit_log
 
 仅追加；现在已编入索引并可修剪。整数自动增量 PK 取代 v1 的
 随机 uuid（更便宜的插入，自然顺序）。
@@ -788,7 +785,7 @@ CREATE INDEX idx_audit_session ON audit_log(session_id, ts)
   WHERE session_id IS NOT NULL;
 ```
 
-### 4. 14 通知 — 持久本地收件箱 (D117)
+### 4.14 notifications — 持久本地收件箱 (D117)
 
 一行记录了一个终端代理轮转结果，该结果在
 当前聊天的焦点。它仅存储结构化源数据；渲染器和
@@ -854,7 +851,7 @@ CREATE INDEX idx_notifications_unread
 | 接受提示 | 附加用户消息行 | `last_seq` 分配（返回）+索引行+触摸 `sessions.updated_at`；然后插入 `turns(running)` |
 | assistant/tool 消息结束 | 附加消息行；id 匹配时移除进行中检查点 | 索引行+触摸会话 |
 | 流式回复检查点（`session.saveInflightMessage`，D299） | 原子替换 `<id>.inflight.json`；空消息或已索引的 id 为空操作 | — |
-| 上下文检查点（`session.appendCompaction`） | 在其引用的消息边界之后附加类型化检查点行 | —（检查点是不可搜索的成绩单内容） |
+| 上下文检查点（`session.appendCompaction`） | 在其引用的消息边界之后附加类型化检查点行 | —（检查点是不可搜索的转录本内容） |
 | 工具成功（Write/Edit） | — | upsert `artifacts` + `audit_log` 行，与结果持久化相同的 tx |
 | 通过 `session.endTurn` 打开终端 | `completed`/`error`：仅当该 id 已索引时才移除进行中检查点，否则留给 outbox 或启动恢复（D327）。`recoverInflight`：最终行从未落盘时，回合已 `completed` 则追加为 `complete`，否则为 `aborted` | 更新 `turns`；对于 completed/error，在同一交易中插入一个通知并修剪至 200 个；中止插入 无；被提升的检查点在该回合下获得一个索引行 |
 | plan/goal 提交 | 主机将准确的 Markdown 字节写入新的唯一 `<workspaceRoot>/.pi/<kind>/*.md` 文件 | 在发出批准请求之前插入一个 `plan_approvals(pending)` 行，其中包含类型、结构化 title/question、工件 path/hash/size 和到期时间 |
@@ -864,8 +861,9 @@ CREATE INDEX idx_notifications_unread
 | 重新生成分支保存 | 追加修订行（带 `revisionIndex` 时为该已有变体的刷新行） | 带有 `message_count` 的索引行（+ `is_active` 翻转）；刷新只更新 `message_count` |
 | 回合完成分支存档 (`session.saveActiveRevision`) | 附加修订行（活动变体已归档时为刷新行），然后仅重写寻呼机标记的根用户的转录行 | 带有 `message_count` 的索引行（+ `is_active` 翻转）；其他消息的索引行未受影响 |
 | 修订版开关 | 先为实时分支自身的变体追加刷新行，读取目标分支，原子转录重写并保留锚点仍存在的检查点 | 翻转 `is_active`，重建索引行并带上每条幸存消息所属的 `turn_id`，重置 `last_seq` |
-| 进口 | 写入成绩单文件 | 每个会话一笔交易：会话行 + 索引行；失败时文件将被删除 |
-| 会话删除 | 行删除后删除两个会话文件 | `DELETE FROM sessions`（级联） |
+| 导入 | 写入转录文件 | 每个会话一笔交易：会话行 + 索引行；失败时文件将被删除 |
+| 会话删除 | 行删除后删除两个会话文件 | `DELETE FROM sessions`（级联）；Electron 主进程会丢弃该会话的 outbox 条目（D318） |
+| 孤立会话恢复（启动 / `session.appendMessage`，D318） | 保留现有的 JSONL 文件 | 重新插入缺失的 `sessions` 行，并依据该文件重建索引行；若文件也已不存在，追加操作会在现有 id 下插入一个占位行，使 outbox 能够排空 |
 
 规则：回合开始前用户消息持久（fsync'd 文件行）；
 assistant/tool 行在其结束事件时持久化；正在流式的助手回复另外至多每 1.5 秒
@@ -884,6 +882,42 @@ outbox 排空。渲染器侧的停止绝不重写已有已开始回复的转录
 文件追加和索引提交之间的崩溃使消息可读
 （从文件加载脚本）只有其搜索行丢失，直到
 下一步重写；转录读取重复数据删除重复的 id keep-last。
+
+渲染器打开一个会话时并不需要整个 JSONL 文件。它的 `session.get` 请求可以
+指定一个从零开始、不含上界的 `messageBefore`，一个正数 `messageLimit`，以及
+一个正数 `contentLimit`。host-core 只返回该消息窗口，并且只对派生出的
+`UiMessage` 投影施加内容上限。完整转录在磁盘上仍然无损，sidecar 那条不设上限
+的 `session.get` 路径保持不变，用于模型上下文、编辑、修订以及其他由主机拥有的
+变更。渲染器以最新的窗口打开，并按需请求更旧的窗口；响应中的 `messageStart`
+与 `hasMoreBefore` 字段就是它需要的全部分页状态。
+
+有界窗口通过每个会话的**转录布局**提供：其中记录每条消息行与压缩行的字节
+偏移量，以及记录这些偏移量时所对应的文件长度。提供窗口时直接定位到它的第一条
+被选中的行，而不是解析它之前的全部历史，因此打开一个会话的开销与窗口大小成
+正比，而不是与整段对话成正比。由此带来的影响：
+
+- 该布局是派生数据，缓存在内存中，并通过扫描文件重建。`file_len` 是它的有效性
+  凭据：转录在两次原子重写之间是只追加的，因此更长的文件从上一次的末尾继续
+  扫描，而更短或被替换的文件则整体重新扫描。每条重写与删除路径也会丢弃缓存
+  条目，因为一次重写可能落在完全相同的长度上。
+- 撕裂的尾行（追加过程中崩溃）会同时被排除在偏移量和 `file_len` 之外，因此在
+  写入方补全它之后，后续刷新会重新收录它。
+- 行分类通过一次感知深度的扫描读取 `type` 判别字段，绝不把整行解析成值。只有
+  **顶层**的 `type` 键决定行的种类：工具结果与检查点详情是开放式 JSON，可能
+  嵌套一个自身带 `type` 的对象，而该 `type` 恰好是某个行种类的名字。每条新行都
+  把 `type` 写在**最前面**，因此扫描通常在第一个键处就停止；在该顺序约定之前
+  写入的行把它放在负载之后，由同一次扫描读取。
+- 窗口偏移量是**物理消息行位置**，与布局所计数的是同一套空间。它们绝不会被
+  钳制到会话索引计数器（`last_seq`）上，后者是去重后的逻辑计数：某条文件行的
+  索引提交若从未落盘，会让该计数器永久落后于文件，而钳制到它会把最新的消息从
+  尾部切掉。
+- 无论取哪个窗口，压缩链始终整体返回，因为无论哪些消息可见，最新的检查点都
+  决定着模型上下文。
+
+重新生成或编辑重发通过**消息身份**而非计数来指明它的切点。渲染器持有的是一份
+有界、去重、经过显示过滤的视图，因此其中的下标并不是转录中的位置；主机会用
+自己的转录去解析被指名的消息，并在找不到该边界时拒绝，而不是在猜测的位置上
+截断。
 
 ## 6. 性能说明
 
@@ -932,7 +966,7 @@ outbox 排空。渲染器侧的停止绝不重写已有已开始回复的转录
      `mode: "chat"` 到 `"plan"`，保持嵌套扩展模式不变；
   4. preserves/migrates 现有 `plan_approvals` 表并添加其
      工件和执行 fields/indexes；
-  5. 保留成绩单、轮次、修订、项目、许可、赠款、
+  5. 保留转录本、轮次、修订、项目、许可、赠款、
      提供商和计划任务历史记录；
   6. 将所有新模式值验证为 `plan | goal | agent`；和
   7. 验证 `defaultCommandShell` 作为已知的当前平台目录 ID，
@@ -1027,7 +1061,7 @@ UI投影损失
    删除其索引条目和两个会话文件
 8. 插件卸载在一条语句中清除 `kv(plugin:<id>)`
 9. 重置侧边栏首选项不会更改 `projects`、`sessions` 或
-   成绩单数据；保留的路径和组织选择在正常情况下生存
+   转录本数据；保留的路径和组织选择在正常情况下生存
    当首选项可用时渲染器重新启动
 10. 会话 A 的工具调用会解析 A 的持久项目根，即使在
     可见工作区切换到项目 B

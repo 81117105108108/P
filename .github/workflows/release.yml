@@ -19,6 +19,12 @@ on:
   push:
     tags: ['v*.*.*']
   workflow_dispatch:
+    inputs:
+      sign_macos:
+        description: 'Sign and notarize macOS artifacts for this run'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -26,10 +32,6 @@ permissions:
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
-
-env:
-  # macOS build is unsigned for now (identity: null); don't look for certs.
-  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
 jobs:
   build:
@@ -136,11 +138,62 @@ jobs:
           trap - EXIT
 
       - name: Package installers (${{ matrix.dist }})
+        if: matrix.platform != 'macos'
         # The dist scripts pass --publish never themselves: electron-builder
         # must not self-publish on tag builds (no token; softprops owns it).
         # The explicit architecture keeps the package and native Rust sidecar
         # aligned with the runner selected by this matrix entry.
         run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --${{ matrix.arch }}
+
+      - name: Package unsigned macOS installer
+        if: matrix.platform == 'macos' && inputs.sign_macos != true
+        env:
+          # Default release lane: macOS artifacts stay unsigned unless a
+          # workflow_dispatch run explicitly sets sign_macos=true.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          set -euo pipefail
+          package_args=(--${{ matrix.arch }})
+          if [[ "${{ matrix.platform }}" == "macos" && "${{ matrix.arch }}" == "x64" ]]; then
+            # Keep Intel downloads distinct from the arm64 assets. These
+            # target-specific patterns are passed to electron-builder so the
+            # generated updater metadata keeps the renamed asset URLs and
+            # checksums in sync.
+            package_args+=(
+              '-c.dmg.artifactName=PI-Desktop-${version}-Intel.${ext}'
+              '-c.zip.artifactName=PI-Desktop-${version}-Intel-mac.${ext}'
+            )
+          fi
+          pnpm --filter @pi-desktop/desktop run dist:mac -- "${package_args[@]}"
+
+      - name: Package signed and notarized macOS installer
+        if: matrix.platform == 'macos' && inputs.sign_macos == true
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          package_args=(--${{ matrix.arch }})
+          if [[ "${{ matrix.platform }}" == "macos" && "${{ matrix.arch }}" == "x64" ]]; then
+            package_args+=(
+              '-c.dmg.artifactName=PI-Desktop-${version}-Intel.${ext}'
+              '-c.zip.artifactName=PI-Desktop-${version}-Intel-mac.${ext}'
+            )
+          fi
+          pnpm --filter @pi-desktop/desktop run dist:mac -- "${package_args[@]}" \
+            -c.mac.forceCodeSigning=true \
+            -c.mac.notarize=true
+
+      - name: Staple macOS installer ticket
+        if: matrix.platform == 'macos' && inputs.sign_macos == true
+        run: scripts/staple-macos-release-dmg.sh apps/desktop/release
+
+      - name: Verify signed and notarized macOS installer
+        if: matrix.platform == 'macos' && inputs.sign_macos == true
+        run: scripts/verify-macos-release.sh apps/desktop/release
 
       - name: Verify Linux host-core glibc floor
         if: matrix.platform == 'linux'
@@ -224,7 +277,7 @@ jobs:
           # architectures ship from tag builds — installers, the Linux ASAR,
           # blockmaps, and the latest*.yml feeds that drive
           # electron-updater on each platform (in-app for Windows NSIS and
-          # Linux AppImage; macOS notifies until a signed channel lands).
+          # Linux AppImage; macOS remains manual-delivery by product policy).
           files: dist/*
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}

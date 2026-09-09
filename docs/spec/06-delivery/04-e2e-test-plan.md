@@ -141,6 +141,69 @@ Each scenario is documented in this format:
 - **Status**: Documented; artifact export is unit-covered, native system-Electron
   repackaging remains runner validation
 
+#### E2E-196a: Default unsigned macOS release lane
+
+- **Preconditions**: A `vX.Y.Z` tag matches `apps/desktop/package.json`, or the
+  Release workflow is manually dispatched with `sign_macos` omitted or false;
+  Windows and Linux release credentials are not affected.
+- **Steps**: 1) Run the tag workflow or dispatch it with the default signing
+  input. 2) Confirm both macOS architectures complete ordinary DMG/ZIP
+  packaging without certificate secrets. 3) Inspect the artifacts and workflow
+  steps.
+- **Expected**: macOS DMG/ZIP artifacts are produced and uploaded without
+  Developer ID signatures or notarization; macOS staple and Gatekeeper checks
+  are explicitly skipped. Windows/Linux artifacts and the merged updater feed
+  still publish normally. This exception must be removed before the next stable
+  release; it does not satisfy E2E-196.
+- **Specs linked**: `06-delivery/06-release-runbook.md`
+- **Acceptance**: Quality (default release packaging)
+- **Milestone**: M6+
+- **Status**: Active default; this scenario does not satisfy E2E-196.
+
+#### E2E-196b: Unsigned macOS packages include opening guidance
+
+- **Preconditions**: A default unsigned macOS release has produced both DMG and
+  ZIP artifacts for at least one native architecture.
+- **Steps**: 1) Open the DMG and inspect its root. 2) Inspect the ZIP root
+  without extracting the application contents. 3) Read
+  `PI-Desktop-macOS-opening-help.txt`.
+- **Expected**: Both packages contain the same opening-help file at the package
+  root. It includes `xattr -cr /Applications/PI-Desktop.app`, explains that the
+  command is for the trusted unsigned artifact when macOS reports that the app
+  is damaged, and says signed/notarized builds do not need it. The guidance
+  does not claim that an unsigned artifact has passed Gatekeeper qualification.
+- **Specs linked**: `06-delivery/06-release-runbook.md`,
+  `05-security/01-security.md`
+- **Acceptance**: Quality, Security
+- **Milestone**: M6+
+- **Status**: Automated by `packaging-footprint.test.mjs`; native archive
+  inspection remains release-runner validation
+
+#### E2E-196: macOS tag artifacts pass Gatekeeper without a quarantine bypass
+
+- **Preconditions**: The Release workflow is manually dispatched for a
+  `vX.Y.Z` tag with `sign_macos: true`; the tag matches
+  `apps/desktop/package.json`; GitHub Actions has `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
+  `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` secrets; both native macOS
+  runners are available.
+- **Steps**: 1) Run the explicitly signed workflow. 2) For each macOS architecture,
+  inspect the unpacked app with `codesign -dv --verbose=4` and confirm a
+  `Developer ID Application` authority. 3) Run `codesign --verify --deep
+  --strict`, `spctl -a -vv`, and `xcrun stapler validate` against the app. 4)
+  Run `xcrun stapler validate` against the matching DMG. 5) Download the DMG on
+  a clean macOS profile, move the app to `/Applications`, and open it without
+  clearing `com.apple.quarantine`.
+- **Expected**: Each macOS app passes signature integrity, Gatekeeper reports
+  `Notarized Developer ID`, and both app and DMG contain valid stapled tickets.
+  The app opens normally; no `xattr` quarantine-removal command or Security &
+  Privacy override is required.
+- **Specs linked**: `06-delivery/06-release-runbook.md`,
+  `05-security/01-security.md`
+- **Acceptance**: Quality, Security
+- **Milestone**: M6+
+- **Status**: Workflow script/unit-covered; clean-machine journey required for
+  each release (do not run E2E locally unless explicitly requested)
+
 ### Boot & Healthcheck
 
 #### E2E-001: App launches and shows main window
@@ -235,9 +298,9 @@ Each scenario is documented in this format:
 
 #### E2E-005A: Edit provider model bindings and migrate a legacy model
 
-- **Preconditions**: One provider saved with two model bindings; one fixture provider row exists with only the legacy `default_model_id` and no `config_json.models`.
-- **Steps**: 1) Reopen the saved provider; confirm the single form opens with its cached model list painted immediately, and that the API key field explains an unchanged key is kept. 2) Confirm the live probe then refreshes that list without a retyped key, because the stored secret is reused. 3) Confirm both existing bindings are still chosen and check-marked, with their limits, thinking chips and defaults intact. 4) Enable a level the fixture catalog does not publish, edit one row's limits and save. 5) Reopen the fixture provider and confirm its legacy model appears as one chosen row with 128,000 context, 8,192 max output and all seven thinking choices available but unselected. 6) Save the fixture provider without changing the model. 7) Make the edited provider the global default, reopen it, remove its first model so a different binding becomes the head, and save. 8) Take the service offline or revoke the key, reopen the provider, and confirm the cached rows stay visible with a compact classified discovery error rather than an empty list or a raw host dump.
-- **Expected**: Editing never drops an unmodified binding. An explicitly enabled level remains saved even when the catalog does not publish it, so the Composer reads the same binding rather than silently narrowing it; a binding whose model discovery is unavailable keeps its stored levels untouched. Legacy read materializes one binding without losing the old model ID; the subsequent write stores `config_json.models` and keeps `defaultModelId` equal to the first binding for older readers. When the edited provider is the global default and its first model changed, `settings.defaultModelId` is re-synced to the new head binding. A failed live probe degrades to the cached list plus a compact classified error, never to a blank picker or a raw HTTP/JSON dump, and a catalog fallback is never written into the model cache.
+- **Preconditions**: One provider saved with two model bindings; one fixture provider row exists with only the legacy `default_model_id` and no `config_json.models`; one fixture row carries an unknown or legacy `apiStyle` string.
+- **Steps**: 1) Reopen the saved provider; confirm the single form opens with its cached model list painted immediately, and that the API key field explains an unchanged key is kept. 2) Confirm the live probe then refreshes that list without a retyped key, because the stored secret is reused. 3) Confirm both existing bindings are still chosen and check-marked, with their limits, thinking chips and defaults intact. 4) Enable a level the fixture catalog does not publish, edit one row's limits and save. 5) Reopen the fixture provider and confirm its legacy model appears as one chosen row with 128,000 context, 8,192 max output and all seven thinking choices available but unselected. 6) Reopen the unknown-style fixture and confirm the editor renders with Chat Completions selected instead of an error boundary; save it and confirm the repaired style is persisted. 7) Save the fixture provider without changing the model. 8) Make the edited provider the global default, reopen it, remove its first model so a different binding becomes the head, and save. 9) Take the service offline or revoke the key, reopen the provider, and confirm the cached rows stay visible with a compact classified discovery error rather than an empty list or a raw host dump.
+- **Expected**: Editing never drops an unmodified binding. An explicitly enabled level remains saved even when the catalog does not publish it, so the Composer reads the same binding rather than silently narrowing it; a binding whose model discovery is unavailable keeps its stored levels untouched. Legacy read materializes one binding without losing the old model ID; the subsequent write stores `config_json.models` and keeps `defaultModelId` equal to the first binding for older readers. An unknown or legacy `apiStyle` is treated as a compatibility input: the editor falls back to Chat Completions, remains usable, and repairs the stored value on save. When the edited provider is the global default and its first model changed, `settings.defaultModelId` is re-synced to the new head binding. A failed live probe degrades to the cached list plus a compact classified error, never to a blank picker or a raw HTTP/JSON dump, and a catalog fallback is never written into the model cache.
 - **Specs linked**: `03-runtime/11-provider-model-system.md`, `03-runtime/12-provider-config-schema.md`, `03-runtime/13-model-catalog-and-selection.md`, ADR 0114
 - **Acceptance**: F (provider persistence and migration)
 - **Milestone**: M2
@@ -412,6 +475,84 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Unit-covered (host persistence, fetch wrapper, discovery,
   form Advanced); rendered UI scenario pending
+
+#### E2E-005J: GitHub Copilot OAuth requests carry native IDE headers
+
+- **Preconditions**: A signed-in GitHub Copilot OAuth account with a selected
+  model; a deterministic capture proxy records the model request headers.
+- **Steps**: 1) Start an Agent turn against the account and capture the request
+  headers. 2) Send a follow-up after the assistant response and capture the
+  next request. 3) Repeat with an image attachment when the selected model
+  supports vision. 4) Set a saved custom header with the same name as one of
+  the Copilot defaults and send another turn.
+- **Expected**: Every Copilot model request includes the pinned pi-ai
+  transport identity headers `Editor-Version`, `Editor-Plugin-Version`, and
+  `Copilot-Integration-Id`. `X-Initiator` is `user` for a user-led request and
+  `agent` for a continuation; `Openai-Intent` is `conversation-edits`, and
+  image requests include `Copilot-Vision-Request: true`. The OAuth row keeps
+  its local provider id for account binding, and a saved custom header remains
+  the final override.
+- **Specs linked**: `03-runtime/11-provider-model-system.md`,
+  `03-runtime/12-provider-config-schema.md`, ADR 0095
+- **Acceptance**: B (model configuration), F (runtime provider requests)
+- **Milestone**: M2
+- **Status**: Unit-covered (row-scoped model headers and request-context
+  headers); live Copilot account journey pending
+
+#### E2E-005H: Select every visible model from a long service list
+
+- **Preconditions**: App running; the add-provider or edit-provider dialog is
+  open against a service (or vendor account) that returns a long model list,
+  including at least one model whose id would not match a later search.
+- **Steps**: 1) Wait until the left pane lists the service's models. Confirm
+  the list header shows a checkbox beside the pane title, unchecked while no
+  rows are chosen. 2) Tick that header checkbox. Confirm every listed row is
+  checked and the right pane lists a chosen binding for each, keeping any
+  already-configured advanced overrides. 3) Untick one row, then confirm the
+  header checkbox is indeterminate. Tick it again and confirm the remaining
+  visible rows are chosen without duplicating already-chosen ones. 4) Type a
+  filter that matches a subset. Untick the header checkbox and confirm only
+  the matching chosen rows disappear; a model hidden by the filter stays on
+  the right. 5) Tick the header checkbox again and confirm only the matching
+  rows are added back. Clear the filter and confirm the previously hidden
+  chosen model is still present. 6) Save.
+- **Expected**: One header checkbox selects or clears the currently visible
+  list. A search filter narrows which rows "all" means. Models already chosen
+  outside the filter stay chosen. Newly added rows adopt published limits and
+  thinking levels; existing bindings are not rebuilt. The same control is
+  present in the vendor-account editor because both dialogs render the shared
+  picker.
+- **Specs linked**: `03-runtime/13-model-catalog-and-selection.md`,
+  `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: B (multi-model provider configuration)
+- **Milestone**: M2
+- **Status**: Unit-covered (shared picker source contract); rendered UI
+  scenario pending
+
+#### E2E-005I: Fetch the service model list from the picker header
+
+- **Preconditions**: The add-provider or edit-provider dialog is open against a
+  reachable service (or vendor account) that publishes a `/models` list.
+- **Steps**: 1) Confirm the left-pane header shows a Fetch list action beside
+  the title, disabled before a valid endpoint is ready. 2) Enter a valid
+  endpoint. Confirm Fetch list enables during the 600 ms debounce wait. Click
+  it immediately; confirm it does not wait for that window, shows the loading
+  label while the probe is in flight, and then shows rows. 3) Click Fetch list
+  again. Confirm it keeps the current rows on screen and replaces them with the
+  live answer. 4) Take the service offline and click Fetch list; confirm the
+  classified error appears and the previous rows remain. 5) Restore the
+  service, click Fetch list, and confirm the live list returns. 6) Repeat in
+  the vendor-account editor.
+- **Expected**: The header action probes the service immediately, including
+  during the edit debounce after a URL becomes valid. Automatic discovery on
+  credential edits is unchanged. The same control is present for both
+  credential kinds because both dialogs render the shared picker.
+- **Specs linked**: `03-runtime/13-model-catalog-and-selection.md`,
+  `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: B (multi-model provider configuration)
+- **Milestone**: M2
+- **Status**: Unit-covered (discovery hook + picker source contract); rendered
+  UI scenario pending
 
 #### E2E-005D: Configure a Zhipu / Z.AI named endpoint preset
 
@@ -1261,7 +1402,9 @@ Each scenario is documented in this format:
   recent-activity ordering do not change, and historical notification title
   snapshots are unchanged. Empty and overlong values are rejected. A custom
   title is not replaced by first-prompt auto-title; a still-default session
-  continues to receive its automatic title.
+  continues to receive its automatic title. After its first turn, the default
+  session first shows the prompt fallback and then adopts the concise
+  background LLM summary when the provider returns one.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `03-runtime/04-data-storage.md`, `03-runtime/06-host-rpc-protocol.md`,
   `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`, ADR 0143
@@ -1643,6 +1786,28 @@ Each scenario is documented in this format:
 - **Acceptance**: G (isolated panel)
 - **Status**: Documented
 
+#### E2E-024Y: Large-file plugin reads and dropped-file grants stay host-gated
+
+- **Preconditions**: A test plugin declares `fs.read`; the workspace contains a
+  readable log and a protected credential fixture; the plugin panel is open.
+- **Steps**: 1) Pick a directory and open a large log. 2) Confirm initial page,
+  search, follow, and a file-growth poll complete through `fs.stat` and bounded
+  `fs.readRange`. 3) Drag a regular file into the panel and open it. 4) Drag a
+  second file or forge an absolute path with the first grant and retry. 5)
+  Reload/unload the plugin and retry the old grant.
+- **Expected**: Directory reads remain relative to the selected root and are
+  permission/audit checked. Range reads reject invalid values and lengths above
+  8 MiB, return an empty byte array at EOF, and preserve total size. A real
+  drop creates a one-file, read-only, memory-only grant; the dropped file uses
+  the same paging/search/follow engine, while another path, a protected path,
+  and a grant after unload fail closed with `PERMISSION_DENIED` or `NOT_FOUND`.
+  No renderer worker or raw plugin `node:fs` path is used.
+- **Specs linked**: `07-plugins/03-plugin-api.md`,
+  `07-plugins/04-plugin-security.md`, `07-plugins/12-plugin-ipc-and-host-services.md`,
+  `07-plugins/13-plugin-permissions-matrix.md`, ADR 0190
+- **Acceptance**: Security + G (plugin host services)
+- **Status**: Unit/integration-covered; real drag gesture remains manual
+
 #### E2E-024E: High-risk plugin APIs require grants
 
 - **Preconditions**: Notes plugin installed with explicit grants.
@@ -1655,20 +1820,22 @@ Each scenario is documented in this format:
 #### E2E-024W: Plugin clipboard history captures bounded text and images
 
 - **Preconditions**: The app is running; a test plugin declares and is granted
-  `clipboard.read`; the system clipboard can provide one text value and one
-  image value.
-- **Steps**: 1) Copy text, then copy an image, then invoke
-  `pi.clipboard.getHistory()`. 2) Invoke it again and mutate the returned image
-  bytes. 3) Copy the same text consecutively and invoke the API. 4) Revoke
-  `clipboard.read` and invoke it again. 5) Add fixtures over the text/image
-  caps and older than the retention window.
+  `clipboard.read`; the Composer can receive one text paste and one image paste.
+- **Steps**: 1) Paste text into the Composer, paste an image into the Composer,
+  then invoke `pi.clipboard.getHistory()`. 2) Invoke it again and mutate the
+  returned image bytes. 3) Paste the same text consecutively and invoke the API.
+  4) Leave the app idle with an image on the OS clipboard and verify no
+  clipboard sampling occurs. 5) Revoke `clipboard.read` and invoke it again.
+  6) Add fixtures over the text/image caps and older than the retention window.
 - **Expected**: The result is newest-first with text and image entries
   interleaved, ISO timestamps, PNG bytes, and image dimensions; mutating the
   result does not mutate host state. Consecutive duplicates collapse with a
   refreshed timestamp. Entries over the per-entry caps and expired entries are
-  absent, and the host total/entry caps are enforced. The API reuses the
-  `clipboard.read` grant, denied calls fail with `PERMISSION_DENIED`, and a
-  successful call emits an audit entry containing the returned entry count.
+  absent, and the host total/entry caps are enforced. A paste causes only the
+  event's already-read content to be recorded; the host does not reread the OS
+  clipboard or sample it while idle. The API reuses the `clipboard.read` grant,
+  denied calls fail with `PERMISSION_DENIED`, and a successful call emits an
+  audit entry containing the returned entry count.
 - **Specs linked**: `07-plugins/03-plugin-api.md`,
   `07-plugins/04-plugin-security.md`,
   `07-plugins/13-plugin-permissions-matrix.md`, ADR 0115
@@ -2106,6 +2273,27 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`sidebar-preferences.test.mjs` for metadata,
   filtering, and sort behavior); full UI scenario Draft
+
+#### E2E-048b: Rename a project display name and retain it across restart
+
+- **Preconditions**: One retained project is visible in the sidebar and in
+  Settings → Project archive; its directory name is distinct from the desired
+  display name.
+- **Steps**: 1) Open the project's overflow menu in the sidebar and choose
+  Rename project. 2) Enter a non-empty name and save. 3) Inspect the sidebar
+  row and Settings → Project archive. 4) Restart the app and inspect both
+  surfaces again. 5) Open the project folder and verify the filesystem path.
+- **Expected**: The rename action is available from both project menus and the
+  modal keeps focus contained, trims surrounding whitespace, and limits input
+  to 80 Unicode characters. The custom display name replaces the basename in
+  the sidebar and Project archive, survives restart, and does not alter the
+  normalized project path, workspace identity, sessions, or on-disk folder.
+- **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`,
+  `04-ux/09-interaction-patterns.md`
+- **Acceptance**: D (workspace identity), F (local presentation persistence)
+- **Milestone**: M5
+- **Status**: Unit-covered (`project-rename.test.mjs`,
+  `sidebar-preferences.test.mjs`); rendered scenario Draft
 
 #### E2E-048A: Project session lists fold after the ten most recent rows
 
@@ -3984,8 +4172,12 @@ Each scenario is documented in this format:
   3. On each macOS package, run `file` (or `lipo -info`) against the app
      executable and `Resources/bin/pi-desktop-host-core`; confirm arm64 and
      x86_64 packages contain only their declared architecture and that the
-     Rust host matches the Electron app. Confirm the release directory has
-     both DMG and ZIP artifacts and one merged `latest-mac.yml` feed.
+     Rust host matches the Electron app. Confirm the arm64 assets retain the
+     generic `PI-Desktop-X.Y.Z.dmg` and `PI-Desktop-X.Y.Z-mac.zip` names while
+     the Intel assets use `PI-Desktop-X.Y.Z-Intel.dmg` and
+     `PI-Desktop-X.Y.Z-Intel-mac.zip`; confirm the release directory has both
+     DMG and ZIP artifacts and one merged `latest-mac.yml` feed whose URLs and
+     checksums match those generated assets.
   4. Inspect the renderer output for its size controls: emitted JS is minified,
      no `.woff` or `.ttf` files are present, the KaTeX `woff2` faces remain, and
      the brand marks are the renderer-sized `assets/brand/logo-*.png` rather
@@ -4003,8 +4195,10 @@ Each scenario is documented in this format:
 - **Expected**: Each macOS package contains exactly one bundled agent sidecar,
   one Rust host matching its declared architecture, and only configured
   Chromium locale packs. The release output contains both native macOS
-  architectures, DMG/ZIP artifacts, and one merged updater feed. Renderer
-  dependencies exist through Vite output rather than duplicate raw
+  architectures, DMG/ZIP artifacts, and one merged updater feed. The Intel
+  DMG and ZIP carry the `-Intel` marker and the x64 updater metadata points to
+  those names without colliding with the arm64 assets. Renderer dependencies
+  exist through Vite output rather than duplicate raw
   `node_modules`; dependency source maps, tests, examples, declarations,
   a second agent-runtime tree, and reliably excludable non-target native assets
   are absent. Curated Shiki grammars highlight locally while an unknown fence
@@ -5535,6 +5729,27 @@ Each scenario is documented in this format:
   needs live vendor accounts (do not run E2E locally unless explicitly
   requested)
 
+#### E2E-197: GitHub Copilot accepts the default Enterprise domain
+
+- **Preconditions**: A build with the GitHub Copilot OAuth flow registered;
+  the device-code login can reach the GitHub endpoint.
+- **Steps**: 1) Open Settings -> Model configuration -> Add account and choose
+  GitHub Copilot. 2) Leave the Enterprise URL/domain field empty. 3) Confirm
+  Continue is enabled and submit the empty value. 4) Complete the device-code
+  login and inspect the resulting account row.
+- **Expected**: The empty text prompt is submitted as an empty string, the
+  provider uses github.com, and the device-code flow completes normally. Secret
+  and manual-code prompts remain disabled while empty. No OAuth token or device
+  credential is rendered or logged.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §19, `03-runtime/12-provider-config-schema.md`
+  §3, `08-meta/decisions-log.md` (D237/D240)
+- **Acceptance**: B (model config), Security, Quality
+- **Milestone**: M6+
+- **Status**: Unit-covered (`apps/desktop/test/oauth-login-prompt.test.mjs`);
+  live device-code journey Draft (do not run E2E locally unless explicitly
+  requested)
+
 #### E2E-152: A plugin contributes a work panel view
 
 - **Preconditions**: A development plugin declaring `ui.view` and one
@@ -5677,32 +5892,33 @@ Each scenario is documented in this format:
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004, E2E-067, E2E-076, E2E-079, E2E-092, E2E-097, E2E-143, E2E-150, E2E-168 |
-| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-005G |
-| C — Conversation & stream | E2E-008, E2E-008a, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-031, E2E-040, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-059a, E2E-060c, E2E-060d, E2E-061, E2E-061a, E2E-062, E2E-064, E2E-065, E2E-068, E2E-071, E2E-073, E2E-074, E2E-075, E2E-081, E2E-083, E2E-084, E2E-086, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-106, E2E-109, E2E-111, E2E-114, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-121, E2E-AGENTS-001, E2E-142, E2E-144, E2E-145, E2E-146, E2E-147, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-161, E2E-162, E2E-166, E2E-172, E2E-173, E2E-174, E2E-177, E2E-178, E2E-179, E2E-180, E2E-182, E2E-183, E2E-187 |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-197, E2E-005G, E2E-005J |
+| C — Conversation & stream | E2E-008, E2E-008a, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-031, E2E-040, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-059a, E2E-060c, E2E-060d, E2E-061, E2E-061a, E2E-062, E2E-064, E2E-065, E2E-068, E2E-071, E2E-073, E2E-074, E2E-075, E2E-081, E2E-083, E2E-084, E2E-086, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-106, E2E-109, E2E-111, E2E-114, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-121, E2E-AGENTS-001, E2E-142, E2E-144, E2E-145, E2E-146, E2E-147, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-161, E2E-162, E2E-166, E2E-172, E2E-173, E2E-174, E2E-177, E2E-178, E2E-179, E2E-180, E2E-182, E2E-183, E2E-187, E2E-198 |
 | D — Workspace | E2E-012, E2E-013, E2E-022B, E2E-024I, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060, E2E-068, E2E-075, E2E-078, E2E-153, E2E-158, E2E-182, E2E-187 |
 | E — Tools & permissions | E2E-008a, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-024I, E2E-024K, E2E-040, E2E-049, E2E-074, E2E-093, E2E-097, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102d, E2E-102e, E2E-102g, E2E-103, E2E-105, E2E-106, E2E-107, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-119, E2E-121, E2E-122, E2E-142, E2E-145, E2E-147, E2E-155, E2E-158, E2E-166, E2E-181 |
-| F — Persistence | E2E-020, E2E-021, E2E-021a, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062, E2E-064, E2E-066, E2E-068, E2E-071, E2E-072, E2E-073, E2E-082, E2E-084, E2E-096, E2E-098, E2E-102, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-103, E2E-AGENTS-001, E2E-061a, E2E-073a, E2E-104, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-118, E2E-119, E2E-120, E2E-121, E2E-123, E2E-142, E2E-146, E2E-148, E2E-151, E2E-158, E2E-160, E2E-168, E2E-171, E2E-177, E2E-178, E2E-183, E2E-186 |
+| F — Persistence | E2E-020, E2E-021, E2E-021a, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062, E2E-064, E2E-066, E2E-068, E2E-071, E2E-072, E2E-073, E2E-082, E2E-084, E2E-096, E2E-098, E2E-102, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-103, E2E-AGENTS-001, E2E-061a, E2E-073a, E2E-104, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-118, E2E-119, E2E-120, E2E-121, E2E-123, E2E-142, E2E-146, E2E-148, E2E-151, E2E-158, E2E-160, E2E-168, E2E-171, E2E-177, E2E-178, E2E-183, E2E-186, E2E-005J |
 | G — Plugins | E2E-022, E2E-022A, E2E-022B, E2E-022C, E2E-023, E2E-024, E2E-024B, E2E-024C, E2E-024D, E2E-024E, E2E-024W, E2E-024F, E2E-024G, E2E-024H, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M, E2E-024N, E2E-024O, E2E-024P, E2E-025, E2E-026, E2E-105, E2E-117, E2E-120, E2E-122, E2E-123, E2E-024Q, E2E-148, E2E-152, E2E-153 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042, E2E-096, E2E-098, E2E-104, E2E-107, E2E-108, E2E-109, E2E-110, E2E-113, E2E-115, E2E-116, E2E-118, E2E-121, E2E-146, E2E-155, E2E-159, E2E-176, E2E-194, E2E-195 |
-| Security | E2E-028, E2E-029, E2E-030, E2E-024J, E2E-024K, E2E-024M, E2E-049, E2E-068, E2E-086, E2E-102c, E2E-102d, E2E-102e, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-113, E2E-115, E2E-116, E2E-117, E2E-119, E2E-121, E2E-122, E2E-123, E2E-142, E2E-148, E2E-151, E2E-153, E2E-158, E2E-187 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-024O, E2E-059a, E2E-060b, E2E-060c, E2E-060d, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195 |
+| Security | E2E-028, E2E-029, E2E-030, E2E-024J, E2E-024K, E2E-024M, E2E-049, E2E-068, E2E-086, E2E-102c, E2E-102d, E2E-102e, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-113, E2E-115, E2E-116, E2E-117, E2E-119, E2E-121, E2E-122, E2E-123, E2E-142, E2E-148, E2E-151, E2E-153, E2E-158, E2E-187, E2E-196, E2E-196b |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-024O, E2E-059a, E2E-060b, E2E-060c, E2E-060d, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-196, E2E-196b, E2E-198 |
 
 | Milestone | Scenarios |
 |---|---|
 | M1 | E2E-001, E2E-002, E2E-003, E2E-028, E2E-029 |
-| M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-020, E2E-021, E2E-021a, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-144 |
+| M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-020, E2E-021, E2E-021a, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-144, E2E-005J |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
 | M5 | E2E-008a, E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-AGENTS-001, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-094, E2E-095, E2E-143, E2E-145, E2E-146, E2E-147, E2E-177, E2E-178, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195 |
 | M6 | E2E-104, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-103, E2E-172 |
-| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179 |
+| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196, E2E-196b, E2E-198 |
 | Post-MVP | E2E-022A, E2E-022B, E2E-022C, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M (plugin roadmap R2/R3/R6) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
 rather than the A–H criteria; their gold source is the capture suite.
 
-The release artifact path is covered by E2E-192 (Quality, M6+).
+The release artifact paths are covered by E2E-192, E2E-196, and E2E-196b
+(Quality, M6+).
 
 ---
 
@@ -5786,9 +6002,10 @@ This test plan spec is accepted when:
 
 ### US-UI-06 Session auto-title
 - Create a new task and send a first prompt such as "同步代码".
-- Expect its project or temporary session row title to become a truncated form
-  of that prompt instead of remaining "New task".
-- Rename a task from its session menu, then send a first prompt if it was still
+- Expect its project or temporary session row to show the normalized prompt
+  fallback immediately, then adopt a concise LLM summary after the first turn.
+- Restart before/after the summary and confirm the current title is retained;
+  rename a task from its session menu and send a first prompt if it was still
   using a default title. Expect the custom label to remain unchanged while the
   default-title task receives the normal first-prompt title.
 
@@ -7215,64 +7432,38 @@ This test plan spec is accepted when:
   `runtime.test.ts` subagent suite and host-core `rpc/mod.rs` delegate-scope
   tests; desktop journey pending)
 
-#### E2E-162: An expanded delegate run scrolls without growing the transcript
+#### E2E-162 / E2E-173: Delegate workflow scrolling
+
+- **Status**: Superseded by the single-scroll live process behavior in E2E-198.
+
+#### E2E-198: A subagent task opens with a live conversation process
 
 - **Preconditions**: A project-bound Agent session with a mocked provider stream
-  where one `explorer` delegate performs 40 tool calls and returns a long
-  report, plus a `TaskWait` whose joined reports approach the 50k-character
-  bound.
-- **Steps**: 1) Note the transcript scroll position and the parent's next row,
-  then expand the delegation node. 2) Scroll to the end of the delegate's rows
-  and keep scrolling. 3) Tab to the run's row area and scroll with the keyboard.
-  4) Confirm the run heading and the collapse rail remain visible while the rows
-  scroll. 5) Expand the `TaskWait` row and inspect the joined reports and a
-  30-entry roster table. 6) Repeat at a short viewport height and at a narrow
-  chat width.
-- **Expected**: Expanding the node does not push the parent's next row out of
-  view: the delegate's rows scroll inside a bounded area at most 420px or 48dvh
-  tall. Reaching the end of that area does not chain into scrolling the
-  transcript behind it. The area is reachable and scrollable by keyboard with a
-  visible focus ring, and the run heading plus the hairline collapse rail stay
-  visible and unclipped throughout. The lifecycle row's joined reports and its
-  roster table each scroll within their own bounded block rather than stretching
-  the page, and the report block remains copyable. At a short viewport the run
-  area shrinks with `dvh` instead of overflowing, and at a narrow width no
-  horizontal page overflow appears.
-- **Specs linked**: `04-ux/08-component-spec.md` §9.9, ADR 0062,
-  decisions-log D271
-- **Acceptance**: C (conversation), Quality
-
-#### E2E-173: An expanded live delegate run follows its latest output
-
-- **Preconditions**: A project-bound Agent session with a mocked provider
-  stream where one `explorer` delegate is still running: it has already
-  produced enough thinking and tool rows to overflow the bounded
-  `.subagent-run-rows` area, and it continues to append rows and stream an
-  answer after the card is expanded.
-- **Steps**: 1) Expand the running delegation node and leave the nested
-  scroller untouched. 2) Watch new nested rows arrive (thinking, tool calls,
-  streamed answer). 3) Scroll the nested area upward to reread an earlier
-  tool row while the delegate is still producing output. 4) Click the nested
-  jump-to-latest control. 5) Repeat with keyboard scrolling (`Tab` to the
-  labelled run group, then `PageUp` / `ArrowUp`). 6) Confirm the parent
-  transcript's own follow state is unchanged: if it was pinned it stays
-  pinned; if the user had scrolled the transcript up, it stays unpinned.
-- **Expected**: Expanding pins the nested scroller to the newest row. While
-  pinned, new nested output stays in view without the user scrolling. The
-  first real upward gesture pauses nested follow, leaves earlier rows in
-  view as new output appends below, and shows a jump-to-latest control over
-  the nested scroller (not the parent transcript's control). Clicking it, or
-  scrolling back within 48px of the nested bottom, re-pins and jumps to the
-  latest nested row. A layout clamp or programmatic follow `scrollTo` does
-  not release nested follow. The parent transcript's pin / jump-to-latest
-  state is independent. The run heading and collapse rail remain visible and
-  unclipped.
-- **Specs linked**: `04-ux/08-component-spec.md` §9.9,
-  `04-ux/09-interaction-patterns.md` §9.1, decisions-log D271 / D302
+  where one `explorer` delegate has a Task description and emits thinking,
+  tool, and answer rows over time. The work panel is initially closed.
+- **Steps**: 1) Expand the activity group if needed and click the `explorer`
+  topology node. 2) Observe the right-side dock while the delegate streams.
+  3) Scroll the task/process conversation upward and then return to the latest
+  output. 4) Switch sessions and return to the original session.
+- **Expected**: The right dock shows a sticky identity header (avatar, name,
+  and model caption on the left; status capsule and elapsed time trailing on
+  the same row without wrapping), the Task call's description
+  as a full-width inset grouped card under a Task section label, capped at four
+  lines with an inline Show more / Show less control for longer tasks, and
+  the delegate's live thinking/tool/answer process under an Activity section
+  on one subtle vertical timeline using the same row components as the main
+  conversation.
+  New rows appear without a reload and follow the bottom while pinned. The
+  panel has one body scrollbar; the process does not create a nested scrollbar
+  or a second elevated card. A real upward gesture pauses follow and exposes
+  jump-to-latest. The transcript remains the same height and keeps its own
+  scroll state. Session switching hides the selection and returning never
+  shows another session's task.
+- **Specs linked**: `04-ux/08-component-spec.md` §5.7,
+  `04-ux/09-interaction-patterns.md` §9.1
 - **Acceptance**: C (conversation), Quality
 - **Milestone**: M6+
-- **Status**: Unit/source-contract covered (`subagent-transcript.test.mjs`,
-  `transcript-scroll.test.mjs`); desktop journey pending
+- **Status**: Documented; desktop journey pending
 
 #### E2E-161: A delegation lifecycle row reads as a subagent row
 
@@ -7314,17 +7505,21 @@ This test plan spec is accepted when:
   while the delegate is still running and read the heartbeat the parent
   receives. 4) `TaskList` a running delegate and confirm elapsed / last-tool
   fields. 5) `TaskStop` and user Stop still abort. 6) Explicit `maxTurns`
-  still returns `truncated`; `maxTurns: none` is unlimited.
+  still returns `truncated`; `maxTurns: none` is unlimited. 7) Start a
+  delegate on another model, exhaust the parent HTTP 429 budget, and click
+  Continue; confirm leftover delegates abort, the session is idle, Continue
+  is accepted, and the failed TurnOutcomeCard stays visible.
 - **Expected**: Idle and duration watchdogs never fire. Parent idle does not
   abort delegates. Completion reports are delivered into the same durable
   turn. `TaskWait` expiry reports “Still running after Ns”, includes a
   heartbeat, and states that this is not a failure. Builtin turn backstops
   (`explorer` 60, `code-reviewer` 50, `test-runner` 40, `fixer` 80) still end
   a non-converging delegate as `truncated`. Explorer's catalog includes
-  `Bash` while code-reviewer remains read-only.
+  `Bash` while code-reviewer remains read-only. A terminal parent 429 aborts
+  leftover delegates and Continue is not `AGENT_BUSY` (D352).
 - **Specs linked**: `03-runtime/02-agent-runtime.md` §5f,
   `03-runtime/08-error-codes.md`, `03-runtime/09-logging-and-observability.md`,
-  ADR 0166, decisions-log D328
+  ADR 0166, ADR 0189, decisions-log D328 / D352
 - **Acceptance**: C (conversation), E (tools & permissions), H (diagnostics), Quality
 - **Milestone**: M6+
 - **Status**: Covered by unit tests; full desktop journey pending
@@ -8226,23 +8421,27 @@ are withdrawn with ADR 0165.
 - **Preconditions**: At least one supported local config exists among
   `~/.claude/settings.json`, `~/.codex/config.toml` `[model_providers.*]`,
   `~/.config/opencode/opencode.json`, `~/.pi/agent/models.json`, or
-  `~/.cc-switch/cc-switch.db`, including one API-key provider and optionally
-  one OAuth-only vendor. PI-Desktop may already have an equivalent endpoint.
+  `~/.cc-switch/cc-switch.db`, including two API-key profiles with the same
+  endpoint and different keys, and optionally one OAuth-only vendor.
+  PI-Desktop may already have an equivalent provider.
 - **Steps**:
   1. Open Settings → Import. Confirm a Sessions card and a Model
      configuration card, each with its own Scan.
   2. Scan model configuration. Confirm groups start collapsed, rows show
      name, model count, host, and an API key / No API key badge, and that
      no secret value appears in the UI or in the scan IPC payload.
-  3. Import the selected providers. Confirm new rows appear under Settings
-     → Models. Re-import the same selection and confirm they are skipped.
+  3. Import the selected providers. Confirm both same-endpoint profiles appear
+     as separate rows under Settings → Models and remain selectable in the
+     Composer model menu. Re-import the same selection and confirm those
+     unchanged credentials are skipped.
   4. If the app had no default model, confirm the first imported provider
      becomes the default. If a default already existed, confirm it is
      unchanged.
   5. Confirm an OAuth-only source account is absent from the candidate
      list and that session import still works independently.
 - **Expected**: Explicit scan only (D007). Stored API keys land in the host
-  secret store. Equivalent endpoints (normalized URL + API style) skip.
+  secret store. Only equivalent providers (normalized URL + API style + same
+  credential) skip; different credentials at one endpoint remain separate.
   No protocol or schema version bump.
 - **Specs linked**: `04-ux/06-settings-ia.md`,
   `04-ux/08-component-spec.md` §18.5, `03-runtime/01-ipc-protocol.md`,
@@ -8275,3 +8474,34 @@ are withdrawn with ADR 0165.
 - **Milestone**: M5
 - **Status**: Static/documentation check covered (`pnpm docs:build` and path
   audit); remote GitHub and browser journey pending
+
+#### E2E-196: Chat links honor destination settings and context menu actions
+
+- **Preconditions**: A chat transcript can render an HTTP(S) Markdown link. The
+  work-panel Browser view and the system browser opener are available. The
+  clipboard can be observed or stubbed for the copy action.
+- **Steps**:
+  1. In Settings → AI → Defaults, select **Work panel browser** and click the
+     link from a chat reply.
+  2. Select **Default OS browser** and click the same link again.
+  3. Right-click the link and activate each context-menu item with the pointer:
+     Open in default browser, Open in work panel, and Copy link address. Repeat
+     the menu actions with keyboard focus and Arrow/Home/End navigation.
+  4. Repeat a link click with Ctrl/Cmd, Shift, and Alt held.
+- **Expected**:
+  - The Work panel browser is the default plain-click destination.
+  - The Default OS browser setting routes plain HTTP(S) clicks through the
+    main-owned external opener; changing the setting persists after reload.
+  - The body-level context menu remains interactive when clicked. Its external
+    and work-panel actions open the requested destination, and Copy link address
+    updates the clipboard before showing the success toast. A rejected clipboard
+    write shows an error toast instead of a success toast.
+  - Modifier clicks continue to open links externally regardless of the setting.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §8.3, `03-runtime/01-ipc-protocol.md`,
+  `08-meta/decisions-log.md` (D330)
+- **Acceptance**: B (settings), C (conversation & stream), Security, Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`apps/desktop/test/markdown-link-menu.test.mjs` and
+  locale catalog tests); full UI journey Draft (do not run E2E locally unless
+  explicitly requested)

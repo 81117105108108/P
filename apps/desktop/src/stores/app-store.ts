@@ -55,7 +55,11 @@ import {
   EMPTY_SESSION_WINDOW,
   sessionIsReusableEmpty,
 } from "../lib/session-create";
-import { rememberProject, setProjectPinned } from "../lib/recent-projects";
+import {
+  rememberProject,
+  renameRecentProject,
+  setProjectPinned,
+} from "../lib/recent-projects";
 import { applyOptimisticSessionConfiguration } from "../lib/session-thinking";
 import {
   RETAINED_SESSION_PANE_LIMIT,
@@ -88,6 +92,7 @@ import {
   sessionIsPinned,
   sortProjects,
   sortSessions,
+  normalizeProjectName,
   type ProjectMeta,
   type ProjectSort,
   type SessionMeta,
@@ -155,6 +160,7 @@ import {
   type QueuedPrompts,
 } from "../lib/queued-prompts";
 import { settleBootstrapRequests } from "../lib/bootstrap-result";
+import type { SubagentPanelSelection } from "../lib/subagent-panel";
 
 const ErrorCodes = {
   ...SharedErrorCodes,
@@ -203,6 +209,11 @@ function promptAttachmentsFromMessage(
 // match against every locale's defaults (case-insensitive), not just the
 // active locale's.
 const LEGACY_DEFAULT_TITLES = new Set(["new task", "new chat", "新建任务", "新对话"]);
+const SESSION_TITLE_FALLBACK_LENGTH = 48;
+
+function promptFallbackSessionTitle(userPrompt: string, emptyTitle: string): string {
+  return userPrompt.trim().replace(/\s+/g, " ").slice(0, SESSION_TITLE_FALLBACK_LENGTH) || emptyTitle;
+}
 
 function withoutRecordKey<T>(record: Record<string, T>, key: string): Record<string, T> {
   const next = { ...record };
@@ -217,6 +228,92 @@ function viewingSessionIdForPrompt(
   return state.page === "chat" && state.activeSessionId === sessionId
     ? sessionId
     : null;
+}
+
+function notifyInteractivePrompt(
+  sessionId: string,
+  kind: "ask" | "permission" | "plan",
+  payload?: { question?: string; toolName?: string },
+) {
+  const session = useAppStore.getState().sessions.find((s) => s.id === sessionId);
+  const sessionTitle = session?.title || i18n.t("chat.untitledTask");
+  let title = "";
+  let body = "";
+  if (kind === "ask") {
+    title = i18n.t("notifications.askTitle", { sessionTitle });
+    body = payload?.question?.trim() || i18n.t("notifications.askBodyFallback");
+  } else if (kind === "permission") {
+    title = i18n.t("notifications.permissionTitle", { sessionTitle });
+    body = i18n.t("notifications.permissionBody", {
+      toolName: payload?.toolName || "tool",
+    });
+  } else if (kind === "plan") {
+    title = i18n.t("notifications.planApprovalTitle", { sessionTitle });
+    body = i18n.t("notifications.planApprovalBody");
+  }
+  void api
+    .showNativeNotification({
+      id: crypto.randomUUID(),
+      sessionId,
+      kind: "interactive",
+      title,
+      body,
+      source: "interactive",
+    })
+    .catch(() => undefined);
+}
+
+const manuallyRenamedSessionIds = new Set<string>();
+const summarizedSessionIds = new Set<string>();
+
+async function triggerAutoTitleSummarization(sessionId: string) {
+  if (!sessionId) return;
+  if (manuallyRenamedSessionIds.has(sessionId)) return;
+  if (summarizedSessionIds.has(sessionId)) return;
+
+  const state = useAppStore.getState();
+  const session = state.sessions.find((s) => s.id === sessionId);
+  if (!session) return;
+
+  const messages =
+    sessionId === state.activeSessionId
+      ? state.messages
+      : sessionTranscriptCache.get(sessionId) ?? [];
+
+  const firstUser = messages.find((m) => m.role === "user");
+  if (!firstUser?.content) return;
+  // The marker covers renames made in this renderer and survives restart.
+  // The title check also protects custom titles created before the marker was
+  // introduced, while retaining the prompt fallback until its summary lands.
+  if (
+    state.sessionMeta[sessionId]?.manualTitle ||
+    (!isDefaultSessionTitle(session.title) &&
+      session.title.trim() !== promptFallbackSessionTitle(firstUser.content, ""))
+  ) {
+    return;
+  }
+
+  const firstAssistant = messages.find(
+    (m) => m.role === "assistant" && typeof m.content === "string" && m.content.trim(),
+  );
+
+  summarizedSessionIds.add(sessionId);
+
+  try {
+    const res = await api.summarizeSessionTitle({
+      sessionId,
+      userPrompt: firstUser.content,
+      assistantReply:
+        typeof firstAssistant?.content === "string" ? firstAssistant.content : undefined,
+    });
+    const nextTitle = res?.title?.trim();
+    if (nextTitle && !manuallyRenamedSessionIds.has(sessionId)) {
+      await api.renameSession(sessionId, nextTitle);
+      await useAppStore.getState().refreshSessions();
+    }
+  } catch {
+    // Non-fatal: keep current truncated prompt title as fallback
+  }
 }
 
 export type ToastVariant = "info" | "success" | "warning" | "error";
@@ -841,6 +938,7 @@ export type AppState = {
   setSessionArchiveVisibility: (show: boolean) => void;
   setSessionView: (view: Partial<SessionView> | boolean) => void;
   setShowArchived: (show: boolean) => void;
+  renameProject: (path: string, name: string) => void;
   toggleProjectPinned: (path: string, pinned?: boolean) => void;
   toggleProjectArchived: (path: string) => void;
   restoreProject: (path: string) => void;
@@ -895,6 +993,8 @@ export type AppState = {
   dismissToast: (id: number) => void;
   composerPrefill: ComposerPrefill | null;
   clearComposerPrefill: () => void;
+  /** Renderer-only subagent details selected from the transcript. */
+  subagentPanel: SubagentPanelSelection | null;
   workPanelOpen: boolean;
   workPanelTabs: WorkPanelTab[];
   activeWorkPanelTabId: string | null;
@@ -903,6 +1003,10 @@ export type AppState = {
   workPanelWidth: number;
   /** Chat-initiated "preview this file" request consumed by the files tab. */
   workPanelFileRequest: { path: string; seq: number; mimeType?: string } | null;
+  /** Open a selected subagent in the session's right-side detail dock. */
+  openSubagentPanel: (delegationId: string) => void;
+  /** Close the selected subagent detail without changing resource tabs. */
+  closeSubagentPanel: () => void;
   /** Reveal the active session's retained work panel without creating a tab. */
   openWorkPanel: () => void;
   /** Flip the work panel between revealed and collapsed for the active session. */
@@ -934,6 +1038,9 @@ function openPlanArtifact(
 }
 
 const initialSidebarPreferences = loadSidebarPreferences();
+for (const [sessionId, meta] of Object.entries(initialSidebarPreferences.sessionMeta)) {
+  if (meta.manualTitle) manuallyRenamedSessionIds.add(sessionId);
+}
 const initialWorkPanelWidth = loadWorkPanelWidth();
 
 function currentWorkPanelContext(state: AppState): WorkPanelContext {
@@ -1032,6 +1139,15 @@ function upsertWorkspace(
   const next = projects.slice();
   next[index] = { ...next[index], ...workspace };
   return next;
+}
+
+function withProjectDisplayName(
+  workspace: ProjectWorkspace,
+  projectMeta: Record<string, ProjectMeta>,
+): ProjectWorkspace {
+  const key = normalizeProjectPath(workspace.path);
+  const name = key ? projectMeta[key]?.name : undefined;
+  return name ? { ...workspace, name } : workspace;
 }
 
 function preferencesFromState(state: Pick<
@@ -1162,7 +1278,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     sortBy: initialSidebarPreferences.sessionView.sort,
     showArchived: initialSidebarPreferences.sessionView.archived,
   },
-  openProjects: initialSidebarPreferences.openProjectPaths.map(projectWorkspaceFromPath),
+  openProjects: initialSidebarPreferences.openProjectPaths.map((path) =>
+    withProjectDisplayName(
+      projectWorkspaceFromPath(path),
+      initialSidebarPreferences.projectMeta,
+    ),
+  ),
   openProjectPaths: initialSidebarPreferences.openProjectPaths,
   activeProjectPath: undefined,
   projectMeta: initialSidebarPreferences.projectMeta,
@@ -1171,6 +1292,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       .filter(([, meta]) => meta.collapsed === true)
       .map(([path]) => [path, true]),
   ),
+  subagentPanel: null,
   workPanelOpen: false,
   workPanelTabs: [],
   activeWorkPanelTabId: null,
@@ -1296,7 +1418,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           )
         ).filter((entry): entry is readonly [string, ModelInfo[]] => entry !== null),
       );
-      const currentWorkspace = project.workspace;
+      const currentWorkspace = project.workspace
+        ? withProjectDisplayName(project.workspace, get().projectMeta)
+        : null;
       const persistedPaths = get().openProjectPaths;
       // Only explicitly retained tabs are restored. Historical sessions stay
       // available in Projects, but must not silently reopen a tab that was
@@ -1304,7 +1428,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       const openProjectPaths = currentWorkspace?.path
         ? promoteProjectPath(persistedPaths, currentWorkspace.path)
         : persistedPaths;
-      const openProjects = openProjectPaths.map((path) => projectWorkspaceFromPath(path));
+      const openProjects = openProjectPaths.map((path) =>
+        withProjectDisplayName(projectWorkspaceFromPath(path), get().projectMeta),
+      );
       const hydratedProjects = currentWorkspace
         ? upsertWorkspace(openProjects, currentWorkspace)
         : openProjects;
@@ -2083,8 +2209,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       const current = get().sessions.find((s) => s.id === sessionId);
       if (isDefaultSessionTitle(current?.title)) {
-        const nextTitle =
-          content.trim().replace(/\s+/g, " ").slice(0, 48) || untitledTaskTitle();
+        const nextTitle = promptFallbackSessionTitle(content, untitledTaskTitle());
         // Fire-and-forget: renaming the sidebar title must not delay the prompt
         // reaching the agent runtime — removes visible lag after pressing Enter.
         api.renameSession(sessionId, nextTitle)
@@ -2680,7 +2805,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!requestedPath) return null;
     const result = await api.setProject(requestedPath);
     if (!navigationIntentIsCurrent(intent)) return null;
-    const workspace = result.workspace;
+    const workspace = result.workspace
+      ? withProjectDisplayName(result.workspace, get().projectMeta)
+      : null;
     if (!workspace?.path) return null;
     if (
       normalizeProjectPath(get().activeProjectPath) !==
@@ -2763,7 +2890,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const result = await api.openProject();
     if (!navigationIntentIsCurrent(intent)) return;
     if (!result.canceled && result.workspace) {
-      const workspace = result.workspace;
+      const workspace = withProjectDisplayName(result.workspace, get().projectMeta);
       if (
         normalizeProjectPath(get().activeProjectPath) !==
         normalizeProjectPath(workspace.path)
@@ -2896,18 +3023,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!id) return;
     const nextTitle = title.trim();
     if (!nextTitle) throw new Error("Session title must not be empty");
+    manuallyRenamedSessionIds.add(id);
     const result = await api.renameSession(id, nextTitle);
     if (!result.ok) throw new Error("Session not found");
     set((state) => ({
+      sessionMeta: {
+        ...state.sessionMeta,
+        [id]: { ...(state.sessionMeta[id] || {}), manualTitle: true },
+      },
       sessions: state.sessions.map((session) =>
         session.id === id ? { ...session, title: nextTitle } : session,
       ),
     }));
+    persistCurrentSidebar(get);
   },
 
   deleteSession: async (id) => {
     if (!id) return;
     await api.deleteSession(id);
+    manuallyRenamedSessionIds.delete(id);
     pendingSessionConfigurations.delete(id);
     sessionTranscriptCache.delete(id);
     sessionHistoryCache.delete(id);
@@ -3033,6 +3167,36 @@ export const useAppStore = create<AppState>((set, get) => ({
       setProjectPinned(path, projectIsPinned(key, get().projectMeta));
     } catch {
       // The durable recent-project index is optional in restricted contexts.
+    }
+    persistCurrentSidebar(get);
+  },
+
+  renameProject: (path, name) => {
+    const key = normalizeProjectPath(path);
+    if (!key) return;
+    const normalizedName = normalizeProjectName(name);
+    if (!normalizedName) {
+      throw new Error("Project name must be between 1 and 80 characters");
+    }
+    set((state) => ({
+      projectMeta: {
+        ...state.projectMeta,
+        [key]: { ...(state.projectMeta[key] || {}), name: normalizedName },
+      },
+      openProjects: state.openProjects.map((project) =>
+        normalizeProjectPath(project.path) === key
+          ? { ...project, name: normalizedName }
+          : project,
+      ),
+      workspace:
+        state.workspace && normalizeProjectPath(state.workspace.path) === key
+          ? { ...state.workspace, name: normalizedName }
+          : state.workspace,
+    }));
+    try {
+      renameRecentProject(path, normalizedName);
+    } catch {
+      // Recent projects are a best-effort renderer cache.
     }
     persistCurrentSidebar(get);
   },
@@ -3478,18 +3642,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         latestTurnResults:
           event.type === "error" && event.error.code === "TURN_ABORTED"
             ? withoutRecordKey(s.latestTurnResults, envelope.sessionId)
-            : {
-                ...s.latestTurnResults,
-                [envelope.sessionId]: {
-                  status: event.type === "error" ? "failed" : "completed",
-                  turnId:
-                    envelope.turnId ?? `${envelope.sessionId}:${envelope.ts}`,
-                  finishedAt: envelope.ts,
-                  ...(event.type === "error"
-                    ? { errorCode: event.error.code }
-                    : {}),
+            : event.type === "agent_end" &&
+                s.latestTurnResults[envelope.sessionId]?.status === "failed"
+              ? s.latestTurnResults
+              : {
+                  ...s.latestTurnResults,
+                  [envelope.sessionId]: {
+                    status: event.type === "error" ? "failed" : "completed",
+                    turnId:
+                      envelope.turnId ?? `${envelope.sessionId}:${envelope.ts}`,
+                    finishedAt: envelope.ts,
+                    ...(event.type === "error"
+                      ? { errorCode: event.error.code }
+                      : {}),
+                  },
                 },
-              },
       }));
       void flushPendingSessionConfiguration(envelope.sessionId);
       if (event.type === "agent_end") {
@@ -3526,6 +3693,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           openPlanArtifact(checkpoint, get().openWorkPanelTabForSession);
         }
         void get().restorePendingPlan(envelope.sessionId);
+        notifyInteractivePrompt(envelope.sessionId, "plan");
       }
       if (event.state !== "awaiting_approval") {
         void drainQueuedPrompts(envelope.sessionId);
@@ -3608,12 +3776,19 @@ export const useAppStore = create<AppState>((set, get) => ({
             receivedAt: envelope.ts,
           }),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "permission", {
+          toolName: event.request.toolName,
+        });
       } else if (event.type === "asktool_request") {
         set((state) => ({
           pendingAsks: enqueueAsk(state.pendingAsks, event.request),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "ask", {
+          question: event.request.questions?.[0]?.question,
+        });
       } else if (event.type === "agent_end") {
         void get().refreshSessions();
+        void triggerAutoTitleSummarization(envelope.sessionId);
       } else if (event.type === "planning_state") {
         void get().refreshSessions();
       }
@@ -3661,6 +3836,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       case "agent_end":
         set({ isRunning: false });
         void get().refreshSessions();
+        void triggerAutoTitleSummarization(envelope.sessionId);
         break;
       case "turn_end":
         break;
@@ -3815,11 +3991,17 @@ export const useAppStore = create<AppState>((set, get) => ({
             receivedAt: envelope.ts,
           }),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "permission", {
+          toolName: event.request.toolName,
+        });
         break;
       case "asktool_request":
         set((state) => ({
           pendingAsks: enqueueAsk(state.pendingAsks, event.request),
         }));
+        notifyInteractivePrompt(envelope.sessionId, "ask", {
+          question: event.request.questions?.[0]?.question,
+        });
         break;
       case "error": {
         // A user-initiated stop is not an error; just settle the run state.
@@ -4023,6 +4205,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   dismissToast: (id) =>
     set((state) => ({ toasts: state.toasts.filter((item) => item.id !== id) })),
 
+  openSubagentPanel: (delegationId) => {
+    const sessionId = get().activeSessionId;
+    const id = delegationId.trim();
+    if (!sessionId || !id) return;
+    set({ subagentPanel: { sessionId, delegationId: id } });
+  },
+  closeSubagentPanel: () => set({ subagentPanel: null }),
+
   openWorkPanel: () => {
     const state = get();
     const sessionId = state.activeSessionId;
@@ -4038,11 +4228,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   toggleWorkPanel: () => {
-    if (get().workPanelOpen) {
-      get().collapseWorkPanel();
+    const state = get();
+    if (state.subagentPanel) {
+      state.closeSubagentPanel();
+      if (get().workPanelOpen) get().collapseWorkPanel();
       return;
     }
-    get().openWorkPanel();
+    if (state.workPanelOpen) {
+      state.collapseWorkPanel();
+      return;
+    }
+    state.openWorkPanel();
   },
 
   openWorkPanelTabForSession: (sessionId, tab) => {

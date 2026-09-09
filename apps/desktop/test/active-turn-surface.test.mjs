@@ -25,6 +25,10 @@ test("active turns show immediate and phase-specific feedback without a progress
   assert.match(transcript, /waiting-model/);
   assert.match(transcript, /waitingForSubagents/);
   assert.match(transcript, /retryingModel/);
+  assert.match(transcript, /activity\.error/);
+  assert.match(transcript, /run-activity-error-popover message-error/);
+  assert.match(transcript, /role="tooltip"/);
+  assert.match(transcript, /aria-describedby=\{retryErrorDetailsId\}/);
   assert.match(transcript, /state\.agentStatuses\[sessionId\]\?\.activity/);
   assert.match(transcript, /const specializedActivity =/);
   assert.match(transcript, /!hasSpecializedActivity/);
@@ -59,6 +63,11 @@ test("active turns show immediate and phase-specific feedback without a progress
   assert.match(messagesStyles, /\.working-indicator-mark\s*\{/);
   assert.match(messagesStyles, /\.run-activity-indicator\[data-phase="waiting-model"\]/);
   assert.match(messagesStyles, /\.run-activity-indicator\[data-phase="retrying"\]/);
+  assert.match(messagesStyles, /\.run-activity-error-popover\.message-error/);
+  assert.match(
+    messagesStyles,
+    /\.run-activity-retry-reason:hover[\s\S]*\.run-activity-error-popover/,
+  );
   assert.match(messagesStyles, /\.run-activity-indicator\[data-phase="waiting-subagents"\]/);
   assert.match(messagesStyles, /\.working-indicator-mark > span\s*\{[\s\S]*?animation:\s*working-indicator-dot\s+1s/);
   assert.doesNotMatch(proseStyles, /\.working-indicator\s*\{|\.shimmer-text\s*\{/);

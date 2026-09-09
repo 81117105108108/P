@@ -37,11 +37,13 @@ Main risks:
    the in-flight tool session only (D336 / D019)
 
 Clipboard history is host-owned and remains in the Electron main process only.
-It is never written to the plugin data directory or the host database. A plugin
-can read it only through `clipboard.read`, which is also the permission used by
-`readText`; every `getHistory` call is audited with its returned entry count.
-The bounded in-memory retention limits the privacy exposure to the current app
-run and is cleared on exit.
+It is never written to the plugin data directory or the host database. The host
+records explicit clipboard writes and user-initiated Composer paste events; it
+does not poll the OS clipboard in the background. A plugin can read history only
+through `clipboard.read`, which is also the permission used by `readText`;
+every `getHistory` call is audited with its returned entry count. The bounded
+in-memory retention limits the privacy exposure to the current app run and is
+cleared on exit.
 
 ### Goals
 1. Plugin main runs in a separate process
@@ -178,6 +180,18 @@ directory the plugin needs no manifest scope, because the user just pointed at
 it. Containment and the deny-list still apply there. The handle is memory-only
 and dies with the process, so the plugin holds unlimited reach and zero standing
 power — the model the browser's File System Access API uses.
+
+### 6.4 Dropped-file grants
+
+A sandboxed plugin panel may resolve a user-dropped `File` to a local path through
+the host preload's `getDroppedFilePath`. The preload reports that path to the
+panel host before page code runs. `fs.registerDropped(path)` consumes one of
+those short-lived, sender-bound reports and returns a memory-only `grantId`.
+The grant covers exactly that one canonical regular file for `fs.stat` and
+`fs.readRange`; it does not change `manifest.fs`, grant a directory, or permit
+writes, opens, reveals, or deletes. The grant dies with the plugin process and is
+never persisted. Protected paths, credentials, symlink replacement, and the
+deny-list remain enforced on registration and every subsequent read.
 
 ## 7. Agent security
 

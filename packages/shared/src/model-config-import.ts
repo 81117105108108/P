@@ -146,15 +146,40 @@ export function existingProviderMatchKey(input: {
 }
 
 export function draftMatchesExisting(
-  draft: Pick<ModelConfigImportDraft, "baseUrl" | "apiStyle" | "vendorKey">,
+  draft: Pick<
+    ModelConfigImportDraft,
+    "baseUrl" | "apiStyle" | "vendorKey" | "secretValue" | "hasSecret"
+  >,
   existing: Array<{
     baseUrl?: string | null;
     apiStyle?: string | null;
     vendorKey?: string | null;
+    secretValue?: string;
+    hasSecret?: boolean;
   }>,
 ): boolean {
   const key = existingProviderMatchKey(draft);
-  return existing.some((row) => existingProviderMatchKey(row) === key);
+  return existing.some(
+    (row) =>
+      existingProviderMatchKey(row) === key &&
+      importCredentialsMatch(draft, row),
+  );
+}
+
+/**
+ * Endpoint identity alone is not enough for an imported provider: two CC
+ * Switch profiles may intentionally point at one gateway with different API
+ * keys. The raw values stay in Electron main; this comparison is never used
+ * for the public renderer candidate.
+ */
+function importCredentialsMatch(
+  left: { secretValue?: string; hasSecret?: boolean },
+  right: { secretValue?: string; hasSecret?: boolean },
+): boolean {
+  const leftSecret = sanitizeSecret(left.secretValue);
+  const rightSecret = sanitizeSecret(right.secretValue);
+  if (leftSecret || rightSecret) return leftSecret === rightSecret;
+  return left.hasSecret !== true && right.hasSecret !== true;
 }
 
 export function parseJsonDocument(text: string): unknown | null {

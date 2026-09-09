@@ -16,8 +16,17 @@ export function normalizeProjectPath(projectPath?: string | null): string | null
 
 export type SessionSort = "recent" | "created" | "oldest" | "name" | "manual";
 export type ProjectSort = "recent" | "created" | "oldest" | "name" | "manual";
-export type SessionMeta = { pinned?: boolean; archived?: boolean; order?: number };
+export type SessionMeta = {
+  pinned?: boolean;
+  archived?: boolean;
+  order?: number;
+  /** Survives renderer restarts so automatic titles never replace a manual one. */
+  manualTitle?: boolean;
+};
+export const MAX_PROJECT_NAME_CHARS = 80;
 export type ProjectMeta = {
+  /** Renderer-only display name; the project path remains authoritative. */
+  name?: string;
   pinned?: boolean;
   archived?: boolean;
   collapsed?: boolean;
@@ -79,6 +88,12 @@ function bool(value: unknown): boolean | undefined {
 function number(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
+export function normalizeProjectName(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const name = value.trim();
+  if (!name || Array.from(name).length > MAX_PROJECT_NAME_CHARS) return undefined;
+  return name;
+}
 function cleanSessionMeta(value: unknown): Record<string, SessionMeta> {
   if (!object(value)) return {};
   const output: Record<string, SessionMeta> = {};
@@ -88,9 +103,11 @@ function cleanSessionMeta(value: unknown): Record<string, SessionMeta> {
     const pinned = bool(raw.pinned);
     const archived = bool(raw.archived);
     const order = number(raw.order);
+    const manualTitle = bool(raw.manualTitle);
     if (pinned !== undefined) item.pinned = pinned;
     if (archived !== undefined) item.archived = archived;
     if (order !== undefined) item.order = order;
+    if (manualTitle !== undefined) item.manualTitle = manualTitle;
     if (Object.keys(item).length) output[id] = item;
   }
   return output;
@@ -102,10 +119,12 @@ function cleanProjectMeta(value: unknown): Record<string, ProjectMeta> {
     const path = normalizeProjectPath(rawPath);
     if (!path || !object(raw)) continue;
     const item: ProjectMeta = {};
+    const name = normalizeProjectName(raw.name);
     const pinned = bool(raw.pinned);
     const archived = bool(raw.archived);
     const collapsed = bool(raw.collapsed);
     const order = number(raw.order);
+    if (name !== undefined) item.name = name;
     if (pinned !== undefined) item.pinned = pinned;
     if (archived !== undefined) item.archived = archived;
     if (collapsed !== undefined) item.collapsed = collapsed;

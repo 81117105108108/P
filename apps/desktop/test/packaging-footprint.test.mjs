@@ -5,6 +5,10 @@ import test from "node:test";
 const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
+const macOpenFixNote = await readFile(
+  new URL("../PI-Desktop-macOS-opening-help.txt", import.meta.url),
+  "utf8",
+);
 const viteConfigSource = await readFile(
   new URL("../electron.vite.config.ts", import.meta.url),
   "utf8",
@@ -187,6 +191,26 @@ test("macOS targets follow the native architecture selected by the runner", () =
     "macOS targets must not pin the package to Apple Silicon",
   );
   assert.doesNotMatch(packageJson.scripts["dist:mac"], /--(?:arm64|x64)/);
+});
+
+test("macOS installers include trusted-source opening guidance", () => {
+  assert.deepEqual(packageJson.build.mac.extraDistFiles, [
+    "PI-Desktop-macOS-opening-help.txt",
+  ]);
+  assert.deepEqual(packageJson.build.dmg.contents, [
+    { x: 130, y: 220 },
+    { x: 410, y: 220, type: "link", path: "/Applications" },
+    {
+      x: 270,
+      y: 330,
+      type: "file",
+      name: "PI-Desktop-macOS-opening-help.txt",
+      path: "PI-Desktop-macOS-opening-help.txt",
+    },
+  ]);
+  assert.match(macOpenFixNote, /xattr -cr \/Applications\/PI-Desktop\.app/);
+  assert.match(macOpenFixNote, /trusted PI-Desktop source/);
+  assert.match(macOpenFixNote, /Signed and\s+notarized builds do not need/);
 });
 
 test("packaging does not include removed PTY native payload configuration", () => {

@@ -525,6 +525,13 @@ export type AgentStatus = {
   activity?: AgentActivity;
 };
 
+/** Bounded provider diagnostics shown while the runtime waits before retrying. */
+export type AgentActivityError = {
+  code: string;
+  message: string;
+  providerStatus?: number;
+};
+
 /** The runtime phase that explains a quiet interval in an active turn. */
 export type AgentActivity =
   | { phase: "starting"; since: number }
@@ -534,6 +541,7 @@ export type AgentActivity =
       since: number;
       attempt: number;
       retryDelayMs?: number;
+      error?: AgentActivityError;
     }
   | {
       phase: "waiting-subagents";
@@ -603,6 +611,19 @@ export type PromptEnhancementRequest = {
 
 export type PromptEnhancementResponse = {
   enhancedDraft: string;
+};
+
+export type SessionSummarizeTitleRequest = {
+  sessionId: string;
+  userPrompt: string;
+  assistantReply?: string;
+  providerId?: string;
+  modelId?: string;
+  thinkingLevel?: ThinkingLevel;
+};
+
+export type SessionSummarizeTitleResponse = {
+  title: string;
 };
 
 export type AgentExecuteApprovedPlanRequest = {
@@ -925,6 +946,7 @@ export type OAuthPromptOption = {
 export type OAuthPromptRequest = {
   promptId: string;
   type: "text" | "secret" | "select" | "manual_code";
+  /** Plain text prompts may accept an empty value as a vendor-defined default. */
   message: string;
   placeholder?: string;
   options?: OAuthPromptOption[];
@@ -1138,8 +1160,16 @@ export type AppSettings = {
    * is set. See `network-proxy.ts`.
    */
   networkProxy?: NetworkProxySettings;
+  /**
+   * Preferred destination when clicking HTTP/HTTPS links in chat messages.
+   * `workpanel`: Preview in the Work Panel browser tab (default).
+   * `external`: Open directly in the system's default web browser.
+   */
+  linkOpenTarget?: LinkOpenTarget;
   onboardingDismissed: boolean;
 };
+
+export type LinkOpenTarget = "workpanel" | "external";
 
 export type PluginMarketSource = "official" | "mirror" | "custom";
 
@@ -1609,6 +1639,8 @@ export type ComposerCommand = {
 export type ComposerPasteFile = {
   name?: string;
   mimeType?: string;
+  /** Set for generated large-text pastes so history can retain the text. */
+  recordHistory?: boolean;
   data: ArrayBuffer;
 };
 

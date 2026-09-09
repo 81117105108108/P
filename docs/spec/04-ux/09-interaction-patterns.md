@@ -192,6 +192,11 @@ may be retained while exactly one workspace supplies the visible shell context.
   blank values are not submittable. The title is metadata only, so the task's
   transcript, activity ordering, project binding, and empty-session state are
   unchanged. Escape, Cancel, or clicking the scrim dismisses the editor.
+- **Rename project** — the project overflow menu in the sidebar and Project
+  archive opens the same modal editor for the selected project. Saving trims
+  and persists a 1–80 Unicode-code-point display name in renderer-local
+  sidebar preferences. The normalized path remains authoritative, so the
+  workspace, sessions, transcript data, and on-disk folder are unchanged.
 - **Pin** toggles presentation priority. Pinned projects/conversations appear
   before unpinned rows within the selected secondary order. In the sidebar, a
   pinned project replaces its Folder glyph with a filled accent Star so its
@@ -346,9 +351,11 @@ may be retained while exactly one workspace supplies the visible shell context.
    An `aborted` turn never creates one.
 3. Electron emits `notification.changed` to every live renderer so the bell
    badge and currently open inbox refresh.
-4. If the main window is focused, no other surface appears. If it is
-   unfocused and native notifications are supported, Electron shows one
-   platform notification derived from the event kind and session title. On
+4. For a task result, a focused main window produces no native banner. If
+   it is unfocused and native notifications are supported, Electron shows one
+   platform notification derived from the event kind and session title. The
+   separate interactive ask/permission/plan path may alert for a focused
+   background session while suppressing the exact visible session. On
    Windows, the banner is attributed to the canonical PI-Desktop
    AppUserModelID shared with the NSIS package and taskbar identity.
 5. Clicking the native notification shows/restores and focuses the main
@@ -1053,12 +1060,24 @@ When drag/drop is implemented, these patterns should apply:
 - Button appears as soon as upward scrolling releases follow mode
 - Click button: scrolls to bottom, resumes auto-scroll
 - Button disappears when at bottom
-- An expanded delegate run's `.subagent-run-rows` scroller uses that same
-  contract independently of the parent transcript (D302): expanding pins to
-  the latest output, new nested rows keep the viewport at the bottom while
-  pinned, the first upward gesture pauses follow and shows a nested
-  jump-to-latest control, and a layout clamp or programmatic follow `scrollTo`
-  never releases it. Native overflow anchoring is disabled on that scroller.
+- The subagent task dock uses the same single-body scroll owner as the work
+  panel. It renders the task description followed by the delegate's live
+  thinking, tool, and answer rows in normal content flow; it does not mount a
+  nested `.subagent-run-rows` workflow scrollbar. While the panel is pinned,
+  new process rows stay in view; a real upward gesture pauses follow and shows
+  the standard jump-to-latest control. This keeps the process readable without
+  a second scrollbar or an empty tail.
+- Clicking a delegation topology node opens an inset grouped side sheet in the
+  right-side work-panel dock instead of expanding the transcript. The dock has
+  a sticky identity header (avatar, name, and model caption on the left; status
+  capsule and elapsed time trailing on the same row), the Task call's selectable description as a full-width grouped
+  card under a Task section label, capped at four lines with an inline Show
+  more / Show less control for longer tasks, and its live process under an
+  Activity section on one subtle vertical timeline; it does not render separate
+  details, output, or workflow tabs.
+  Selecting another node replaces the task in place, closing it restores the
+  prior resource view when present, and switching sessions or routes hides the
+  selection. `Cmd/Ctrl + J` hides the whole dock.
 
 ### 9.1a Sidebar project path and open folder
 
@@ -1207,8 +1226,9 @@ This does not prevent state changes — it makes them instant.
     aborted turns never appear
 18. All/Unread, mark-all-read, clear, row activation, Escape/focus restore, and
     arrow/Home/End keyboard navigation behave as documented in §1.7
-19. Native notifications appear only while the main window is unfocused and
-    their activation focuses the window and opens the corresponding session
+19. Native task notifications appear only while the main window is unfocused;
+    interactive prompt notifications may alert for a focused background session.
+    Activation focuses the window and opens the corresponding session
 20. Streamed message updates stay within the chat render boundary; shell
     navigation, composer, completed rows, and work-panel content do not rerender
     solely because the current assistant message appended content

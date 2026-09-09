@@ -106,6 +106,7 @@ import {
   IconBranch,
   IconCheck,
   IconCircleAlert,
+  IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconCopy,
@@ -600,6 +601,8 @@ const ToolRow = memo(function ToolRow({
   const detailsId = useId();
   const root = useAppStore((s) => s.workspace?.path);
   const openTarget = useOpenPreviewTarget();
+  const openSubagentPanel = useAppStore((s) => s.openSubagentPanel);
+  const subagentPanel = useAppStore((s) => s.subagentPanel);
   const status = message.toolStatus;
   const action = getToolAction(message.toolName);
   // A run row states what the command did, not what the call around it did: an
@@ -645,7 +648,7 @@ const ToolRow = memo(function ToolRow({
   // Streaming updates replace the message object each tick; only pay the
   // full payload walk once the row is actually expanded.
   const blocks =
-    open && hasDetails
+    variant !== "topology" && open && hasDetails
       ? buildToolPresentation(message, {
           hideSummaryArg: true,
           ...(nestedReport ? { hideDelegateReport: true } : {}),
@@ -686,6 +689,15 @@ const ToolRow = memo(function ToolRow({
     delegationPayload && typeof delegationPayload === "object"
       ? (delegationPayload as { delegationId?: unknown }).delegationId
       : undefined;
+  const panelSelectionId =
+    typeof delegationId === "string" && delegationId
+      ? delegationId
+      : message.toolCallId || message.id;
+  const panelOpen =
+    variant === "topology" &&
+    subagentPanel?.delegationId === panelSelectionId;
+  const renderedOpen = variant === "topology" ? panelOpen : open;
+  const inlineOpen = variant !== "topology" && open;
   const delegationTiming =
     typeof delegationId === "string"
       ? delegationTimings?.get(delegationId)
@@ -733,7 +745,7 @@ const ToolRow = memo(function ToolRow({
   return (
     <div
       className={`tool-row ${variant === "topology" ? "subagent-topology-node" : ""} ${
-        open ? "open" : ""
+        renderedOpen ? "open" : ""
       } status-${run === "failed" ? "error" : status || "success"}${outcome ? ` outcome-${outcome.replaceAll("_", "-")}` : ""}`}
       role={variant === "topology" ? "listitem" : "region"}
       aria-label={`${t("chat.toolCall")}: ${rawName}${agentName ? `, ${agentName}` : ""}${modelId ? `, ${modelId}` : ""}${statusLabel ? `, ${statusLabel}` : ""}`}
@@ -741,11 +753,11 @@ const ToolRow = memo(function ToolRow({
       {variant === "topology" ? (
         <button
           className="subagent-topology-node-header"
-          aria-expanded={open}
-          aria-controls={hasDetails ? detailsId : undefined}
+          aria-expanded={panelOpen}
+          aria-controls={hasDetails ? "subagent-panel" : undefined}
           disabled={!hasDetails}
           title={summary || agentName || rawName}
-          onClick={() => hasDetails && setOpen((value) => !value)}
+          onClick={() => hasDetails && openSubagentPanel(panelSelectionId)}
         >
           <span className="subagent-topology-avatar" aria-hidden>
             <IconBot size={15} />
@@ -916,7 +928,7 @@ const ToolRow = memo(function ToolRow({
           <ToolDetailBlocks blocks={blocks} plain={runHead} />
         </div>
       ) : null}
-      {open && delegate ? (
+      {inlineOpen && delegate ? (
         <SubagentRunRows
           run={delegate}
           agentName={agentName}
@@ -938,32 +950,50 @@ function SubagentRunRows({
   run,
   agentName,
   onCollapse,
+  scrollable = true,
+  variant = "inline",
 }: {
   run: SubagentRun;
   agentName: string;
-  onCollapse: () => void;
+  onCollapse?: () => void;
+  /** Side-panel mode lets the parent panel own the only scrollbar. */
+  scrollable?: boolean;
+  /** Dock headings are section labels; inline headings name the delegate. */
+  variant?: "inline" | "dock";
 }) {
   const { t } = useTranslation();
   const headingId = useId();
   if (run.items.length === 0) return null;
+  const dock = variant === "dock";
   return (
-    <div className="subagent-run">
-      <DisclosureCollapseRail
-        label={t("chat.collapseDetails")}
-        onCollapse={onCollapse}
-      />
-      <div className="subagent-run-heading" id={headingId}>
-        <IconBot size={13} aria-hidden />
+    <div className={dock ? "subagent-run is-dock" : "subagent-run"}>
+      {onCollapse ? (
+        <DisclosureCollapseRail
+          label={t("chat.collapseDetails")}
+          onCollapse={onCollapse}
+        />
+      ) : null}
+      <div
+        className={dock ? "subagent-run-heading is-dock" : "subagent-run-heading"}
+        id={headingId}
+      >
+        {dock ? null : <IconBot size={13} aria-hidden />}
         <span>
-          {agentName
-            ? t("chat.subagentWork", { agent: agentName })
-            : t("chat.subagentWorkUnnamed")}
+          {dock
+            ? t("chat.subagentProcess")
+            : agentName
+              ? t("chat.subagentWork", { agent: agentName })
+              : t("chat.subagentWorkUnnamed")}
         </span>
         <span className="subagent-run-count">
           {t("chat.processingSteps", { count: run.items.length })}
         </span>
       </div>
-      <SubagentRunFollow headingId={headingId} items={run.items} />
+      <SubagentRunFollow
+        headingId={headingId}
+        items={run.items}
+        scrollable={scrollable}
+      />
     </div>
   );
 }
@@ -976,9 +1006,11 @@ function SubagentRunRows({
 function SubagentRunFollow({
   headingId,
   items,
+  scrollable = true,
 }: {
   headingId: string;
   items: SubagentRunItem[];
+  scrollable?: boolean;
 }) {
   const { t } = useTranslation();
   const {
@@ -991,8 +1023,9 @@ function SubagentRunFollow({
   } = useFollowScroll();
 
   useLayoutEffect(() => {
+    if (!scrollable) return;
     scheduleFollowScroll();
-  }, [items, scheduleFollowScroll]);
+  }, [items, scheduleFollowScroll, scrollable]);
 
   return (
     <div className="subagent-run-follow">
@@ -1002,11 +1035,11 @@ function SubagentRunFollow({
         * area the pointer can already use. */}
       <div
         ref={scrollRef}
-        className="subagent-run-rows"
+        className={`subagent-run-rows${scrollable ? "" : " is-panel-flow"}`}
         role="group"
-        tabIndex={0}
+        tabIndex={scrollable ? 0 : undefined}
         aria-labelledby={headingId}
-        onScroll={handleScroll}
+        onScroll={scrollable ? handleScroll : undefined}
       >
         <div ref={contentRef}>
           {items.map((item) =>
@@ -1036,7 +1069,7 @@ function SubagentRunFollow({
           )}
         </div>
       </div>
-      {showJump ? (
+      {scrollable && showJump ? (
         <button
           type="button"
           className="jump-latest-btn"
@@ -1046,6 +1079,172 @@ function SubagentRunFollow({
         >
           <IconArrowDown size={14} />
         </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** The task text sent to the delegate, shown as the conversation-like body. */
+function delegateTaskDescription(message: UiMessage): string {
+  const args = message.toolArgs;
+  if (!args || typeof args !== "object" || Array.isArray(args)) return "";
+  const task = (args as { task?: unknown }).task;
+  return typeof task === "string" ? task.trim() : "";
+}
+
+/**
+ * The side-sheet view for a selected delegate. It shows a sticky identity
+ * header, the task as an inset grouped card, and the live process timeline.
+ * Reports and counters remain omitted from this compact surface.
+ */
+export function SubagentDetail({
+  message,
+  delegate,
+  delegationStatuses,
+  delegationTimings,
+}: {
+  message: UiMessage;
+  delegate?: SubagentRun;
+  delegationStatuses?: ReadonlyMap<string, SubagentOutcome>;
+  delegationTimings?: ReadonlyMap<string, SubagentTiming>;
+}) {
+  const { t } = useTranslation();
+  const agentName = delegateAgentName(message, delegate);
+  const modelId = delegateModelId(message);
+  const outcome = subagentOutcome(message, delegationStatuses);
+  const payload = toolResultPayload(message);
+  const payloadRecord =
+    payload && typeof payload === "object" && !Array.isArray(payload)
+      ? (payload as { delegationId?: unknown; startedAt?: unknown; completedAt?: unknown })
+      : undefined;
+  const delegationId =
+    typeof payloadRecord?.delegationId === "string"
+      ? payloadRecord.delegationId
+      : message.toolCallId || message.id;
+  const timing = delegationTimings?.get(delegationId);
+  const startedAt =
+    timing?.startedAt ??
+    (typeof payloadRecord?.startedAt === "number" ? payloadRecord.startedAt : undefined);
+  const completedAt =
+    timing?.completedAt ??
+    (typeof payloadRecord?.completedAt === "number" ? payloadRecord.completedAt : undefined);
+  const [now, setNow] = useState(Date.now);
+  const durationMs =
+    startedAt !== undefined
+      ? Math.max(0, (completedAt ?? (outcome === "running" ? now : startedAt)) - startedAt)
+      : message.toolDurationMs;
+  const duration =
+    typeof durationMs === "number" && durationMs > 0
+      ? formatToolDuration(durationMs / 1000)
+      : "";
+  const taskDescription = delegateTaskDescription(message);
+  const taskBodyId = useId();
+  const taskLabelId = useId();
+  const taskBodyRef = useRef<HTMLDivElement>(null);
+  const [taskExpanded, setTaskExpanded] = useState(false);
+  const [taskOverflow, setTaskOverflow] = useState(false);
+  const outcomeClass = outcome.replaceAll("_", "-");
+
+  useLayoutEffect(() => {
+    setTaskExpanded(false);
+  }, [taskDescription]);
+
+  useLayoutEffect(() => {
+    const element = taskBodyRef.current;
+    if (!element) return;
+    const measure = () => {
+      const overflowing = element.scrollHeight > element.clientHeight + 1;
+      setTaskOverflow((current) => (taskExpanded ? current : overflowing));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [taskDescription, taskExpanded]);
+
+  useEffect(() => {
+    if (outcome !== "running") return;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [outcome]);
+
+  return (
+    <div className="subagent-detail" data-testid="subagent-detail">
+      <header className="subagent-detail-hero">
+        <div className="subagent-detail-heading">
+          <span className="subagent-detail-avatar" aria-hidden>
+            <IconBot size={18} />
+            <span className={`subagent-detail-status outcome-${outcomeClass}`} />
+          </span>
+          <div className="subagent-detail-heading-copy">
+            <strong className="subagent-detail-name">
+              {agentName || t("chat.subagentUnnamed")}
+            </strong>
+            {modelId ? (
+              <span className="subagent-detail-model" title={modelId}>
+                {modelId}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div
+          className="subagent-detail-summary"
+          role="list"
+          aria-label={t("panel.subagent")}
+        >
+          <span
+            className={`subagent-detail-badge outcome-${outcomeClass}`}
+            role="listitem"
+          >
+            {t(`chat.subagentStatus.${outcome}`)}
+          </span>
+          {duration ? (
+            <span className="subagent-detail-meta" role="listitem">
+              {duration}
+            </span>
+          ) : null}
+        </div>
+      </header>
+      <section className="subagent-detail-task" aria-labelledby={taskLabelId}>
+        <div className="subagent-detail-section-label" id={taskLabelId}>
+          {t("panel.subagentTask")}
+        </div>
+        <div className="subagent-detail-task-card">
+          <div
+            id={taskBodyId}
+            ref={taskBodyRef}
+            className={`subagent-task-message-body selectable${
+              taskExpanded ? " is-expanded" : " is-collapsed"
+            }`}
+          >
+            {taskDescription || t("panel.subagentTaskEmpty")}
+          </div>
+          {taskOverflow ? (
+            <button
+              type="button"
+              className="subagent-task-toggle"
+              aria-expanded={taskExpanded}
+              aria-controls={taskBodyId}
+              onClick={() => setTaskExpanded((expanded) => !expanded)}
+            >
+              <span>
+                {taskExpanded
+                  ? t("chat.subagentTaskCollapse")
+                  : t("chat.subagentTaskExpand")}
+              </span>
+              <IconChevronDown size={12} aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      </section>
+      {delegate ? (
+        <SubagentRunRows
+          run={delegate}
+          agentName={agentName}
+          scrollable={false}
+          variant="dock"
+        />
       ) : null}
     </div>
   );
@@ -1496,6 +1695,7 @@ type VisibleAgentActivity = Exclude<AgentActivity, { phase: "starting" }>;
 function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now);
+  const retryErrorDetailsId = useId();
 
   useEffect(() => {
     setNow(Date.now());
@@ -1514,6 +1714,52 @@ function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) 
         : t("chat.waitingForSubagents", {
             count: activity.subagentCount,
           });
+  const retryError = activity.phase === "retrying" ? activity.error : undefined;
+  const retryErrorSummary = retryError
+    ? (() => {
+        const key = `errors.${retryError.code}`;
+        const localized = t(key);
+        return localized === key ? t("chat.responseFailed") : localized;
+      })()
+    : undefined;
+  const retryLabel = retryError
+    ? `${label}: ${retryErrorSummary}: ${retryError.message}`
+    : label;
+  const labelContent = retryError ? (
+    <span
+      className="run-activity-retry-reason"
+      tabIndex={0}
+      aria-describedby={retryErrorDetailsId}
+      aria-label={retryLabel}
+    >
+      <span className="working-indicator-label">{label}</span>
+      <span
+        id={retryErrorDetailsId}
+        className="run-activity-error-popover message-error"
+        role="tooltip"
+      >
+        <span className="message-error-heading">
+          <span className="message-error-icon" aria-hidden>
+            <IconCircleAlert size={16} />
+          </span>
+          <span className="message-error-copy">
+            <strong>{retryErrorSummary}</strong>
+            <code>
+              {retryError.code}
+              {retryError.providerStatus !== undefined
+                ? ` · HTTP ${retryError.providerStatus}`
+                : ""}
+            </code>
+          </span>
+        </span>
+        <span className="run-activity-error-message selectable">
+          {retryError.message}
+        </span>
+      </span>
+    </span>
+  ) : (
+    <span className="working-indicator-label">{label}</span>
+  );
 
   return (
     <div
@@ -1528,7 +1774,7 @@ function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) 
         <span />
         <span />
       </span>
-      <span className="working-indicator-label">{label}</span>
+      {labelContent}
       <span className="working-elapsed" aria-hidden="true">
         {elapsed}
       </span>

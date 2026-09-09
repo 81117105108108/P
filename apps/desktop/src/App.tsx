@@ -180,7 +180,14 @@ function AppShell() {
   const handlePlansChanged = useAppStore((s) => s.handlePlansChanged);
   const abort = useAppStore((s) => s.abort);
   const settings = useAppStore((s) => s.settings);
+  const subagentPanel = useAppStore((s) => s.subagentPanel);
+  const closeSubagentPanel = useAppStore((s) => s.closeSubagentPanel);
   const workPanelOpen = useAppStore((s) => s.workPanelOpen);
+  const subagentPanelOpen = Boolean(
+    page === "chat" &&
+      subagentPanel &&
+      subagentPanel.sessionId === activeSessionId,
+  );
   const pluginThemes = useAppStore((s) => s.pluginThemes);
   const refreshPluginThemes = useAppStore((s) => s.refreshPluginThemes);
   const plugins = useAppStore((s) => s.plugins);
@@ -254,6 +261,15 @@ function AppShell() {
   }, [presentedWorkPanelOpen]);
 
   useEffect(() => {
+    if (
+      subagentPanel &&
+      (page !== "chat" || subagentPanel.sessionId !== activeSessionId)
+    ) {
+      closeSubagentPanel();
+    }
+  }, [activeSessionId, closeSubagentPanel, page, subagentPanel]);
+
+  useEffect(() => {
     workPanelExitingRef.current = workPanelExiting;
   }, [workPanelExiting]);
 
@@ -281,7 +297,8 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
-    const shouldPresent = ready && page !== "settings" && workPanelOpen;
+    const shouldPresent =
+      ready && page !== "settings" && (workPanelOpen || subagentPanelOpen);
     const request = ++workPanelReservationRequest.current;
 
     if (shouldPresent) {
@@ -317,7 +334,7 @@ function AppShell() {
       isCurrent: () => request === workPanelReservationRequest.current,
       commit: () => setPresentedWorkPanelOpen(shouldPresent),
     });
-  }, [page, ready, workPanelOpen]);
+  }, [page, ready, subagentPanelOpen, workPanelOpen]);
 
   // Fallback if animationend is skipped (display:none mid-flight, etc.).
   useEffect(() => {
@@ -538,24 +555,38 @@ function AppShell() {
         .showNativeNotification({
           id: notification.id,
           sessionId: notification.sessionId,
+          kind: "task",
           title,
           body,
+          source: "task",
         })
         .catch(() => undefined);
     });
-    const offNotificationActivated = api.onNotificationActivated(({ id }) => {
-      void useAppStore
-        .getState()
-        .openNotification(id)
-        .catch((activationError) =>
-          showToast(
-            activationError instanceof Error
-              ? activationError.message
-              : String(activationError),
-            { variant: "error" },
-          ),
-        );
-    });
+    const offNotificationActivated = api.onNotificationActivated(
+      ({ id, sessionId }) => {
+        const store = useAppStore.getState();
+        const matched = store.notifications.find((item) => item.id === id);
+        if (matched) {
+          void store.openNotification(id).catch((activationError) =>
+            showToast(
+              activationError instanceof Error
+                ? activationError.message
+                : String(activationError),
+              { variant: "error" },
+            ),
+          );
+        } else if (sessionId) {
+          void store.selectSession(sessionId).catch((activationError) =>
+            showToast(
+              activationError instanceof Error
+                ? activationError.message
+                : String(activationError),
+              { variant: "error" },
+            ),
+          );
+        }
+      },
+    );
     const onKey = (e: KeyboardEvent) => {
       const modifierOnly = MODIFIER_ONLY_KEYS.has(e.key);
       if (modifierOnly || e.isComposing || e.keyCode === 229) return;
@@ -1893,7 +1924,16 @@ function AppShell() {
               onExitAnimationEnd={() =>
                 finishWorkPanelExit(workPanelExitGeneration.current)
               }
-              onCollapse={() => useAppStore.getState().collapseWorkPanel()}
+              subagentPanel={subagentPanelOpen ? subagentPanel : null}
+              onCloseSubagentPanel={closeSubagentPanel}
+              onCollapse={() => {
+                if (subagentPanelOpen) {
+                  closeSubagentPanel();
+                  useAppStore.getState().collapseWorkPanel();
+                  return;
+                }
+                useAppStore.getState().collapseWorkPanel();
+              }}
             />
           )}
 
