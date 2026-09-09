@@ -7564,7 +7564,9 @@ This test plan spec is accepted when:
   conversation.
   New rows appear without a reload and follow the bottom while pinned. The
   panel has one body scrollbar; the process does not create a nested scrollbar
-  or a second elevated card. A real upward gesture pauses follow and exposes
+  or a second elevated card. At the minimum supported panel width, long
+  commands, paths, and tool summaries remain contained within the dock without
+  horizontal page overflow. A real upward gesture pauses follow and exposes
   jump-to-latest. The transcript remains the same height and keeps its own
   scroll state. Session switching hides the selection and returning never
   shows another session's task.

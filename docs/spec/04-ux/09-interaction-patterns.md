@@ -1074,7 +1074,9 @@ When drag/drop is implemented, these patterns should apply:
   card under a Task section label, capped at four lines with an inline Show
   more / Show less control for longer tasks, and its live process under an
   Activity section on one subtle vertical timeline; it does not render separate
-  details, output, or workflow tabs.
+  details, output, or workflow tabs. At the minimum panel width, long commands,
+  paths, and tool summaries remain contained by the dock instead of expanding
+  the side sheet past the client area.
   Selecting another node replaces the task in place, closing it restores the
   prior resource view when present, and switching sessions or routes hides the
   selection. `Cmd/Ctrl + J` hides the whole dock.

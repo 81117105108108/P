@@ -944,7 +944,10 @@ It does not render separate Details or Output tabs.
   remain discoverable without forcing focus changes. The live process is
   rendered in normal content flow without a nested `.subagent-run-rows`
   scrollbar, so a long process cannot create a second scrollbar or leave a long
-  empty tail.
+  empty tail. The detail column and its process wrapper must opt out of flex
+  min-content sizing, so long commands, paths, and tool summaries stay inside
+  the committed panel width instead of expanding the side sheet beyond the
+  client area.
   While pinned to the latest output, the panel body follows new process rows;
   a real upward gesture pauses follow and exposes the standard jump-to-latest
   control.
