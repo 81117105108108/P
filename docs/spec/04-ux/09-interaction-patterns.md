@@ -130,7 +130,11 @@ recency only breaks ties between equally relevant matches.
   click restores the window; `quit` exits the app. Close behavior never creates
   or destroys the tray — D216 owns it, so the icon is resident under either
   choice. The choice is persisted, revisitable in Settings → General, and
-  applied by both the close button and the close shortcut. macOS keeps the
+  applied by both the close button and the close shortcut. Explicit quit
+  (Cmd+Q, application-menu Quit, tray Quit) is a separate confirm step
+  (D363): Cancel leaves the app running; Confirm runs the ordered shutdown.
+  A D230 window-close Quit does not ask again. Automated boot, supervision,
+  and capture probes skip the dialog. macOS keeps the
   native Dock lifecycle (close keeps the app in the Dock; activating recreates
   the window). The bounds watchdog never restores a minimized or tray-hidden
   window.
@@ -945,7 +949,7 @@ When drag/drop is implemented, these patterns should apply:
 - Cancel drag with Escape
 - Drag feedback: opacity 0.5 on source, accent outline on target
 
-## 8a. Composer autocomplete and clipboard files (D123–D125, D197, D209, D262, D331, ADR 0131)
+## 8a. Composer autocomplete and clipboard files (D123–D125, D197, D209, D262, D362, ADR 0131)
 
 ### 8a.1 Triggers
 

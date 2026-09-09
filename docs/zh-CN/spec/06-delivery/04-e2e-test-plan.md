@@ -4175,7 +4175,7 @@ IPC 请求无法关闭。
     空格引用，代理可以正常读取两个选定的文件。
 - **链接规格**：`04-ux/08-component-spec.md` §11.8，
   `04-ux/09-interaction-patterns.md` §8a、`03-runtime/01-ipc-protocol.md` §13c、
-  `08-meta/decisions-log.md`（D124、D209、D331）、ADR 0024、ADR 0070
+  `08-meta/decisions-log.md`（D124、D209、D362）、ADR 0024、ADR 0070
 - **接受**：C（对话和直播），质量
 - **里程碑**：M5
 - **状态**：单位覆盖
@@ -6003,7 +6003,7 @@ IPC 请求无法关闭。
 - **里程碑**：M5
 - **状态**：单元已覆盖（`network-proxy.test.ts`、`node-proxy.test.ts`、`settings-general.test.mjs`、host-core `network_proxy`）；畸形认证信息和不支持的 SOCKS4 协议由共享解析器测试覆盖；完整 UI 旅程仍为草稿
 
-#### E2E-193：文档截图在 GitHub 与 VitePress 中都能解析
+#### E2E-210：文档截图在 GitHub 与 VitePress 中都能解析
 
 - **前提条件**：仓库在 `docs/public/screenshots/app/` 下包含截图集；文档依赖已安装。
 - **步骤**：

@@ -149,7 +149,7 @@ against the session scratch/project roots, persists image bytes in the
 content-addressed attachment store, and derives the exact model transport from
 the models.dev record. A known model whose models.dev input includes `image`
 receives eligible images as transient pi-ai image blocks. Unknown/non-vision
-models and images above the 20 MiB inline bound receive a safe `@path` fallback.
+models and images above the 10 MB inline bound receive a safe `@path` fallback.
 Main uses streamed hashing and file copying for images above that bound, and the
 sidecar uses the same bounded-read rule when rebuilding history. The durable
 user message stores `content` plus attachment metadata/ref, never base64.

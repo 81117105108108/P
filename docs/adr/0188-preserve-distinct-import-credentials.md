@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-08
 - Deciders: PI-Desktop core
-- Related: D342, D351, ADR 0179, E2E-192
+- Related: D342, D351, ADR 0179, E2E-209
 
 ## Context
 

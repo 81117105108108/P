@@ -174,7 +174,8 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
   focused Windows taskbar button also uses native minimize; a second click
   restores/focuses the same window, while clicking a covered window brings it
   to the front. Tray activation restores and focuses tray-hidden windows; Quit
-  remains explicit. On macOS the tray uses a transparent monochrome template
+  remains explicit and, except for automated probes, confirms with a native
+  warning before shutdown (D363). On macOS the tray uses a transparent monochrome template
   of the PI mark rather than the rounded application tile, so it remains
   readable in the menu bar.
 - Windows/Linux do not render File/Edit/View/Window/Help in the titlebar and
@@ -594,14 +595,13 @@ reading surface of the workstation.
 | ChatTranscript (scrollable, flex-1)  |
 |   MessageBubble (user/assistant)     |
 |   ToolCallCard                       |
+|   TurnOutcomeCard (one Continue)     |
 |   InlineReviewCard · M App.tsx +8 −2 |
 |   PermissionCard                     |
 |   ...                                |
 +--------------------------------------+
 | Composer (docked in thread view;     |
 | bottom-reserved on empty home, D204) |
-|   TurnOutcomeCard (one Continue)     |
-|   prompt input + controls            |
 +--------------------------------------+
 ```
 
@@ -613,15 +613,12 @@ reading surface of the workstation.
   never reserves a matching left gutter, so the minimap and first message do
   not leave a decorative blank strip beside the session.
 - A failed TurnOutcomeCard without a structured assistant error exposes one
-  primary **Continue** action and no regenerate action. It is rendered in the
-  active session's Composer stack directly above the input, not beside the
-  transcript processing group. It is withheld while session selection is pending,
-  so a Continue action cannot target the session being left. It appends the current
+  primary **Continue** action and no regenerate action. It appends the current
   locale's continuation prompt to the same session and starts a new turn,
-  preserving the failed turn and completed work in the transcript. When the failed
-  turn already has a structured assistant error, that inline error card owns the
-  summary, details, and **Continue** action; the TurnOutcomeCard is not rendered,
-  so the same failure is not presented twice. Continue remains
+  preserving the failed turn and completed work in the transcript. When the
+  failed turn already has a structured assistant error, that inline error card
+  owns the summary, details, and **Continue** action; the TurnOutcomeCard is not
+  rendered, so the same failure is not presented twice. Continue remains
   available after a terminal parent error (including HTTP 429) even if leftover
   subagents were still running; those delegates are aborted and must not leave
   the session `AGENT_BUSY` (D352).
@@ -663,7 +660,7 @@ reading surface of the workstation.
 | Empty | Restrained hero + optional onboarding checklist in a scrollable content region, with a bottom-reserved home composer and no starter-card or contextual quick-action layer (D111/D204/D206) |
 | Streaming | Auto-scroll follows while pinned; new tokens append |
 | Active progress | Immediately after send, before the first assistant or tool event, a compact localized `Working…` status with elapsed time appears inline. Its model and subagent elapsed labels use the carried-unit format in §9.1. It yields to concrete thinking, tool, and answer rows, while a permission card owns the approval state; no large generic progress card is rendered. A retrying row remains compact at rest; hovering or focusing it reveals an error-styled tooltip with the localized error summary, stable code/HTTP status, and bounded provider message. |
-| Turn outcome | After a failed turn, the active session's Composer stack above the input shows one session-scoped recovery card summarizing the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
+| Turn outcome | After a failed turn, a session-scoped recovery card summarizes the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
 | Session switch | A first-opened session paints at its latest record; a revisited pane paints at its own retained position. Bounded first commit and full-history expansion show the same position: no post-paint height correction may shift the visible rows, in either direction |
 | Turn start (send / retry / regenerate) | Re-pins and positions the latest content before paint, even if the user had scrolled up; the later persisted user-message event does not flash the transcript at its top, and the composer collapse / indicator layout clamps during the send never release follow mode |
 | Idle (after stream) | Auto-scroll unlocked; user can scroll freely |
@@ -682,9 +679,8 @@ reading surface of the workstation.
 - Empty-home task entry starts in the always-visible bottom composer. There is
   no starter-card or contextual quick-action layer between the hero and
   composer.
-- The failed-turn recovery card is a labelled `role="status"` region in the
-  active Composer stack directly above the input, with one explicit **Continue**
-  action. It uses icon geometry plus text, never color
+- The failed-turn recovery card is a labelled `role="status"` region with
+  one explicit **Continue** action. It uses icon geometry plus text, never color
   alone. Continue sends the current locale's continuation prompt as a new user
   turn in the same session; no Regenerate action is present. Completed turns do
   not render this card.
@@ -1650,7 +1646,7 @@ twice.
 
 | State | Header treatment | Expanded content |
 |---|---|---|
-| Running | Progressive action with readable text, a compact current-state capsule, and a pulsing marker; a `run` row also shows its spinner and pulses the status dot beside `Working…` | The latest thinking row opens automatically while it streams; tool-call details stay collapsed |
+| Running | Progressive action with readable text and a pulsing marker; a `run` row also shows its spinner and pulses the status dot beside `Working…` | The latest thinking row opens automatically while it streams; tool-call details stay collapsed |
 | Success | Past-tense action + result chips; no green success badge, except a `run` row's dot and `Done` | Result blocks, then arguments if not already shown; automatic thinking disclosures close when the turn settles |
 | Error | Past-tense action + compact danger status; details remain collapsed by default and open only on user request. A `run` row is in this state whenever its command exited non-zero, whatever the call reported (D227) | Error note first, then arguments |
 | Denied | Muted `Denied` status | Permission result when available |
@@ -2121,6 +2117,8 @@ reasoning-level control.
   `.composer-toolbar` spacing, minimum heights, theme surfaces, and controls.
   Only the parent placement and the localized placeholder copy differ between
   the empty home and a recorded conversation.
+- Empty draft height: `.composer-input` uses `min-height: 3lh`, so an idle
+  composer shows three lines of input before it grows with the draft.
 - Scroll stability: The thread scrollport reserves one stable trailing gutter,
   so the transcript does not shift when overflow appears while the minimap
   does not create a matching blank strip on the left.
@@ -2344,7 +2342,7 @@ reasoning-level control.
   There are no visual previews in MVP.
 - No voice input
 
-### 11.8 Slash commands, @ file references, and clipboard files (D123–D125, D197, D209, D262, D331, ADR 0024, ADR 0059, ADR 0070, ADR 0131)
+### 11.8 Slash commands, @ file references, and clipboard files (D123–D125, D197, D209, D262, D362, ADR 0024, ADR 0059, ADR 0070, ADR 0131)
 
 The composer owns an inline autocomplete menu — one component serving two
 modes. Focus never leaves the textarea (D125).
@@ -2382,7 +2380,7 @@ Anatomy:
   at the caret — the same sentinel-backed chip as a pasted file — whose
   canonical value is the original `entry.path`; the menu closes and that Enter
   does not send. Accepting a directory keeps the literal path in the draft so
-  completion can continue. Entries come from `fs/index` (D124, D209, D331). A
+  completion can continue. Entries come from `fs/index` (D124, D209, D362). A
   truncation footnote appears when the index is capped; without a workspace the
   menu shows an "open a project" empty state.
 - Accepting commands and directories inserts text (`/name ` / `@dir/`);
@@ -2417,7 +2415,7 @@ Anatomy:
   displays the leaf name, keeps the structured reference in session-scoped
   transient state, and submits it separately from visible text. Main stores
   image bytes under `attachments/<sha256>` and sends visual input only when the
-  selected models.dev model accepts images and the 20 MiB inline bound is met;
+  selected models.dev model accepts images and the 10 MB inline bound is met;
   otherwise it appends a safe `@path` fallback. Removing a chip does not delete
   scratch bytes. A text-only paste longer than `largePasteThreshold` follows
   the same bounded session bridge with generated `text/plain` UTF-8 bytes,

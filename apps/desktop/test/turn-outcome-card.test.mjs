@@ -13,17 +13,13 @@ const [store, transcript, composer, outcome, styles] = await Promise.all([
   loadStyles(),
 ]);
 
-test("terminal agent events retain a session-scoped result for the composer", () => {
+test("terminal agent events retain a session-scoped result for the transcript", () => {
   assert.match(store, /latestTurnResults: Record<string, AgentTurnResult>/);
   assert.match(store, /status: event\.type === "error" \? "failed" : "completed"/);
   assert.match(store, /turnId:\s*\n\s*envelope\.turnId \?\?/);
   assert.match(store, /error\.code === "TURN_ABORTED"[\s\S]*?withoutRecordKey\(s\.latestTurnResults/);
-  assert.doesNotMatch(transcript, /<TurnOutcomeCard/);
-  assert.match(composer, /selectingSessionId/);
-  assert.match(
-    composer,
-    /!selectingSessionId \? \(\s*<TurnOutcomeCard[\s\S]*?messages=\{liveMessages\}[\s\S]*?result=\{latestTurnResult\}/,
-  );
+  assert.match(transcript, /<TurnOutcomeCard[\s\S]*?result=\{latestTurnResult\}/);
+  assert.doesNotMatch(composer, /<TurnOutcomeCard/);
 });
 
 test("outcome card exposes one localized continuation action", () => {
@@ -48,7 +44,7 @@ test("outcome card exposes one localized continuation action", () => {
   assert.doesNotMatch(sendPrompt, /truncateFromMessageId/);
   assert.match(styles, /\.turn-outcome-card\s*\{/);
   assert.match(styles, /\.turn-outcome-card\.failed\s*\{/);
-  assert.match(styles, /\.composer-stack > \.turn-outcome-card\s*\{/);
+  assert.doesNotMatch(styles, /\.composer-stack > \.turn-outcome-card\s*\{/);
 });
 
 test("outcome card yields to an inline assistant error", () => {

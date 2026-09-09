@@ -306,7 +306,7 @@
    徽章和当前打开的收件箱刷新。
 4. 对于终端任务结果，本机通知仅在主窗口未聚焦时出现。聚焦背景会话的完成
    仍会创建持久行，但不会出现本机横幅。asktool、工具权限和 Plan 审批询问
-   使用带有 `source: "interactive"` 的同一个 Electron 表面：确切的聚焦当前
+   使用带有 `kind: "interactive"` 的同一个 Electron 表面：确切的聚焦当前
    会话保持静默，而聚焦于其他会话时可以收到横幅。在 Windows 上，每个横幅
    都归因于与 NSIS 包和任务栏标识共享的规范 PI-Desktop AppUserModelID。
 5. 单击本机通知 shows/restores 并聚焦于主通知
@@ -855,7 +855,7 @@ Mode/provider/model/permission/shell 配置和新提示仍然存在
 - 使用 Esc 键取消拖动
 - 拖动反馈：源上不透明度 0.5，目标上强调轮廓
 
-## 8a。输入框自动完成和剪贴板文件（D123–D125、D197、D209、D262、D331、ADR 0131）
+## 8a。输入框自动完成和剪贴板文件（D123–D125、D197、D209、D262、D362、ADR 0131）
 
 ### 8a.1 触发器
 

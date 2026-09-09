@@ -147,7 +147,9 @@ API 密钥；自定义端点在常见路径上并排显示 API 密钥与接口�
 Together、Fireworks、OpenCode Go、Z.AI。
 
 国内：DeepSeek、通义千问、月之暗面、智谱 / Coding Plan、硅基流动、火山方舟、
-MiniMax、Kimi 编程。
+MiniMax（`anthropic_messages`，`https://api.minimaxi.com/anthropic/v1`）、
+MiniMax (OpenAI)（`chat_completions`，`https://api.minimaxi.com/v1`，别名
+`minimax-openai` / `minimax-compatible`）、Kimi 编程。
 
 智谱 / Z.AI 的 Completions 请求仍使用 `thinkingFormat: "zai"` 与
 `zaiToolStream: true`。

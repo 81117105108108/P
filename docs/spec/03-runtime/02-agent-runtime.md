@@ -92,7 +92,7 @@ No host RPC or storage schema change is required.
    does not call this path until the current session reaches `agent_end`
 6. validate structured attachments at Electron main's session-bound path
    boundary, persist image bytes by SHA-256, and retain only attachment refs in
-   the durable user message. Only an image that is within the 20 MiB inline
+   the durable user message. Only an image that is within the 10 MB inline
    bound for a vision model is read into memory; larger images use streamed
    hashing/copying and the existing safe path fallback
 7. snapshot the effective shell ID and dialect for the turn
@@ -510,7 +510,7 @@ criterion-by-criterion report of what was met and the evidence observed.
   gets a synthesized call-only assistant carrier so call/result pairs stay
   well-formed for every provider API.
 - Vision runtimes hydrate persisted image refs only from the session-bound
-  attachment, scratch, and project roots. Images within the 20 MiB inline
+  attachment, scratch, and project roots. Images within the 10 MB inline
   safety bound become transient pi-ai image blocks; oversized or unavailable
   images become safe `@path` fallbacks. Oversized history hydration copies
   files without first loading their contents into memory. Base64 is never

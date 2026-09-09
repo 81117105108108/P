@@ -258,7 +258,6 @@ function notifyInteractivePrompt(
       kind: "interactive",
       title,
       body,
-      source: "interactive",
     })
     .catch(() => undefined);
 }

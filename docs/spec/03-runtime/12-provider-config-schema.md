@@ -273,7 +273,9 @@ Fireworks, OpenCode Go (`opencode_go`), Z.AI / Z.AI Coding Plan.
 
 China: DeepSeek, Qwen DashScope (`alibaba-cn`), Moonshot (`moonshotai-cn`),
 Zhipu AI / Coding Plan, SiliconFlow (`siliconflow-cn`), Volcengine Ark,
-MiniMax (`anthropic_messages`), Kimi For Coding (`anthropic_messages`).
+MiniMax (`anthropic_messages` at `https://api.minimaxi.com/anthropic/v1`),
+MiniMax (OpenAI) (`chat_completions` at `https://api.minimaxi.com/v1`, aliases
+`minimax-openai` / `minimax-compatible`), Kimi For Coding (`anthropic_messages`).
 
 Zhipu / Z.AI Completions requests still receive `thinkingFormat: "zai"` and
 `zaiToolStream: true`. pi-ai `zai-coding-cn` remains an alias of

@@ -208,3 +208,4 @@ Each ADR includes:
 | 0193 | Last-request occupancy in the context inspector | Accepted (amends 0047 / 0103 / 0184) |
 | 0194 | Optional subagent thinking override | Accepted for implementation |
 | 0195 | Viewport-fixed work panel toggle | Accepted (amends 0068 / 0085) |
+| 0196 | Show provider retry causes in the active-turn status | Accepted (amends 0175) |
