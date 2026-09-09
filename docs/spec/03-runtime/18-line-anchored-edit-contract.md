@@ -586,11 +586,10 @@ existing per-session mutation permit already excludes that.
 
 ### 13.4 Renderer
 
-`apps/desktop/src/lib/tool-presentation.ts:501` currently derives an Edit diff
-from `old_string` / `new_string`. Those fields are gone. The Edit row renders
-from the review record's hunks — which ADR 0043 already produces — and shows the
-op headers verbatim as the model's stated intent. Resolved block spans and every
-warning from §8.4, §9.2, and §10 are surfaced on the row, not swallowed.
+The Edit row renders from the review record's hunks — which ADR 0043 already
+produces — and shows the op headers verbatim as the model's stated intent.
+Resolved block spans and every warning from §8.4, §9.2, and §10 are surfaced on
+the row, not swallowed.
 
 ### 13.5 Subagents
 
@@ -626,11 +625,11 @@ Each phase is independently shippable and leaves the contract coherent.
 
 | Phase | Contents | Exit criterion |
 |---|---|---|
-| 1 | Snapshot store, `session_id` threaded into `execute_tool_with_path_access`, tags on `Read`/`Grep`/`Write`, line-numbered `Read` | tags round-trip; no `Edit` change yet |
-| 2 | Ranges and gaps (`PUT N.=M:`, `PUT <N:`, `PUT >N:`, `PUT >$:`, `CUT N.=M`), tag validation, provenance gate, `REM`/`MV` | `old_string` removed; §9 branches A/B/D live |
+| 1 | Snapshot store, `session_id` threaded into `execute_tool_with_path_access`, tags on `Read`/`Grep`/`Write`, line-numbered `Read` | **Shipped.** tags round-trip |
+| 2 | Ranges and gaps (`PUT N.=M:`, `PUT <N:`, `PUT >N:`, `PUT >$:`, `CUT N.=M`), tag validation, provenance gate, `REM`/`MV` | **Shipped.** `old_string` removed; §9 branches A/B/D live |
 | 3 | Drift recovery (§10) and path recovery (§9.2) | branch C live |
-| 4 | tree-sitter block ops (`N*`, `>N*`) with resolution echo | block ops decline cleanly on unsupported languages |
-| 5 | Registers (§7.5) and boundary repair (§8.4) | cross-call moves work; ties reject |
+| 4 | tree-sitter block ops (`N*`, `>N*`) with resolution echo | block ops decline cleanly on unsupported languages (`EDIT_BLOCK_UNRESOLVED` today) |
+| 5 | Registers (§7.5) and boundary repair (§8.4) | named `CUT`/`PUT @name` capture; boundary-repair ties reject |
 
 Phase 2 is the point of no return for the old contract and must ship with the
 renderer change in §13.4 and the prompt change in §13.6 in the same release.

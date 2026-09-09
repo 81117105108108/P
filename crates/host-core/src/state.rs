@@ -55,6 +55,9 @@ pub struct AppState {
     /// separate tasks. A short-lived tombstone makes the later request start
     /// already cancelled instead of executing after Stop was acknowledged.
     pending_bash_aborts: HashMap<(String, String), Instant>,
+    /// Session-scoped Read/Edit snapshot store (ADR 0087). Interior mutex so
+    /// tool execution does not hold the AppState lock.
+    pub hashline: crate::tools::HashlineStore,
 }
 
 impl AppState {
@@ -66,7 +69,10 @@ impl AppState {
         // aborted, so the promoted rows land under an aborted turn.
         match crate::sessions::recover_orphaned_sessions(&db) {
             Ok(restored) if restored > 0 => {
-                tracing::info!(count = restored, "restored orphaned session rows from transcripts");
+                tracing::info!(
+                    count = restored,
+                    "restored orphaned session rows from transcripts"
+                );
             }
             Ok(_) => {}
             Err(error) => tracing::warn!(%error, "orphaned session sweep failed"),
@@ -111,6 +117,7 @@ impl AppState {
             active_bash_cancellations: HashMap::new(),
             pending_permissions: HashMap::new(),
             pending_bash_aborts: HashMap::new(),
+            hashline: crate::tools::HashlineStore::new(),
         })
     }
 

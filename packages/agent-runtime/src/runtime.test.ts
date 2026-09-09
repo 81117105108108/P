@@ -293,13 +293,20 @@ describe("DesktopAgentRuntime configuration matching", () => {
     expect(prompt).toContain("do not create or hand-edit unified-diff files");
     expect(prompt).toContain("Do not invoke shell apply_patch, git apply, or patch commands");
     expect(prompt).toContain("Never issue concurrent Write/Edit calls for the same path");
-    expect(prompt).toContain("regenerate the change from that current content");
+    expect(prompt).toContain("regenerate the change from that current tag");
 
     const edit = (runtime as any).agent.state.tools.find(
       (tool: any) => tool.name === "Edit",
     );
-    expect(edit.description).toContain("do not repair an old patch");
+    expect(edit.description).toContain("never old_string");
     expect(edit.description).toContain("same path concurrently");
+    expect(edit.description).toContain("PUT N.=M:");
+    expect(edit.parameters.properties).toEqual(
+      expect.objectContaining({
+        tag: expect.any(Object),
+        ops: expect.any(Object),
+      }),
+    );
 
     await runtime.dispose();
   });
@@ -448,7 +455,7 @@ describe("DesktopAgentRuntime configuration matching", () => {
           ok: false,
           isError: true,
           errorCode: "TOOL_FAILED",
-          content: { error: "old_string not found" },
+          content: { error: "tag does not hash the live file" },
         }),
     };
     const runtime = createRuntime({ host });
@@ -456,8 +463,8 @@ describe("DesktopAgentRuntime configuration matching", () => {
     const edit = agent.state.tools.find((tool: any) => tool.name === "Edit");
     const args = {
       path: "src/example.ts",
-      old_string: "stale",
-      new_string: "fresh",
+      tag: "ABCD",
+      ops: "PUT 1.=1:\n+fresh\n",
     };
 
     const first = await edit.execute("edit-1", args);
@@ -701,8 +708,8 @@ describe("DesktopAgentRuntime configuration matching", () => {
     ["Write", { path: "packages/api/handler.ts", content: "export {};" }],
     ["Edit", {
       path: "packages/api/handler.ts",
-      old_string: "before",
-      new_string: "after",
+      tag: "ABCD",
+      ops: "PUT 1.=1:\n+after\n",
     }],
     ["BrowserPreview", { path: "packages/api/index.html" }],
   ])("resolves path-scoped instructions before %s", async (toolName, params) => {

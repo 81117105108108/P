@@ -588,7 +588,7 @@ async function scenario105(binary, tempRoot) {
       ["Write", { path: "forged-write.txt", content: "must-not-write" }, "WRITE_DISABLED_IN_PLAN"],
       [
         "Edit",
-        { path: "readme.txt", old_string: "fixture", new_string: "changed" },
+        { path: "readme.txt", tag: "ABCD", ops: "PUT 1.=1:\n+changed\n" },
         "EDIT_DISABLED_IN_PLAN",
       ],
       ["plugin_fake_tool", {}, "PLUGIN_DISABLED_IN_PLAN"],

@@ -7487,11 +7487,11 @@ This test plan spec is accepted when:
 - **Preconditions**: A workspace containing a file with Windows-style CRLF
   (`\r\n`) line endings.
 - **Steps**:
-  1. Use Read to display the file content (Read strips `\r` before returning).
-  2. Issue an Edit with `old_string` and `new_string` using LF-only endings
-     (as the model always produces from Read output).
+  1. Use Read to display the file content and record the whole-file `tag`.
+  2. Issue an Edit with that `tag` and a `PUT N.=N:` whose body uses LF-only
+     endings (as the model always produces from Read output).
   3. Inspect the file on disk after the edit.
-- **Expected**: The Edit succeeds with `replacements: 1`. The written file
+- **Expected**: The Edit succeeds and returns a new `tag`. The written file
   preserves CRLF line endings throughout — both in modified and unmodified
   lines. No `MUTATION_RETRY_BUDGET_EXHAUSTED` error occurs.
 - **Specs linked**: `03-runtime/18-line-anchored-edit-contract.md` §3.1,

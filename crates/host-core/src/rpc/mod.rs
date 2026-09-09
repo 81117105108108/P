@@ -1028,6 +1028,7 @@ async fn handle_request(
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| rpc_err(1002, "path required", "INVALID_PARAMS"))?;
             let mut st = state.lock().await;
+            st.hashline.drop_all();
             let ws = st.workspace.set(PathBuf::from(path));
             let pid = st
                 .db
@@ -1040,6 +1041,7 @@ async fn handle_request(
         }
         "workspace.clear" => {
             let mut st = state.lock().await;
+            st.hashline.drop_all();
             st.workspace.clear();
             st.db
                 .kv_delete("app", "currentProjectId")
@@ -1065,6 +1067,13 @@ async fn handle_request(
             )
             .map_err(|error| rpc_err(1000, error.to_string(), "INTERNAL"))?;
             if matches!(outcome.status, "rolledBack" | "alreadyRolledBack") {
+                if let Some(root) = workspace_root.as_deref() {
+                    let resolved = std::path::Path::new(root).join(&outcome.path);
+                    st.hashline.invalidate_path(
+                        session_id,
+                        &crate::tools::hashline::canonical_key(&resolved),
+                    );
+                }
                 sessions::update_tool_review_state(
                     &st.db,
                     session_id,
@@ -1413,6 +1422,7 @@ async fn handle_request(
             if ok {
                 scratch::remove_session_dir(&st.data_dir, id);
                 review::remove_session(&st.data_dir, id);
+                st.hashline.drop_session(id);
             }
             Ok(json!({ "ok": ok }))
         }
@@ -1470,13 +1480,9 @@ async fn handle_request(
                 .and_then(|v| v.as_str())
                 .map(str::to_string);
             let st = state.lock().await;
-            let saved = sessions::save_inflight_message(
-                &st.db,
-                session_id,
-                turn_id.as_deref(),
-                &message,
-            )
-            .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            let saved =
+                sessions::save_inflight_message(&st.db, session_id, turn_id.as_deref(), &message)
+                    .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "ok": true, "saved": saved }))
         }
         "session.recoverInflightMessages" => {
@@ -2639,7 +2645,14 @@ async fn handle_request(
                 };
 
                 let ws_path = workspace_path.map(PathBuf::from);
-                let data_dir = { state.lock().await.data_dir.clone() };
+                let (data_dir, hashline_store) = {
+                    let st = state.lock().await;
+                    (st.data_dir.clone(), st.hashline.clone())
+                };
+                let hashline_ctx = tools::HashlineContext {
+                    session_id: p.session_id.as_str(),
+                    store: &hashline_store,
+                };
                 let pending_review = review::prepare_change(
                     &data_dir,
                     &p.session_id,
@@ -2725,6 +2738,7 @@ async fn handle_request(
                         execution_timeout_ms,
                         bash_options,
                         external_path_permission,
+                        Some(&hashline_ctx),
                     )
                     .await
                 };
@@ -3543,10 +3557,26 @@ mod tests {
 
         let unknown_level = parse_capability_query(&json!({ "level": "workspace" }))
             .expect_err("unknown capability levels are invalid");
-        assert_eq!(unknown_level.data.unwrap()["errorCode"], "CAPABILITY_INVALID");
-        assert_eq!(scope_err("CAPABILITY_INVALID: missing project").data.unwrap()["errorCode"], "CAPABILITY_INVALID");
-        assert_eq!(skill_err("CAPABILITY_INVALID: missing project").data.unwrap()["errorCode"], "CAPABILITY_INVALID");
-        assert_eq!(capability_err("missing project").data.unwrap()["errorCode"], "CAPABILITY_INVALID");
+        assert_eq!(
+            unknown_level.data.unwrap()["errorCode"],
+            "CAPABILITY_INVALID"
+        );
+        assert_eq!(
+            scope_err("CAPABILITY_INVALID: missing project")
+                .data
+                .unwrap()["errorCode"],
+            "CAPABILITY_INVALID"
+        );
+        assert_eq!(
+            skill_err("CAPABILITY_INVALID: missing project")
+                .data
+                .unwrap()["errorCode"],
+            "CAPABILITY_INVALID"
+        );
+        assert_eq!(
+            capability_err("missing project").data.unwrap()["errorCode"],
+            "CAPABILITY_INVALID"
+        );
     }
 
     #[test]
@@ -3785,6 +3815,7 @@ mod tests {
             None,
             None,
             false,
+            None,
         )
         .await;
         assert!(written.ok);
@@ -3802,10 +3833,13 @@ mod tests {
             None,
             None,
             false,
+            None,
         )
         .await;
         assert!(read.ok);
-        assert_eq!(read.content["content"], "temporary");
+        let content = read.content["content"].as_str().unwrap();
+        assert!(content.contains("temporary"), "{content}");
+        assert_eq!(read.content["tag"].as_str().unwrap().len(), 4);
         assert!(!active_project.join("notes.txt").exists());
     }
 
@@ -5336,7 +5370,12 @@ mod tests {
         let allowed = allowed_pending.await.unwrap().unwrap();
         assert_eq!(allowed["ok"], true);
         assert_eq!(allowed["content"]["root"], "external");
-        assert_eq!(allowed["content"]["content"], "outside content");
+        let allowed_content = allowed["content"]["content"].as_str().unwrap();
+        assert!(
+            allowed_content.contains("outside content"),
+            "{allowed_content}"
+        );
+        assert_eq!(allowed["content"]["tag"].as_str().unwrap().len(), 4);
 
         sessions::configure_session_with_thinking(
             &state.lock().await.db,
@@ -5623,7 +5662,7 @@ mod tests {
             ),
             (
                 "Edit",
-                json!({ "path": "ignored.txt", "old_string": "a", "new_string": "b" }),
+                json!({ "path": "ignored.txt", "tag": "ABCD", "ops": "PUT 1.=1:\n+b\n" }),
                 "EDIT_DISABLED_IN_PLAN",
             ),
             ("plugin_demo_run", json!({}), "PLUGIN_DISABLED_IN_PLAN"),
@@ -5754,7 +5793,7 @@ mod tests {
             ),
             (
                 "Edit",
-                json!({ "path": "ignored.txt", "old_string": "a", "new_string": "b" }),
+                json!({ "path": "ignored.txt", "tag": "ABCD", "ops": "PUT 1.=1:\n+b\n" }),
                 "EDIT_DISABLED_IN_PLAN",
             ),
             ("plugin_demo_run", json!({}), "PLUGIN_DISABLED_IN_PLAN"),
@@ -5870,8 +5909,8 @@ mod tests {
         let data_dir = tempfile::tempdir().unwrap();
         let mut app_state = AppState::open(data_dir.path()).unwrap();
         app_state.handshook = true;
-        let session = sessions::create_session(&app_state.db, None, None, None, None, None)
-            .unwrap();
+        let session =
+            sessions::create_session(&app_state.db, None, None, None, None, None).unwrap();
         let turn = sessions::begin_turn(&app_state.db, &session.id, None, None).unwrap();
         let state = Arc::new(Mutex::new(app_state));
         let (tx, _rx) = mpsc::unbounded_channel();

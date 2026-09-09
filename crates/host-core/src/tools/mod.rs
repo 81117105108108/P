@@ -19,7 +19,10 @@ use tokio::sync::{mpsc, watch};
 use crate::workspace::{resolve_tool_path_with_external, ToolRoot};
 
 mod grep_rg;
+pub mod hashline;
 pub mod shell;
+
+pub use hashline::{HashlineContext, HashlineStore};
 
 /// Ceiling on what the streaming capture retains per stream.
 ///
@@ -905,6 +908,7 @@ pub(super) fn clip_chars(text: String, max_chars: usize) -> (String, bool) {
 /// Fast line count without parsing content — counts newline bytes in 64KB
 /// chunks. The cost is one sequential pass (~2ms for 10MB on SSD). A trailing
 /// line without a final newline still counts as one line.
+#[allow(dead_code)]
 fn count_lines_fast(path: &Path) -> std::io::Result<usize> {
     let file = File::open(path)?;
     let mut reader = BufReader::with_capacity(64 * 1024, file);
@@ -992,6 +996,7 @@ pub async fn execute_tool_with_options(
         timeout_ms,
         bash_options,
         false,
+        None,
     )
     .await
 }
@@ -1006,6 +1011,7 @@ pub async fn execute_tool_with_path_access(
     timeout_ms: Option<u64>,
     bash_options: Option<BashExecutionOptions>,
     allow_external_paths: bool,
+    hashline: Option<&HashlineContext<'_>>,
 ) -> ToolsExecuteResult {
     let started = Instant::now();
     let timeout_ms = effective_timeout_ms(tool_name, timeout_ms);
@@ -1024,28 +1030,37 @@ pub async fn execute_tool_with_path_access(
             let _ = std::fs::create_dir_all(dir);
         }
     }
-    let result = match tool_name {
-        "Read" => tool_read(workspace, scratch, args, allow_external_paths),
-        "Glob" => tool_glob(workspace, scratch, args, allow_external_paths),
-        "Grep" => tool_grep(workspace, scratch, args, allow_external_paths),
-        "Write" => tool_write(workspace, scratch, args, allow_external_paths),
-        "Edit" => tool_edit(workspace, scratch, args, allow_external_paths),
-        "Bash" => {
-            let options = bash_options.unwrap_or_else(|| {
-                let id = shell::catalog(None)
-                    .effective
-                    .map(|option| option.id)
-                    .unwrap_or_else(|| shell::default_shell_id().to_string());
-                BashExecutionOptions::local(id, timeout_ms)
-            });
-            tool_bash(workspace, scratch, args, options).await
-        }
-        other if is_desktop_dispatched(other) => Err((
-            "TOOL_NOT_FOUND".into(),
-            format!("{other} requires the desktop runner (dispatched via plugins.execute)"),
-        )),
-        other => Err(("TOOL_NOT_FOUND".into(), format!("unknown tool: {other}"))),
-    };
+    let result: Result<Value, hashline::ToolError> =
+        match tool_name {
+            "Read" => tool_read(workspace, scratch, args, allow_external_paths, hashline)
+                .map_err(Into::into),
+            "Glob" => tool_glob(workspace, scratch, args, allow_external_paths).map_err(Into::into),
+            "Grep" => tool_grep(workspace, scratch, args, allow_external_paths, hashline)
+                .map_err(Into::into),
+            "Write" => tool_write(workspace, scratch, args, allow_external_paths, hashline)
+                .map_err(Into::into),
+            "Edit" => tool_edit(workspace, scratch, args, allow_external_paths, hashline),
+            "Bash" => {
+                let options = bash_options.unwrap_or_else(|| {
+                    let id = shell::catalog(None)
+                        .effective
+                        .map(|option| option.id)
+                        .unwrap_or_else(|| shell::default_shell_id().to_string());
+                    BashExecutionOptions::local(id, timeout_ms)
+                });
+                tool_bash(workspace, scratch, args, options)
+                    .await
+                    .map_err(Into::into)
+            }
+            other if is_desktop_dispatched(other) => Err(hashline::ToolError::new(
+                "TOOL_NOT_FOUND",
+                format!("{other} requires the desktop runner (dispatched via plugins.execute)"),
+            )),
+            other => Err(hashline::ToolError::new(
+                "TOOL_NOT_FOUND",
+                format!("unknown tool: {other}"),
+            )),
+        };
 
     match result {
         Ok(content) => {
@@ -1071,14 +1086,21 @@ pub async fn execute_tool_with_path_access(
                 command_shell_id,
             }
         }
-        Err((code, message)) => {
-            let read_path_is_directory = code == READ_PATH_IS_DIRECTORY;
+        Err(err) => {
+            let read_path_is_directory = err.code == READ_PATH_IS_DIRECTORY;
             let public_code = if read_path_is_directory {
                 "INVALID_ARGUMENT".to_string()
             } else {
-                code
+                err.code
             };
-            let mut content = json!({ "error": message, "code": public_code.clone() });
+            let mut content = json!({ "error": err.message, "code": public_code.clone() });
+            if let Some(extra) = err.extra.as_object() {
+                for (key, value) in extra {
+                    if key != "error" && key != "code" {
+                        content[key] = value.clone();
+                    }
+                }
+            }
             if read_path_is_directory {
                 content["suggestedTool"] = json!("Glob");
                 content["suggestedArgs"] = json!({
@@ -1129,6 +1151,7 @@ fn tool_read(
     scratch: Option<&Path>,
     args: &Value,
     allow_external_paths: bool,
+    hashline: Option<&HashlineContext<'_>>,
 ) -> Result<Value, (String, String)> {
     let root = require_workspace(workspace)?;
     let path = args
@@ -1143,9 +1166,6 @@ fn tool_read(
         .and_then(|v| v.as_u64())
         .unwrap_or(0)
         .min(usize::MAX as u64) as usize;
-    // A window, not a whole file: an unpaginated Read was the single largest
-    // context consumer measured (154KB average), and the old >512KB refusal
-    // pushed the model into hand-rolled `sed`/`awk` pipelines instead.
     let limit = args
         .get("limit")
         .and_then(|v| v.as_u64())
@@ -1183,101 +1203,70 @@ fn tool_read(
         }
     }
 
-    let mut reader = LineReader::open(&resolved)
+    let bytes = std::fs::read(&resolved)
         .map_err(|e| ("TOOL_FAILED".into(), format!("read failed: {e}")))?;
-    if reader.looks_binary() {
+    if hashline::looks_binary_bytes(&bytes) {
         return Err((
             "TOOL_BINARY_CONTENT".into(),
             format!("{display} looks like binary content and was not read as text"),
         ));
     }
 
-    // Pre-scan total line count so the model always knows the file's scale
-    // and can decide whether to grep-first or read sequentially.
-    let total_line_count = count_lines_fast(&resolved)
-        .map_err(|e| ("TOOL_FAILED".into(), format!("read failed: {e}")))?;
-
-    let read_error = |e: std::io::Error| ("TOOL_FAILED".to_string(), format!("read failed: {e}"));
-    let mut eof = false;
-    let mut skipped = 0_usize;
-    while skipped < offset {
-        match reader.next_line(MAX_LINE_CHARS).map_err(read_error)? {
-            Some(_) => skipped += 1,
-            None => {
-                eof = true;
-                break;
-            }
-        }
-    }
-
-    let mut kept: Vec<String> = Vec::new();
-    let mut bytes = 0_usize;
-    let mut clipped_lines = 0_usize;
-    let mut budget_capped = false;
-    while !eof && kept.len() < limit {
-        match reader.next_line(MAX_LINE_CHARS).map_err(read_error)? {
-            Some(line) => {
-                let size = line.text.len() + usize::from(!kept.is_empty());
-                if bytes + size > BUDGET_SEARCH.max_bytes {
-                    budget_capped = true;
-                    break;
-                }
-                bytes += size;
-                if line.clipped {
-                    clipped_lines += 1;
-                }
-                kept.push(line.text);
-            }
-            None => eof = true,
-        }
-    }
-    // Distinguish "stopped on the limit" from "reached the end", so the notice
-    // can promise a useful next offset instead of guessing.
-    let mut has_more = budget_capped;
-    if !eof && !budget_capped {
-        match reader.next_line(1).map_err(read_error)? {
-            Some(_) => has_more = true,
-            None => {}
-        }
-    }
+    let file = hashline::normalize_file(&bytes);
+    let tag = hashline::tag_of_lf_text(&file.text);
+    let total_line_count = hashline::split_lines(&file.text).len();
+    let window = hashline::format_read_window(
+        &display,
+        &file,
+        &tag,
+        offset,
+        limit,
+        MAX_LINE_CHARS,
+        BUDGET_SEARCH.max_bytes,
+    );
+    hashline::record_read(
+        hashline,
+        &hashline::canonical_key(&resolved),
+        &file,
+        &tag,
+        window.seen_lines.clone(),
+    );
 
     let mut notes: Vec<String> = Vec::new();
-    if kept.is_empty() && offset > 0 {
+    if window.line_count == 0 && offset > 0 {
         notes.push(format!(
             "offset {offset} is past the end of the file ({total_line_count} lines total)"
         ));
     }
-    if budget_capped {
+    if window.budget_capped {
         notes.push(format!(
             "stopped at the {}KB result budget",
             BUDGET_SEARCH.max_bytes / 1024
         ));
     }
-    if has_more {
+    if window.has_more {
         notes.push(format!(
             "{total_line_count} lines total; next offset is {}",
-            offset + kept.len()
+            offset + window.line_count
         ));
-    } else if !(kept.is_empty() && offset > 0) {
+    } else if !(window.line_count == 0 && offset > 0) {
         notes.push(format!("end of file ({total_line_count} lines total)"));
     }
-    if clipped_lines > 0 {
+    if window.clipped_lines > 0 {
         notes.push(format!(
-            "{clipped_lines} line(s) longer than {MAX_LINE_CHARS} characters were cut"
+            "{} line(s) longer than {MAX_LINE_CHARS} characters were cut",
+            window.clipped_lines
         ));
     }
 
-    // `truncated` means this window was cut — budget or a clipped line —
-    // not merely that the file continues after it. `totalLines` / `offset` /
-    // `lineCount` already describe pagination; treating a full window as
-    // truncated made every long file look like a failure.
     let mut out = json!({
         "path": display,
         "root": root_label(root_kind),
-        "content": kept.join("\n"),
-        "truncated": budget_capped || clipped_lines > 0,
+        "content": window.content,
+        "tag": tag,
+        "truncated": window.budget_capped || window.clipped_lines > 0,
         "offset": offset,
-        "lineCount": kept.len(),
+        "lineCount": window.line_count,
         "totalLines": total_line_count,
         "fileBytes": meta.len(),
     });
@@ -1292,6 +1281,7 @@ fn tool_write(
     scratch: Option<&Path>,
     args: &Value,
     allow_external_paths: bool,
+    hashline: Option<&HashlineContext<'_>>,
 ) -> Result<Value, (String, String)> {
     let root = require_workspace(workspace)?;
     let path = args
@@ -1302,6 +1292,7 @@ fn tool_write(
         .get("content")
         .and_then(|v| v.as_str())
         .ok_or_else(|| ("INVALID_ARGUMENT".into(), "content required".into()))?;
+    let content = hashline::strip_write_markup(content);
     let (resolved, root_kind) =
         resolve_tool_path_with_external(root, scratch, path, allow_external_paths)
             .map_err(|e| (e.clone(), e))?;
@@ -1309,12 +1300,20 @@ fn tool_write(
         std::fs::create_dir_all(parent)
             .map_err(|e| ("TOOL_FAILED".into(), format!("mkdir failed: {e}")))?;
     }
-    std::fs::write(&resolved, content)
+    std::fs::write(&resolved, &content)
         .map_err(|e| ("TOOL_FAILED".into(), format!("write failed: {e}")))?;
+    let landed = std::fs::read(&resolved)
+        .map_err(|e| ("TOOL_FAILED".into(), format!("read back failed: {e}")))?;
+    let file = hashline::normalize_file(&landed);
+    let tag = hashline::tag_of_lf_text(&file.text);
+    let display = display_tool_path(root_kind, root, &resolved);
+    hashline::record_write(hashline, &hashline::canonical_key(&resolved), &file, &tag);
     Ok(json!({
-        "path": display_tool_path(root_kind, root, &resolved),
+        "path": display,
         "root": root_label(root_kind),
         "bytes": content.len(),
+        "tag": tag,
+        "header": hashline::section_header(&display, &tag),
     }))
 }
 
@@ -1323,66 +1322,97 @@ fn tool_edit(
     scratch: Option<&Path>,
     args: &Value,
     allow_external_paths: bool,
-) -> Result<Value, (String, String)> {
-    let root = require_workspace(workspace)?;
+    hashline: Option<&HashlineContext<'_>>,
+) -> Result<Value, hashline::ToolError> {
+    let root = require_workspace(workspace).map_err(|(c, m)| hashline::ToolError::new(c, m))?;
     let path = args
         .get("path")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "path required".into()))?;
-    let old_str = args
-        .get("old_string")
-        .or_else(|| args.get("oldString"))
+        .ok_or_else(|| hashline::ToolError::new("INVALID_ARGUMENT", "path required"))?;
+    let tag = args.get("tag").and_then(|v| v.as_str()).ok_or_else(|| {
+        hashline::ToolError::new(
+            "EDIT_TAG_REQUIRED",
+            "tag required; pass the 4-hex tag from the latest Read, Grep, Write, or Edit",
+        )
+    })?;
+    let ops = args
+        .get("ops")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "old_string required".into()))?;
-    let new_str = args
-        .get("new_string")
-        .or_else(|| args.get("newString"))
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "new_string required".into()))?;
+        .ok_or_else(|| hashline::ToolError::new("INVALID_ARGUMENT", "ops required"))?;
     let (resolved, root_kind) =
         resolve_tool_path_with_external(root, scratch, path, allow_external_paths)
-            .map_err(|e| (e.clone(), e))?;
-    let original = std::fs::read_to_string(&resolved)
-        .map_err(|e| ("TOOL_FAILED".into(), format!("read failed: {e}")))?;
+            .map_err(|e| hashline::ToolError::new(e.clone(), e))?;
+    let live = std::fs::read(&resolved)
+        .map_err(|e| hashline::ToolError::new("TOOL_FAILED", format!("read failed: {e}")))?;
+    let display = display_tool_path(root_kind, root, &resolved);
+    let canonical = hashline::canonical_key(&resolved);
+    let (file, success) = hashline::apply_edit(
+        &display,
+        &canonical,
+        tag,
+        ops,
+        &live,
+        hashline.map(|c| c.session_id),
+        hashline.map(|c| c.store),
+    )?;
 
-    // CRLF normalization: Read tool strips \r before returning content to the
-    // model, so old_str/new_str always use LF-only line endings.  When the file
-    // on disk uses CRLF we must normalize before matching and restore afterwards.
-    let has_crlf = original.contains("\r\n");
-    let normalized = if has_crlf {
-        original.replace("\r\n", "\n")
-    } else {
-        original.clone()
-    };
+    if success.delete_file {
+        std::fs::remove_file(&resolved)
+            .map_err(|e| hashline::ToolError::new("TOOL_FAILED", format!("delete failed: {e}")))?;
+        hashline::invalidate_path(hashline, &canonical);
+        return Ok(json!({
+            "path": display,
+            "root": root_label(root_kind),
+            "deleted": true,
+            "ops": success.ops_echo,
+            "warnings": success.warnings,
+        }));
+    }
 
-    let match_count = normalized.match_indices(old_str).count();
-    if match_count == 0 {
-        return Err((
-            "TOOL_FAILED".into(),
-            "old_string not found in file; re-read the current file and retry with a fresh, unique context instead of repairing an old patch".into(),
-        ));
+    let bytes = hashline::encode_success(&file);
+    if let Some(dest) = &success.moved_to {
+        let (dest_resolved, dest_root) =
+            resolve_tool_path_with_external(root, scratch, dest, allow_external_paths)
+                .map_err(|e| hashline::ToolError::new(e.clone(), e))?;
+        if let Some(parent) = dest_resolved.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                hashline::ToolError::new("TOOL_FAILED", format!("mkdir failed: {e}"))
+            })?;
+        }
+        std::fs::write(&dest_resolved, &bytes)
+            .map_err(|e| hashline::ToolError::new("TOOL_FAILED", format!("write failed: {e}")))?;
+        std::fs::remove_file(&resolved)
+            .map_err(|e| hashline::ToolError::new("TOOL_FAILED", format!("move failed: {e}")))?;
+        hashline::invalidate_path(hashline, &canonical);
+        let dest_display = display_tool_path(dest_root, root, &dest_resolved);
+        let dest_file = hashline::normalize_file(&bytes);
+        hashline::record_write(
+            hashline,
+            &hashline::canonical_key(&dest_resolved),
+            &dest_file,
+            &success.tag,
+        );
+        return Ok(json!({
+            "path": dest_display,
+            "root": root_label(dest_root),
+            "tag": success.tag,
+            "header": hashline::section_header(&dest_display, &success.tag),
+            "movedFrom": display,
+            "ops": success.ops_echo,
+            "warnings": success.warnings,
+        }));
     }
-    if match_count > 1 {
-        return Err((
-            "TOOL_FAILED".into(),
-            format!(
-                "old_string matches {match_count} locations; re-read the current file and include more surrounding context"
-            ),
-        ));
-    }
-    let updated = normalized.replacen(old_str, new_str, 1);
-    // Restore CRLF line endings if the original file used them.
-    let updated = if has_crlf {
-        updated.replace("\n", "\r\n")
-    } else {
-        updated
-    };
-    std::fs::write(&resolved, &updated)
-        .map_err(|e| ("TOOL_FAILED".into(), format!("write failed: {e}")))?;
+
+    std::fs::write(&resolved, &bytes)
+        .map_err(|e| hashline::ToolError::new("TOOL_FAILED", format!("write failed: {e}")))?;
+    hashline::record_write(hashline, &canonical, &file, &success.tag);
     Ok(json!({
-        "path": display_tool_path(root_kind, root, &resolved),
+        "path": display,
         "root": root_label(root_kind),
-        "replacements": 1,
+        "tag": success.tag,
+        "header": hashline::section_header(&display, &success.tag),
+        "ops": success.ops_echo,
+        "warnings": success.warnings,
     }))
 }
 
@@ -1576,6 +1606,7 @@ fn tool_grep(
     scratch: Option<&Path>,
     args: &Value,
     allow_external_paths: bool,
+    hashline: Option<&HashlineContext<'_>>,
 ) -> Result<Value, (String, String)> {
     let root = require_workspace(workspace)?;
     let pattern = args
@@ -1645,7 +1676,14 @@ fn tool_grep(
         case_insensitive,
         head_limit,
     }) {
-        return Ok(value);
+        return Ok(mint_grep_tags(
+            root,
+            scratch,
+            allow_external_paths,
+            mode,
+            value,
+            hashline,
+        ));
     }
 
     let (files, mut truncated) = candidate_files(
@@ -1717,14 +1755,21 @@ fn tool_grep(
         }
     }
 
-    Ok(grep_output(
+    Ok(mint_grep_tags(
+        root,
+        scratch,
+        allow_external_paths,
         mode,
-        hits,
-        counts,
-        matched_files,
-        total_matches,
-        clipped_lines,
-        truncated,
+        grep_output(
+            mode,
+            hits,
+            counts,
+            matched_files,
+            total_matches,
+            clipped_lines,
+            truncated,
+        ),
+        hashline,
     ))
 }
 
@@ -1771,6 +1816,70 @@ pub(super) fn grep_output(
         out["notice"] = json!(notes.join("; "));
     }
     out
+}
+
+fn mint_grep_tags(
+    root: &Path,
+    scratch: Option<&Path>,
+    allow_external_paths: bool,
+    mode: &str,
+    out: Value,
+    hashline: Option<&HashlineContext<'_>>,
+) -> Value {
+    use std::collections::BTreeMap;
+    let mut per_file: BTreeMap<String, Option<Vec<u64>>> = BTreeMap::new();
+    match mode {
+        "content" => {
+            if let Some(matches) = out.get("matches").and_then(|v| v.as_array()) {
+                for hit in matches {
+                    let Some(path) = hit.get("path").and_then(|v| v.as_str()) else {
+                        continue;
+                    };
+                    let line = hit.get("line").and_then(|v| v.as_u64());
+                    let entry = per_file
+                        .entry(path.to_string())
+                        .or_insert_with(|| Some(Vec::new()));
+                    if let (Some(list), Some(line)) = (entry.as_mut(), line) {
+                        list.push(line);
+                    }
+                }
+            }
+        }
+        "filesWithMatches" => {
+            if let Some(files) = out.get("files").and_then(|v| v.as_array()) {
+                for file in files {
+                    if let Some(path) = file.as_str() {
+                        per_file.insert(path.to_string(), Some(Vec::new()));
+                    }
+                }
+            }
+        }
+        "count" => {
+            if let Some(counts) = out.get("counts").and_then(|v| v.as_array()) {
+                for row in counts {
+                    if let Some(path) = row.get("path").and_then(|v| v.as_str()) {
+                        per_file.insert(path.to_string(), Some(Vec::new()));
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    let mut tags = serde_json::Map::new();
+    for (display, lines) in per_file {
+        let Ok((resolved, _)) =
+            resolve_tool_path_with_external(root, scratch, &display, allow_external_paths)
+        else {
+            continue;
+        };
+        let matched = lines.as_deref();
+        if let Some((path, tag)) =
+            hashline::record_grep_file(hashline, &resolved, &display, matched)
+        {
+            tags.insert(path, json!(tag));
+        }
+    }
+    hashline::attach_tags(out, tags)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2491,6 +2600,7 @@ pub fn builtin_tool_defs() -> Value {
                 "Read a window of an existing regular text file inside the workspace or the session scratch directory. \
                  Read never accepts a directory; activate and use Glob when a directory must be listed or the file name is uncertain. \
                  Returns at most {} lines ({}KB) starting at `offset`; lines longer than {} characters are cut. \
+                 `content` is line-numbered (`N:`) under a `[path#TAG]` header; `tag` is the whole-file 4-hex Edit anchor. \
                  `totalLines` is always reported so you know the file scale upfront. \
                  `truncated` is true only when this window was cut short (budget or a clipped line), not merely because the file continues. \
                  For files beyond the default window, Grep to locate the target, then Read the range with offset/limit. \
@@ -2558,7 +2668,7 @@ pub fn builtin_tool_defs() -> Value {
         },
         {
             "name": "Write",
-            "description": "Create or overwrite a file inside the workspace or the session scratch directory",
+            "description": "Create or overwrite a file inside the workspace or the session scratch directory. Strips a pasted `[path#TAG]` header and `N:` line prefixes. Returns the post-write `tag` so a following Edit needs no extra Read.",
             "risk": "high",
             "parameters": {
                 "type": "object",
@@ -2571,16 +2681,19 @@ pub fn builtin_tool_defs() -> Value {
         },
         {
             "name": "Edit",
-            "description": "Replace one unique text occurrence in a workspace or scratch-directory file; re-read before retrying stale or ambiguous context",
+            "description": "Replace, insert, or delete lines in an existing file. Names positions and supplies new content only — never old_string. Required args: path, tag (4 hex from the latest Read/Grep/Write/Edit), ops. \
+    Ops: `PUT N.=M:` replace inclusive lines N–M (body rows required); `PUT <N:` insert before N; `PUT >N:` insert after N; `PUT >$:` append; `CUT N.=M` delete; `REM` delete the file; `MV DEST` rename after other ops. \
+    Body rows are `+` plus the final line text; a bare `+` is an empty line. No `-old` or context rows. Ranges name only the lines being changed — a pure insert uses a gap locator, not a widened PUT that restates survivors. \
+    All line numbers refer to the tagged snapshot and are 1-indexed. Re-ground on the tag returned by every successful write. After one failed Edit, Read the live file (or retry unchanged on a complete EDIT_LINES_UNSEEN reveal) once; do not guess.",
             "risk": "high",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string" },
-                    "old_string": { "type": "string" },
-                    "new_string": { "type": "string" }
+                    "tag": { "type": "string", "description": "4 uppercase hex from the latest Read, Grep, Write, or Edit for this path" },
+                    "ops": { "type": "string", "description": "One or more operation headers with + body rows, newline separated" }
                 },
-                "required": ["path", "old_string", "new_string"]
+                "required": ["path", "tag", "ops"]
             }
         },
         {
@@ -2606,6 +2719,10 @@ pub fn builtin_tool_defs() -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn plain_read(content: &str) -> String {
+        hashline::strip_write_markup(content)
+    }
 
     #[test]
     fn bash_timeout_defaults_at_the_tool_boundary() {
@@ -2799,8 +2916,11 @@ mod tests {
         );
         assert_eq!(first.content["totalLines"].as_u64(), Some(70_000));
         let content = first.content["content"].as_str().unwrap();
-        assert!(content.starts_with("line 1\nline 2\n"));
-        assert!(content.ends_with(&format!("line {DEFAULT_READ_LINES}")));
+        assert!(content.starts_with("[big.txt#"), "{content}");
+        assert_eq!(first.content["tag"].as_str().unwrap().len(), 4);
+        let plain = plain_read(content);
+        assert!(plain.starts_with("line 1\nline 2\n"));
+        assert!(plain.ends_with(&format!("line {DEFAULT_READ_LINES}")));
         assert!(content.len() <= BUDGET_SEARCH.max_bytes);
         assert_eq!(
             first.content["truncated"].as_bool(),
@@ -2822,8 +2942,8 @@ mod tests {
         .await;
         assert!(tail.ok, "read failed: {:?}", tail.content);
         assert_eq!(
-            tail.content["content"].as_str(),
-            Some("line 69999\nline 70000")
+            plain_read(tail.content["content"].as_str().unwrap()),
+            "line 69999\nline 70000"
         );
         assert_eq!(tail.content["totalLines"].as_u64(), Some(70_000));
         assert!(tail.content["notice"]
@@ -2850,9 +2970,10 @@ mod tests {
         .await;
         assert!(result.ok, "read failed: {:?}", result.content);
         let content = result.content["content"].as_str().unwrap();
-        let first_line = content.lines().next().unwrap();
+        let plain = plain_read(content);
+        let first_line = plain.lines().next().unwrap();
         assert_eq!(first_line.chars().count(), MAX_LINE_CHARS);
-        assert!(content.ends_with("\nshort"), "later lines survive");
+        assert!(plain.ends_with("\nshort"), "later lines survive: {plain:?}");
         assert!(result.content["notice"]
             .as_str()
             .unwrap()
@@ -2878,10 +2999,13 @@ mod tests {
         assert_eq!(window.content["lineCount"].as_u64(), Some(20));
         assert_eq!(window.content["totalLines"].as_u64(), Some(120));
         assert_eq!(window.content["truncated"].as_bool(), Some(false));
-        assert_eq!(
-            window.content["content"].as_str().unwrap().lines().next(),
-            Some("line 11")
-        );
+        let window_lines: Vec<&str> = window.content["content"]
+            .as_str()
+            .unwrap()
+            .lines()
+            .collect();
+        assert!(window_lines[0].starts_with("[notes.txt#"));
+        assert_eq!(window_lines[1], "11:line 11");
         let notice = window.content["notice"].as_str().unwrap();
         assert!(notice.contains("next offset is 30"), "{notice}");
         assert!(!notice.contains("use Grep"), "{notice}");
@@ -2974,11 +3098,15 @@ mod tests {
             None,
             None,
             true,
+            None,
         )
         .await;
         assert!(read.ok, "external read failed: {:?}", read.content);
         assert_eq!(read.content["root"].as_str(), Some("external"));
-        assert_eq!(read.content["content"].as_str(), Some("const needle = 1;"));
+        assert_eq!(
+            plain_read(read.content["content"].as_str().unwrap()),
+            "const needle = 1;"
+        );
 
         let grep = execute_tool_with_path_access(
             Some(workspace.path()),
@@ -2991,6 +3119,7 @@ mod tests {
             None,
             None,
             true,
+            None,
         )
         .await;
         assert!(grep.ok, "external grep failed: {:?}", grep.content);
@@ -3011,6 +3140,7 @@ mod tests {
             None,
             None,
             true,
+            None,
         )
         .await;
         assert!(
@@ -3035,6 +3165,7 @@ mod tests {
             None,
             None,
             true,
+            None,
         )
         .await;
         assert!(glob.ok, "external glob failed: {:?}", glob.content);
@@ -3059,28 +3190,31 @@ mod tests {
             None,
             None,
             true,
+            None,
         )
         .await;
         assert!(write.ok, "external write failed: {:?}", write.content);
         assert_eq!(write.content["root"].as_str(), Some("external"));
 
+        let tag = write.content["tag"].as_str().unwrap();
         let edit = execute_tool_with_path_access(
             Some(workspace.path()),
             None,
             "Edit",
             &serde_json::json!({
                 "path": file.to_str().unwrap(),
-                "old_string": "before",
-                "new_string": "after",
+                "tag": tag,
+                "ops": "PUT 1.=1:\n+after\n",
             }),
             None,
             None,
             true,
+            None,
         )
         .await;
         assert!(edit.ok, "external edit failed: {:?}", edit.content);
         assert_eq!(edit.content["root"].as_str(), Some("external"));
-        assert_eq!(std::fs::read_to_string(file).unwrap(), "after");
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "after");
     }
 
     #[tokio::test]
@@ -3514,6 +3648,14 @@ mod tests {
         }
         assert!(by_name("Glob")["parameters"]["properties"]["limit"].is_object());
         assert!(read["description"].as_str().unwrap().contains("2000 lines"));
+        let edit = by_name("Edit");
+        assert!(edit["parameters"]["properties"]["tag"].is_object());
+        assert!(edit["parameters"]["properties"]["ops"].is_object());
+        assert!(edit["parameters"]["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v == "tag"));
         assert!(read["description"]
             .as_str()
             .unwrap()
@@ -3557,7 +3699,10 @@ mod tests {
         )
         .await;
         assert!(read.ok, "scratch read failed: {:?}", read.content);
-        assert_eq!(read.content["content"].as_str(), Some("scratch!"));
+        assert_eq!(
+            plain_read(read.content["content"].as_str().unwrap()),
+            "scratch!"
+        );
         assert_eq!(read.content["root"].as_str(), Some("scratch"));
     }
 
@@ -3579,28 +3724,24 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn edit_requires_fresh_unique_context() {
+    async fn edit_rejects_a_stale_tag_and_applies_a_live_one() {
         let ws = tempfile::tempdir().unwrap();
         let target = ws.path().join("note.txt");
-        std::fs::write(&target, "before\nbefore\n").unwrap();
+        std::fs::write(&target, "before\nafter\n").unwrap();
 
-        let ambiguous = execute_tool(
+        let missing_tag = execute_tool(
             Some(ws.path()),
             None,
             "Edit",
             &serde_json::json!({
                 "path": "note.txt",
-                "old_string": "before",
-                "new_string": "after"
+                "ops": "PUT 1.=1:\n+BEFORE\n"
             }),
             5_000,
         )
         .await;
-        assert!(!ambiguous.ok);
-        assert!(ambiguous.content["error"]
-            .as_str()
-            .unwrap()
-            .contains("matches 2 locations"));
+        assert!(!missing_tag.ok);
+        assert_eq!(missing_tag.error_code.as_deref(), Some("EDIT_TAG_REQUIRED"));
 
         let stale = execute_tool(
             Some(ws.path()),
@@ -3608,17 +3749,38 @@ mod tests {
             "Edit",
             &serde_json::json!({
                 "path": "note.txt",
-                "old_string": "missing",
-                "new_string": "after"
+                "tag": "0000",
+                "ops": "PUT 1.=1:\n+BEFORE\n"
             }),
             5_000,
         )
         .await;
         assert!(!stale.ok);
-        assert!(stale.content["error"]
-            .as_str()
-            .unwrap()
-            .contains("re-read the current file"));
+        assert_eq!(stale.error_code.as_deref(), Some("EDIT_TAG_MISMATCH"));
+
+        let read = execute_tool(
+            Some(ws.path()),
+            None,
+            "Read",
+            &serde_json::json!({ "path": "note.txt" }),
+            5_000,
+        )
+        .await;
+        let tag = read.content["tag"].as_str().unwrap();
+        let ok = execute_tool(
+            Some(ws.path()),
+            None,
+            "Edit",
+            &serde_json::json!({
+                "path": "note.txt",
+                "tag": tag,
+                "ops": "PUT 1.=1:\n+BEFORE\n"
+            }),
+            5_000,
+        )
+        .await;
+        assert!(ok.ok, "live-tag edit failed: {:?}", ok.content);
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "BEFORE\nafter\n");
     }
 
     #[cfg(unix)]
@@ -3871,11 +4033,21 @@ mod tests {
         assert_eq!(native.content["exitCode"], 7);
     }
     #[tokio::test]
-    async fn edit_normalizes_crlf_before_matching() {
+    async fn edit_preserves_crlf_line_endings() {
         let dir = tempfile::tempdir().unwrap();
         let target = dir.path().join("crlf.txt");
-        // Write a file with CRLF line endings
         std::fs::write(&target, "line one\r\nline two\r\nline three\r\n").unwrap();
+
+        let read = execute_tool(
+            Some(dir.path()),
+            None,
+            "Read",
+            &serde_json::json!({ "path": "crlf.txt" }),
+            5_000,
+        )
+        .await;
+        assert!(read.ok, "Read failed: {:?}", read.content);
+        let tag = read.content["tag"].as_str().unwrap();
 
         let result = execute_tool(
             Some(dir.path()),
@@ -3883,16 +4055,15 @@ mod tests {
             "Edit",
             &serde_json::json!({
                 "path": "crlf.txt",
-                "old_string": "line two\n",
-                "new_string": "line TWO replaced\n"
+                "tag": tag,
+                "ops": "PUT 2.=2:\n+line TWO replaced\n"
             }),
             5_000,
         )
         .await;
         assert!(result.ok, "Edit failed on CRLF file: {:?}", result.content);
-        assert_eq!(result.content["replacements"], 1);
+        assert_eq!(result.content["tag"].as_str().unwrap().len(), 4);
 
-        // Verify the file still has CRLF endings and the replacement was applied
         let written = std::fs::read_to_string(&target).unwrap();
         assert_eq!(written, "line one\r\nline TWO replaced\r\nline three\r\n");
     }
