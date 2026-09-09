@@ -47,6 +47,7 @@ describe("validateManifest", () => {
         mcpServers: [{ id: "files", transport: "stdio", command: "mcp-files" }],
         services: [{ id: "watcher", autoRestart: true }],
         bus: { publish: ["notes.created"], subscribe: ["notes.**"] },
+        sessionSources: [{ id: "legacy", label: { en: "Legacy", "zh-CN": "旧会话" } }],
       },
     });
     expect(result.ok).toBe(true);
@@ -67,6 +68,12 @@ describe("validateManifest", () => {
     expect(validateManifest({ ...base, contributes: { skills: ["../escape.md"] } }).error).toMatch(
       /\.\./,
     );
+    expect(
+      validateManifest({
+        ...base,
+        contributes: { sessionSources: [{ id: "legacy" }, { id: "legacy" }] },
+      }).error,
+    ).toMatch(/duplicate session source/);
   });
 });
 

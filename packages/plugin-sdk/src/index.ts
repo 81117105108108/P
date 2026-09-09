@@ -51,6 +51,8 @@ export type PluginManifest = {
     bus?: PluginBusContrib;
     /** Surfaces the plugin docks inside the host's work panel. */
     views?: PluginViewContrib[];
+    /** External session namespaces this plugin may import and own. */
+    sessionSources?: PluginSessionSourceContrib[];
   };
   permissions?: string[];
   /**
@@ -74,6 +76,125 @@ export type PluginManifest = {
 export type PluginLocalizedString = {
   en: string;
   "zh-CN": string;
+};
+
+export type PluginSessionSourceContrib = {
+  id: string;
+  label?: string | PluginLocalizedString;
+};
+
+export type PluginSessionMessage =
+  | { role: "user"; content: string; createdAt: string }
+  | {
+      role: "assistant";
+      content: string;
+      createdAt: string;
+      modelId?: string;
+      providerId?: string;
+    }
+  | {
+      role: "tool";
+      content: string;
+      createdAt: string;
+      toolName: string;
+      toolCallId: string;
+      toolStatus: "success" | "error";
+      toolArgs?: unknown;
+      toolResult?: unknown;
+    };
+
+export type PluginSessionImportInput = {
+  source: string;
+  externalId: string;
+  title: string;
+  projectPath?: string | null;
+  modelId?: string | null;
+  providerId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messages: PluginSessionMessage[];
+};
+
+export type PluginSessionImportResult = {
+  sessionId: string;
+  imported: boolean;
+  skipped: boolean;
+};
+
+export type PluginSessionBatchImportInput = {
+  source: string;
+  sessions: Array<Omit<PluginSessionImportInput, "source">>;
+  mode?: "skip" | "fail";
+};
+
+export type PluginSessionBatchImportResult = {
+  results: Array<{
+    externalId: string;
+    sessionId: string | null;
+    status: "imported" | "skipped" | "failed";
+    errorCode?: string;
+    errorMessage?: string;
+  }>;
+  imported: number;
+  skipped: number;
+  failed: number;
+};
+
+export type PluginSessionListItem = {
+  sessionId: string;
+  title: string;
+  source: string;
+  externalId: string;
+  messageCount: number;
+  originKind: "imported" | "created";
+  bound: { workspace: boolean; model: boolean };
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PluginSessionListResult = {
+  items: PluginSessionListItem[];
+  nextCursor?: string;
+};
+
+export type PluginSessionGetResult = {
+  sessionId: string;
+  title: string;
+  source: string;
+  externalId: string;
+  originKind: "imported" | "created";
+  projectPath: string | null;
+  modelId: string | null;
+  providerId: string | null;
+  history: {
+    projectPath: string | null;
+    modelId: string | null;
+    providerId: string | null;
+  };
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PluginSessionMessageResult = {
+  id: string;
+  role: "user" | "assistant" | "tool";
+  content: string;
+  contentTruncated?: boolean;
+  createdAt: string;
+  origin: "external";
+  tool?: {
+    name: string;
+    callId: string;
+    status: "success" | "error";
+    args?: unknown;
+    result?: unknown;
+  };
+};
+
+export type PluginSessionMessageListResult = {
+  items: PluginSessionMessageResult[];
+  nextCursor?: string;
 };
 
 /** Resolve a plugin label using the active PI-Desktop locale. */
@@ -469,6 +590,27 @@ export type PluginHostApi = {
   };
   session: {
     getLlmContext: () => Promise<PluginLlmContext>;
+    list: (input?: {
+      limit?: number;
+      cursor?: string;
+      source?: string;
+      updatedAfter?: string;
+    }) => Promise<PluginSessionListResult>;
+    get: (input: { sessionId: string }) => Promise<PluginSessionGetResult>;
+    listMessages: (input: {
+      sessionId: string;
+      limit?: number;
+      cursor?: string;
+      order?: "asc" | "desc";
+      contentLimit?: number;
+    }) => Promise<PluginSessionMessageListResult>;
+    import: (input: PluginSessionImportInput) => Promise<PluginSessionImportResult>;
+    importBatch: (input: PluginSessionBatchImportInput) => Promise<PluginSessionBatchImportResult>;
+    rename: (input: { sessionId: string; title: string }) => Promise<{ updated: boolean }>;
+    delete: (input: {
+      sessionId: string;
+      mode?: "trash" | "purge";
+    }) => Promise<{ deleted: boolean }>;
   };
   services: {
     /**
@@ -551,6 +693,10 @@ export const PLUGIN_PERMISSIONS = [
   "agent.complete",
   "models.list",
   "session.read",
+  "session.import",
+  "session.read.own",
+  "session.update.own",
+  "session.delete.own",
   "net.fetch",
   "shell.openExternal",
   "mcp.server.local",
@@ -760,6 +906,28 @@ export function validateContributions(
     }
     // `icon` is intentionally unchecked: an unknown token degrades to a letter
     // tile, so rejecting one would break a plugin over a cosmetic detail.
+  }
+
+  const sessionSourceIds = new Set<string>();
+  for (const source of contributes.sessionSources ?? []) {
+    if (!source || typeof source !== "object") {
+      return "contributes.sessionSources entries must be objects";
+    }
+    if (
+      typeof source.id !== "string" ||
+      !/^[a-zA-Z][a-zA-Z0-9._-]{0,63}$/.test(source.id)
+    ) {
+      return "session source id must match [a-zA-Z][a-zA-Z0-9._-]{0,63}";
+    }
+    if (sessionSourceIds.has(source.id)) {
+      return `duplicate session source id "${source.id}"`;
+    }
+    sessionSourceIds.add(source.id);
+    const labelError = localizedStringError(source.label, `session source "${source.id}" label`);
+    if (labelError) return labelError;
+    if (typeof source.label === "string" && !source.label.trim()) {
+      return `session source "${source.id}" label must not be empty`;
+    }
   }
 
   const serverIds = new Set<string>();

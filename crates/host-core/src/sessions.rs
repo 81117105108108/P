@@ -257,7 +257,7 @@ fn is_default_title(title: &str) -> bool {
 
 /// UiMessage → persisted transcript record, plus the extracted plain text for
 /// the search index row (None for tool rows, matching the FTS triggers).
-fn ui_to_record(message: &UiMessage) -> (MessageRecord, Option<String>) {
+pub(crate) fn ui_to_record(message: &UiMessage) -> (MessageRecord, Option<String>) {
     let mut meta_obj = serde_json::Map::new();
     if let Some(status) = &message.status {
         meta_obj.insert("status".into(), json!(status));
@@ -382,7 +382,7 @@ fn ui_to_record(message: &UiMessage) -> (MessageRecord, Option<String>) {
     )
 }
 
-fn record_to_ui(record: MessageRecord) -> UiMessage {
+pub(crate) fn record_to_ui(record: MessageRecord) -> UiMessage {
     let blocks = match record.blocks {
         Value::Array(items) => items,
         _ => Vec::new(),
@@ -853,7 +853,7 @@ fn clone_compaction_for_fork(
 
 /// Insert one search/index row for a message whose content lives in the
 /// transcript file.
-fn insert_index_row(
+pub(crate) fn insert_index_row(
     conn: &rusqlite::Connection,
     session_id: &str,
     seq: i64,
@@ -1028,7 +1028,8 @@ fn session_created_at(db: &Database, session_id: &str) -> Result<String> {
 const SUMMARY_SELECT: &str =
     "SELECT s.id, s.title, s.last_seq, p.path, s.model_id, s.provider_id, s.mode,
             s.thinking_level, s.permission_mode, s.updated_at, s.created_at
-     FROM sessions s LEFT JOIN projects p ON p.id = s.project_id";
+     FROM sessions s LEFT JOIN projects p ON p.id = s.project_id
+     WHERE s.deleted_at IS NULL";
 
 fn summary_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionSummary> {
     Ok(SessionSummary {
@@ -1231,7 +1232,7 @@ pub fn get_session_with_options(
     id: &str,
     options: SessionReadOptions,
 ) -> Result<Option<SessionDetail>> {
-    let sql = format!("{SUMMARY_SELECT} WHERE s.id = ?1");
+    let sql = format!("{SUMMARY_SELECT} AND s.id = ?1");
     let summary = db
         .conn()
         .prepare_cached(&sql)?
