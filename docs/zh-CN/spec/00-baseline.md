@@ -83,6 +83,8 @@
 > 绑定、provider/model 绑定、批量删除和标签操作仍延期；导入会话只有在显式提供
 > `projectId` 时才允许进行这项有限的项目绑定。本地控制面只绑定回环，不会重新打开
 > 被延后的远程 Gateway / WebUI 范围。
+> ADR 0205 / D373 定义未来 MVP 后 Agent Host、Gateway 和多绑定控制面的目标；
+> 当前基线仍排除远程 Gateway / WebUI 控制。
 
 ## 冻结的决定
 

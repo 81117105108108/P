@@ -4099,3 +4099,18 @@ D193, and D194.
   are asserted loopback; protocol versions are negotiated rather than echoed;
   results including `structuredContent` are bounded; renderer session refresh
   is mutation-only. See E2E-220.
+
+## 2026-09-10 — Remote Agent Control uses a dedicated Host boundary (D373)
+
+- Remote control is a post-MVP capability and must not expose the existing
+  Electron IPC, `host.proxy`, or Rust host-core stdio boundary.
+- Decision D373 / ADR 0205 defines a logical Agent Host that owns Sessions,
+  Turns, event cursors, approvals, attachments, workspace policy, and crash
+  recovery. A production Gateway owns identity, routing, rate limits,
+  revocation, and audit, while the Agent Host connects outbound.
+- RACP v1 keeps the semantic operation model independent of transport:
+  WebSocket JSON-RPC is the primary interactive binding, HTTP/JSON + SSE is
+  the browser binding, and gRPC over TLS is the native/Gateway binding. The
+  bindings share event sequences, snapshots, idempotency, authorization, and
+  error semantics. See the remote architecture, protocol, security, and
+  rollout specifications and E2E-221 through E2E-230.

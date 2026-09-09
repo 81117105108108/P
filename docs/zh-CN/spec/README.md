@@ -12,7 +12,7 @@
 当前应用程序中的功能。当前的实现添加了 Goal 合约，
 独立 MCP/Skills/Subagents、插件市场和启动器流程、会话
 导入、计划任务和下一轮输入框配置。主机线材
-协议为 v10；存储架构为 v12（见 `00-baseline.md`）。
+协议为 v11；存储架构为 v14（见 `00-baseline.md`）。
 
 ## 快速进入
 
@@ -24,7 +24,10 @@
 | [01-product/00-overview.md](/zh-CN/spec/01-product/00-overview) | 概述 |
 | [01-product/01-product-scope.md](/zh-CN/spec/01-product/01-product-scope) | 目前的产品范围和运营模式 |
 | [02-architecture/01-architecture.md](/zh-CN/spec/02-architecture/01-architecture) | 建筑 |
+| [02-architecture/05-remote-agent-control.md](/zh-CN/spec/02-architecture/05-remote-agent-control) | 远程 Agent Host 和 Gateway 目标架构 |
 | [03-runtime/05-host-core-rust.md](/zh-CN/spec/03-runtime/05-host-core-rust) | Rust 主机核心 |
+| [03-runtime/19-remote-agent-control-protocol.md](/zh-CN/spec/03-runtime/19-remote-agent-control-protocol) | 远程控制协议 |
+| [05-security/02-remote-control-security.md](/zh-CN/spec/05-security/02-remote-control-security) | 远程控制安全 |
 | [04-ux/02-i18n-english-first.md](/zh-CN/spec/04-ux/02-i18n-english-first) | 国际化政策 |
 | [04-ux/07-ui-design-system.md](/zh-CN/spec/04-ux/07-ui-design-system) | 设计系统（令牌、运动、密度） |
 | [04-ux/01-ui-ia.md](/zh-CN/spec/04-ux/01-ui-ia) | 已发货的外壳和目的地地图 |

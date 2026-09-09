@@ -2942,3 +2942,15 @@ D193 和 D194。
   只读操作；剥离密钥形态参数；`session/configure` 视为危险；监听地址必须是回环；
   协议版本协商而不是回显；包括 `structuredContent` 在内的结果有界；渲染器会话刷新
   仅限变更操作。参见 E2E-220。
+
+## 2026-09-10 —— 远程 Agent Control 使用专用 Host 边界（D373）
+
+- 远程控制属于 MVP 后能力，不得暴露现有 Electron IPC、`host.proxy` 或 Rust
+  host-core stdio 边界。
+- 决策 D373 / ADR 0205 定义逻辑 Agent Host，由它拥有 Sessions、Turns、事件游标、
+  审批、附件、工作区策略和崩溃恢复。生产 Gateway 拥有身份、路由、速率限制、撤销和
+  审计；Agent Host 通过出站链路连接。
+- RACP v1 保持语义操作模型与传输解耦：WebSocket JSON-RPC 是主要交互绑定，
+  HTTP/JSON + SSE 是浏览器绑定，TLS 上的 gRPC 是原生/Gateway 绑定。各绑定共享事件
+  序列、快照、幂等、授权和错误语义。参见远程架构、协议、安全、发布规格以及
+  E2E-221 至 E2E-230。

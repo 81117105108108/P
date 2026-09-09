@@ -99,6 +99,15 @@ Streamable HTTP MCP 服务。服务提供项目/会话/Agent/工作区常用命�
 **变更性** 项目/会话调用复用现有会话变更事件，使外部 Agent 和可见桌面收敛到同一状态。
 这是本地自动化接口，不是延后的远程 Gateway / WebUI 架构。
 
+### 3.7 远程 Agent Control 目标（MVP 后）
+
+远程控制在 [05-remote-agent-control](/zh-CN/spec/02-architecture/05-remote-agent-control)
+中单独定义。目标是在现有 sidecar 之上增加 Agent Host 边界，并通过 WebSocket
+JSON-RPC、HTTP/JSON + SSE 与 gRPC 暴露与传输无关的 RACP 契约。它不暴露 Electron
+IPC、`host.proxy` 或 host-core RPC，也不改变当前 MVP 对远程 Gateway 的排除。开发阶段
+可以把 facade 放在 Electron Main 中；生产部署则使用工作区旁的独立 Host，并通过
+出站 Gateway 链路连接。
+
 ## 4. 请求路径（对话+工具）
 
 ```text

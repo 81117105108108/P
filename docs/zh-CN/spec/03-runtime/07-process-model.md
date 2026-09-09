@@ -170,7 +170,18 @@ sidecar/host 关闭序列在更新程序替换应用程序之前运行。
   Linux 和 Windows 便携版运行为手动交付模式； Windows NSIS 和
   Linux AppImage 使用 D126 标签发布的应用内提要
 
-## 7. 验收
+## 7. 远程目标拓扑（MVP 后）
+
+远程控制不会给 Rust host-core 或当前 renderer IPC 表面增加公共监听器。目标 Agent
+Host 是围绕 Node pi sidecar 与 Rust host-core 的逻辑监督者，在其上提供已认证的
+RACP facade。生产环境中 Host 发起出站 Gateway 链路；Gateway 负责路由已认证客户，
+但不拥有工作区状态。
+
+详细拓扑、所有权和迁移边界见
+[`02-architecture/05-remote-agent-control.md`](/zh-CN/spec/02-architecture/05-remote-agent-control)。
+在 MVP 后的实现里程碑明确修订本节之前，当前四进程本地拓扑和关闭顺序保持不变。
+
+## 8. 验收
 
 1.干净启动路径记录并可编写脚本
 2. 主机崩溃不会默默地继续工具执行

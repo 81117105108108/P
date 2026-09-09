@@ -103,6 +103,18 @@ session-change event so an external Agent and the visible desktop converge on
 the same active state. This is a local automation surface, not the deferred
 remote Gateway / WebUI architecture.
 
+### 3.7 Remote Agent Control target (post-MVP)
+
+Remote control is specified separately in
+[05-remote-agent-control](05-remote-agent-control.md). The target introduces
+an Agent Host boundary above the existing sidecars and exposes a
+transport-neutral RACP contract through WebSocket JSON-RPC, HTTP/JSON + SSE,
+and gRPC bindings. It does not expose Electron IPC, `host.proxy`, or
+host-core RPC, and it does not change the current MVP exclusion of a remote
+Gateway. The first implementation may place the facade in Electron Main for
+development; production deployment uses a standalone Host beside the
+workspace and an outbound Gateway link.
+
 ## 4. Request path (conversation + tool)
 
 ```text

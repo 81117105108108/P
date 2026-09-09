@@ -20,3 +20,4 @@
 | [16-tool-result-limits.md](16-tool-result-limits.md) | Tool result size limits |
 | [17-asktool-questions.md](17-asktool-questions.md) | Interactive multi-question tool |
 | [18-line-anchored-edit-contract.md](18-line-anchored-edit-contract.md) | Line-anchored Edit contract |
+| [19-remote-agent-control-protocol.md](19-remote-agent-control-protocol.md) | Remote Agent Control Protocol |

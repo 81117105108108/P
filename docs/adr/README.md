@@ -214,5 +214,6 @@ Each ADR includes:
 | 0200 | Host-owned plugin session import and ownership API | Accepted |
 | 0201 | Explicit plugin project ids and host-owned session refresh | Accepted |
 | 0202 | Expose effective subagent thinking metadata | Accepted |
-| 0204 | Explicit unsigned macOS first-launch helper | Accepted |
 | 0203 | Local MCP control plane for desktop operations | Accepted (amended by D372) |
+| 0204 | Explicit unsigned macOS first-launch helper | Accepted |
+| 0205 | Remote Agent Control uses a dedicated Host boundary | Accepted for implementation (post-MVP) |

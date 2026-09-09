@@ -16,6 +16,7 @@
 - [02-tech-stack.md](/zh-CN/spec/02-architecture/02-tech-stack)
 - [04-documentation-site.md](/zh-CN/spec/02-architecture/04-documentation-site)
 - [03-repo-struct.md](/zh-CN/spec/02-architecture/03-repo-structure)
+- [05-remote-agent-control.md](/zh-CN/spec/02-architecture/05-remote-agent-control)
 
 ## 3. 运行时
 - [01-ipc-protocol.md](/zh-CN/spec/03-runtime/01-ipc-protocol)
@@ -36,6 +37,7 @@
 - [16-tool-result-limits.md](/zh-CN/spec/03-runtime/16-tool-result-limits)
 - [17-asktool-questions.md](/zh-CN/spec/03-runtime/17-asktool-questions)
 - [18-line-anchored-edit-contract.md](/zh-CN/spec/03-runtime/18-line-anchored-edit-contract)
+- [19-remote-agent-control-protocol.md](/zh-CN/spec/03-runtime/19-remote-agent-control-protocol)
 
 ## 4. 用户体验
 - [01-ui-ia.md](/zh-CN/spec/04-ux/01-ui-ia)
@@ -50,6 +52,7 @@
 
 ## 5. 安全性
 - [01-security.md](/zh-CN/spec/05-security/01-security)
+- [02-remote-control-security.md](/zh-CN/spec/05-security/02-remote-control-security)
 
 ## 6. 交付
 - [01-mvp-milestones.md](/zh-CN/spec/06-delivery/01-mvp-milestones)
@@ -58,6 +61,7 @@
 - [04-e2e-test-plan.md](/zh-CN/spec/06-delivery/04-e2e-test-plan)
 - [05-change-checklist.md](/zh-CN/spec/06-delivery/05-change-checklist)
 - [06-release-runbook.md](/zh-CN/spec/06-delivery/06-release-runbook)
+- [07-remote-control-rollout.md](/zh-CN/spec/06-delivery/07-remote-control-rollout)
 
 ## 7. 插件
 - [01-plugin-system.md](/zh-CN/spec/07-plugins/01-plugin-system)

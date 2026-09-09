@@ -55,6 +55,11 @@
 - 封装时 Electron 熔断器（`runAsNode`、`nodeCliInspect` 关闭）
 - 自动安全 e2e 中的 `webSecurity` 断言
 
+远程控制的安全边界是独立的 MVP 后规格：见
+[远程控制安全](/zh-CN/spec/05-security/02-remote-control-security) 和
+[远程 Agent Control 架构](/zh-CN/spec/02-architecture/05-remote-agent-control)。
+本地安全基线不会因为远程目标规格而开放新的监听器或权限通道。
+
 ## 3. 秘密
 
 - 通过 Electron `safeStorage` 加密存储的密钥，由 host-core 管理

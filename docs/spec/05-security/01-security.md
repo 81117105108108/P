@@ -192,6 +192,14 @@ desktop for the operations it invokes. Users must protect the user-data
 directory and token; the endpoint is not intended for untrusted local users or
 remote clients. `confirm: true` does not ask the visible desktop for approval.
 
+The post-MVP remote control target is a separate security boundary. It is
+specified in
+[`02-remote-control-security.md`](02-remote-control-security.md) and
+[`02-architecture/05-remote-agent-control.md`](../02-architecture/05-remote-agent-control.md).
+Those specifications require an authenticated Gateway/Agent Host link,
+session-scoped authorization, event replay controls, and no network access to
+host-core. They do not change the loopback-only rule above.
+
 ## 9. Host process attack surface
 
 - host-core speaks NDJSON JSON-RPC on stdio to the Electron main process

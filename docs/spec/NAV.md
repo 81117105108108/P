@@ -13,6 +13,7 @@
 - [02-tech-stack.md](02-architecture/02-tech-stack.md)
 - [04-documentation-site.md](02-architecture/04-documentation-site.md)
 - [03-repo-structure.md](02-architecture/03-repo-structure.md)
+- [05-remote-agent-control.md](02-architecture/05-remote-agent-control.md)
 
 ## 3. Runtime
 - [01-ipc-protocol.md](03-runtime/01-ipc-protocol.md)
@@ -33,6 +34,7 @@
 - [16-tool-result-limits.md](03-runtime/16-tool-result-limits.md)
 - [17-asktool-questions.md](03-runtime/17-asktool-questions.md)
 - [18-line-anchored-edit-contract.md](03-runtime/18-line-anchored-edit-contract.md)
+- [19-remote-agent-control-protocol.md](03-runtime/19-remote-agent-control-protocol.md)
 
 ## 4. UX
 - [01-ui-ia.md](04-ux/01-ui-ia.md)
@@ -50,6 +52,7 @@
 
 ## 5. Security
 - [01-security.md](05-security/01-security.md)
+- [02-remote-control-security.md](05-security/02-remote-control-security.md)
 
 ## 6. Delivery
 - [01-mvp-milestones.md](06-delivery/01-mvp-milestones.md)
@@ -58,6 +61,7 @@
 - [04-e2e-test-plan.md](06-delivery/04-e2e-test-plan.md)
 - [05-change-checklist.md](06-delivery/05-change-checklist.md)
 - [06-release-runbook.md](06-delivery/06-release-runbook.md)
+- [07-remote-control-rollout.md](06-delivery/07-remote-control-rollout.md)
 
 ## 7. Plugins
 - [01-plugin-system.md](07-plugins/01-plugin-system.md)

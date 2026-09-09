@@ -212,7 +212,20 @@ sidecar/host shutdown sequence runs before the updater replaces the app.
   Linux, and Windows portable runs are manual-delivery modes; Windows NSIS and
   Linux AppImage use the in-app feeds published by D126 tag releases
 
-## 7. Acceptance
+## 7. Remote target topology (post-MVP)
+
+Remote control does not add a public listener to Rust host-core or the current
+renderer IPC surface. The target Agent Host is a logical supervisor around the
+Node pi sidecar and Rust host-core, with an authenticated RACP facade above
+them. In production, the Host opens an outbound Gateway link; the Gateway
+routes authenticated clients and does not become the owner of workspace state.
+
+The detailed topology, ownership, and migration boundary are specified in
+[`02-architecture/05-remote-agent-control.md`](../02-architecture/05-remote-agent-control.md).
+The current four-process local topology and shutdown order remain unchanged
+until a post-MVP implementation milestone explicitly amends this section.
+
+## 8. Acceptance
 
 1. Clean boot path documented and scriptable
 2. Host crash does not silently continue tool execution
