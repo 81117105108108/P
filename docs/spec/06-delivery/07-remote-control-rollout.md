@@ -1,7 +1,7 @@
 # Remote Agent Control Rollout and Acceptance
 
 - Status: Target delivery specification; post-MVP
-- Decision: D373 / ADR 0205, amended by D376 and D377
+- Decision: D373 / ADR 0205, amended by D374 and D375
 - Normative protocol: `03-runtime/19-remote-agent-control-protocol.md`
 - Normative security: `05-security/02-remote-control-security.md`
 
@@ -20,7 +20,7 @@ The implementation starts with the typebox contract, the headless Agent Host
 module, and conformance tests, then adds transport bindings behind explicit
 feature flags.
 
-D377 fixes the order of the milestones around recorded demand rather than
+D375 fixes the order of the milestones around recorded demand rather than
 around transport breadth:
 
 - issues #176 and #140 ask to operate projects on a remote Linux or WSL
@@ -75,7 +75,10 @@ local changes ship with it:
 - Rust host-core exposes `permissions.pending` so a late-attaching client
   receives open requests; and
 - the renderer's in-memory prompt queue is replaced by the Host-owned turn
-  queue, so every client sees the same pending prompts.
+  queue, persisted by Rust host-core under its own ADR and schema bump
+  (D375), restored after a restart and held until a controller attaches, so
+  every client sees the same pending prompts and a reboot never starts work
+  unattended.
 
 A development-only loopback RACP-WS endpoint drives the module; it is not
 reachable outside loopback or an explicit development tunnel.
@@ -104,8 +107,10 @@ Deliver the first remote topology (`02-architecture/05-remote-agent-control.md`
 Deliverables:
 
 - the `pi-host` bundle: the module, the Node pi sidecar, and the platform's
-  host-core binary, versioned with the desktop, bound to loopback, started
-  and paired over the user's own SSH session;
+  host-core binary, versioned with the desktop, bound to loopback, downloaded
+  from GitHub Releases by a bootstrap script the desktop uploads over SSH
+  with the published SHA-256 verified before install, then started and paired
+  over that SSH session;
 - the desktop RACP client adapter in Electron Main under `lib/api.ts`, so the
   renderer needs no transport knowledge and a remote session renders like a
   local one;
@@ -115,28 +120,36 @@ Deliverables:
   `session/rename`, `session/delete`, `session/compact`, `workspace/list`,
   `workspace/read`, `workspace/diff`) so mode, model, thinking level, and the
   work panel's files and diff work against the remote session; and
-- the remote session ownership split of architecture §6.3, including the
-  absence of desktop plugin tools and desktop MCP servers from remote
-  sessions.
+- the remote session ownership split of architecture §6.3;
+- the reverse tool relay: `tools/advertise` and the `tool/execute` server
+  request, so desktop MCP servers and workspace-free plugin tools run on the
+  desktop for a remote session; and
+- the terminal: `terminal/open`, `terminal/input`, `terminal/resize`,
+  `terminal/close`, `terminal.output`, and a bounded replay ring, running on
+  the remote machine.
 
-Design gate, answered before coding starts, with the recommended answers:
+Design decisions (D375, recorded 2026-09-10):
 
 1. Provider configuration on the remote Host is written over the SSH
    bootstrap channel as Host-local configuration; nothing crosses RACP.
-2. Desktop plugin tools and desktop user MCP servers are unavailable in
-   remote sessions; a reverse tool relay stays reserved.
-3. The work-panel terminal runs on the remote machine; it ships in R2 as a
-   `terminal/*` streaming profile only if the desktop pty already runs
-   outside the renderer with a stable contract, otherwise it moves to R2.1.
-4. `pi-host` is distributed per platform at the desktop's version; a version
-   mismatch is `PROTOCOL_MISMATCH`, and the desktop offers to update the
-   remote bundle.
+2. Desktop user MCP servers and workspace-free plugin tools reach remote
+   sessions through the reverse tool relay in this milestone; plugin tools
+   that require workspace or filesystem access are excluded.
+3. The work-panel terminal ships in this milestone as the `terminal/*`
+   operations, running on the remote machine.
+4. `pi-host` is downloaded from GitHub Releases per platform at the desktop's
+   version by a bootstrap script the desktop uploads over SSH, with the
+   published SHA-256 verified; a version mismatch is `PROTOCOL_MISMATCH`
+   and the desktop offers to re-run the download. A machine without outbound
+   access to GitHub is not supported in the first version.
 5. The SSH-paired desktop device holds `owner` and is exempt from the remote
-   permission ceiling.
+   permission ceiling unless the Host policy `applyCeilingToPairedDevices`
+   is enabled.
+6. R2 ships as one milestone; it is not split into sub-milestones.
 
 Exit criteria:
 
-1. E2E-232 passes: a turn started from the desktop reads, writes, and runs
+1. E2E-231 passes: a turn started from the desktop reads, writes, and runs
    commands on the remote machine only, approvals appear in the desktop card,
    and the remote host-core binds loopback only.
 2. Dropping and restoring the SSH session mid-turn resumes by cursor without
@@ -145,6 +158,15 @@ Exit criteria:
    locally, idle-only.
 4. The remote tool catalog contains no desktop plugin tool.
 5. A `pi-host` at another version is rejected and the update path is offered.
+6. A desktop-configured MCP tool advertised for relay executes on the desktop
+   during a remote turn, a workspace-requiring plugin tool is absent from the
+   remote catalog, and closing the desktop mid-call fails the tool without
+   interrupting the turn.
+7. A terminal opened on a remote session runs on the remote machine inside
+   the session root and its output resumes from the replay ring after an SSH
+   drop.
+8. The bootstrap download verifies the published checksum and refuses a
+   tampered bundle.
 
 ### R3 — Outbound messaging integration
 
@@ -164,16 +186,15 @@ inbound listener.
 - It never blocks a turn: delivery failures are logged and retried with a
   bound, and the Host runs the same whether the adapter is configured or not.
 
-Exit criteria: E2E-233 passes; payloads contain summaries and ids only;
+Exit criteria: E2E-232 passes; payloads contain summaries and ids only;
 commands from an unlinked chat have no effect; the Host has no new listener.
 
 ### Unscheduled — Gateway and Host link (formerly R3)
 
 A separate Remote Gateway and the outbound Host link
 (`racp-hostlink.v1`) with identity, routing, rate limits, audit, revocation,
-and transient attachment relay. The identity source (OIDC/OAuth 2.0 provider
-or first-party product account service) is recorded as a decision when this
-milestone is scheduled. Exit criteria remain those of E2E-227.
+and transient attachment relay. The identity source is fixed by D375: the
+first-party PI account service specified in the pi-backend repository. Exit criteria remain those of E2E-227.
 
 ### Unscheduled — Browser profile (formerly R4)
 
@@ -273,7 +294,10 @@ binding may choose its native status and serialization, but it must preserve:
 - the desktop adapter rendering a remote session through the unchanged
   renderer;
 - SSH session drop and restore while a remote turn is running;
-- host restart while a turn is running and turns are queued;
+- host restart while a turn is running and turns are queued, verifying that
+  the persisted queue is restored and held;
+- relayed tool execution and terminal streaming across an SSH drop;
+- bootstrap download with a valid and a tampered checksum;
 - the integration adapter against a webhook sink and a long-polling bot
   fixture; and
 - when scheduled: Gateway routing across two Hosts, browser reconnect on the
@@ -340,16 +364,17 @@ Rollback MUST:
 
 The scheduled feature set is not production-ready until:
 
-1. remote scenarios E2E-221 through E2E-226, E2E-229, E2E-230, and E2E-232
-   are green in the approved remote harness, and E2E-233 for the integration
+1. remote scenarios E2E-221 through E2E-226, E2E-229, E2E-230, and E2E-231
+   are green in the approved remote harness, and E2E-232 for the integration
    adapter;
 2. the security acceptance gates in
    `05-security/02-remote-control-security.md` that apply to the scheduled
    milestones are signed off;
 3. a failure-injection run proves no duplicate execution after reconnect,
    including an SSH session drop;
-4. `pi-host` bundles exist for every platform the desktop's release pipeline
-   publishes for Linux, and the version-mismatch path is tested;
+4. `pi-host` bundles are published to GitHub Releases with checksums for
+   every Linux platform the desktop's release pipeline publishes, and the
+   version-mismatch and tampered-download paths are tested;
 5. the Host operational metrics are available; and
 6. a new release/rollback runbook names the feature flag, pairing revocation
    path, data retention on the remote machine, and incident owner.
@@ -359,15 +384,20 @@ scheduled.
 
 ## 7. Amendment history
 
-D376 (2026-09-10) replaced the Electron facade milestone with the headless
+D374 (2026-09-10) replaced the Electron facade milestone with the headless
 Agent Host module, added the Host queue and `permissions.pending` changes,
 made `RACP-WS` the only normative v1 binding with a browser profile and a
 reserved gRPC binding, added the Host link relay and identity-source
 decision, and made tenant isolation tests conditional on a multi-tenant
 harness.
 
-D377 (2026-09-10) re-sequenced the milestones around recorded demand: R2 is
+D375 (2026-09-10) re-sequenced the milestones around recorded demand: R2 is
 the SSH-tunnel remote Host with the desktop as client, R3 is the outbound
 messaging integration, and the Gateway, browser, and gRPC milestones are
-unscheduled. It added the R2 design gate, the `pi-host` bundle, the desktop
-adapter rule, and E2E-232 / E2E-233 as the acceptance targets.
+unscheduled. It added the `pi-host` bundle, the desktop adapter rule, and
+E2E-231 / E2E-232 as the acceptance targets. Its design-gate answers,
+recorded the same day, put the reverse tool relay and the terminal in R2 as
+one milestone, download `pi-host` from GitHub Releases, persist the turn
+queue in host-core, default the remote approval lifetime to 30 minutes, make
+the paired-device exemption a Host policy, and fix the Gateway identity
+source to the PI account service.

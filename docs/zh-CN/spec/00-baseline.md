@@ -84,8 +84,8 @@
 > `projectId` 时才允许进行这项有限的项目绑定。本地控制面只绑定回环，不会重新打开
 > 被延后的远程 Gateway / WebUI 范围。
 > ADR 0205 / D373 定义未来 MVP 后 Agent Host、Gateway 和多绑定控制面的目标；
-> D376 将其修订为单一规范 WebSocket 绑定、无头 Agent Host 模块和完整本地审批词汇；
-> D377 将 SSH 隧道远端 Host 排在首位，Gateway 与浏览器访问不排期。
+> D374 将其修订为单一规范 WebSocket 绑定、无头 Agent Host 模块和完整本地审批词汇；
+> D375 将 SSH 隧道远端 Host 排在首位，Gateway 与浏览器访问不排期。
 > 当前基线仍排除远程 Gateway / WebUI 控制。
 
 ## 冻结的决定

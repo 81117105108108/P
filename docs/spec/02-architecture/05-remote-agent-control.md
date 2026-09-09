@@ -1,7 +1,7 @@
 # Remote Agent Control Target Architecture
 
 - Status: Target specification; post-MVP
-- Decision: D373 / ADR 0205, amended by D376 and D377
+- Decision: D373 / ADR 0205, amended by D374 and D375
 - Scope: Remote observation and control of a PI-Desktop Agent Host
 - Source of truth: `03-runtime/19-remote-agent-control-protocol.md`
 
@@ -27,7 +27,7 @@ The feature is a control-plane API. It is not remote desktop streaming, an
 arbitrary shell service, a provider proxy, or a replacement for the local
 MCP control plane.
 
-D377 fixes the order in which the topologies ship. The first remote
+D375 fixes the order in which the topologies ship. The first remote
 deployment is the desktop itself acting as the Remote Client of a headless
 Host on another machine over an SSH tunnel, which is what users asked for in
 issues #176 and #140. The second is an outbound messaging integration that
@@ -103,7 +103,7 @@ continues to govern subagent coordination.
 | Desktop RACP client adapter (Electron Main) | Present a remote Host to the renderer through the existing `lib/api.ts` surface; own SSH bootstrap, pairing, and port forwarding | A second transcript store; local execution of remote tools |
 | Agent Host | Own sessions, turns, the per-session turn queue, event cursors, attachment records, tool execution, and lifecycle | Browser presentation state |
 | Headless Agent Host module (`packages/agent-host`) | Own session/turn admission, the turn queue, the approval broker, the in-memory event log, and the snapshot builder; expose one typed API to desktop IPC, local MCP, RACP, and integrations | Electron, renderer, or transport dependencies; a second permission or persistence implementation |
-| `pi-host` headless bundle | Run the module, the Node pi sidecar, and Rust host-core on a remote machine, bound to loopback, at the same version as the desktop | A desktop UI, plugin panels, another Host's secrets |
+| `pi-host` headless bundle | Run the module, the Node pi sidecar, and Rust host-core on a remote machine, bound to loopback, at the same version as the desktop, downloaded from GitHub Releases by the bootstrap script | A desktop UI, plugin panels, another Host's secrets |
 | Messaging integration adapter | Subscribe to host-scope events in the Host process and relay redacted summaries to outbound channels; map a fixed command vocabulary to turn and approval operations | Its own permission policy, an inbound listener, raw transcript content |
 | Gateway (unscheduled) | Authenticate users, authorize routing, maintain Host links, rate-limit, audit, buffer attachment uploads transiently, and (reserved) push redacted summaries | Provider secrets, durable transcript truth, arbitrary host-core access, attachment bytes beyond the upload window |
 | Node pi sidecar | Run the pi Agent loop and provider streams | Remote authentication, workspace policy, secret storage |
@@ -147,8 +147,11 @@ PI-Desktop (Remote Client)                    Remote machine
 Bootstrap runs over the user's own SSH session, never over RACP:
 
 1. The desktop opens SSH with the user's existing configuration and keys.
-2. It ensures a `pi-host` bundle for the remote platform is present at the
-   desktop's version, uploading or downloading it if needed.
+2. It uploads a small bootstrap script that downloads the `pi-host` bundle
+   for the remote platform at the desktop's version from GitHub Releases,
+   verifies the published SHA-256, and installs it under the user's home. A
+   machine without outbound access to GitHub cannot be bootstrapped in the
+   first version.
 3. It starts `pi-host` bound to loopback and receives a single-use pairing
    token over the SSH channel.
 4. It forwards a local port to the Host's loopback port and connects
@@ -232,7 +235,8 @@ Gateway-routed principal runs under the Host's remote permission ceiling
 (`03-runtime/19-remote-agent-control-protocol.md` §7.3). A desktop device
 paired through the SSH bootstrap holds `owner` and is exempt from the
 ceiling, because SSH access to the machine already exceeds anything the
-ceiling withholds.
+ceiling withholds; the Host policy `applyCeilingToPairedDevices` (default
+off) re-applies it.
 
 ### 6.3 Remote session ownership split
 
@@ -246,16 +250,20 @@ For a session on a remote Host:
 - **On the desktop**: the window and shell, local sessions, the settings UI
   for the local application, plugin panels, the browser preview, and the
   display of notifications.
-- **Unavailable in a remote session in the first version**: desktop plugin
-  tools and desktop-configured user MCP servers, because they execute inside
-  Electron Main today through the `plugins.execute` dispatch. A remote
-  session sees only the remote Host's catalog. A reverse tool relay is
-  reserved, not specified.
+- **Relayed from the desktop**: the desktop advertises its user-configured
+  MCP servers and the plugin tools that do not require the session workspace
+  through `tools/advertise`; they appear in the remote session's catalog as
+  relayed tools and execute on the desktop through the `tool/execute` server
+  request under the desktop's own plugin permissions
+  (`03-runtime/19-remote-agent-control-protocol.md` §9.4). Plugin tools that
+  require workspace or filesystem access are excluded, because they would act
+  on the desktop's filesystem while the session root is on the Host.
 - **Work panel**: file listing, file reads, and the working-tree diff use the
   remote-host profile operations in
   `03-runtime/19-remote-agent-control-protocol.md` §6.2 against the remote
-  session root; the terminal must run on the remote machine and is a
-  rollout R2 design-gate item; the browser preview stays local.
+  session root; the terminal runs on the remote machine through the
+  `terminal/*` operations with a bounded replay ring; the browser preview
+  stays local.
 
 ### 6.4 Gateway ownership (unscheduled)
 
@@ -274,10 +282,10 @@ It must not persist provider API keys, raw tool arguments, raw tool results, or
 full transcripts unless a separate product decision explicitly grants that
 retention.
 
-The Gateway's identity source is either an OIDC/OAuth 2.0 provider or the
-first-party product account service; both satisfy
-`05-security/02-remote-control-security.md` §3.1, and the choice is recorded
-when the Gateway milestone is scheduled.
+The Gateway's identity source is the first-party PI account service
+specified in the pi-backend repository (D375); see
+`05-security/02-remote-control-security.md` §3.1. OIDC federation is not
+planned.
 
 ## 7. Transport profiles
 
@@ -359,7 +367,9 @@ Host   -> next queued turn starts
 not hold an HTTP request open until model execution ends. With
 `admission: "queue"` the Host places the turn in its per-session queue and
 releases it after the active turn's terminal event; the queue is Host state,
-so the local desktop and every remote client see the same pending prompts.
+persisted by host-core, restored after a restart, and held until a controller
+attaches, so the local desktop and every remote client see the same pending
+prompts.
 The turn continues after the client disconnects. `turn/stop` is the graceful
 stop at the next assistant/tool boundary; `turn/interrupt` is the immediate
 abort; both are explicit and idempotent. A transport disconnect alone never
@@ -375,9 +385,9 @@ an unadvertised permission mode or execute a tool directly; changing a
 durable mode uses `session/configure` from the remote-host profile and is
 idle-only, exactly as locally. A Gateway-routed turn never exceeds the Host's
 remote permission ceiling. Approval lifetime is Host policy: the local
-default stays 120 seconds then deny, and a Host with remote control enabled
-may configure a longer bounded lifetime because a remote approver is rarely
-at the keyboard.
+default stays 120 seconds then deny, and while a remote subscriber is
+attached the default is 30 minutes (D375), bounded and operator-adjustable,
+because a remote approver is rarely at the keyboard.
 
 ## 10. Failure and recovery model
 
@@ -388,7 +398,7 @@ at the keyboard.
 | SSH tunnel drop | The desktop adapter re-establishes the forward and resumes by cursor; the remote turn continues |
 | Gateway disconnect | Agent Host retries the Host link with bounded exponential backoff; local turns continue |
 | Agent Host unavailable | Reject new mutations with `AGENT_UNAVAILABLE`; never replay them automatically |
-| Agent Host restart | New epoch; clients resync from a snapshot; queued turns are gone and the snapshot shows an empty queue; nothing is replayed |
+| Agent Host restart | New epoch; clients resync from a snapshot; the persisted queue is restored in order and held until a controller attaches; nothing already started is replayed |
 | Agent Host crash | Existing host recovery rules apply; interrupted work is never replayed automatically |
 | Duplicate mutation | Return the original idempotent result for the same principal and key |
 | Durable event gap | Stop applying events and request a snapshot; never guess intermediate state |
@@ -411,13 +421,16 @@ module.
 Two local changes accompany the module: Rust host-core exposes the pending
 permission table through a `permissions.pending` read so late-attaching
 clients receive open requests, and the renderer's in-memory prompt queue is
-replaced by the Host-owned turn queue before more than one client can control
-a session.
+replaced by the Host-owned turn queue, persisted by host-core under its own
+ADR and schema bump (D375), before more than one client can control a
+session.
 
 The SSH-tunnel milestone adds two pieces without changing the wire contract:
 the `pi-host` bundle, which packages the module with the Node sidecar and the
 platform's host-core binary, and the desktop RACP client adapter, which sits
-under `lib/api.ts` so the renderer needs no transport knowledge. The
+under `lib/api.ts` so the renderer needs no transport knowledge. The same
+milestone carries the `tools/advertise` / `tool/execute` relay and the
+`terminal/*` operations. The
 messaging integration is a further caller of the module inside the Host
 process and needs no transport at all.
 
@@ -450,22 +463,29 @@ once scheduled, a Gateway route expose the same session/turn/event behavior.
 12. A remote session's transcript, tools, workspace, and secrets live on the
     remote Host; the desktop stores nothing from the remote workspace beyond
     display state.
-13. A remote session's tool catalog contains only the remote Host's tools;
-    desktop plugin tools never execute against a remote workspace.
+13. A remote session's catalog contains the remote Host's tools plus the
+    tools the desktop advertised for relay; a relayed tool executes on the
+    desktop and never against the remote workspace.
+14. A session terminal runs on the remote machine inside the session root and
+    opens only for principals allowed by policy.
 
 ## 13. Amendment history
 
-D376 (2026-09-10) amended the D373 target before implementation: one
+D374 (2026-09-10) amended the D373 target before implementation: one
 normative v1 binding with a browser profile and a reserved gRPC binding, the
 headless Agent Host module as the first deliverable, the Host-owned turn
 queue, `{ epoch, sequence }` cursors with ephemeral deltas, the full local
 approval vocabulary, the Host link relay profile, the remote permission
 ceiling, and the remote approval lifetime policy.
 
-D377 (2026-09-10) re-sequenced the topologies around recorded demand: the
+D375 (2026-09-10) re-sequenced the topologies around recorded demand: the
 SSH-tunnel remote Host with the desktop as Remote Client ships first, the
 outbound messaging integration second, and the Gateway and browser
 topologies stay specified but unscheduled. It added the `pi-host` bundle,
 the desktop RACP client adapter, the SSH bootstrap and loopback rule, the
 remote session ownership split, and the ceiling exemption for SSH-paired
-owner devices.
+owner devices. Its design-gate answers, recorded the same day, put the
+reverse tool relay and the terminal in R2, download `pi-host` from GitHub
+Releases, persist the turn queue in host-core, default the remote approval
+lifetime to 30 minutes, make the paired-device exemption a Host policy, and
+fix the Gateway identity source to the PI account service.

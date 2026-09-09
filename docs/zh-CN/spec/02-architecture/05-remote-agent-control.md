@@ -1,7 +1,7 @@
 # 远程 Agent 控制目标架构
 
 - 状态：目标规格，属于 MVP 之后
-- 决策：D373 / ADR 0205，经 D376 与 D377 修订
+- 决策：D373 / ADR 0205，经 D374 与 D375 修订
 - 英文源规格：[英文源规格](/spec/02-architecture/05-remote-agent-control)
 
 本页是英文规范的中文导读。远程控制当前仍不属于 MVP，不会把现有
@@ -12,7 +12,7 @@ Electron IPC、`host.proxy` 或 Rust host-core 暴露到网络。
 目标是让经过认证的远程客户端查看和控制 Agent Host，同时保持会话、
 回合、回合队列、事件游标、审批、附件、工作区和权限都由 Host 掌权。
 
-D377 固定了拓扑的交付顺序：首个远程部署是桌面本身作为远端无头 Host 的
+D375 固定了拓扑的交付顺序：首个远程部署是桌面本身作为远端无头 Host 的
 客户端，经 SSH 隧道连接（#176、#140）；第二个是 Host 旁的出站消息集成
 （#100）。Gateway 路由与浏览器访问保留完整规格，但在有需求信号或产品决策
 之前不排期。
@@ -42,7 +42,7 @@ Gateway 的模式，服务端经用户自己的 SSH 会话引导，客户端通�
 | 桌面 RACP 客户端适配层（Electron Main） | 通过现有 `lib/api.ts` 表面把远端 Host 呈现给 renderer；负责 SSH 引导、配对和端口转发 | 第二份 transcript 存储；在本地执行远端工具 |
 | Agent Host | 拥有会话、回合、每会话回合队列、事件游标、附件、工具执行和生命周期 | 浏览器展示状态 |
 | 无头 Agent Host 模块（`packages/agent-host`） | 会话/回合准入、回合队列、审批代理、内存事件日志、快照构建；向桌面 IPC、本地 MCP、RACP 和集成暴露同一套 API | Electron、renderer 或传输依赖；第二套权限或持久化实现 |
-| `pi-host` 无头包 | 在远端机器上以桌面同版本运行模块、Node pi sidecar 和 Rust host-core，只绑定 loopback | 桌面 UI、插件面板、其他 Host 的 secret |
+| `pi-host` 无头包 | 在远端机器上以桌面同版本运行模块、Node pi sidecar 和 Rust host-core，只绑定 loopback，由引导脚本从 GitHub Releases 下载 | 桌面 UI、插件面板、其他 Host 的 secret |
 | 消息集成适配层 | 在 Host 进程内订阅 Host 范围事件，把脱敏摘要转发到出站渠道；把固定指令词汇映射到回合与审批操作 | 自己的权限策略、入站监听器、原始 transcript 内容 |
 | Gateway（不排期） | 身份认证、路由、Host link、限流、审计、上传字节的瞬态缓冲、（保留）推送脱敏摘要 | provider secret、完整 transcript、host-core 访问、上传窗口之外的附件字节 |
 | Node pi sidecar | 运行 pi Agent 和 provider stream | 远程认证、工作区策略、secret storage |
@@ -73,14 +73,14 @@ PI-Desktop (Remote Client)              Remote machine
                             │           └── sshd
 ```
 
-引导只走用户自己的 SSH 会话，不走 RACP：桌面用现有 SSH 配置登录，确保远端
-存在与桌面同版本的 `pi-host` 包，启动它并绑定 loopback，经 SSH 通道拿到一次性
+引导只走用户自己的 SSH 会话，不走 RACP：桌面用现有 SSH 配置登录，上传一段引导脚本，由它从
+GitHub Releases 下载与桌面同版本的 `pi-host` 包并校验公布的 SHA-256，启动它并绑定 loopback，经 SSH 通道拿到一次性
 配对 token，转发本地端口后以 header profile 连接 `RACP-WS`，用配对 token 换取
 设备 token 存入桌面安全存储；Host 把该桌面设备记为 `owner`。远端 Host 的
 provider 配置由引导步骤经 SSH 通道写入，是 Host 本地配置，绝不经过 RACP。
 Host 只绑定 loopback；只有绑定地址与对端地址都是 loopback且出示有效设备 token
 时才接受明文 `ws://`，因为 SSH 通道已提供机密性，SSH 登录也已证明对该机器的
-shell 访问。非 loopback 绑定仍要求 TLS 与设备 token。
+shell 访问。非 loopback 绑定仍要求 TLS 与设备 token。首版无法引导没有 GitHub 出网能力的机器。
 
 ### 4.3 生产 Gateway（不排期）
 
@@ -99,18 +99,20 @@ Client ── HTTPS/WSS ── Gateway
 
 每个会话允许多个 viewer，但同一时间只允许一个活动回合。controller
 可以启动、排队、停止或中断回合并回答输入请求，approver 只能在授权范围内
-解决审批，owner 管理成员。排队中的回合是 Host 状态，本地桌面和所有远程
-客户端看到同一份队列。经 Gateway 路由的主体受远程权限上限约束；经 SSH 引导
-配对的桌面设备持有 `owner` 并豁免上限，因为 SSH 访问已经超过上限能限制的一切。
+解决审批，owner 管理成员。排队中的回合是 Host 状态，由 host-core 持久化，重启后恢复并保持挂起直到有
+controller 接入，本地桌面和所有远程客户端看到同一份队列。经 Gateway 路由的主体受远程权限上限约束；经 SSH 引导
+配对的桌面设备持有 `owner` 并豁免上限，因为 SSH 访问已经超过上限能限制的一切；
+Host 策略 `applyCeilingToPairedDevices`（默认关闭）可重新施加。
 
 远程会话的归属划分：远端 Host 拥有 transcript 与 SQLite、回合与队列、内置工具
 目录与工作区边界、权限与会话授权、provider secret、该机器 `~/.agents` 下的
 skills 与子代理定义、该 Host 配置的 MCP 服务器和定时任务；桌面保留窗口与
-shell、本地会话、本地应用的设置 UI、插件面板、浏览器预览和通知展示。首版远程
-会话不提供桌面插件工具和桌面配置的用户 MCP 服务器，因为它们今天在 Electron
-Main 内经 `plugins.execute` 执行；反向工具中继仅保留。工作面板的文件列表、
-文件读取和 diff 使用远端 Host profile 操作；终端必须在远端机器运行，属于 R2
-设计门槛；浏览器预览留在本地。
+shell、本地会话、本地应用的设置 UI、插件面板、浏览器预览和通知展示。桌面通过
+`tools/advertise` 公布其用户配置的 MCP 服务器和不需要会话工作区的插件工具，它们
+以中继工具身份出现在远程会话目录中，经 `tool/execute` 服务端请求在桌面自身的插件
+权限下执行；需要工作区或文件系统访问的插件工具被排除，因为它们会作用于桌面的
+文件系统。工作面板的文件列表、文件读取和 diff 使用远端 Host profile 操作；终端
+通过 `terminal/*` 操作在远端机器运行并带有界回放环；浏览器预览留在本地。
 
 Host 为每个会话生成 `epoch`，并在其中为持久事件分配严格递增的
 `sequence`。delta、工具进度和活动阶段是瞬态事件，只带 `afterSequence`，
@@ -136,7 +138,7 @@ Host   -> turn terminal event, next queued turn starts
 `allow-session`、`deny`；Plan/Goal 审批为带显式权限模式的 `approve` 或
 `reject`；asktool 输入支持逐题回答或跳过。修改持久模式使用远端 Host profile
 的 `session/configure`，与本地一样仅限空闲时。审批寿命由 Host 策略决定：本地
-默认仍是 120 秒后拒绝，启用远程控制的 Host 可为远程订阅者配置更长的有界寿命。
+默认仍是 120 秒后拒绝，有远程订阅者接入时默认 30 分钟（D375），有界且可由运维调整。
 
 ## 6. 传输档案
 
@@ -157,7 +159,7 @@ Host   -> turn terminal event, next queued turn starts
 | SSH tunnel drop | 桌面适配层重建转发并按游标恢复，远端回合继续 |
 | Gateway disconnect | Host 有界退避重连 Host link，本地回合继续 |
 | Host unavailable | 拒绝新的 mutation，不自动重放 |
-| Host restart | 新 epoch，客户端从快照重同步，队列清空且不重放 |
+| Host restart | 新 epoch，客户端从快照重同步，持久化的队列按序恢复并挂起到 controller 接入，已开始的工作不重放 |
 | Host crash | 使用现有恢复策略，已中断工作不自动重放 |
 | Duplicate mutation | 相同主体和 key 返回原 idempotent 结果 |
 | Durable event gap | 停止应用并请求快照 |
@@ -166,8 +168,10 @@ Host   -> turn terminal event, next queued turn starts
 
 首个实现交付无头 `packages/agent-host` 模块，Electron Main 承载它，现有 IPC
 handler 成为它的适配层；随之落地 host-core 的 `permissions.pending` 读取和用
-Host 队列替换 renderer 内存队列。SSH 隧道里程碑再加两件东西而不改线上契约：
-`pi-host` 包，以及位于 `lib/api.ts` 之下的桌面 RACP 客户端适配层。消息集成是
+host-core 持久化的 Host 队列替换 renderer 内存队列（需单独 ADR 与 schema 升级，
+D375）。SSH 隧道里程碑再加两件东西而不改线上契约：`pi-host` 包，以及位于
+`lib/api.ts` 之下的桌面 RACP 客户端适配层；同一里程碑还包含 `tools/advertise` /
+`tool/execute` 中继与 `terminal/*` 操作。消息集成是
 模块在 Host 进程内的又一个调用方，不需要任何传输。
 
 ## 8. 验收要点
@@ -175,7 +179,8 @@ Host 队列替换 renderer 内存队列。SSH 隧道里程碑再加两件东西�
 远程客户端不能取得 host-core、IPC、`host.proxy` 或 provider secret；回合
 断线后仍可继续；晚接入的客户端能看到已打开的审批；经 Gateway 的回合不超过
 权限上限；远程会话的 transcript、工具、工作区和 secret 都在远端 Host，桌面
-只保留展示状态；远程会话的工具目录只含远端 Host 的工具；回放、审批、幂等和
+只保留展示状态；远程会话的目录包含远端 Host 的工具与桌面公布的中继工具，中继
+工具只在桌面执行；会话终端在远端机器的会话根内运行且只对策略允许的主体开放；回放、审批、幂等和
 所有已发布绑定的一致性测试必须通过；无头模块的测试不依赖 Electron。
 
 详见英文源规格中的完整组件归属、迁移边界和验收条款。

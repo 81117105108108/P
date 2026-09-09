@@ -2954,13 +2954,13 @@ D193 和 D194。
   HTTP/JSON + SSE 是浏览器绑定，TLS 上的 gRPC 是原生/Gateway 绑定。各绑定共享事件
   序列、快照、幂等、授权和错误语义。参见远程架构、协议、安全、发布规格以及
   E2E-221 至 E2E-230。
-## 2026-09-10 —— 在实现前修订远程 Agent Control 目标（D376）
+## 2026-09-10 —— 在实现前修订远程 Agent Control 目标（D374）
 
 - 将 D373 草案与已上线的桌面对照评审后发现：远程审批词汇比本地的
   `allow-once` / `allow-session` / `deny` 和 Plan/Goal 权限模式契约更窄；待处理的
   权限请求是连接状态而不是 Host 状态；逐 token 的 delta 会耗尽回放窗口；三个必需
   绑定加两套 IDL 超出 v1 的承受范围；浏览器无法在 WebSocket 和 SSE 上满足仅头部认证。
-- 决策 D376 修订 ADR 0205：`RACP-WS` 是 v1 唯一规范绑定，`RACP-HTTP` 是浏览器
+- 决策 D374 修订 ADR 0205：`RACP-WS` 是 v1 唯一规范绑定，`RACP-HTTP` 是浏览器
   profile，`RACP-GRPC` 保留；`packages/shared` 中的 typebox 是唯一契约来源；首个交付物
   是无 Electron 依赖的 `packages/agent-host` 模块，桌面 IPC、本地 MCP 和 RACP 都调用它；
   游标为 `{ epoch, sequence }`，delta 为瞬态事件，首个日志放在内存；回合队列移入 Host；
@@ -2969,17 +2969,20 @@ D193 和 D194。
   客户端使用 cookie profile；Gateway 身份源在 R3 时决定；首个部署为单租户。参见修订后的
   远程架构、协议、安全、发布规格以及 E2E-221 至 E2E-230。
 
-## 2026-09-10 —— 按已记录的需求排序远程控制（D377）
+## 2026-09-10 —— 按已记录的需求排序远程控制（D375）
 
 - #176 与 #140 要求从本地桌面操作远程 Linux 或 WSL 机器上的项目；#100 要求把任务与
   审批通知推送到 Telegram、微信、Slack 或 Webhook 并能回传简单指令。没有任何已记录的
   请求要求浏览器或手机端控制桌面，而维护者已公开承诺 #100。
-- 决策 D377 第二次修订 ADR 0205：rollout R2 改为 SSH 隧道远端 Host，`pi-host` 包通过
-  用户自己的 SSH 会话引导与配对，只绑定 loopback，经端口转发以 `RACP-WS` header profile
-  连接，并由不变的 renderer 通过 `lib/api.ts` 下的桌面 RACP 客户端适配层渲染。RACP 新增
-  远端 Host profile（`session/configure`、`session/fork`、`session/rename`、
-  `session/delete`、`session/compact`、`workspace/list`、`workspace/read`、
-  `workspace/diff`）。远程会话完全存在于其 Host 上；首版中桌面插件工具和桌面 MCP 服务器
-  在远程会话不可用，provider 配置经 SSH 写入，SSH 配对的桌面设备豁免远程权限上限。R3 改为
-  Host 旁的出站消息集成。Gateway、浏览器 profile 和 gRPC 绑定保留规格但不排期。参见修订后
-  的远程规格以及 E2E-232 / E2E-233。
+- 决策 D375 第二次修订 ADR 0205：rollout R2 改为 SSH 隧道远端 Host，`pi-host` 包由
+  经用户自己的 SSH 会话上传的引导脚本从 GitHub Releases 下载并校验 checksum，只绑定
+  loopback，与桌面配对，经端口转发以 `RACP-WS` header profile 连接，并由不变的
+  renderer 通过 `lib/api.ts` 下的桌面 RACP 客户端适配层渲染。RACP 新增远端 Host
+  profile（`session/configure`、`session/fork`、`session/rename`、`session/delete`、
+  `session/compact`、`workspace/list`、`workspace/read`、`workspace/diff`、
+  `terminal/*`）和同一里程碑内的反向工具中继（`tools/advertise`、`tool/execute`），
+  R2 不拆分。远程会话存在于其 Host 上；provider 配置经 SSH 写入；SSH 配对的桌面设备
+  豁免远程权限上限，除非设置 `applyCeilingToPairedDevices`；排队回合由 host-core
+  持久化并在重启后挂起；远程审批寿命默认 30 分钟。R3 改为出站消息集成，Webhook 优先。
+  Gateway、浏览器 profile 和 gRPC 绑定保留规格但不排期，Gateway 身份源定为 pi-backend
+  规格中的 PI 账号服务。参见修订后的远程规格以及 E2E-231 / E2E-232。

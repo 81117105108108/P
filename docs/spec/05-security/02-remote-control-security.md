@@ -1,7 +1,7 @@
 # Remote Agent Control Security Specification
 
 - Status: Target specification; post-MVP
-- Decision: D373 / ADR 0205, amended by D376 and D377
+- Decision: D373 / ADR 0205, amended by D374 and D375
 - Applies to: RACP-WS over the SSH tunnel and any later binding: RACP-HTTP,
   the reserved RACP-GRPC, and the Host link
 - Does not weaken: local MCP, host-core, plugin, or provider-secret boundaries
@@ -57,19 +57,14 @@ an authority that the authenticated principal does not already have.
 ### 3.1 Client to Gateway
 
 The production Gateway MUST validate an established identity before routing.
-Two identity sources satisfy this section:
-
-- an OIDC/OAuth 2.0 provider, where browser clients use Authorization Code +
-  PKCE and native clients use Authorization Code + PKCE or a product-approved
-  device flow; or
-- the first-party product account service, whose user tokens the Gateway
-  validates as first-party JWTs.
-
-The choice is a recorded decision made when the Gateway milestone is
-scheduled (D377). In both cases
-the Gateway validates issuer, audience, signature, expiry, tenant, and
-revocation state, and refresh tokens never leave the client identity boundary
-or reach the Agent Host.
+D375 fixes the identity source: the first-party PI account service specified
+in the pi-backend repository (its PocketBase `users` collection), whose user
+tokens the Gateway validates as first-party JWTs. Browser clients sign in
+through that service's GitHub OAuth2 or email flow; native clients use the
+same service with a product-approved device flow. OIDC federation is not
+planned. The Gateway validates issuer, audience, signature, expiry, tenant,
+and revocation state, and refresh tokens never leave the client identity
+boundary or reach the Agent Host.
 
 Because a browser cannot set request headers on the `WebSocket` and
 `EventSource` APIs, the Gateway offers two authentication profiles:
@@ -88,7 +83,7 @@ URLs, SSE URLs, attachment names, or event payloads. Bearer-only APIs still
 validate Origin for browser requests.
 
 The Gateway and the cookie profile belong to the unscheduled Gateway and
-browser milestones (D377). The first remote topology uses the header profile
+browser milestones (D375). The first remote topology uses the header profile
 with a device token obtained through the SSH bootstrap pairing in §3.4.
 
 For the first trusted-device prototype, a one-time pairing code MAY bootstrap
@@ -154,6 +149,11 @@ pairing only binds a desktop device to the Host it started.
   device as `owner` of that Host.
 - The Host binds loopback only and accepts a device token only from a
   loopback peer; a non-loopback bind requires TLS and the same device token.
+- The bootstrap script, uploaded over SSH, downloads the `pi-host` bundle for
+  the remote platform at the desktop's version from GitHub Releases, verifies
+  the SHA-256 published with the release, and installs it under the user's
+  home; the desktop never uploads executable bytes itself. A machine without
+  outbound access to GitHub cannot be bootstrapped in the first version.
 - Revoking the device token on the Host, or removing the Host from the
   desktop, ends the pairing; a new pairing needs a new SSH bootstrap.
 - Provider configuration for the remote Host is written over the SSH channel
@@ -178,6 +178,8 @@ pairing only binds a desktop device to the Host it started.
 | Upload an attachment | no | yes | optional | yes |
 | Revoke membership | no | no | no | yes |
 | Archive a session | no | no | no | yes |
+| Open or use a session terminal | no | policy | policy | yes |
+| Advertise relayed tools | no | no | no | yes |
 
 Role checks are necessary but not sufficient. The Host MUST additionally check:
 
@@ -222,7 +224,9 @@ The ceiling applies to Gateway-routed principals. A desktop device paired
 through the SSH bootstrap (§3.4) holds `owner` on that Host and is exempt:
 an SSH login already grants shell access to the machine, so a ceiling would
 withhold nothing. Its turns report the session's own mode as
-`effectivePermissionMode`.
+`effectivePermissionMode`. The Host policy `applyCeilingToPairedDevices`
+(default off) re-applies the ceiling to paired devices for an operator who
+wants every remote turn to start at `ask`.
 
 `allow-session` is offered to a remote approver only when Host policy allows
 remote session grants; otherwise the request's `allowedDecisions` omit it. A
@@ -316,25 +320,36 @@ same way as the request event and never returns tool arguments beyond the
 bounded preview.
 
 Approval lifetime is Host policy. The local default remains 120 seconds then
-deny (frozen decision 17). A Host with remote control enabled MAY configure a
-longer bounded lifetime for approvals raised while a remote subscriber is
-attached; the blocked tool waits for that whole lifetime, so the operator
-chooses the trade explicitly, and a client disconnect never extends it.
+deny (frozen decision 17). While a remote subscriber is attached the default
+is 30 minutes (D375); the operator may shorten or lengthen it within a bound,
+the blocked tool waits for that lifetime unless a local or remote decision
+arrives earlier, and a client disconnect never extends it.
 
 An approval response that arrives after disconnect, expiry, abort, crash, or
 turn completion is a no-op or a structured stale/expired error. It never
 restarts the turn. The first valid decision wins across local and remote
 clients; later valid responses receive the stored result.
 
-A remote session's tool catalog contains only the remote Host's tools.
-Desktop plugin tools and desktop-configured MCP servers never execute against
-a remote workspace in the first version, and provider secrets never cross
-RACP in either direction; the remote Host's providers are configured over the
-SSH bootstrap channel (§3.4).
+A remote session's catalog contains the remote Host's tools plus the tools
+the paired desktop advertised for relay: its user-configured MCP servers and
+plugin tools that do not require the session workspace. A relayed tool
+executes on the desktop under the desktop's own plugin permissions and
+confirmation rules, never on the Host and never against the remote workspace;
+the Host's permission decision precedes the relay request, the Host sends only
+the Agent's arguments and never a secret, and a lost relay connection fails
+the tool without interrupting the turn. Provider secrets never cross RACP in
+either direction; the remote Host's providers are configured over the SSH
+bootstrap channel (§3.4).
+
+A session terminal is a shell on the Host machine running as the `pi-host`
+user with the session root as its working directory. Only the SSH-paired
+owner device or a principal holding the explicit `terminal` scope may open
+one; Gateway-routed principals need that scope from policy. Terminal output
+is ephemeral and recoverable only from the terminal's bounded replay ring.
 
 ## 8. Gateway and tenant isolation
 
-The Gateway milestone is unscheduled (D377). These rules bind when it is
+The Gateway milestone is unscheduled (D375). These rules bind when it is
 scheduled and are retained so the contract does not drift.
 
 - Every route is keyed by `(tenantId, hostId, sessionId)`.
@@ -365,6 +380,7 @@ The Gateway and Host enforce the lower of their configured limits:
 | Attachment | 50 MiB |
 | In-flight attachment uploads per principal | 4 |
 | Event send queue | 4 MiB or 1,000 durable events |
+| Open terminals per Session | 2 |
 
 Rate-limit responses include a retry hint but never disclose another tenant's
 quota. Slow clients lose ephemeral events first and are disconnected with a
@@ -454,18 +470,28 @@ separate, explicitly specified credential-management capability is added.
 18. A remote session exposes only the remote Host's tool catalog; desktop
     plugin tools and desktop MCP servers never execute against a remote
     workspace, and provider secrets never cross RACP.
+19. A relayed tool never executes on the Host and never receives a Host
+    secret; the Host's approval precedes the relay request; a lost relay
+    connection fails the tool without interrupting the turn.
+20. A session terminal opens only for the SSH-paired owner or a principal
+    with the `terminal` scope, with its working directory inside the session
+    root.
 
 ## 13. Amendment history
 
-D376 (2026-09-10) added the browser cookie/header authentication profiles,
+D374 (2026-09-10) added the browser cookie/header authentication profiles,
 the two accepted identity sources, the remote permission ceiling, the local
 decision vocabulary, the remote approval lifetime policy, the Host link and
 Gateway attachment relay rules, the single-tenant-first clause, and gates
 13–15.
 
-D377 (2026-09-10) added the SSH bootstrap pairing (§3.4), the loopback rule
+D375 (2026-09-10) added the SSH bootstrap pairing (§3.4), the loopback rule
 for `pi-host` behind an SSH port forward, the ceiling exemption for
 SSH-paired owner devices, the remote tool-catalog and provider-configuration
 rules, gates 16–18, and marked the Gateway and cookie-profile clauses as
 belonging to unscheduled milestones.
 
+The D375 design-gate answers, recorded the same day, fixed the identity
+source to the PI account service, the GitHub Releases download for
+`pi-host`, the relay and terminal rules with gates 19–20, the 30-minute
+remote approval lifetime, and the `applyCeilingToPairedDevices` policy.

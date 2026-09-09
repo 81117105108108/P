@@ -218,8 +218,8 @@ Remote control does not add a public listener to Rust host-core or the current
 renderer IPC surface. The target Agent Host is a headless module
 (`packages/agent-host`) that owns session and turn admission, the turn queue,
 the approval broker, and the event log, supervised beside the Node pi sidecar
-and Rust host-core, with an authenticated RACP server above it (D376). The
-first remote deployment (D377) runs that module as a headless `pi-host` on a
+and Rust host-core, with an authenticated RACP server above it (D374). The
+first remote deployment (D375) runs that module as a headless `pi-host` on a
 remote machine, bound to loopback and reached from the desktop through an SSH
 port forward. The unscheduled Gateway topology would add an outbound Host
 link; the Gateway routes authenticated clients and never owns workspace

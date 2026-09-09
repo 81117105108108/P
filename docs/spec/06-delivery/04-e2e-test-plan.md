@@ -6072,7 +6072,7 @@ Each scenario is documented in this format:
 | M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-202, E2E-203, E2E-205, E2E-209, E2E-210, E2E-212, E2E-213, E2E-214, E2E-215, E2E-216, E2E-217, E2E-218, E2E-219 |
 | Post-MVP | E2E-022A, E2E-022B, E2E-022C, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M (plugin roadmap R2/R3/R6) |
 | Post-baseline local automation | E2E-220 |
-| Post-MVP remote control | E2E-221, E2E-222, E2E-223, E2E-224, E2E-225, E2E-226, E2E-227, E2E-228, E2E-229, E2E-230, E2E-232, E2E-233 |
+| Post-MVP remote control | E2E-221, E2E-222, E2E-223, E2E-224, E2E-225, E2E-226, E2E-227, E2E-228, E2E-229, E2E-230, E2E-231, E2E-232 |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
@@ -9070,12 +9070,12 @@ are withdrawn with ADR 0165.
 The following scenarios require the approved remote harness. They are
 documented now so the protocol and security work has an explicit acceptance
 target. Do not run them against a local desktop or a production Gateway unless
-the request explicitly authorizes that environment. D376 amended every
+the request explicitly authorizes that environment. D374 amended every
 scenario in this section to the revised contract: `{ epoch, sequence }`
 cursors, ephemeral deltas, the Host-owned turn queue, the full local approval
 vocabulary, the remote permission ceiling, the Host link relay, and the
-browser cookie profile. D377 re-sequenced the milestones: E2E-232 and
-E2E-233 are the acceptance targets of the scheduled SSH-tunnel and
+browser cookie profile. D375 re-sequenced the milestones: E2E-231 and
+E2E-232 are the acceptance targets of the scheduled SSH-tunnel and
 integration milestones, while E2E-227 and E2E-228 run when the Gateway and
 browser milestones are scheduled.
 
@@ -9253,7 +9253,7 @@ browser milestones are scheduled.
   `06-delivery/07-remote-control-rollout.md` §2
 - **Acceptance**: Security, Recovery, Quality
 - **Milestone**: Post-MVP
-- **Status**: Draft; unscheduled until the Gateway milestone is scheduled (D377)
+- **Status**: Draft; unscheduled until the Gateway milestone is scheduled (D375)
 
 #### E2E-228: Shipped bindings and browser profiles preserve semantic behavior
 
@@ -9278,7 +9278,7 @@ browser milestones are scheduled.
   `06-delivery/07-remote-control-rollout.md` §§3–4
 - **Acceptance**: Quality, Recovery, Security
 - **Milestone**: Post-MVP
-- **Status**: Draft; the browser-profile steps are unscheduled until the browser milestone is scheduled (D377); the parity steps run when a second binding ships
+- **Status**: Draft; the browser-profile steps are unscheduled until the browser milestone is scheduled (D375); the parity steps run when a second binding ships
 
 #### E2E-229: Attachment and workspace boundaries are enforced remotely
 
@@ -9324,44 +9324,54 @@ browser milestones are scheduled.
 - **Milestone**: Post-MVP
 - **Status**: Draft; remote harness required
 
-#### E2E-232: The desktop drives a remote Host over an SSH tunnel
+#### E2E-231: The desktop drives a remote Host over an SSH tunnel
 
 - **Preconditions**: A Linux test machine runs `sshd` and holds a project
-  the desktop can reach with the user's SSH key. The desktop build carries
-  the `pi-host` bundle for that platform, and a second bundle at another
-  version is available for the mismatch step. The desktop has one local
-  session open.
-- **Steps**: 1) Add the remote machine from the desktop and let it bootstrap
-  `pi-host` over SSH. 2) Observe the pairing exchange and the resulting device
-  token. 3) Create a session under a remote project through `project/list`
-  and `session/create`. 4) Start a turn whose fixture reads, edits, and runs a
+  the desktop can reach with the user's SSH key. A GitHub Releases fixture
+  serves the `pi-host` bundle for that platform at the desktop's version, a
+  bundle at another version, and a tampered bundle with a wrong checksum.
+  The desktop has one local session open, one user MCP server configured,
+  and one installed plugin whose tool requires workspace access.
+- **Steps**: 1) Add the remote machine from the desktop and let the uploaded
+  bootstrap script download, verify, and start `pi-host` over SSH.
+  2) Observe the pairing exchange and the resulting device token. 3) Create a
+  session under a remote project through `project/list` and
+  `session/create`. 4) Start a turn whose fixture reads, edits, and runs a
   command in the remote project, and approve the command from the desktop
   card. 5) Switch the session to Plan mode and back with `session/configure`
   while idle, then attempt it while a turn runs. 6) Open the files tab and the
-  diff tab for the remote session. 7) Kill the SSH session mid-turn, restore
-  it, and let the desktop reconnect. 8) Inspect the remote tool catalog for
-  desktop plugin tools. 9) Attempt to connect from a non-loopback address on
-  the remote machine, then with a reused pairing token. 10) Replace the remote
-  bundle with the other version and reconnect.
+  diff tab for the remote session. 7) Advertise relay from the desktop, run a
+  turn that calls the desktop MCP tool, then close the desktop during a
+  second call. 8) Open a terminal on the remote session and run a command.
+  9) Kill the SSH session mid-turn with the terminal open, restore it, and
+  let the desktop reconnect. 10) Inspect the remote tool catalog. 11) Attempt
+  to connect from a non-loopback address on the remote machine, then with a
+  reused pairing token. 12) Point the bootstrap at the tampered bundle, then
+  at the other version, and reconnect.
 - **Expected**: Files change only on the remote machine and the command runs
   there; the approval card appears in the desktop with the local vocabulary;
   the remote host-core binds loopback only; `session/configure` succeeds while
   idle and returns `CONFLICT` while running; files and diff come from the
   remote session root and a path outside it returns
-  `PATH_OUTSIDE_WORKSPACE`; the turn continues through the SSH drop and the
-  desktop resumes by cursor without a duplicate; no desktop plugin tool is in
-  the remote catalog; the non-loopback peer and the reused pairing token are
-  rejected; the version mismatch returns `PROTOCOL_MISMATCH` and offers the
-  update path; and the local session is untouched throughout.
+  `PATH_OUTSIDE_WORKSPACE`; the desktop MCP tool executes on the desktop and
+  its result reaches the remote transcript, while the second call fails with
+  `TOOL_FAILED` and the turn continues; the terminal runs on the remote
+  machine inside the session root; the turn continues through the SSH drop,
+  the desktop resumes by cursor without a duplicate, and the terminal output
+  resumes from the replay ring; the remote catalog lists the relayed MCP tool
+  but not the workspace-requiring plugin tool; the non-loopback peer and the
+  reused pairing token are rejected; the tampered bundle is refused before
+  start; the version mismatch returns `PROTOCOL_MISMATCH` and offers the
+  re-download; and the local session is untouched throughout.
 - **Specs linked**: `02-architecture/05-remote-agent-control.md` §§5.2 and
-  6.3, `03-runtime/19-remote-agent-control-protocol.md` §§6.2 and 11.1,
-  `05-security/02-remote-control-security.md` §§3.4, 4.3, and 5.1,
+  6.3, `03-runtime/19-remote-agent-control-protocol.md` §§6.2, 9.4, and
+  11.1, `05-security/02-remote-control-security.md` §§3.4, 4.3, 5.1, and 7,
   `06-delivery/07-remote-control-rollout.md` §2
 - **Acceptance**: E (tools & permissions), Security, Recovery, Quality
 - **Milestone**: Post-MVP (rollout R2)
 - **Status**: Draft; remote harness with a Linux SSH target required
 
-#### E2E-233: The outbound messaging integration relays events and commands
+#### E2E-232: The outbound messaging integration relays events and commands
 
 - **Preconditions**: A Host runs with the integration adapter configured
   against a webhook sink and a long-polling bot fixture, with one linked chat
