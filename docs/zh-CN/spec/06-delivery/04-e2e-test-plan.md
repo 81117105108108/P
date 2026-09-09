@@ -4537,7 +4537,7 @@ IPC 请求无法关闭。
 | M4 | E2E-022、E2E-023、E2E-024、E2E-025、E2E-026、E2E-030、E2E-038 |
 | M5 | E2E-008a、E2E-032、E2E-033、E2E-034、E2E-039、E2E-043、E2E-044、E2E-045、E2E-046、E2E-047、E2E-048、E2E-048A、E2E-049、E2E-050、 E2E-051、E2E-052、E2E-053、E2E-054、E2E-055、E2E-056、E2E-057、E2E-058、E2E-059、E2E-060、E2E-061、E2E-062、E2E-063、E2E-064、 E2E-065、E2E-066、E2E-067、E2E-068、E2E-069、E2E-070、E2E-071、E2E-072、E2E-073、E2E-074、E2E-075、E2E-076、E2E-077、E2E-078、 E2E-079、E2E-080、E2E-081、E2E-082、E2E-083、E2E-084、E2E-085、E2E-086、E2E-092、E2E-093、E2E-096、E2E-097、E2E-098、E2E-099、 E2E-100、E2E-101、E2E-102、E2E-102a、E2E-102b、E2E-AGENTS-001、E2E-059a、E2E-060b、E2E-060c、E2E-061a、E2E-073a、E2E-094、E2E-095、E2E-143、E2E-145、E2E-146、E2E-147、E2E-194、E2E-195、E2E-204 |
 | M6 | E2E-104、E2E-105、E2E-106、E2E-107、E2E-108、E2E-109、E2E-110、E2E-111、E2E-112、E2E-113、E2E-114、E2E-115、E2E-116、E2E-117、 E2E-118、E2E-119、E2E-120、E2E-103 |
-| M6+ | E2E-121、E2E-122、E2E-123、E2E-142、E2E-148、E2E-150、E2E-151、E2E-168、E2E-199、E2E-200、E2E-202、E2E-203、E2E-209、E2E-211、E2E-212、E2E-213、E2E-214、E2E-215、E2E-216、E2E-217 |
+| M6+ | E2E-121、E2E-122、E2E-123、E2E-142、E2E-148、E2E-150、E2E-151、E2E-168、E2E-199、E2E-200、E2E-202、E2E-203、E2E-209、E2E-211、E2E-212、E2E-213、E2E-214、E2E-215、E2E-216、E2E-217、E2E-231 |
 | 后MVP | E2E-022A、E2E-022B、E2E-022C、E2E-024I、E2E-024J、E2E-024K、E2E-024L、E2E-024M（插件路线图 R2/R3/R6） |
 | 基线后本地自动化 | E2E-220 |
 | MVP 后远程控制 | E2E-221、E2E-222、E2E-223、E2E-224、E2E-225、E2E-226、E2E-227、E2E-228、E2E-229、E2E-230 |
@@ -6225,3 +6225,27 @@ IPC 请求无法关闭。
 - **里程碑**：M6+
 - **状态**：由 `apps/desktop/test/mcp-control.test.mjs` 覆盖 MCP 协议/单元；完整 Electron
   旅程已记录，仍按策略延后
+
+#### E2E-231：Voice Assistant 将语音路由到已审查的桌面操作
+
+- **前提条件**：随应用提供的 `pi.voice` 插件已安装但关闭。用户启用它，并明确授予
+  `ui.panel`、`ui.microphone`、`agent.complete`、`models.list` 和 `desktop.control`。
+  有已认证模型，面板已打开，并有可用的本地项目。
+- **步骤**：1）点击麦克风并授予音频权限，确认面板仍提供文字输入。2）说出打开项目的请求，
+  确认结构化路由选择 `project/set`。3）说出新建会话的请求，确认现有会话变更事件选中它。
+  4）说出读取状态或当前会话的请求，确认在开启播报时通过语音合成回读。5）说出删除会话等
+  危险请求，确认在接受确认卡前不会发起桌面调用。6）拒绝一次并确认未调用；再重复并接受，
+  使用 `confirm: true`。7）撤销 `desktop.control` 或 `ui.microphone`，确认对应调用失败关闭，
+  文字回退仍可用。
+- **预期**：面板经过沙箱隔离，授予 `ui.microphone` 后只得到 media 权限；摄像头和其他设备
+  权限仍被拒绝。插件收到已审查操作目录，但没有 MCP token 或 Electron 通道名。普通调用复用
+  MCP 控制器和渲染器刷新回调。危险调用需要面板明确确认，模型输出不能绕过确认。识别或模型
+  失败会通过可访问的实时状态播报，录音按钮不会卡在录音状态。
+- **链接规格**：`07-plugins/03-plugin-api.md`、`07-plugins/04-plugin-security.md`、
+  `07-plugins/12-plugin-ipc-and-host-services.md`、`07-plugins/13-plugin-permissions-matrix.md`、
+  ADR 0206、D374
+- **验收**：A（桌面控制）、C（对话）、安全、质量
+- **里程碑**：M6+
+- **状态**：`apps/desktop/test/voice-assistant-plugin.test.mjs` 和
+  `apps/desktop/test/mcp-control.test.mjs` 覆盖插件路由/控制器；完整麦克风/Electron 旅程
+  仍需运行器验证（除非明确要求，否则不要在本地运行 E2E）

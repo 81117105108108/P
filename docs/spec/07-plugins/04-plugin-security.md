@@ -14,6 +14,7 @@ Main risks:
 4. Hijacking agent tools
 5. Phishing via the UI
 6. Spending the user's model quota, or sending the conversation to another model (`agent.complete` / `session.read`)
+7. Driving desktop state or destructive operations through a conversational UI (`desktop.control`)
 
 ## 2. Default-deny principle
 
@@ -23,6 +24,9 @@ Main risks:
 - Host API not on the allowlist = does not exist
 - `pi.browser.cdp` methods not on the CDP allowlist = `PERMISSION_DENIED` (no
   cookies, storage, Target, or Fetch; no DevTools websocket)
+- `desktop.control` is not a second unrestricted IPC bridge: it is limited to
+  the reviewed operation catalog and its dangerous entries still require
+  `confirm: true`
 
 ## 3. Isolation strategy
 
@@ -68,6 +72,23 @@ before it is ever sent to the UI:
 
 CSS cannot script, but it can mislead: a theme is still third-party code shaping
 what the user sees, which is why it is a declared, revocable permission.
+
+## 3.2 Desktop control and microphone boundaries
+
+`desktop.control` is a high-risk permission. The host injects one controller
+created from the same operation registry as the local MCP server. A plugin sees
+only operation id, description, and risk; it sees neither the Electron channel
+name nor the MCP bearer token. The controller validates operation membership,
+argument count, and dangerous-operation confirmation before delegating to the
+existing IPC handler. It also runs the same successful-mutation event callback,
+so a plugin cannot silently create a second desktop state model.
+
+The bundled Voice Assistant plugin is disabled by default because it combines
+`ui.microphone`, `agent.complete`, and `desktop.control`. The panel gets only a
+media permission when `ui.microphone` is granted; camera and unrelated device
+permissions remain denied. The voice plugin routes text through a structured
+completion, shows a panel confirmation for every dangerous operation, and then
+uses `pi.desktop.invoke`. It does not open the MCP endpoint or handle its token.
 
 ## 4. Permission-grant UX
 

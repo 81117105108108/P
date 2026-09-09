@@ -17,6 +17,7 @@
 4. 劫持代理工具
 5. 通过用户界面进行网络钓鱼
 6. 消耗用户的模型额度，或把对话发给另一个模型（`agent.complete` / `session.read`）
+7. 通过对话式界面驱动桌面状态或破坏性操作（`desktop.control`）
 
 ## 2. 默认拒绝原则
 
@@ -26,6 +27,8 @@
 - 主机 API 不在允许名单上 = 不存在
 - `pi.browser.cdp` 不在 CDP 白名单上的方法 = `PERMISSION_DENIED`（无
   cookies、storage、Target 或 Fetch；无 DevTools websocket）
+- `desktop.control` 不是第二个不受限的 IPC 桥：它只能访问已审查操作目录，危险项仍需
+  `confirm: true`
 
 ## 3. 隔离策略
 
@@ -65,6 +68,18 @@
 
 CSS 无法脚本化，但它可能会产生误导：主题仍然是第三方代码塑造
 用户看到的内容，这就是为什么它是声明的、可撤销的权限。
+
+## 3.2 桌面控制与麦克风边界
+
+`desktop.control` 是高风险权限。宿主从与本地 MCP 服务相同的操作注册表创建一个控制器。
+插件只能看到操作 id、描述和风险，看不到 Electron 通道名或 MCP bearer token。控制器在委托
+现有 IPC 处理器前校验操作归属、参数数量和危险操作确认，并执行同一个成功变更事件回调，
+因此插件无法悄悄建立第二套桌面状态模型。
+
+随应用提供的 Voice Assistant 插件默认关闭，因为它同时需要 `ui.microphone`、
+`agent.complete` 和 `desktop.control`。授予 `ui.microphone` 后，面板只获得 media 权限；
+摄像头和其他设备权限仍被拒绝。语音插件通过结构化补全路由文本，为所有危险操作显示面板确认，
+然后调用 `pi.desktop.invoke`；它不会打开 MCP 端点，也不会处理其 token。
 
 ## 4. 权限授予用户体验
 

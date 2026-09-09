@@ -13,6 +13,7 @@
 |---|---|---|---|---|
 | `ui.panel` | 低 | 打开插件面板 | 安装时授予 | 几乎所有 UI 插件都需要 |
 | `ui.view` | 低 | `contributes.views` 在工作面板中列出并可打开 | 安装时授予 | 与面板窗口同级隔离：沙箱页面、按插件划分的会话分区、`net.domains` 出口限制。按激活范围过滤 |
+| `ui.microphone` | 中等 | 隔离面板的麦克风音频 media 权限 | 首次使用时确认 | 摄像头和其他设备权限仍被拒绝；面板应提供文字回退 |
 | `ui.theme` | 低 | `contributes.themes` CSS 已在“设置”中加载并提供 | 安装时授予 | CSS 由主机清理；它无法编写脚本 |
 | `clipboard.read` | 中等 | `clipboard.readText`、`clipboard.getHistory` | 首次使用时确认 | 可能会读取敏感信息和保留的剪贴板历史 |
 | `clipboard.write` | 中等 | `clipboard.writeText` | 首次使用时确认 | 防止剪贴板污染 |
@@ -41,6 +42,7 @@
 | `session.update.own` | 中等 | `pi.session.rename` | 安装时确认 | 只能重命名本插件拥有的活动导入会话 |
 | `session.delete.own` | 高 | `pi.session.delete` | 安装时确认 | 只能回收或清除本插件导入的会话；有频率限制 |
 | `agent.complete` | 高 | `pi.agent.complete` | 安装时确认 | 宿主代发一次性补全；消耗用户额度；`includeSessionContext` 还需要 `session.read` |
+| `desktop.control` | 高 | `pi.desktop.listOperations`、`pi.desktop.invoke` | 默认拒绝/显式授予 | 与本地 MCP 共享已审查操作目录；危险操作仍需 `confirm: true`；插件拿不到 MCP bearer token |
 
 ## 2A. 权限是开关，manifest 承载范围
 
@@ -130,6 +132,8 @@ Agent，在 Plan 中不可见。主机返回 `PLUGIN_DISABLED_IN_PLAN`
 | `session.update.own` | Rename sessions imported by this plugin | 重命名此插件导入的会话 |
 | `session.delete.own` | Trash or purge sessions imported by this plugin | 将此插件导入的会话移入回收站或清除 |
 | `agent.complete` | Run a one-shot completion with your models | 用你的模型发起一次补全 |
+| `ui.microphone` | Use the microphone | 使用麦克风 |
+| `desktop.control` | Control the desktop through the reviewed operation catalog | 通过已审查的操作目录控制桌面 |
 
 ## 5. 添加升级权限
 

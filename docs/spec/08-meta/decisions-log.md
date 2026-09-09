@@ -4114,3 +4114,19 @@ D193, and D194.
   bindings share event sequences, snapshots, idempotency, authorization, and
   error semantics. See the remote architecture, protocol, security, and
   rollout specifications and E2E-221 through E2E-230.
+
+## 2026-09-10 — Voice Assistant plugin with a shared desktop controller (D374)
+
+- Users need a voice surface that can drive the same reviewed desktop actions
+  as local MCP without exposing the MCP bearer token or creating a second IPC
+  permission list.
+- Decision D374 / ADR 0206 adds the disabled-by-default `pi.voice` plugin,
+  `desktop.control` and `ui.microphone` permissions, and
+  `pi.desktop.listOperations` / `pi.desktop.invoke`. Plugins and local MCP use
+  one controller built from the same 150-operation registry; dangerous calls
+  still require `confirm: true`, and the voice panel must show the confirmation
+  itself. The panel uses browser speech recognition/synthesis with a text
+  fallback and no new provider key or plugin network permission. See
+  `07-plugins/03-plugin-api.md`, `07-plugins/04-plugin-security.md`,
+  `07-plugins/12-plugin-ipc-and-host-services.md`,
+  `07-plugins/13-plugin-permissions-matrix.md`, and E2E-231.

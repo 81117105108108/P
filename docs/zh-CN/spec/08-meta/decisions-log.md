@@ -2954,3 +2954,13 @@ D193 和 D194。
   HTTP/JSON + SSE 是浏览器绑定，TLS 上的 gRPC 是原生/Gateway 绑定。各绑定共享事件
   序列、快照、幂等、授权和错误语义。参见远程架构、协议、安全、发布规格以及
   E2E-221 至 E2E-230。
+
+## 2026-09-10 —— 带共享桌面控制器的 Voice Assistant 插件（D374）
+
+- 用户需要一个语音界面来驱动与本地 MCP 相同的已审查桌面操作，同时不能把 MCP bearer token
+  暴露给插件，也不能创建第二份 IPC 权限清单。
+- 决策 D374 / ADR 0206 增加默认关闭的 `pi.voice` 插件、`desktop.control` 和
+  `ui.microphone` 权限，以及 `pi.desktop.listOperations` / `pi.desktop.invoke`。
+  插件和本地 MCP 共用由同一份 150 项注册表创建的控制器；危险调用仍需 `confirm: true`，
+  语音面板必须自己展示确认。面板使用浏览器语音识别/合成并保留文字回退，不增加新的 provider
+  密钥或插件网络权限。参见插件规格和 E2E-231。

@@ -81,14 +81,19 @@
 > The current post-baseline amendments add the P0/P1 host-owned plugin session
 > API through ADR 0200 / D367, explicit project ids plus host-owned session
 > refresh through ADR 0201 / D368, and the opt-in local MCP control plane
-> through ADR 0203 / D370 (catalog and bind tightened by D372). Protocol v11 remains unchanged; schema v14 adds the
+> through ADR 0203 / D370 (catalog and bind tightened by D372). ADR 0206 / D374
+> adds the disabled-by-default Voice Assistant plugin and the permission-gated
+> desktop controller shared with MCP. Protocol v11 remains unchanged; schema v14 adds the
 > plugin origin sidecar and soft-delete marker. Session mutation, arbitrary
 > re-binding, provider/model binding, batch-delete, and tag operations remain
 > deferred; an explicit `projectId` is the limited project-binding exception
 > for imported sessions. The local control plane is loopback-only and does not
 > reopen the deferred remote Gateway / WebUI scope. ADR 0205 / D373 defines the
 > remote Agent Host, Gateway, and multi-binding control-plane target for a
-> future post-MVP milestone; it does not change the current exclusion.
+> future post-MVP milestone; it does not change the current exclusion. Voice
+> capture is panel-local
+> and requires an explicit `ui.microphone` grant; it does not expose the MCP
+> bearer token to plugin code.
 
 ## Frozen Decisions
 
