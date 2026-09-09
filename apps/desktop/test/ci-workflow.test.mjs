@@ -7,6 +7,7 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const [
   ciWorkflowSource,
   releaseWorkflowSource,
+  linuxPackageWorkflowSource,
   agentRuntimePackageSource,
   i18nPackageSource,
   pluginSdkPackageSource,
@@ -16,6 +17,7 @@ const [
 ] = await Promise.all([
   read("../../../.github/workflows/ci.yml"),
   read("../../../.github/workflows/release.yml"),
+  read("../../../.github/workflows/linux-package.yml"),
   read("../../../packages/agent-runtime/package.json"),
   read("../../../packages/i18n/package.json"),
   read("../../../packages/plugin-sdk/package.json"),
@@ -85,6 +87,35 @@ test("release artifacts bypass redundant Actions compression", () => {
   assert.match(
     releaseWorkflowSource,
     /uses: actions\/upload-artifact@v4[\s\S]*?compression-level: 0/,
+  );
+});
+
+test("manual Linux package validation covers the RPM desktop identity", () => {
+  assert.match(linuxPackageWorkflowSource, /^on:\s*\n\s+workflow_dispatch:/m);
+  assert.match(linuxPackageWorkflowSource, /runs-on: ubuntu-22\.04/);
+  assert.match(
+    linuxPackageWorkflowSource,
+    /run: pnpm --filter @pi-desktop\/desktop run dist:linux -- --x64/,
+  );
+  assert.match(
+    linuxPackageWorkflowSource,
+    /name: Install RPM inspection tools[\s\S]*apt-get install[\s\S]*cpio rpm/,
+  );
+  assert.match(
+    linuxPackageWorkflowSource,
+    /find apps\/desktop\/release[\s\S]*-name '\*\.rpm'/,
+  );
+  assert.match(linuxPackageWorkflowSource, /rpm -qpl "\$rpm_package"/);
+  assert.match(linuxPackageWorkflowSource, /build-id/);
+  assert.match(
+    linuxPackageWorkflowSource,
+    /usr\/share\/applications\/pi-desktop\.desktop/,
+  );
+  assert.match(linuxPackageWorkflowSource, /Icon=pi-desktop/);
+  assert.match(linuxPackageWorkflowSource, /StartupWMClass=pi-desktop/);
+  assert.match(
+    linuxPackageWorkflowSource,
+    /uses: actions\/upload-artifact@v4[\s\S]*path: apps\/desktop\/release\/\*\.rpm/,
   );
 });
 
