@@ -3963,6 +3963,21 @@ D193, and D194.
   P2/P3 create, message mutation, binding, batch-delete, and tag APIs remain
   deferred. See ADR 0195 and E2E-204/E2E-205.
 
+## 2026-09-09 — Explicit plugin project ids and host-owned session refresh (D358)
+
+- Imported sessions need an explicit way to belong to a durable project, but
+  exposing `workspace.set` to plugins would also change the user's active
+  workspace. Plugin writes also need a host-owned renderer refresh path.
+- Decision D358 / ADR 0196 adds permission-gated `pi.project.create({ path })`.
+  It creates or reuses a project and returns its host-generated id without
+  activating the workspace. Import items may provide an existing `projectId`;
+  omitted ids remain unbound, and historical origin paths do not become tool
+  roots. List/get projections report the explicit binding.
+- Electron main emits `pi-desktop/session/event/changed` after successful plugin
+  imports, renames, and deletes; the renderer reuses `refreshSessions()`, while
+  skipped imports emit nothing and closed project tabs are not reopened. See
+  E2E-206.
+
 ## 2026-09-09 — Optional subagent thinking override and readable selected levels (D356)
 
 - The subagent editor now offers inherit-session, do-not-send, and the seven

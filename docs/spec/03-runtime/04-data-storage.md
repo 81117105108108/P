@@ -413,7 +413,9 @@ CREATE INDEX idx_session_import_origins_plugin
   session deletion cascades the sidecar; purging also removes transcript files.
 - `session_import_origins` stores the plugin/source/external idempotency key and
   the original `projectPath`, `modelId`, and `providerId` as history JSON. Those
-  values never become active session bindings for plugin imports.
+  values never become active session bindings for plugin imports. A plugin may
+  explicitly supply a host-created `projectId`; only that id becomes the active
+  `project_id`, while the historical fields remain unchanged.
 - `project_id` is also the tool-root authority for that session. Switching the
   visible workspace cannot redirect an in-flight or later tool call belonging
   to a different session.
@@ -1183,6 +1185,6 @@ columns for anything the host filters, joins, sums, or indexes.
     queue work with `PLAN_REQUIRES_INTERACTIVE_SESSION`; no background path
     auto-approves either kind
 20. Schema v14 plugin imports have host-generated session ids, one origin row per
-    session, `(pluginId, source, externalId)` idempotency, no active project or
-    model binding, ownership-scoped reads/mutations, and recoverable trash before
-    purge.
+    session, `(pluginId, source, externalId)` idempotency, no project or model
+    binding unless an explicit host-created `projectId` is supplied,
+    ownership-scoped reads/mutations, and recoverable trash before purge.

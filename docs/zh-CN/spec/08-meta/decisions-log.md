@@ -2846,3 +2846,9 @@ D193 和 D194。
 - Schema v14 增加 `session_import_origins` 和 `sessions.deleted_at`；协议仍为
   v11。Trash 为归属插件保留转录本以便 purge。P2/P3 创建、消息变更、绑定、
   批量删除和标签 API 继续延期。参见 ADR 0195 和 E2E-204/E2E-205。
+
+## 2026-09-09 —— 显式插件项目 id 与宿主拥有的会话刷新（D358）
+
+- 导入会话需要显式归属持久化项目，但向插件暴露 `workspace.set` 还会改变用户当前工作区；插件写入也需要由宿主拥有的渲染器刷新路径。
+- 决策 D358 / ADR 0196 增加受权限保护的 `pi.project.create({ path })`。它创建或复用项目并返回宿主生成的 id，但不会激活工作区。导入项可以提供已有的 `projectId`；省略时仍保持未绑定，历史来源路径不会变成工具根目录。list/get 投影会报告显式绑定。
+- Electron 主进程在插件导入、重命名和删除成功后发送 `pi-desktop/session/event/changed`；渲染器复用 `refreshSessions()`，跳过的导入不发送事件，已关闭的项目标签页不会被重新打开。参见 E2E-206。

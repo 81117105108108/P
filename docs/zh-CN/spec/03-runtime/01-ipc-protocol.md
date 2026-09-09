@@ -499,6 +499,12 @@ type NotificationActivatedEvent = {
   id: string;
   sessionId: string;
 };
+
+type SessionsChangedEvent = {
+  reason: "plugin.session.import" | "plugin.session.importBatch" |
+    "plugin.session.rename" | "plugin.session.delete";
+  pluginId: string;
+};
 ```
 
 Main 发送两个事件：
@@ -511,6 +517,10 @@ Main 发送两个事件：
 - 用户点击 Electron 后的 `pi-desktop/notification/event/activated`
   本机系统通知。 Renderer 遵循其现有的会话选择
   路径，包括项目绑定会话的项目激活。
+
+插件会话变更成功后还会发送
+`pi-desktop/session/event/changed`。渲染器通过现有的 `refreshSessions()` 链处理
+该宿主事件；插件不发送侧栏事件，跳过的导入也不会发送该事件。
 
 Electron 拥有本机表面，而渲染器则派生本地化表面
 结构化记录中的 title/body 文本。 Electron 仅接受 `showNative`

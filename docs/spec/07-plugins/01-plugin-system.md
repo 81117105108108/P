@@ -287,6 +287,7 @@ Namespace: `pi.plugin.*`
 - `pi.fs.glob(pattern)`
 
 ### Agent (requires permission)
+- `pi.project.create({ path })` // `project.create`; returns a durable project id without activating it
 - `pi.agent.registerTool(tool)`
 - `pi.agent.unregisterTool(name)`
 - `pi.models.list()` // `models.list`
