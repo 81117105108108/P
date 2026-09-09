@@ -229,23 +229,6 @@ https://cnb.cool/aixk/Pi-Desktop 拉取的用户使用。
 若 CNB 流水线幂等，对同一标签重跑是安全的。它不会重新构建桌面产物，
 也不会改写 electron-updater 更新源。
 
-### 4.5 文档站部署
-
-Vercel 项目的 Root Directory 为 `docs`。`docs/vercel.json` 将
-`git.deploymentEnabled` 设为 `false`，因此 Vercel 的 GitHub 集成不会为 PR
-和普通分支推送创建 Preview 部署或状态检查。
-
-`.github/workflows/release.yml` 中的 `deploy-docs` 作业会在 `vX.Y.Z` 标签运行
-完成 `softprops/action-gh-release` 后执行。它使用带 `--prod` 的 Vercel CLI，
-因此文档站只随发版更新。启用该作业前，需要配置以下仓库 Actions secrets：
-
-- `VERCEL_TOKEN`：能够部署该项目的 Vercel token
-- `VERCEL_ORG_ID`：Vercel 团队或账户 id
-- `VERCEL_PROJECT_ID`：文档项目 id
-
-项目可以继续连接 GitHub 以保留源信息；关闭 Git 自动部署即可阻止自动构建。
-Release 工作流的 CLI 部署不依赖 Git 连接。
-
 ## 5. 验证门
 
 对于默认未签名的 macOS 通道，不要将工件视为通过 Gatekeeper 资格验证；
