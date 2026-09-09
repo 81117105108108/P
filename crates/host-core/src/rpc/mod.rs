@@ -331,6 +331,14 @@ fn rpc_err(code: i64, message: impl Into<String>, error_code: &str) -> JsonRpcEr
     }
 }
 
+fn provider_rpc_err(error: impl ToString) -> JsonRpcError {
+    let message = error.to_string();
+    if message.starts_with("MODEL_ALIAS_TOO_LONG:") {
+        return rpc_err(1002, message, "MODEL_ALIAS_TOO_LONG");
+    }
+    rpc_err(1000, message, "INTERNAL")
+}
+
 /// Parse the optional session thinking selector at the RPC boundary.  A
 /// missing/null value keeps the backwards-compatible default; present values
 /// must be strings from the host's allowlist rather than being silently
@@ -1186,16 +1194,16 @@ async fn handle_request(
             let input: ProviderCreateInput = serde_json::from_value(params)
                 .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
             let st = state.lock().await;
-            let provider = providers::create_provider(&st.db, &st.secrets, input)
-                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            let provider =
+                providers::create_provider(&st.db, &st.secrets, input).map_err(provider_rpc_err)?;
             Ok(json!({ "provider": provider }))
         }
         "providers.update" => {
             let input: ProviderUpdateInput = serde_json::from_value(params)
                 .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
             let st = state.lock().await;
-            let provider = providers::update_provider(&st.db, &st.secrets, input)
-                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            let provider =
+                providers::update_provider(&st.db, &st.secrets, input).map_err(provider_rpc_err)?;
             Ok(json!({ "provider": provider }))
         }
         "providers.delete" => {
@@ -3516,8 +3524,8 @@ mod tests {
     use tokio::sync::{mpsc, Mutex};
 
     use super::{
-        capability_err, handle_request, parse_capability_query, resolve_plan_workspace,
-        resolve_tool_workspace, scope_err, skill_err,
+        capability_err, handle_request, parse_capability_query, provider_rpc_err,
+        resolve_plan_workspace, resolve_tool_workspace, scope_err, skill_err,
     };
     use crate::plans::{PlanResolveParams, PlanSubmitParams};
     use crate::scheduled;
@@ -3539,6 +3547,16 @@ mod tests {
         assert_eq!(scope_err("CAPABILITY_INVALID: missing project").data.unwrap()["errorCode"], "CAPABILITY_INVALID");
         assert_eq!(skill_err("CAPABILITY_INVALID: missing project").data.unwrap()["errorCode"], "CAPABILITY_INVALID");
         assert_eq!(capability_err("missing project").data.unwrap()["errorCode"], "CAPABILITY_INVALID");
+    }
+
+    #[test]
+    fn provider_alias_validation_keeps_a_stable_error_code() {
+        let error = provider_rpc_err("MODEL_ALIAS_TOO_LONG: alias is too long");
+        assert_eq!(error.code, 1002);
+        assert_eq!(
+            error.data.as_ref().and_then(|data| data.get("errorCode")),
+            Some(&json!("MODEL_ALIAS_TOO_LONG"))
+        );
     }
 
     fn available_test_shell_id() -> Option<String> {

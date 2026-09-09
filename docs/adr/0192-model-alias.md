@@ -4,7 +4,7 @@
 - Date: 2026-09-08
 - Deciders: PI-Desktop renderer and UX maintainers
 - Amends: D266
-- Related: E2E-199
+- Related: E2E-201
 
 ## Context
 
