@@ -308,7 +308,11 @@ Ubuntu 20.04、Debian 11、Fedora 35 及更旧的发行版无法加载自带的 
 
 ### macOS
 
-带标签发布工作流程会在发布前使用 Developer ID 凭据完成 macOS 工件的签名、公证和装订。
+带标签发布工作流程默认发布未签名的 macOS 工件。对于可信的未签名安装，将
+`PI-Desktop.app` 移动到 Applications；如果 macOS 提示应用已损坏，双击
+`PI-Desktop-macOS-open.command` 即可。手动运行并设置 `sign_macos: true` 时，工作流
+会在发布前使用 Developer ID 凭据完成 macOS 工件的签名、公证和装订；已签名版本无需
+使用该助手。
 
 ---
 

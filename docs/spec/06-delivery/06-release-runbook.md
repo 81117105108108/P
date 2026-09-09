@@ -214,17 +214,27 @@ asset names and matching checksums. Before upload, each macOS runner requires
 exactly one architecture-labelled DMG and ZIP (including blockmaps) and rejects
 any unlabelled or wrong-architecture macOS artifact.
 
-Every macOS DMG and ZIP also includes
-`PI-Desktop-macOS-opening-help.txt` at the package root. It tells users how to
-clear the quarantine attribute for a trusted unsigned app if macOS reports that
-the app is damaged:
+The DMG uses a branded 720×500 background with a clear drag-to-Applications
+gesture. The app and Applications link occupy the main row; the first-launch
+helper and opening note sit in a secondary row so the unsigned-build path is
+discoverable without making it the normal installation action.
+
+Every macOS DMG and ZIP includes the executable
+`PI-Desktop-macOS-open.command` and the companion
+`PI-Desktop-macOS-opening-help.txt` at the package root. After moving
+`PI-Desktop.app` to `/Applications` or `~/Applications`, users can double-click
+the helper. It searches only those two fixed locations, removes only the
+recursive `com.apple.quarantine` attribute when present, and opens PI-Desktop.
+Before doing so it verifies `CFBundleIdentifier=com.pi-desktop.app`. It does
+not use `sudo` or accept an arbitrary application path. The manual fallback
+for the standard system location is:
 
 ```sh
-xattr -cr /Applications/PI-Desktop.app
+xattr -r -d com.apple.quarantine /Applications/PI-Desktop.app
 ```
 
-This guidance is only for trusted unsigned artifacts. Signed and notarized
-builds should open without this command.
+This helper is only for a trusted unsigned artifact when macOS reports that the
+app is damaged. Signed and notarized builds should open without it.
 
 DMG, ZIP, NSIS, AppImage, deb, rpm, blockmap, and updater feed outputs are already
 compressed or compression-insensitive. The workflow therefore uploads their

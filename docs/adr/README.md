@@ -214,3 +214,4 @@ Each ADR includes:
 | 0200 | Host-owned plugin session import and ownership API | Accepted |
 | 0201 | Explicit plugin project ids and host-owned session refresh | Accepted |
 | 0202 | Expose effective subagent thinking metadata | Accepted |
+| 0204 | Explicit unsigned macOS first-launch helper | Accepted |

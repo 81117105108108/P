@@ -4050,3 +4050,20 @@ D193, and D194.
   model name; `off`, `omit`, and unsupported reasoning remain model-only.
   No host protocol, storage schema, provider request, or lifecycle behavior
   changes. See E2E-219.
+
+## 2026-09-09 — Explicit unsigned macOS first-launch helper (D371)
+
+- The default macOS lane remains unsigned, and a downloaded trusted artifact can
+  still be blocked by Apple's quarantine check with a misleading damaged-app
+  message. The existing `xattr -cr` note was terminal-only and broader than
+  the launch failure requires.
+- Decision D371 / ADR 0204 adds an executable `PI-Desktop-macOS-open.command`
+  to every macOS distribution. The DMG places it in a visible first-launch row
+  below the drag-to-Applications gesture.
+- The helper searches only `/Applications/PI-Desktop.app` and
+  `~/Applications/PI-Desktop.app`, verifies `CFBundleIdentifier` is
+  `com.pi-desktop.app`, removes only `com.apple.quarantine` recursively when
+  present, and opens PI-Desktop. It never uses `sudo`, accepts no arbitrary
+  path, and does not replace Developer ID signing or notarization.
+  The opening note keeps the explicit trusted-source warning and a narrow
+  Terminal fallback. See E2E-196b.

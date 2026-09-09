@@ -308,8 +308,12 @@ Ubuntu 20.04, Debian 11, Fedora 35, and older releases cannot load the bundled h
 
 ### macOS
 
-The tagged-release workflow signs, notarizes, and staples macOS artifacts with
-Developer ID credentials before publication.
+The tagged-release workflow publishes unsigned macOS artifacts by default. For
+a trusted unsigned install, move `PI-Desktop.app` to Applications and
+double-click `PI-Desktop-macOS-open.command` if macOS says the app is damaged.
+A manually dispatched run with `sign_macos: true` signs, notarizes, and staples
+macOS artifacts with Developer ID credentials before publication; signed builds
+do not need the helper.
 
 ---
 

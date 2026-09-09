@@ -144,6 +144,10 @@ CDP 插件工具在 Plan 中仍被拒绝）。 Bash 在 Plan 中仍然可用：�
 - 客户端不携带 GitHub 令牌。私人或其他无法访问的提要
   关闭失败；自动故障保持在环境状态，显式检查会暴露
   错误。
+- 未签名 macOS 分发包为可信来源提供明确的首次启动助手。它只搜索
+  `/Applications/PI-Desktop.app` 和 `~/Applications/PI-Desktop.app`，并在删除前先校验
+  `CFBundleIdentifier=com.pi-desktop.app`，再删除唯一的 `com.apple.quarantine` 属性并
+  打开应用。它不接受任意路径，不提升权限，也不替代 Developer ID 签名或公证。
 - 本地化产品“新增内容”文本 (D164/D345) 在 Main 中从
   已发布变更日志目录并附加到 `UpdateState.releaseNotes`。的
   渲染器无法提供注释 URL、提要或远程主体；缺少目录

@@ -2905,3 +2905,17 @@ D193 和 D194。
 - 导入会话需要显式归属持久化项目，但向插件暴露 `workspace.set` 还会改变用户当前工作区；插件写入也需要由宿主拥有的渲染器刷新路径。
 - 决策 D368 / ADR 0201 增加受权限保护的 `pi.project.create({ path })`。它创建或复用项目并返回宿主生成的 id，但不会激活工作区。导入项可以提供已有的 `projectId`；省略时仍保持未绑定，历史来源路径不会变成工具根目录。list/get 投影会报告显式绑定。
 - Electron 主进程在插件导入、重命名和删除成功后发送 `pi-desktop/session/event/changed`；渲染器复用 `refreshSessions()`，跳过的导入不发送事件，已关闭的项目标签页不会被重新打开。参见 E2E-216。
+
+## 2026-09-09 —— 未签名 macOS 首次启动助手（D371）
+
+- 默认 macOS 通道仍保持未签名；下载的可信工件仍可能因为 Apple 的 quarantine
+  检查而被阻止，并显示容易误解的“应用已损坏”。原有的 `xattr -cr` 说明只能
+  在终端执行，而且清理范围超过了启动失败所需的范围。
+- 决策 D371 / ADR 0204 为每个 macOS 分发包加入可执行的
+  `PI-Desktop-macOS-open.command`。DMG 会把它放在“拖入 Applications”手势下方
+  的可见首次启动区域。
+- 助手只查找 `/Applications/PI-Desktop.app` 和
+  `~/Applications/PI-Desktop.app`，并先校验 `CFBundleIdentifier` 为
+  `com.pi-desktop.app`；在存在时递归删除唯一的 `com.apple.quarantine` 属性，
+  然后打开 PI-Desktop。它不使用 `sudo`，不接受任意路径，也不替代 Developer ID
+  签名或公证。打开说明保留可信来源警告和更窄范围的终端备用命令。参见 E2E-196b。

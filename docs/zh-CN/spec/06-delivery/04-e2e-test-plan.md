@@ -3262,15 +3262,23 @@ IPC 请求无法关闭。
 - **里程碑**：M6+
 - **状态**：当前默认行为；本场景不满足 E2E-196c。
 
-#### E2E-196b：未签名的 macOS 软件包包含打开说明
+#### E2E-196b：未签名的 macOS 软件包包含首次启动助手
 
-- **先决条件**：默认未签名的 macOS 发布已为至少一个本机架构生成 DMG 和 ZIP 工件。
-- **步骤**：1) 打开 DMG 并检查根目录。2) 不解压应用内容，检查 ZIP 根目录。3) 阅读
-  `PI-Desktop-macOS-opening-help.txt`。
-- **预期**：两个软件包的根目录都包含同一份打开说明文件，其中包含
-  `xattr -cr /Applications/PI-Desktop.app`，并说明该命令仅适用于 macOS 报告可信的
-  未签名应用已损坏时的场景；已签名/公证版本无需执行。说明不会声称未签名工件已通过
-  Gatekeeper 资质验证。
+- **先决条件**：默认未签名的 macOS 发布已为至少一个本机架构生成 DMG 和 ZIP 工件；
+  测试 macOS 账户可以将应用复制到 `/Applications` 或 `~/Applications`。
+- **步骤**：1) 打开 DMG 并检查根目录和布局。2) 确认应用与 Applications 链接位于主
+  区域，首次启动助手与说明文件位于下方辅助区域。3) 不解压应用内容，检查 ZIP 根目录。
+  4) 阅读 `PI-Desktop-macOS-opening-help.txt`，检查
+  `PI-Desktop-macOS-open.command` 的可执行权限和内容。5) 将应用移动到
+  `/Applications`，然后双击该助手。
+- **预期**：两个软件包的根目录都包含可执行助手和同一份打开说明文件。DMG 使用带品牌
+  的 720×500 背景，助手明确标为首次启动动作。说明包含
+  `xattr -r -d com.apple.quarantine /Applications/PI-Desktop.app`，并说明助手仅适用于
+  macOS 对可信未签名工件提示应用已损坏的场景；已签名/公证版本无需执行。助手只查找
+  `/Applications/PI-Desktop.app` 和 `~/Applications/PI-Desktop.app`，在存在时只删除
+  `com.apple.quarantine` 属性，然后打开应用，不使用 `sudo`，也不接受任意路径；助手会
+  在修改属性前校验 `CFBundleIdentifier=com.pi-desktop.app`。说明不会声称未签名工件已
+  通过 Gatekeeper 资质验证。
 - **关联规格**：`06-delivery/06-release-runbook.md`、`05-security/01-security.md`
 - **验收**：质量、安全
 - **里程碑**：M6+
