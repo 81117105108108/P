@@ -48,9 +48,9 @@ test("a pin uses the vendor key a person would type, not the UUID", () => {
   );
 });
 
-test("a custom endpoint with no vendor key falls back to its display name", () => {
+test("a custom endpoint uses its display name instead of the generic vendor key", () => {
   assert.equal(
-    subagentModelPin({ vendorKey: "  ", name: "My Gateway" }, "local-model"),
+    subagentModelPin({ vendorKey: "custom", name: "My Gateway" }, "local-model"),
     "My Gateway/local-model",
   );
 });
@@ -128,20 +128,34 @@ test("a no-auth local provider still offers its configured models", () => {
   );
 });
 
-test("duplicate vendor-key pins collapse to one option", () => {
+test("duplicate vendor keys use unique provider names so both providers remain selectable", () => {
   const choices = subagentModelChoices([
-    provider(),
+    provider({ name: "Anthropic work" }),
     provider({
       id: "p2",
-      name: "Anthropic work",
+      name: "Anthropic personal",
       vendorKey: "anthropic",
       models: [binding("claude-haiku-4-5")],
     }),
   ]);
-  assert.equal(
-    choices.filter((choice) => choice.value === "anthropic/claude-haiku-4-5").length,
-    1,
-  );
+  assert.deepEqual(choices.map((choice) => choice.value), [
+    "Anthropic work/claude-haiku-4-5",
+    "Anthropic work/claude-sonnet-4-6",
+    "Anthropic personal/claude-haiku-4-5",
+  ]);
+});
+
+test("same-name providers fall back to the stored provider id", () => {
+  const choices = subagentModelChoices([
+    provider({ name: "Gateway", vendorKey: "custom" }),
+    provider({ id: "p2", name: "Gateway", vendorKey: "custom" }),
+  ]);
+  assert.deepEqual(choices.map((choice) => choice.value), [
+    "p1/claude-haiku-4-5",
+    "p1/claude-sonnet-4-6",
+    "p2/claude-haiku-4-5",
+    "p2/claude-sonnet-4-6",
+  ]);
 });
 
 test("choices group by the owning provider", () => {
