@@ -556,6 +556,16 @@ const pluginPanels = new PluginPanelHost(
   },
 
 );
+const callPluginSessionHost = async (
+  method: string,
+  pluginId: string,
+  input: Record<string, unknown>,
+): Promise<unknown> => {
+  if (!host) {
+    throw Object.assign(new Error("host unavailable"), { code: "UNSUPPORTED" });
+  }
+  return host.call(method, { ...input, pluginId });
+};
 const plugins: PluginRuntime = new PluginRuntime({
   getWorkspacePath: () => {
     // Filled after host boots; temporary stub until services rebinding.
@@ -687,6 +697,17 @@ const plugins: PluginRuntime = new PluginRuntime({
       } | null;
     }>("session.get", { id: sessionId });
     return pluginSessionContextFromSession(sessionId, detail?.session, stripToolName);
+  },
+  session: {
+    list: (pluginId, input) => callPluginSessionHost("plugin.session.list", pluginId, input),
+    get: (pluginId, input) => callPluginSessionHost("plugin.session.get", pluginId, input),
+    listMessages: (pluginId, input) =>
+      callPluginSessionHost("plugin.session.listMessages", pluginId, input),
+    import: (pluginId, input) => callPluginSessionHost("plugin.session.import", pluginId, input),
+    importBatch: (pluginId, input) =>
+      callPluginSessionHost("plugin.session.importBatch", pluginId, input),
+    rename: (pluginId, input) => callPluginSessionHost("plugin.session.rename", pluginId, input),
+    delete: (pluginId, input) => callPluginSessionHost("plugin.session.delete", pluginId, input),
   },
   complete: async (input): Promise<PluginCompleteResult> => {
     if (!host) {

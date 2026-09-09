@@ -15,6 +15,7 @@ use crate::audit;
 use crate::notifications;
 use crate::permissions::{PermissionDecision, PermissionManager};
 use crate::plans;
+use crate::plugin_sessions;
 use crate::providers::{self, DiscoveredModelInput, ProviderCreateInput, ProviderUpdateInput};
 use crate::review;
 use crate::scheduled;
@@ -337,6 +338,22 @@ fn provider_rpc_err(error: impl ToString) -> JsonRpcError {
         return rpc_err(1002, message, "MODEL_ALIAS_TOO_LONG");
     }
     rpc_err(1000, message, "INTERNAL")
+}
+
+fn plugin_session_rpc_err(error: impl ToString) -> JsonRpcError {
+    let message = error.to_string();
+    let code = message
+        .split_once(':')
+        .map(|(code, _)| code.to_string())
+        .unwrap_or_else(|| "INTERNAL".to_string());
+    let rpc_code = match code.as_str() {
+        "INVALID_PARAMS" | "LIMIT_EXCEEDED" => 1002,
+        "NOT_FOUND" => 1007,
+        "CONFLICT" => 1008,
+        "RATE_LIMITED" => 1006,
+        _ => 1000,
+    };
+    rpc_err(rpc_code, message, &code)
 }
 
 /// Parse the optional session thinking selector at the RPC boundary.  A
@@ -1642,6 +1659,80 @@ async fn handle_request(
             let imported = sessions::import_session(&st.db, &summary, &messages)
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "ok": true, "imported": imported, "skipped": !imported }))
+        }
+
+        // Plugin sessions are a separate host-owned domain. Electron main is
+        // the only caller that can supply pluginId; the plugin process never
+        // receives a generic host RPC handle or SQLite access.
+        "plugin.session.import" => {
+            let plugin_id = params
+                .get("pluginId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "pluginId required", "INVALID_PARAMS"))?;
+            let mut st = state.lock().await;
+            if !st.allow_plugin_import(plugin_id, false) {
+                return Err(rpc_err(1006, "plugin import rate exceeded", "RATE_LIMITED"));
+            }
+            let result = plugin_sessions::import(&st.db, plugin_id, &params)
+                .map_err(plugin_session_rpc_err)?;
+            Ok(result)
+        }
+        "plugin.session.importBatch" => {
+            let plugin_id = params
+                .get("pluginId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "pluginId required", "INVALID_PARAMS"))?;
+            let mut st = state.lock().await;
+            if !st.allow_plugin_import(plugin_id, true) {
+                return Err(rpc_err(1006, "plugin batch import rate exceeded", "RATE_LIMITED"));
+            }
+            let result = plugin_sessions::import_batch(&st.db, plugin_id, &params)
+                .map_err(plugin_session_rpc_err)?;
+            Ok(result)
+        }
+        "plugin.session.list" => {
+            let plugin_id = params
+                .get("pluginId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "pluginId required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            plugin_sessions::list(&st.db, plugin_id, &params).map_err(plugin_session_rpc_err)
+        }
+        "plugin.session.get" => {
+            let plugin_id = params
+                .get("pluginId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "pluginId required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            plugin_sessions::get(&st.db, plugin_id, &params).map_err(plugin_session_rpc_err)
+        }
+        "plugin.session.listMessages" => {
+            let plugin_id = params
+                .get("pluginId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "pluginId required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            plugin_sessions::list_messages(&st.db, plugin_id, &params)
+                .map_err(plugin_session_rpc_err)
+        }
+        "plugin.session.rename" => {
+            let plugin_id = params
+                .get("pluginId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "pluginId required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            plugin_sessions::rename(&st.db, plugin_id, &params).map_err(plugin_session_rpc_err)
+        }
+        "plugin.session.delete" => {
+            let plugin_id = params
+                .get("pluginId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "pluginId required", "INVALID_PARAMS"))?;
+            let mut st = state.lock().await;
+            if !st.allow_plugin_delete(plugin_id) {
+                return Err(rpc_err(1006, "plugin delete rate exceeded", "RATE_LIMITED"));
+            }
+            plugin_sessions::delete(&st.db, plugin_id, &params).map_err(plugin_session_rpc_err)
         }
 
         "session.beginTurn" => {
@@ -3557,6 +3648,129 @@ mod tests {
             error.data.as_ref().and_then(|data| data.get("errorCode")),
             Some(&json!("MODEL_ALIAS_TOO_LONG"))
         );
+    }
+
+    #[tokio::test]
+    async fn plugin_session_rpc_routes_the_full_p0_p1_surface() {
+        let data_dir = tempfile::tempdir().unwrap();
+        let mut app_state = AppState::open(data_dir.path()).unwrap();
+        app_state.handshook = true;
+        let state = Arc::new(Mutex::new(app_state));
+        let (tx, _rx) = mpsc::unbounded_channel();
+        let item = |external_id: &str| {
+            json!({
+                "externalId": external_id,
+                "title": "Imported",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "updatedAt": "2026-01-01T00:00:01Z",
+                "messages": [{
+                    "role": "user",
+                    "content": "hello",
+                    "createdAt": "2026-01-01T00:00:00Z"
+                }]
+            })
+        };
+
+        let imported = handle_request(
+            state.clone(),
+            "plugin.session.import",
+            json!({
+                "pluginId": "plugin.one",
+                "source": "legacy",
+                "sourceLabel": "Legacy",
+                "externalId": "one",
+                "title": "Imported",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "updatedAt": "2026-01-01T00:00:01Z",
+                "messages": [{
+                    "role": "user",
+                    "content": "hello",
+                    "createdAt": "2026-01-01T00:00:00Z"
+                }]
+            }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        let session_id = imported["sessionId"].as_str().unwrap().to_string();
+
+        let batch = handle_request(
+            state.clone(),
+            "plugin.session.importBatch",
+            json!({
+                "pluginId": "plugin.one",
+                "source": "legacy",
+                "sessions": [item("two"), item("three")]
+            }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(batch["imported"], 2);
+
+        let listed = handle_request(
+            state.clone(),
+            "plugin.session.list",
+            json!({ "pluginId": "plugin.one", "source": "legacy" }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(listed["items"].as_array().unwrap().len(), 3);
+
+        let detail = handle_request(
+            state.clone(),
+            "plugin.session.get",
+            json!({ "pluginId": "plugin.one", "sessionId": session_id }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(detail["originKind"], "imported");
+
+        let messages = handle_request(
+            state.clone(),
+            "plugin.session.listMessages",
+            json!({ "pluginId": "plugin.one", "sessionId": session_id }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(messages["items"][0]["origin"], "external");
+
+        handle_request(
+            state.clone(),
+            "plugin.session.rename",
+            json!({ "pluginId": "plugin.one", "sessionId": session_id, "title": "Renamed" }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        handle_request(
+            state.clone(),
+            "plugin.session.delete",
+            json!({ "pluginId": "plugin.one", "sessionId": session_id, "mode": "trash" }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        let denied = handle_request(
+            state.clone(),
+            "plugin.session.get",
+            json!({ "pluginId": "plugin.two", "sessionId": session_id }),
+            tx.clone(),
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(denied.code, 1007);
+        handle_request(
+            state,
+            "plugin.session.delete",
+            json!({ "pluginId": "plugin.one", "sessionId": session_id, "mode": "purge" }),
+            tx,
+        )
+        .await
+        .unwrap();
     }
 
     fn available_test_shell_id() -> Option<String> {
