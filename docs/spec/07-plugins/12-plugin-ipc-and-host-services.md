@@ -25,10 +25,6 @@ PluginManager
  └─ MarketClient
 ```
 
-The desktop-control capability is not another transport. Electron creates one
-reviewed desktop controller beside `PluginRuntime` and passes the same
-controller to both the local MCP server and plugins granted `desktop.control`.
-
 ## 3. UI IPC (additions)
 
 ### plugin domain
@@ -127,22 +123,6 @@ plugin runtime
  → response
 ```
 
-For `desktop.listOperations` and `desktop.invoke`, the host call chain is:
-
-```text
-plugin process
- → PluginRuntimeBroker allowlist
- → desktop.control permission check
- → shared MCP/desktop controller
- → registered Electron IPC handler
- → mutation event callback + audit log
- → response
-```
-
-The plugin receives no MCP bearer token and cannot name an unreviewed IPC
-channel. The shared controller enforces the operation catalog, a maximum of 32
-positional arguments, and `confirm: true` for dangerous operations.
-
 ## 7. PanelHost interaction
 
 - Create an isolated view when opening a panel
@@ -163,7 +143,6 @@ Panel bridge file channels are permission-gated as follows:
 | `fs.readText`, `fs.stat`, `fs.readRange`, `fs.readPreview`, `fs.openDefault`, `fs.reveal`, `fs.glob`, `fs.list` | `fs.read` |
 | `fs.registerDropped` | `fs.read` plus a real drop gesture |
 | `fs.writeText` | `fs.write` |
-| `desktop.listOperations`, `desktop.invoke` | `desktop.control` |
 
 ## 8. Failure isolation
 

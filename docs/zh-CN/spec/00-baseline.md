@@ -78,15 +78,13 @@
 
 > 当前基线后的修订通过 ADR 0200 / D367 增加了 P0/P1 宿主拥有的插件会话
 > API，通过 ADR 0201 / D368 增加显式项目 id 与宿主拥有的会话刷新，并通过
-> ADR 0203 / D370（D372 收紧目录与绑定）增加默认关闭的本地 MCP 控制面；ADR 0206 / D374
-> 增加默认关闭的 Voice Assistant 插件，以及与 MCP 共享、受权限保护的桌面控制器。协议
+> ADR 0203 / D370（D372 收紧目录与绑定）增加默认关闭的本地 MCP 控制面。协议
 > 仍为 v11；schema v14 增加插件来源 sidecar 和软删除标记。会话变更、任意重新
 > 绑定、provider/model 绑定、批量删除和标签操作仍延期；导入会话只有在显式提供
 > `projectId` 时才允许进行这项有限的项目绑定。本地控制面只绑定回环，不会重新打开
 > 被延后的远程 Gateway / WebUI 范围。
 > ADR 0205 / D373 定义未来 MVP 后 Agent Host、Gateway 和多绑定控制面的目标；
-> 当前基线仍排除远程 Gateway / WebUI 控制。语音采集属于面板能力，需要显式的
-> `ui.microphone` 授权；插件代码不会拿到 MCP bearer token。
+> 当前基线仍排除远程 Gateway / WebUI 控制。
 
 ## 冻结的决定
 

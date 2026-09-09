@@ -317,40 +317,6 @@ pi.agent.complete(input: {
 工具会话。system ≤ 32 KiB；消息合计 ≤ 200k 字符；每个插件每滚动 60 秒 8 次
 （`RATE_LIMITED`）；预算 90 秒（`TIMEOUT`）。
 
-### 桌面控制（需要 `desktop.control`）
-
-```ts
-pi.desktop.listOperations(): Promise<Array<{
-  id: string
-  description: string
-  risk: "read" | "write" | "dangerous"
-}>>
-
-pi.desktop.invoke(input: {
-  operation: string
-  args?: unknown[]
-  confirm?: boolean
-}): Promise<unknown>
-```
-
-这是插件访问本地 MCP 控制面所用同一份已审查操作目录的宿主入口（ADR 0203 / D370）。
-返回目录不会暴露 Electron 通道名，插件也永远拿不到 MCP bearer token。调用复用同一个控制器、
-IPC 处理器、生命周期检查、完成事件和审计边界；插件不能访问任意 Electron IPC。
-`dangerous` 操作必须带 `confirm: true`，因此语音或其他对话式界面必须先向用户展示确认。
-审计记录插件 id、操作、风险和结果状态，不复制参数值。
-
-### 麦克风面板（需要 `ui.microphone`）
-
-只有在 manifest 声明且用户授予 `ui.microphone` 时，隔离面板才能请求麦克风音频：
-
-```ts
-navigator.mediaDevices.getUserMedia({ audio: true })
-```
-
-宿主只允许该面板的 `media` 权限，并继续拒绝其他设备权限。插件不会收到原生麦克风句柄或
-宿主密钥；浏览器语音识别和语音合成仍由页面持有。面板应提供文字回退，并通过可访问状态
-播报权限或识别错误。
-
 ### 剪贴板/外壳
 ```ts
 pi.clipboard.readText(): Promise<string>
@@ -519,7 +485,6 @@ window.pluginBridge.on(event, handler)
 | `ui.getNotificationPermission`、`ui.requestNotificationPermission`、`ui.showNativeNotification` | `notify` |
 | `plugin.getSettings`、`workspace.get`、`app.getAppearance` | 无 |
 | `models.list` | `models.list` |
-| `desktop.listOperations`、`desktop.invoke` | `desktop.control` |
 | `fs.readText`、`fs.readPreview`、`fs.openDefault`、`fs.reveal`、`fs.glob`、`fs.list` | `fs.read` |
 | `fs.writeText` | `fs.write` |
 | `clipboard.readText`、`clipboard.getHistory` | `clipboard.read` |
@@ -564,7 +529,6 @@ window.pluginBridge.on(event, handler)
 - browser.navigate / evaluate / cdp / openExternal
 - 服务启动/停止/重新启动
 - models.list（返回行数）
-- desktop.listOperations（返回操作数）和 desktop.invoke（操作、风险、结果状态；不含参数值）
 - session.getLlmContext（会话 id、消息数、truncated 标志 —— 不含转录文本）
 - agent.complete（模型 key、体积、usage —— 不含提示或补全文本）
 
@@ -587,7 +551,6 @@ window.pluginBridge.on(event, handler)
 桌面插件运行时现在实现本地和市场插件使用的 MVP 主机 API 表面：
 
 - `app.*`、`plugin.*`、`commands.*`、`ui.*`、`workspace.*`
-- `desktop.listOperations` / `desktop.invoke`（与本地 MCP 共享的已审查宿主操作目录）
 - `fs.readText` / `fs.readPreview` / `fs.openDefault` / `fs.reveal` /
   `fs.writeText` / `fs.glob` / `fs.list` / `fs.remove` / `fs.requestDirectory`，
   范围由 `manifest.fs` 限定（ADR 0088）

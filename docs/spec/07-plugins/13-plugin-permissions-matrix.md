@@ -10,7 +10,6 @@ Provide a permission–capability–risk–default-policy reference table for re
 |---|---|---|---|---|
 | `ui.panel` | low | Open the plugin panel | Granted at install | Needed by almost all UI plugins |
 | `ui.view` | low | `contributes.views` are listed in the work panel and may be opened | Granted at install | Same isolation as a panel window: sandboxed page, per-plugin partition, `net.domains` egress. Filtered by activation scope |
-| `ui.microphone` | medium | Isolated panel media permission for microphone audio | Confirm on first use | Camera and other device permissions remain denied; panels should provide a text fallback |
 | `ui.theme` | low | `contributes.themes` CSS is loaded and offered in Settings | Granted at install | CSS is sanitized by the host; it cannot script |
 | `clipboard.read` | medium | `clipboard.readText`, `clipboard.getHistory` | Confirm on first use | May read sensitive information and retained clipboard history |
 | `clipboard.write` | medium | `clipboard.writeText` | Confirm on first use | Prevents clipboard pollution |
@@ -39,7 +38,6 @@ Provide a permission–capability–risk–default-policy reference table for re
 | `session.update.own` | medium | `pi.session.rename` | Confirm at install | Renames only the calling plugin's active imported sessions |
 | `session.delete.own` | high | `pi.session.delete` | Confirm at install | Trash/purge only the calling plugin's imported sessions; rate-limited |
 | `agent.complete` | high | `pi.agent.complete` | Confirm at install | Host-owned one-shot; spends user quota; `includeSessionContext` also needs `session.read` |
-| `desktop.control` | high | `pi.desktop.listOperations`, `pi.desktop.invoke` | Deny by default / explicit grant | Shared with local MCP's reviewed operation catalog; dangerous operations still require `confirm: true`; the MCP bearer token is never exposed |
 
 ## 2A. A permission is the switch; the manifest carries the range
 
@@ -134,8 +132,6 @@ so "Modify the files it lists" is followed by the list.
 | `session.update.own` | Rename sessions imported by this plugin | 重命名此插件导入的会话 |
 | `session.delete.own` | Trash or purge sessions imported by this plugin | 将此插件导入的会话移入回收站或清除 |
 | `agent.complete` | Run a one-shot completion with your models | 用你的模型发起一次补全 |
-| `ui.microphone` | Use the microphone | 使用麦克风 |
-| `desktop.control` | Control the desktop through the reviewed operation catalog | 通过已审查的操作目录控制桌面 |
 
 ## 5. Adding permissions on upgrade
 

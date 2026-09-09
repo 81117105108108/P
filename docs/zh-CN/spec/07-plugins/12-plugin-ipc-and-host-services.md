@@ -28,9 +28,6 @@ PluginManager
  └─ MarketClient
 ```
 
-桌面控制能力不是另一种传输。Electron 在 `PluginRuntime` 旁创建一个已审查的桌面控制器，
-并将同一个控制器交给本地 MCP 服务和获得 `desktop.control` 的插件。
-
 ## 3. UI IPC（添加）
 
 ### 插件域
@@ -129,21 +126,6 @@ plugin runtime
  → response
 ```
 
-对于 `desktop.listOperations` 和 `desktop.invoke`，宿主调用链为：
-
-```text
-插件进程
- → PluginRuntimeBroker 白名单
- → desktop.control 权限检查
- → 共享 MCP/桌面控制器
- → 已注册的 Electron IPC 处理器
- → 变更事件回调 + 审计日志
- → 响应
-```
-
-插件收不到 MCP bearer token，也不能指定未审查的 IPC 通道。共享控制器强制执行操作目录、最多
-32 个位置参数，以及危险操作的 `confirm: true`。
-
 ## 7. PanelHost交互
 
 - 打开面板时创建独立视图
@@ -158,7 +140,6 @@ plugin runtime
 | `fs.readText`、`fs.stat`、`fs.readRange`、`fs.readPreview`、`fs.openDefault`、`fs.reveal`、`fs.glob`、`fs.list` | `fs.read` |
 | `fs.registerDropped` | `fs.read` 加真实拖拽手势 |
 | `fs.writeText` | `fs.write` |
-| `desktop.listOperations`、`desktop.invoke` | `desktop.control` |
 
 ## 8. 故障隔离
 

@@ -375,47 +375,6 @@ empty, appends `Please advise on the executor's situation above.` System prompt
 rolling 60s (`RATE_LIMITED`); 90s budget (`TIMEOUT`). Empty model output is
 `INVALID_ARGUMENT`.
 
-### desktop control (requires `desktop.control`)
-
-```ts
-pi.desktop.listOperations(): Promise<Array<{
-  id: string
-  description: string
-  risk: "read" | "write" | "dangerous"
-}>>
-
-pi.desktop.invoke(input: {
-  operation: string
-  args?: unknown[]
-  confirm?: boolean
-}): Promise<unknown>
-```
-
-This is the first-party plugin gateway to the same reviewed operation catalog
-used by the opt-in local MCP control plane (ADR 0203 / D370). The returned
-catalog omits Electron channel names and the plugin never receives the MCP
-bearer token. Invocation reuses the controller, IPC handler, lifecycle checks,
-completion event, and audit boundary; a plugin cannot reach arbitrary Electron
-IPC. `dangerous` operations require `confirm: true` on the invocation, so a
-voice or other conversational UI must show its own confirmation step before
-calling them. Calls are logged with the plugin id, operation, risk, and result
-status; argument values are not copied into the audit entry.
-
-### microphone panels (requires `ui.microphone`)
-
-An isolated panel may request microphone audio through the browser media API
-only when the manifest declares and the user grants `ui.microphone`:
-
-```ts
-navigator.mediaDevices.getUserMedia({ audio: true })
-```
-
-The host permission handler allows the `media` permission for that panel and
-continues to deny other device permissions. The plugin does not receive a
-native microphone handle or a host secret; browser speech recognition and
-speech synthesis remain page-owned. A panel should provide a text fallback and
-announce permission or recognition failures through its accessible status.
-
 ### clipboard / shell
 ```ts
 pi.clipboard.readText(): Promise<string>
@@ -598,7 +557,6 @@ The host-owned preload forwards only fixed channels to the plugin runtime:
 | `ui.getNotificationPermission`, `ui.requestNotificationPermission`, `ui.showNativeNotification` | `notify` |
 | `plugin.getSettings`, `workspace.get`, `app.getAppearance` | None |
 | `models.list` | `models.list` |
-| `desktop.listOperations`, `desktop.invoke` | `desktop.control` |
 | `fs.readText`, `fs.stat`, `fs.readRange`, `fs.readPreview`, `fs.openDefault`, `fs.reveal`, `fs.glob`, `fs.list` | `fs.read` |
 | `fs.writeText` | `fs.write` |
 | `clipboard.readText`, `clipboard.getHistory` | `clipboard.read` |
@@ -644,7 +602,6 @@ Any of the following calls must be logged for audit:
 - browser.navigate / evaluate / cdp / openExternal
 - service start / stop / restart
 - models.list (returned row count)
-- desktop.listOperations (returned operation count) and desktop.invoke (operation, risk, result status; never argument values)
 - session.getLlmContext (session id, message count, truncated flag — never transcript text)
 - agent.complete (model key, sizes, usage — never prompt or completion text)
 
@@ -667,7 +624,6 @@ Log fields:
 The desktop plugin runtime now implements the MVP host API surface used by local and marketplace plugins:
 
 - `app.*`, `plugin.*`, `commands.*`, `ui.*`, `workspace.*`
-- `desktop.listOperations` / `desktop.invoke` (the reviewed host operation catalog shared with local MCP)
 - `fs.readText` / `fs.stat` / `fs.readRange` / `fs.readPreview` / `fs.openDefault` / `fs.reveal` /
   `fs.writeText` / `fs.glob` / `fs.list` / `fs.remove` / `fs.requestDirectory`,
   bounded by `manifest.fs` (ADR 0088)
