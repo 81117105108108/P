@@ -378,6 +378,24 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Unit-covered (header merge and one-shot stream options)
 
+#### E2E-005E: Model-level wire API wins over the provider style
+
+- **Preconditions**: An OpenCode Go provider is configured; a deterministic
+  fixture serves `muse-spark-1.3-contributor` on `/responses` and 500s it on
+  `/chat/completions`. A second generic provider serves the same model id on
+  `/chat/completions`.
+- **Steps**: 1) Select the muse model on the OpenCode Go provider and send a
+  turn. 2) Capture the outbound request path. 3) Repeat against the generic
+  provider with the same model id.
+- **Expected**: The OpenCode Go turn posts to `/responses` (the model-level
+  `api: "openai-responses"` pin wins); the generic turn still posts to
+  `/chat/completions`. Replayed history carries the resolved API.
+- **Specs linked**: `03-runtime/11-provider-model-system.md`,
+  `03-runtime/12-provider-config-schema.md`, ADR 0116
+- **Acceptance**: F (runtime provider requests)
+- **Milestone**: M2
+- **Status**: Unit-covered (binding resolution and endpoint assertion)
+
 #### E2E-005C: OpenAI-compatible system role fallback
 
 - **Preconditions**: A deterministic OpenAI-compatible Chat Completions
