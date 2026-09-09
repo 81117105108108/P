@@ -9068,6 +9068,31 @@ are withdrawn with ADR 0165.
   full Electron journey documented and remains deferred by the no-local-E2E
   policy
 
+#### E2E-233: Local-model subagent, bundled MCPs, and preinstalled plugins
+
+- **Preconditions**: Clean profile. Ollama or LM Studio reachable on loopback
+  (or skipped with reason). Bundled `sg`, `semble`, `codebase-memory-mcp`
+  resolvable from PATH in dev.
+- **Steps**: 1) Add Ollama preset provider with no key; confirm it appears in
+  provider list with `Ollama (local)`. 2) Create user subagent with
+  `model: ollama/<model-id>` from `LOCAL_SUBAGENT_TEMPLATE`; run `Task` and
+  confirm delegation resolves loopback binding. 3) Run Semble top-k 5, then
+  `sg` structural search, then `search_graph`/`trace_path`; confirm
+  `ToolSearch` activates one MCP tool per turn. 4) Confirm `pi.caveman` and
+  `pi.ponytail` load from `resources/plugins` with zero permissions and their
+  skills load on demand via `Skill`. 5) Switch model mid-sweep; confirm
+  context stays bounded (window 200, panes 3).
+- **Expected**: Local pins resolve without secret/proxy; cloud fallback
+  untouched; MCP router order semble → sg → graph holds; skill bodies never
+  ship up front; bundled plugins need no grants; inference cost drops on
+  sweeps with no quality regression on judgments.
+- **Specs linked**: `03-runtime/11-provider-model-system.md`,
+  `03-runtime/02-agent-runtime.md` §5f, `07-plugins/01-plugin-system.md`,
+  ADR 0207
+- **Acceptance**: C, G (plugins), Quality
+- **Status**: Unit-covered (`provider-presets`, `subagent-definition`,
+  `bundled-mcp`, `core-loop`); full Electron journey deferred by policy
+
 ## Remote Agent Control target scenarios (post-MVP)
 
 The following scenarios require the approved remote harness. They are

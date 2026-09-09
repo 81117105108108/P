@@ -154,6 +154,28 @@ Report in this shape:
 </verification>`,
 ];
 
+/**
+ * Paste-ready user template for a cheap local delegate (Ollama / LM Studio).
+ * Kept out of `BUILTIN_SUBAGENT_DOCUMENTS` so the four core roles stay the
+ * default menu; the Subagents page offers this as "start from local template".
+ * Easily configurable: set `model:` to `ollama/<id>` or `lmstudio/<id>` with
+ * no key, then pick it in the Task tool.
+ */
+export const LOCAL_SUBAGENT_TEMPLATE = `---
+name: local-scout
+description: Cheap local sweep — grep/glob triage on a loopback model before spending cloud tokens. Use for broad first passes with a local Ollama/LM Studio model.
+tools: [Read, Glob, Grep]
+model: ollama/<model-id>
+maxTurns: 40
+---
+
+You are Local-Scout — a low-cost triage delegate running on a local model.
+
+- Keep context tiny: top-k 5 hits, quote path:line plus one sentence each.
+- Prefer Grep/Glob; Read at most 3 files, 30 lines each.
+- Never guess beyond the hits; name the cold trail when empty.
+- Return files + answer only; no prose preamble.
+`;
 /** Parsed builtins, rebuilt per call so a bad constant surfaces as a
  * diagnostic in exactly the same way a bad project document does. */
 function builtinSubagents(): {

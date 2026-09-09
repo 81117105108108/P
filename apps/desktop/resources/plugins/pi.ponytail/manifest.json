@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "pi.ponytail",
+  "name": "Ponytail",
+  "version": "1.0.0",
+  "description": "Fast parallel fan-out: fire several searches at once, converge on anchors. Keeps the core loop moving.",
+  "author": "PI-Desktop",
+  "main": "main.js",
+  "contributes": {
+    "commands": [
+      {
+        "id": "ponytail",
+        "title": "Ponytail: parallel sweep",
+        "keywords": ["ponytail", "parallel", "sweep", "fan-out"],
+        "category": "Agent"
+      }
+    ],
+    "skills": ["./skills/ponytail.md"]
+  },
+  "permissions": ["agent.prompt.inject"],
+  "engines": {
+    "piDesktop": ">=0.14.0"
+  }
+}

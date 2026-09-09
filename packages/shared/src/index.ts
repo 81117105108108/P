@@ -16,6 +16,8 @@ export * from "./rpc-timeouts.js";
 export * from "./subagent-definition.js";
 export * from "./subagent-presets.js";
 export * from "./provider-presets.js";
+export * from "./bundled-mcp.js";
+export * from "./core-loop.js";
 export * from "./model-catalog.js";
 export * from "./github-feedback.js";
 export * from "./network-proxy.js";

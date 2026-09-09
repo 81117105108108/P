@@ -3,8 +3,11 @@ import {
   DEFAULT_SUBAGENT_IDLE_TIMEOUT_SECONDS,
   DEFAULT_SUBAGENT_MAX_DURATION_SECONDS,
   DEFAULT_SUBAGENT_TOOLS,
+  LOCAL_SUBAGENT_MODEL_TEMPLATE,
   MAX_SUBAGENT_DEFINITIONS,
   MAX_SUBAGENT_MAX_TURNS,
+  isLocalModelPin,
+  localSubagentPin,
   mergeSubagentDefinitions,
   normalizeSubagentName,
   parseSubagentDefinition,
@@ -453,5 +456,21 @@ describe("subagentPinnedProviders", () => {
       definition({ name: "d" }),
     ]);
     expect(providers).toEqual(["p1", "p2"]);
+  });
+});
+
+describe("local model pins", () => {
+  it("detects ollama/lmstudio pins without cloud false positives", () => {
+    expect(isLocalModelPin("ollama/qwen2.5-coder:7b")).toBe(true);
+    expect(isLocalModelPin("lmstudio/llama-3.1-8b")).toBe(true);
+    expect(isLocalModelPin("anthropic/claude-opus-5")).toBe(false);
+    expect(isLocalModelPin(undefined)).toBe(false);
+  });
+
+  it("builds paste-ready pins and ships a template", () => {
+    expect(localSubagentPin("ollama", "qwen2.5-coder:7b")).toBe(
+      "ollama/qwen2.5-coder:7b",
+    );
+    expect(LOCAL_SUBAGENT_MODEL_TEMPLATE).toBe("ollama/<model-id>");
   });
 });

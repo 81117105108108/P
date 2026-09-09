@@ -544,7 +544,12 @@ their own context, in the background, and report back on demand.
 **Catalog.** Definitions are Markdown documents from two sources: the four
 builtins shipped inline in `agent-runtime` (`explorer`, `code-reviewer`,
 `test-runner`, `fixer`) and the global user documents under
-`~/.agents/subagents/*.md`. There is no project-level subagent directory and
+`~/.agents/subagents/*.md`. A paste-ready `local-scout` template
+(`LOCAL_SUBAGENT_TEMPLATE`, Read/Glob/Grep, `model: ollama/<model-id>`, 40
+turns) is offered by the Subagents page but is not a fifth builtin, so the
+default menu stays at four. Local Ollama/LM Studio presets are loopback
+`chat_completions` rows with no key; `ollama/<id>` and `lmstudio/<id>` pins
+resolve like cloud pins and inherit otherwise. There is no project-level subagent directory and
 `.pi/agents` is not scanned for capabilities. User documents are filtered by
 the app-local enabled state before they reach the loader. Electron main loads
 the global catalog on every launch and passes `subagents` /

@@ -20,6 +20,23 @@ export type NamedEndpointPreset = {
   zhipuCompat?: boolean;
 };
 
+export const LOCAL_OLLAMA_BASE_URL = "http://localhost:11434/v1";
+export const LOCAL_LMSTUDIO_BASE_URL = "http://localhost:1234/v1";
+
+/** Hosts that always mean a user-local gateway, never a cloud vendor. */
+const LOCAL_ENDPOINT_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+/** True when the URL addresses a local gateway (Ollama / LM Studio / sg). */
+export function isLocalEndpoint(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false;
+  try {
+    const parsed = new URL(baseUrl.trim());
+    return LOCAL_ENDPOINT_HOSTS.has(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 export const NAMED_ENDPOINT_PRESETS: readonly NamedEndpointPreset[] = [
   {
     id: "openai",
@@ -221,6 +238,24 @@ export const NAMED_ENDPOINT_PRESETS: readonly NamedEndpointPreset[] = [
     labelKey: "settings.presetKimiCoding",
     aliases: ["kimi-coding", "kimi"],
   },
+  {
+    id: "ollama",
+    vendorKey: "ollama",
+    name: "Ollama (local)",
+    baseUrl: LOCAL_OLLAMA_BASE_URL,
+    apiStyle: "chat_completions",
+    labelKey: "settings.presetOllama",
+    aliases: ["local-ollama"],
+  },
+  {
+    id: "lmstudio",
+    vendorKey: "lmstudio",
+    name: "LM Studio (local)",
+    baseUrl: LOCAL_LMSTUDIO_BASE_URL,
+    apiStyle: "chat_completions",
+    labelKey: "settings.presetLmstudio",
+    aliases: ["lm-studio", "local-lmstudio"],
+  },
 ];
 
 /** Canonical form of a configured endpoint for preset matching. */
@@ -311,4 +346,26 @@ export function zhipuRequestCompat(input: {
   return isZhipuEndpoint(input)
     ? { thinkingFormat: "zai", zaiToolStream: true }
     : undefined;
+}
+
+/** Local-first presets (Ollama / LM Studio). No key, no proxy, loopback only. */
+export const LOCAL_ENDPOINT_PRESETS = NAMED_ENDPOINT_PRESETS.filter(
+  (preset) => preset.id === "ollama" || preset.id === "lmstudio",
+);
+
+export function matchLocalPreset(input: {
+  vendorKey?: string;
+  baseUrl?: string;
+}): NamedEndpointPreset | undefined {
+  const matched = matchNamedPreset(input);
+  if (matched && LOCAL_ENDPOINT_PRESETS.some((p) => p.id === matched.id)) return matched;
+  if (isLocalEndpoint(input.baseUrl)) return matched;
+  return undefined;
+}
+
+export function isLocalProviderPreset(input: {
+  vendorKey?: string;
+  baseUrl?: string;
+}): boolean {
+  return matchLocalPreset(input) !== undefined || isLocalEndpoint(input.baseUrl);
 }
