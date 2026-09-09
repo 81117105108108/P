@@ -1,8 +1,8 @@
-# ADR 0194: Host-Owned Plugin Session Import and Ownership API
+# ADR 0199: Host-Owned Plugin Session Import and Ownership API
 
 - Status: Accepted
 - Date: 2026-09-09
-- Decision: D356
+- Decision: D366
 
 ## Context
 
@@ -24,9 +24,10 @@ Add a separate P0/P1 `pi.session` domain for plugin-owned imported sessions:
 - Host-core generates session, message, and internal tool-call ids. The
   idempotency key is `(pluginId, source, externalId)` in
   `session_import_origins`; a plugin can only query or mutate its own rows.
-- Imported sessions have no active project/provider/model binding. Original
-  values are retained as history JSON for inspection, not used as live
-  authorization or execution configuration.
+- Imported sessions default to no active project/provider/model binding.
+  ADR 0200 adds an explicit host-created project-id opt-in; original values
+  are retained as history JSON for inspection, not used as live authorization
+  or execution configuration.
 - `trash` soft-deletes and hides a row while preserving its transcript and
   origin; `purge` cascades the row and removes transcript files. Purging a
   trashed row remains available to its owning plugin.
@@ -55,4 +56,4 @@ checks, host idempotency, batch skip/rollback semantics, ownership filtering,
 list/get/rename, message paging/truncation, tool reserved-key scrubbing,
 trash-to-purge lifecycle, migration-compatible schema creation, and rate
 limits. Full UI E2E execution remains deferred per repository policy; scenarios
-are recorded in the E2E plan.
+E2E-213 and E2E-214 are recorded in the E2E plan.

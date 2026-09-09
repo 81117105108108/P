@@ -1,8 +1,8 @@
-# ADR 0196: Explicit Plugin Project IDs and Host-Owned Session Refresh
+# ADR 0200: Explicit Plugin Project IDs and Host-Owned Session Refresh
 
 - Status: Accepted
 - Date: 2026-09-09
-- Decision: D358
+- Decision: D367
 
 ## Context
 
@@ -46,4 +46,4 @@ also a session tool-root authority; users must approve it at install time.
 Coverage includes project creation without workspace switching, explicit and
 unknown project ids during import, bound list/get projections, independent
 project permission checks, and the host-to-renderer refresh event contract.
-E2E-206 records the full UI journey; local UI E2E remains deferred by policy.
+E2E-215 records the full UI journey; local UI E2E remains deferred by policy.

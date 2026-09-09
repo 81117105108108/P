@@ -2,7 +2,8 @@
 //!
 //! This module deliberately does not reuse the renderer's session RPCs. Every
 //! query is scoped by the `(plugin_id, source_id, external_id)` origin sidecar,
-//! and imported sessions never acquire a project or provider binding.
+//! and imported sessions do not acquire project/provider bindings unless an
+//! explicit host-created project id is supplied.
 
 use anyhow::{anyhow, Result};
 use chrono::DateTime;

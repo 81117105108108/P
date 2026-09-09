@@ -4039,18 +4039,3 @@ D193, and D194.
   imports, renames, and deletes; the renderer reuses `refreshSessions()`, while
   skipped imports emit nothing and closed project tabs are not reopened. See
   E2E-215.
-
-## 2026-09-09 — Host-owned plugin session import and ownership API (D366)
-
-- External-history plugins need durable import/read/update/delete operations, but
-  the existing in-flight `session.getLlmContext` and core `session.import`
-  boundaries are not safe plugin ownership boundaries.
-- Decision D366 / ADR 0199 adds the P0/P1 `pi.session` methods: `import`,
-  `importBatch`, `list`, `get`, `listMessages`, `rename`, and `delete`.
-  `contributes.sessionSources` is required for every source. Host-core generates
-  ids and scopes all operations to `(pluginId, source, externalId)` ownership;
-  imports never activate project/provider/model bindings.
-- Schema v14 adds `session_import_origins` and `sessions.deleted_at`; protocol
-  v11 remains unchanged. Trash preserves the transcript for owner-only purge.
-  P2/P3 create, message mutation, binding, batch-delete, and tag APIs remain
-  deferred. See ADR 0199 and E2E-213/E2E-214.
