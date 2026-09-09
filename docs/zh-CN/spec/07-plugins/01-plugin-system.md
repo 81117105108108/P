@@ -276,6 +276,7 @@ Host Main (PI-Desktop)
 - `pi.fs.glob(pattern)`
 
 ### Agent（需要许可）
+- `pi.project.create({ path })` // `project.create`；返回持久项目 id，但不激活它
 - `pi.agent.registerTool(tool)`
 - `pi.agent.unregisterTool(name)`
 - `pi.models.list()` // `models.list`

@@ -202,6 +202,8 @@ type ToolBudgetHealth = {
 ### Projects
 - `projects.list` — returns durable project records ordered pinned-first, then
   by last-opened time; includes records materialized by session imports
+- `projects.create({ path })` — upserts a durable project record without
+  changing the active workspace and returns the host-generated project id
 
 ### Secrets
 - `secrets.set`
@@ -332,14 +334,18 @@ Plugin-owned session methods are additive to protocol v11 and are called only by
 Electron main after plugin permission and manifest-source checks:
 
 - `plugin.session.import` — import one host-owned session with an idempotency
-  key `(pluginId, source, externalId)`; the host generates ids and does not bind
-  the imported row to a project, provider, or model
+  key `(pluginId, source, externalId)`; the host generates ids and binds to a
+  project only when the caller supplies an existing `projectId` created by
+  `projects.create`; the historical `projectPath` remains metadata
 - `plugin.session.importBatch` — bounded `skip` or all-or-nothing `fail` batch
 - `plugin.session.list` / `plugin.session.get` / `plugin.session.listMessages` —
   read only the calling plugin's active imported sessions
 - `plugin.session.rename` — rename an owned active imported session
 - `plugin.session.delete` — `trash` hides and retains the transcript; `purge`
   removes it and permits re-import
+- Successful plugin session mutations cause Electron main to emit one
+  `sessionsChanged` renderer event; the renderer refreshes the session list,
+  and plugins do not emit this UI synchronization event.
 
 The host rejects unknown roles, non-RFC3339 or non-monotonic timestamps, and
 oversized/deep payloads. Tool values are sanitized for host-reserved keys. The

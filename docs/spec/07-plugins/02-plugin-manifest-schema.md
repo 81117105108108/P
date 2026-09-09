@@ -188,6 +188,7 @@ type PluginPermission =
  | "bus.publish"
  | "bus.subscribe"
  | "browser.cdp"
+ | "project.create"
  | "session.import"
  | "session.read.own"
  | "session.update.own"

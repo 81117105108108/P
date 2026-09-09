@@ -8779,3 +8779,29 @@ are withdrawn with ADR 0165.
 - **Milestone**: M6+
 - **Status**: Host/RPC/unit-covered; full UI journey Draft (do not run E2E locally
   unless explicitly requested)
+
+#### E2E-206: Explicit plugin project binding and host-owned sidebar refresh
+
+- **Preconditions**: A test plugin has `project.create` and `session.import`
+  permissions, declares a session source, and the renderer is showing the
+  existing sidebar. A project path is available without changing the active
+  workspace.
+- **Steps**: 1) Call `pi.project.create({ path })` and record the returned
+  `projectId`. 2) Import one session with that id and one session without it.
+  3) Observe the renderer while the plugin call completes. 4) Repeat the
+  import with the same external id and then rename/delete an owned session.
+- **Expected**: Project creation returns a durable id without activating or
+  replacing the current workspace. Only the import with an explicit id has an
+  active project binding; an omitted id stays unbound and its `projectPath` is
+  history only. Each successful write causes one host-owned
+  `pi-desktop/session/event/changed`, the renderer refreshes through
+  `refreshSessions()`, and the sidebar does not require a plugin-emitted event.
+  Skipped imports do not trigger a redundant refresh, and closed project tabs
+  are not reopened merely because their session list was refreshed.
+- **Specs linked**: `07-plugins/03-plugin-api.md`,
+  `07-plugins/13-plugin-permissions-matrix.md`, `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/06-host-rpc-protocol.md`, ADR 0196, D358
+- **Acceptance**: C (sessions), Security, Quality
+- **Milestone**: M6+
+- **Status**: Unit/source-contract-covered; full UI journey Draft (do not run
+  E2E locally unless explicitly requested)

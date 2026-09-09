@@ -53,6 +53,7 @@ struct PreparedImport {
     session_id: String,
     title: String,
     external_id: String,
+    project_id: Option<i64>,
     created_at: String,
     created_ms: i64,
     updated_ms: i64,
@@ -256,6 +257,7 @@ fn parse_message(
 }
 
 fn prepare_import(
+    db: &Database,
     item: &Value,
     session_id: String,
     source_label: Option<&str>,
@@ -326,6 +328,19 @@ fn prepare_import(
         "projectPath",
         4_096,
     )?;
+    let project_id = match object.get("projectId") {
+        None | Some(Value::Null) => None,
+        Some(value) => {
+            let id = value
+                .as_i64()
+                .filter(|id| *id > 0)
+                .ok_or_else(|| invalid("projectId must be a positive integer"))?;
+            if db.project_path(id)?.is_none() {
+                return Err(not_found("project not found"));
+            }
+            Some(id)
+        }
+    };
     let model_id = optional_text(
         object
             .get("modelId")
@@ -358,6 +373,7 @@ fn prepare_import(
         session_id,
         title,
         external_id,
+        project_id,
         created_at,
         created_ms,
         updated_ms,
@@ -432,11 +448,12 @@ fn write_and_index(
                 id, title, project_id, provider_id, model_id, mode,
                 thinking_level, permission_mode, source, last_seq,
                 created_at, updated_at
-             ) VALUES (?1, ?2, NULL, NULL, NULL, 'agent', 'off', 'inherit',
-                       ?3, ?4, ?5, ?6)",
+            ) VALUES (?1, ?2, ?3, NULL, NULL, 'agent', 'off', 'inherit',
+                       ?4, ?5, ?6, ?7)",
             params![
                 prepared.session_id,
                 prepared.title,
+                prepared.project_id,
                 source,
                 prepared.records.len() as i64,
                 prepared.created_ms,
@@ -486,7 +503,7 @@ fn import_one(
     item: &Value,
 ) -> Result<Value> {
     validate_payload(item)?;
-    let prepared = prepare_import(item, Uuid::new_v4().to_string(), source_label)?;
+    let prepared = prepare_import(db, item, Uuid::new_v4().to_string(), source_label)?;
     if let Some(session_id) = find_origin(db, plugin_id, source, &prepared.external_id)? {
         return Ok(json!({
             "sessionId": session_id,
@@ -609,7 +626,7 @@ pub fn import_batch(db: &Database, plugin_id: &str, params: &Value) -> Result<Va
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_string();
-        match prepare_import(item, Uuid::new_v4().to_string(), source_label) {
+        match prepare_import(db, item, Uuid::new_v4().to_string(), source_label) {
             Ok(value) => {
                 if !seen.insert(value.external_id.clone()) {
                     errors.push((
@@ -674,11 +691,12 @@ pub fn import_batch(db: &Database, plugin_id: &str, params: &Value) -> Result<Va
                     id, title, project_id, provider_id, model_id, mode,
                     thinking_level, permission_mode, source, last_seq,
                     created_at, updated_at
-                 ) VALUES (?1, ?2, NULL, NULL, NULL, 'agent', 'off', 'inherit',
-                           ?3, ?4, ?5, ?6)",
+                ) VALUES (?1, ?2, ?3, NULL, NULL, 'agent', 'off', 'inherit',
+                           ?4, ?5, ?6, ?7)",
                 params![
                     item.session_id,
                     item.title,
+                    item.project_id,
                     source,
                     item.records.len() as i64,
                     item.created_ms,
@@ -743,6 +761,7 @@ fn session_view(
     title: String,
     source: String,
     external_id: String,
+    project_id: Option<i64>,
     message_count: i64,
     created_at: i64,
     updated_at: i64,
@@ -752,9 +771,10 @@ fn session_view(
         "title": title,
         "source": source,
         "externalId": external_id,
+        "projectId": project_id,
         "messageCount": message_count,
         "originKind": "imported",
-        "bound": { "workspace": false, "model": false },
+        "bound": { "workspace": project_id.is_some(), "model": false },
         "createdAt": ms_to_ts(created_at),
         "updatedAt": ms_to_ts(updated_at),
     })
@@ -789,7 +809,7 @@ pub fn list(db: &Database, plugin_id: &str, params_value: &Value) -> Result<Valu
         .map(|value| strict_timestamp(value, "updatedAfter").map(|(_, ms)| ms))
         .transpose()?;
     let mut sql = String::from(
-        "SELECT s.id, s.title, s.source, oi.external_id, s.last_seq,
+        "SELECT s.id, s.title, s.source, oi.external_id, s.project_id, s.last_seq,
                 s.created_at, s.updated_at
          FROM sessions s
          JOIN session_import_origins oi ON oi.session_id = s.id
@@ -844,6 +864,7 @@ pub fn list(db: &Database, plugin_id: &str, params_value: &Value) -> Result<Valu
             row.get(4)?,
             row.get(5)?,
             row.get(6)?,
+            row.get(7)?,
         ));
     }
     let next_cursor = (items.len() == page_limit).then(|| (offset + items.len()).to_string());
@@ -859,12 +880,23 @@ fn own_session_row(
     db: &Database,
     plugin_id: &str,
     session_id: &str,
-) -> Result<Option<(String, String, String, i64, i64, i64, Option<String>)>> {
+) -> Result<
+    Option<(
+        String,
+        String,
+        String,
+        i64,
+        i64,
+        i64,
+        Option<i64>,
+        Option<String>,
+    )>,
+> {
     Ok(db
         .conn()
         .prepare_cached(
             "SELECT s.title, s.source, oi.external_id, s.last_seq,
-                    s.created_at, s.updated_at, oi.origin_json
+                    s.created_at, s.updated_at, s.project_id, oi.origin_json
              FROM sessions s
              JOIN session_import_origins oi ON oi.session_id = s.id
              WHERE oi.plugin_id = ?1 AND s.id = ?2 AND s.deleted_at IS NULL",
@@ -878,6 +910,7 @@ fn own_session_row(
                 row.get(4)?,
                 row.get(5)?,
                 row.get(6)?,
+                row.get(7)?,
             ))
         })
         .optional()?)
@@ -906,11 +939,23 @@ pub fn get(db: &Database, plugin_id: &str, params_value: &Value) -> Result<Value
         "sessionId",
         128,
     )?;
-    let Some((title, source, external_id, message_count, created_at, updated_at, origin_json)) =
-        own_session_row(db, plugin_id, &session_id)?
+    let Some((
+        title,
+        source,
+        external_id,
+        message_count,
+        created_at,
+        updated_at,
+        project_id,
+        origin_json,
+    )) = own_session_row(db, plugin_id, &session_id)?
     else {
         return Err(not_found("session not found"));
     };
+    let project_path = project_id
+        .map(|id| db.project_path(id))
+        .transpose()?
+        .flatten();
     let history = history_from_json(origin_json);
     Ok(json!({
         "sessionId": session_id,
@@ -918,9 +963,11 @@ pub fn get(db: &Database, plugin_id: &str, params_value: &Value) -> Result<Value
         "source": source,
         "externalId": external_id,
         "originKind": "imported",
-        "projectPath": Value::Null,
+        "projectId": project_id,
+        "projectPath": project_path,
         "modelId": Value::Null,
         "providerId": Value::Null,
+        "bound": { "workspace": project_id.is_some(), "model": false },
         "history": history,
         "messageCount": message_count,
         "createdAt": ms_to_ts(created_at),
@@ -1159,6 +1206,58 @@ mod tests {
         assert_eq!(detail["modelId"], Value::Null);
         assert_eq!(detail["history"]["projectPath"], "/history/project");
         assert_eq!(db.list_projects().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn import_can_use_an_explicit_host_project_id() {
+        let (_dir, db) = db();
+        let project_id = db.ensure_project("/history/project", false).unwrap();
+        let mut input = item("external-bound", "2026-01-01T00:00:01Z");
+        input["projectId"] = json!(project_id);
+        input["source"] = json!("legacy");
+        input["sourceLabel"] = json!("Legacy");
+
+        let result = import(&db, "plugin.one", &input).unwrap();
+        let session_id = result["sessionId"].as_str().unwrap();
+        let detail = get(&db, "plugin.one", &json!({ "sessionId": session_id })).unwrap();
+        assert_eq!(detail["projectId"], project_id);
+        assert_eq!(detail["projectPath"], "/history/project");
+        assert_eq!(detail["bound"]["workspace"], true);
+
+        let listed = list(&db, "plugin.one", &json!({})).unwrap();
+        assert_eq!(listed["items"][0]["projectId"], project_id);
+        assert_eq!(listed["items"][0]["bound"]["workspace"], true);
+
+        let mut batch_item = item("external-batch-bound", "2026-01-01T00:00:02Z");
+        batch_item["projectId"] = json!(project_id);
+        let batch = import_batch(
+            &db,
+            "plugin.one",
+            &json!({ "source": "legacy", "sessions": [batch_item] }),
+        )
+        .unwrap();
+        let batch_session_id = batch["results"][0]["sessionId"].as_str().unwrap();
+        let batch_detail =
+            get(&db, "plugin.one", &json!({ "sessionId": batch_session_id })).unwrap();
+        assert_eq!(batch_detail["projectId"], project_id);
+        assert_eq!(batch_detail["bound"]["workspace"], true);
+    }
+
+    #[test]
+    fn import_rejects_unknown_project_ids_without_writing() {
+        let (_dir, db) = db();
+        let mut input = item("external-missing-project", "2026-01-01T00:00:01Z");
+        input["projectId"] = json!(999_999);
+        input["source"] = json!("legacy");
+        assert!(import(&db, "plugin.one", &input)
+            .unwrap_err()
+            .to_string()
+            .starts_with("NOT_FOUND"));
+        let count: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
     }
 
     #[test]

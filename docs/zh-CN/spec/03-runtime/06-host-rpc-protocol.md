@@ -188,6 +188,8 @@ type ToolBudgetHealth = {
 ### 项目
 - `projects.list` — 返回先固定的持久项目记录，然后返回
   按上次开放时间；包括通过会话导入具体化的记录
+- `projects.create({ path })` — 创建或复用持久项目记录，不切换当前工作区，
+  并返回宿主生成的项目 id
 
 ### 秘密
 - `secrets.set`
@@ -292,12 +294,15 @@ ids 和非负 `tokensBefore`；它不会插入 message/search 行
 权限和 manifest 来源校验后调用：
 
 - `plugin.session.import` — 使用 `(pluginId, source, externalId)` 幂等键导入
-  一个由主机拥有的会话；主机生成 id，且不绑定项目、provider 或 model
+  一个由主机拥有的会话；主机生成 id，只有调用方显式传入由
+  `projects.create` 创建的 `projectId` 时才绑定项目；历史 `projectPath` 仍是元数据
 - `plugin.session.importBatch` — 有界的 `skip` 或全有或全无 `fail` 批量导入
 - `plugin.session.list` / `plugin.session.get` / `plugin.session.listMessages` —
   只读取调用插件自己导入且仍处于活动状态的会话
 - `plugin.session.rename` — 重命名自己拥有的活动导入会话
 - `plugin.session.delete` — `trash` 隐藏并保留转录本；`purge` 删除并允许重新导入
+- 插件会话变更成功后，Electron main 发送一次 `sessionsChanged` 渲染器事件，
+  渲染器刷新会话列表；插件不发送此 UI 同步事件
 
 主机会拒绝未知角色、非 RFC3339 或非单调时间戳，以及超大或过深的 payload；
 工具值会清理主机保留键。每个插件每 60 秒最多 10 次单条导入、5 次批量导入和

@@ -208,3 +208,4 @@ Each ADR includes:
 | 0193 | Last-request occupancy in the context inspector | Accepted (amends 0047 / 0103 / 0184) |
 | 0194 | Optional subagent thinking override | Accepted for implementation |
 | 0195 | Host-owned plugin session import and ownership API | Accepted |
+| 0196 | Explicit plugin project ids and host-owned session refresh | Accepted |

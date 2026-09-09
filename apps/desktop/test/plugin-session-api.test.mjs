@@ -156,6 +156,114 @@ test("plugin session payload validation rejects invalid roles before host dispat
   assert.deepEqual(runtime.drainToasts(), ["INVALID_PARAMS", "shape:INVALID_PARAMS"]);
 });
 
+test("plugin can explicitly create a project id and import into it", async (t) => {
+  const calls = [];
+  const runtime = new PluginRuntime({
+    hostEntry: hostProcessEntry,
+    spawnProcess: forkPluginProcess,
+    project: {
+      create: async (pluginId, input) => {
+        calls.push(["project", pluginId, input]);
+        return { projectId: 7, path: input.path, name: "Imported project" };
+      },
+    },
+    session: {
+      import: async (pluginId, input) => {
+        calls.push(["import", pluginId, input]);
+        return { sessionId: "bound-session", imported: true, skipped: false };
+      },
+    },
+  });
+  t.after(async () => {
+    for (const loaded of runtime.listLoaded()) await runtime.unload(loaded.manifest.id);
+  });
+  const dir = writePlugin({
+    id: "demo.project-import",
+    permissions: ["project.create", "session.import"],
+    main: `
+      module.exports = {
+        async onLoad() {
+          await pi.commands.register({
+            id: "bind",
+            title: "Bind",
+            run: async () => {
+              const project = await pi.project.create({ path: "/tmp/imported-project" });
+              await pi.session.import({
+                source: "legacy",
+                externalId: "bound-1",
+                title: "Bound",
+                projectId: project.projectId,
+                createdAt: "2026-01-01T00:00:00Z",
+                updatedAt: "2026-01-01T00:00:01Z",
+                messages: [{ role: "user", content: "hello", createdAt: "2026-01-01T00:00:00Z" }]
+              });
+            }
+          });
+        }
+      };
+    `,
+  });
+  await runtime.loadFromPath(dir, ["project.create", "session.import"]);
+  await runCommand(runtime, "bind");
+  assert.deepEqual(calls.map(([kind, pluginId, input]) => [kind, pluginId, input.path ?? input.projectId]), [
+    ["project", "demo.project-import", "/tmp/imported-project"],
+    ["import", "demo.project-import", 7],
+  ]);
+});
+
+test("project binding requires the project permission", async (t) => {
+  const calls = [];
+  const runtime = new PluginRuntime({
+    hostEntry: hostProcessEntry,
+    spawnProcess: forkPluginProcess,
+    project: {
+      create: async () => calls.push("project"),
+    },
+    session: {
+      import: async () => calls.push("import"),
+    },
+  });
+  t.after(async () => {
+    for (const loaded of runtime.listLoaded()) await runtime.unload(loaded.manifest.id);
+  });
+  const dir = writePlugin({
+    id: "demo.project-permission",
+    permissions: ["session.import"],
+    main: `
+      module.exports = {
+        async onLoad() {
+          await pi.commands.register({
+            id: "denied",
+            title: "Denied",
+            run: async () => {
+              try { await pi.project.create({ path: "/tmp/project" }); }
+              catch (error) { await pi.ui.showToast("create:" + error.code); }
+              try {
+                await pi.session.import({
+                  source: "legacy",
+                  externalId: "bound-1",
+                  title: "Bound",
+                  projectId: 7,
+                  createdAt: "2026-01-01T00:00:00Z",
+                  updatedAt: "2026-01-01T00:00:01Z",
+                  messages: [{ role: "user", content: "hello", createdAt: "2026-01-01T00:00:00Z" }]
+                });
+              } catch (error) { await pi.ui.showToast("import:" + error.code); }
+            }
+          });
+        }
+      };
+    `,
+  });
+  await runtime.loadFromPath(dir, ["session.import"]);
+  await runCommand(runtime, "denied");
+  assert.deepEqual(calls, []);
+  assert.deepEqual(runtime.drainToasts(), [
+    "create:PERMISSION_DENIED",
+    "import:PERMISSION_DENIED",
+  ]);
+});
+
 test("plugin session read, update, and delete permissions are independent", async (t) => {
   const calls = [];
   const runtime = new PluginRuntime({
