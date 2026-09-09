@@ -652,7 +652,9 @@ const ToolRow = memo(function ToolRow({
   // (D227). Property reads only, so a streaming row can afford it every tick.
   const run = action === "run" ? runOutcome(message) : null;
   const failed = status === "error" || run === "failed";
-  const disclosure = useAutomaticDisclosure(failed);
+  // Tool details are always user-opened. Failure stays visible in the row head
+  // through its status icon/label without expanding the payload automatically.
+  const disclosure = useAutomaticDisclosure(false);
   const { open, toggle: toggleDisclosure, collapse: collapseDisclosure } = disclosure;
   const toggleRow = useCallback(() => {
     onUserInteraction?.();

@@ -1551,7 +1551,8 @@ Each scenario is documented in this format:
   expanded row, then keyboard-focus and activate the processing group's
   vertical rule. 8) Reload the session and expand the restored group.
 - **Expected**: The latest active group opens automatically so the process list
-  is visible, but tool-call details remain collapsed. The latest thinking step
+  is visible, but tool-call details, including failed tool details, remain
+  collapsed. The latest thinking step
   opens automatically while it streams; older groups and rows remain collapsed.
   The header shows a localized current-state capsule such as Editing,
   Thinking, Waiting for model, Retrying, or Waiting for subagents, alongside

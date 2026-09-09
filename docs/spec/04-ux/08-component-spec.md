@@ -1634,15 +1634,14 @@ twice.
 |---|---|---|
 | Running | Progressive action with readable text, a compact current-state capsule, and a pulsing marker; a `run` row also shows its spinner and pulses the status dot beside `Working…` | The latest thinking row opens automatically while it streams; tool-call details stay collapsed |
 | Success | Past-tense action + result chips; no green success badge, except a `run` row's dot and `Done` | Result blocks, then arguments if not already shown; automatic thinking disclosures close when the turn settles |
-| Error | Past-tense action + compact danger status; auto-expanded. A `run` row is in this state whenever its command exited non-zero, whatever the call reported (D227) | Error note first, then arguments |
+| Error | Past-tense action + compact danger status; details remain collapsed by default and open only on user request. A `run` row is in this state whenever its command exited non-zero, whatever the call reported (D227) | Error note first, then arguments |
 | Denied | Muted `Denied` status | Permission result when available |
 
 ### 9.6 Interactions
 
 - Click the row: expand/collapse the result blocks. Tool-call details are
-  collapsed by default while a live group is open; historical rows are also
-  collapsed by default, and failed rows open automatically so their error
-  remains visible.
+  collapsed by default while a live group is open; historical and failed rows
+  remain collapsed until the user opens them.
 - Click the processing header: expand/collapse the ordered activity list.
   Historical groups default collapsed; the latest active group opens while the
   turn is running and closes when it settles if the user has not touched it.
@@ -1651,8 +1650,9 @@ twice.
   disclosure without changing adjacent expansion state. Any click on a group,
   row, or collapse rail makes that disclosure user-owned, so automatic stream
   transitions never reopen or close it later.
-- A failed child row remains auto-expanded and error-hued, while the containing
-  group settles as `Processed for {elapsed}` even when a later tool recovered.
+- A failed child row remains error-hued and reports its failure in the compact
+  row header, but its details are not auto-expanded. The containing group
+  settles as `Processed for {elapsed}` even when a later tool recovered.
   Expansion uses a short height/opacity transition and keeps collapsed content
   inert.
 - Running updates replace the latest partial output in place. Bash's cumulative

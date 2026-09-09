@@ -232,7 +232,7 @@ test("live thinking follows the latest step without auto-expanding tool details"
     transcriptSource,
     /<ToolRow[\s\S]{0,220}autoOpen=\{live && itemIndex === items\.length - 1\}/,
   );
-  assert.match(transcriptSource, /const disclosure = useAutomaticDisclosure\(failed\)/);
+  assert.match(transcriptSource, /const disclosure = useAutomaticDisclosure\(false\)/);
   assert.match(transcriptSource, /onClick=\{toggleDisclosure\}/);
   assert.match(transcriptSource, /onCollapse=\{collapseDisclosure\}/);
   assert.match(transcriptSource, /onUserInteraction=\{claimDisclosure\}/);
