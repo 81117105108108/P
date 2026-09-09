@@ -9244,9 +9244,8 @@ the request explicitly authorizes that environment.
 
 #### E2E-231: Voice Assistant routes speech to reviewed desktop operations
 
-- **Preconditions**: The standalone `com.vastsa.voice-assistant` package has
-  been installed from a `.piplug` artifact but has not received its grants.
-  A user reviews it, enables it, and explicitly grants `ui.panel`, `ui.microphone`,
+- **Preconditions**: The bundled `pi.voice` plugin is installed but disabled.
+  A user enables it and explicitly grants `ui.panel`, `ui.microphone`,
   `agent.complete`, `models.list`, and `desktop.control`. An authenticated
   model is available, the panel is opened, and a local project is available.
 - **Steps**: 1) Click the microphone and grant audio permission; verify the
@@ -9260,8 +9259,7 @@ the request explicitly authorizes that environment.
   operation remains uncalled; repeat and accept it with `confirm: true`. 7)
   Revoke `desktop.control` or `ui.microphone` and verify the corresponding
   call fails closed while the text fallback remains usable.
-- **Expected**: The standalone package is not part of the application bundle.
-  The panel is sandboxed and receives only media permission when
+- **Expected**: The panel is sandboxed and receives only media permission when
   `ui.microphone` is granted; camera and unrelated device permissions remain
   denied. The plugin receives the reviewed operation catalog but no MCP token
   or Electron channel name. Normal calls reuse the MCP controller and renderer
@@ -9272,7 +9270,7 @@ the request explicitly authorizes that environment.
 - **Specs linked**: `07-plugins/03-plugin-api.md`,
   `07-plugins/04-plugin-security.md`,
   `07-plugins/12-plugin-ipc-and-host-services.md`,
-  `07-plugins/13-plugin-permissions-matrix.md`, ADR 0206, ADR 0207, D374, D375
+  `07-plugins/13-plugin-permissions-matrix.md`, ADR 0206, D374
 - **Acceptance**: A (desktop control), C (conversation), Security, Quality
 - **Milestone**: M6+
 - **Status**: Plugin routing/controller covered by

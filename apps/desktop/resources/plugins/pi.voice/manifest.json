@@ -1,15 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "com.vastsa.voice-assistant",
+  "id": "pi.voice",
   "name": "Voice Assistant",
   "version": "1.0.0",
   "description": "Speak to a model and route approved commands to PI-Desktop.",
-  "author": {
-    "name": "VastSa",
-    "url": "https://github.com/vastsa"
-  },
-  "homepage": "https://github.com/vastsa/PI-Desktop/tree/main/plugins/com.vastsa.voice-assistant",
-  "repository": "https://github.com/vastsa/PI-Desktop",
+  "author": "PI-Desktop",
   "main": "main.js",
   "ui": {
     "panel": "renderer/index.html",
@@ -23,7 +18,7 @@
   "contributes": {
     "commands": [
       {
-        "id": "com.vastsa.voice-assistant.open",
+        "id": "voice-assistant",
         "title": "Voice Assistant: open",
         "keywords": ["voice", "assistant", "speech", "语音", "助手"],
         "category": "Agent"
@@ -67,5 +62,6 @@
   ],
   "engines": {
     "piDesktop": ">=0.8.0"
-  }
+  },
+  "enabledByDefault": false
 }

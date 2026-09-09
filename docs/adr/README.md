@@ -217,5 +217,4 @@ Each ADR includes:
 | 0203 | Local MCP control plane for desktop operations | Accepted (amended by D372) |
 | 0204 | Explicit unsigned macOS first-launch helper | Accepted |
 | 0205 | Remote Agent Control uses a dedicated Host boundary | Accepted for implementation (post-MVP) |
-| 0206 | Voice Assistant plugin with a shared desktop controller | Accepted (distribution amended by 0207) |
-| 0207 | Distribute Voice Assistant as a standalone plugin | Accepted |
+| 0206 | Voice Assistant plugin with a shared desktop controller | Accepted |

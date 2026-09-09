@@ -1,15 +1,15 @@
 # ADR 0206: Voice Assistant plugin with a shared desktop controller
 
-- Status: Accepted (distribution amended by ADR 0207)
+- Status: Accepted
 - Date: 2026-09-10
 - Decision: D374
 
 ## Context
 
 PI-Desktop now has an opt-in local MCP control plane for the reviewed desktop
-operation catalog. A user also needs a permission-gated voice surface that can
-speak to a configured model and drive the same desktop without copying a bearer
-token into plugin code or maintaining a second IPC allowlist.
+operation catalog. A user also needs a first-party voice surface that can speak
+to a configured model and drive the same desktop without copying a bearer token
+into plugin code or maintaining a second IPC allowlist.
 
 The plugin runtime already isolates plugin code in a separate process and panel
 pages in a sandboxed Electron session. Microphone access is a separate device
@@ -17,9 +17,7 @@ boundary that must remain opt-in and must not imply camera access.
 
 ## Decision
 
-1. Keep the voice surface as an opt-in plugin capability. Its distribution
-   boundary is defined by ADR 0207: the Voice Assistant is independently
-   installable and is not bundled with the application.
+1. Ship `pi.voice` as a disabled-by-default bundled plugin.
 2. Add the high-risk `desktop.control` permission and expose
    `pi.desktop.listOperations()` / `pi.desktop.invoke()` through the plugin
    host API.
@@ -43,8 +41,8 @@ boundary that must remain opt-in and must not imply camera access.
   while common project/session/Agent flows receive a dedicated UI path.
 - The security review and renderer refresh callback are shared with MCP, so
   voice control cannot silently diverge from external-agent control.
-- The user must install the standalone package and explicitly grant a combined
-  set of model, microphone, and desktop-control permissions.
+- The user must explicitly grant a combined set of model, microphone, and
+  desktop-control permissions; the plugin is not enabled automatically.
 - Browser speech recognition behavior remains platform-dependent. The panel
   reports permission/recognition failures and remains usable through text.
 
@@ -54,8 +52,5 @@ boundary that must remain opt-in and must not imply camera access.
   authentication and permits bypassing the plugin permission UI.
 - Creating a second voice-specific IPC list: rejected because it would drift
   from the reviewed MCP catalog and its mutation event behavior.
-- Bundling the plugin into the application: superseded by ADR 0207 because an
-  independently versioned package gives users a clearer install and permission
-  boundary.
 - Bundling a hosted realtime speech provider: deferred; it would add network,
   credential, privacy, and cost decisions outside this MVP.

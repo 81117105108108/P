@@ -76,11 +76,10 @@ CSS 无法脚本化，但它可能会产生误导：主题仍然是第三方代�
 现有 IPC 处理器前校验操作归属、参数数量和危险操作确认，并执行同一个成功变更事件回调，
 因此插件无法悄悄建立第二套桌面状态模型。
 
-独立的 Voice Assistant 包同时请求 `ui.microphone`、`agent.complete` 和
-`desktop.control`，因此安装和启用时必须进行明确的权限审查。授予
-`ui.microphone` 后，面板只获得 media 权限；摄像头和其他设备权限仍被拒绝。语音插件通过
-结构化补全路由文本，为所有危险操作显示面板确认，然后调用
-`pi.desktop.invoke`。它不会随应用内置，不会打开 MCP 端点，也不会处理其 token。
+随应用提供的 Voice Assistant 插件默认关闭，因为它同时需要 `ui.microphone`、
+`agent.complete` 和 `desktop.control`。授予 `ui.microphone` 后，面板只获得 media 权限；
+摄像头和其他设备权限仍被拒绝。语音插件通过结构化补全路由文本，为所有危险操作显示面板确认，
+然后调用 `pi.desktop.invoke`；它不会打开 MCP 端点，也不会处理其 token。
 
 ## 4. 权限授予用户体验
 

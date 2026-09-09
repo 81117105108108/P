@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
@@ -161,15 +161,6 @@ test("Advisor ships as an ordinary plugin over the public complete APIs", () => 
   assert.match(advisorPanel, /advisor\.set/);
   assert.doesNotMatch(advisorMain, /apiKey|safeStorage|net\.fetch/);
   assert.doesNotMatch(advisorPanel, /require\(|ipcRenderer/);
-});
-
-test("Voice Assistant is distributed outside bundled plugin resources", () => {
-  assert.equal(existsSync(resolve("resources/plugins/pi.voice")), false);
-  assert.equal(existsSync(resolve("resources/plugins/com.vastsa.voice-assistant")), false);
-  assert.equal(
-    existsSync(resolve("../../plugins/com.vastsa.voice-assistant/manifest.json")),
-    true,
-  );
 });
 
 test("bundled plugins are packaged and located at runtime", () => {

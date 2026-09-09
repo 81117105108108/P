@@ -6228,9 +6228,8 @@ IPC 请求无法关闭。
 
 #### E2E-231：Voice Assistant 将语音路由到已审查的桌面操作
 
-- **前提条件**：独立的 `com.vastsa.voice-assistant` 包已从 `.piplug` 工件安装，尚未获得授权。
-  用户审查并启用它，明确授予 `ui.panel`、`ui.microphone`、`agent.complete`、`models.list` 和
-  `desktop.control`。
+- **前提条件**：随应用提供的 `pi.voice` 插件已安装但关闭。用户启用它，并明确授予
+  `ui.panel`、`ui.microphone`、`agent.complete`、`models.list` 和 `desktop.control`。
   有已认证模型，面板已打开，并有可用的本地项目。
 - **步骤**：1）点击麦克风并授予音频权限，确认面板仍提供文字输入。2）说出打开项目的请求，
   确认结构化路由选择 `project/set`。3）说出新建会话的请求，确认现有会话变更事件选中它。
@@ -6238,13 +6237,13 @@ IPC 请求无法关闭。
   危险请求，确认在接受确认卡前不会发起桌面调用。6）拒绝一次并确认未调用；再重复并接受，
   使用 `confirm: true`。7）撤销 `desktop.control` 或 `ui.microphone`，确认对应调用失败关闭，
   文字回退仍可用。
-- **预期**：独立包不属于应用内置资源。面板经过沙箱隔离，授予 `ui.microphone` 后只得到 media 权限；摄像头和其他设备
+- **预期**：面板经过沙箱隔离，授予 `ui.microphone` 后只得到 media 权限；摄像头和其他设备
   权限仍被拒绝。插件收到已审查操作目录，但没有 MCP token 或 Electron 通道名。普通调用复用
   MCP 控制器和渲染器刷新回调。危险调用需要面板明确确认，模型输出不能绕过确认。识别或模型
   失败会通过可访问的实时状态播报，录音按钮不会卡在录音状态。
 - **链接规格**：`07-plugins/03-plugin-api.md`、`07-plugins/04-plugin-security.md`、
   `07-plugins/12-plugin-ipc-and-host-services.md`、`07-plugins/13-plugin-permissions-matrix.md`、
-  ADR 0206、ADR 0207、D374、D375
+  ADR 0206、D374
 - **验收**：A（桌面控制）、C（对话）、安全、质量
 - **里程碑**：M6+
 - **状态**：`apps/desktop/test/voice-assistant-plugin.test.mjs` 和

@@ -2959,16 +2959,8 @@ D193 和 D194。
 
 - 用户需要一个语音界面来驱动与本地 MCP 相同的已审查桌面操作，同时不能把 MCP bearer token
   暴露给插件，也不能创建第二份 IPC 权限清单。
-- 决策 D374 / ADR 0206 增加受权限保护的 Voice Assistant 能力、`desktop.control` 和
+- 决策 D374 / ADR 0206 增加默认关闭的 `pi.voice` 插件、`desktop.control` 和
   `ui.microphone` 权限，以及 `pi.desktop.listOperations` / `pi.desktop.invoke`。
   插件和本地 MCP 共用由同一份 150 项注册表创建的控制器；危险调用仍需 `confirm: true`，
   语音面板必须自己展示确认。面板使用浏览器语音识别/合成并保留文字回退，不增加新的 provider
   密钥或插件网络权限。参见插件规格和 E2E-231。
-
-## 2026-09-10 —— 将 Voice Assistant 作为独立插件分发（D375）
-
-- Voice Assistant 只使用公开插件 API；将它绑定在应用内置资源中，会让其发布和权限审查范围
-  超出宿主能力的实际需要。
-- 决策 D375 / ADR 0207 将插件迁移为稳定 id `com.vastsa.voice-assistant`，从内置资源中移除，
-  并定义带有独立 README、changelog 和 LGPL-3.0 许可证的 `.piplug` 包。用户分别安装并授权；
-  共享桌面控制器和危险操作确认保持不变。官方市场发布仍属于发布者拥有的分发仓库。
