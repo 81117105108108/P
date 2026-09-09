@@ -95,11 +95,13 @@ permission or persistence implementation.
 
 The server creates a persistent bearer token and a connection manifest in the
 Electron user-data directory. It never binds a non-loopback address, exposes
-no secret channels, and does not expose renderer-only native pickers. Dangerous
-generic operations require `confirm: true`. Successful project/session calls
-reuse the existing renderer session-change event so an external Agent and the
-visible desktop converge on the same active state. This is a local automation
-surface, not the deferred remote Gateway / WebUI architecture.
+no secret channels or secret-write provider/OAuth/MCP paths, and does not
+expose renderer-only native pickers. Dangerous generic operations and
+`session/configure` require `confirm: true` as an agent acknowledgement.
+Successful **mutating** project/session calls reuse the existing renderer
+session-change event so an external Agent and the visible desktop converge on
+the same active state. This is a local automation surface, not the deferred
+remote Gateway / WebUI architecture.
 
 ## 4. Request path (conversation + tool)
 

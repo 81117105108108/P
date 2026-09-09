@@ -6210,12 +6210,15 @@ IPC 请求无法关闭。
   5）调用 `pi_agent_prompt`，观察现有桌面会话变更事件选中目标会话。6）使用
   `pi_desktop_invoke` 调用一个已审查的只读操作。7）不带确认调用
   `pi_session_delete`，再使用 `confirm: true` 重试。8）停止应用并检查清单。
-- **预期**：未认证请求返回 401；已认证的 MCP 握手和工具目录成功；项目、会话、Agent
-  操作使用与渲染器相同的 IPC 校验和主机权限边界；可见桌面刷新并选中项目/会话；破坏性
-  操作在确认前失败；`pi_control_describe` 不包含密钥或原生选择器通道；端点只绑定回环；
-  禁止的 Origin 和不支持的协议版本会被拒绝；关闭时清单变为 `active: false`。
+- **预期**：未认证请求返回 401；`initialize` 遇到不支持的协议版本时协商为
+  `2025-06-18`；已认证的 MCP 握手和工具目录成功；项目、会话、Agent 操作使用与渲染器
+  相同的 IPC 校验和主机权限边界；变更性调用刷新/选中可见项目和会话，而
+  `pi_session_get` 不会；破坏性操作和 `pi_session_configure` 在确认前失败；
+  `pi_control_describe` 不包含密钥写入、`plugin/loadDev` 或原生选择器通道；密钥形态
+  字段会被剥离；端点只绑定回环；禁止的 Origin 和不支持的协议版本头会被拒绝；关闭时
+  清单变为 `active: false`。
 - **链接规格**：`02-architecture/01-architecture.md`、`03-runtime/01-ipc-protocol.md`、
-  `05-security/01-security.md`、ADR 0203、D370
+  `05-security/01-security.md`、ADR 0203、D370、D372
 - **验收**：A（应用控制）、C（会话）、安全、质量
 - **里程碑**：M6+
 - **状态**：由 `apps/desktop/test/mcp-control.test.mjs` 覆盖 MCP 协议/单元；完整 Electron

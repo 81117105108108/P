@@ -239,7 +239,8 @@ Skills 可以全局安装，也可以按项目启用。
 PI-Desktop 也可以被外部 MCP Agent 控制。使用
 `PI_DESKTOP_MCP_CONTROL=1` 启动应用，然后从 Electron 用户数据目录中的
 `mcp-control.json` 读取本地端点和 bearer token。端点支持项目、会话、Agent
-工作流，以及经过审查的桌面操作目录。该功能默认关闭，且只绑定本机回环地址。
+工作流，以及经过审查的桌面操作目录。该功能默认关闭，只绑定本机回环地址，并且
+对已暴露的操作授予与桌面相同的本机用户权限——`confirm: true` 不是用户确认框。
 
 ### 子智能体
 

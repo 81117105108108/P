@@ -4087,3 +4087,15 @@ D193, and D194.
   remote authentication, cloud sync, or second permission implementation. See
   `02-architecture/01-architecture.md`, `03-runtime/01-ipc-protocol.md`,
   `05-security/01-security.md`, and E2E-220.
+
+## 2026-09-10 — Tighten the local MCP control-plane boundary (D372)
+
+- D370's first catalog still exposed native pickers (`plugin/loadDev`),
+  secret-write provider/OAuth/MCP paths, and `session/configure` without
+  confirmation, and treated session reads as renderer mutations.
+- Decision D372 amends ADR 0203: the first-version catalog is the
+  project/session/Agent/workspace flow plus reviewed reads; secret-shaped
+  arguments are stripped; `session/configure` is dangerous; listen addresses
+  are asserted loopback; protocol versions are negotiated rather than echoed;
+  results including `structuredContent` are bounded; renderer session refresh
+  is mutation-only. See E2E-220.

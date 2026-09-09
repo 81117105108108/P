@@ -9017,19 +9017,22 @@ are withdrawn with ADR 0165.
   `pi_session_get`, and `pi_agent_status`. 5) Call `pi_agent_prompt` and
   observe the existing desktop session-change event select the target session.
   6) Call `pi_desktop_invoke` for a reviewed read operation. 7) Attempt
-  `pi_session_delete` without confirmation, then repeat with `confirm: true`.
-  8) Stop the app and inspect the manifest.
-- **Expected**: An unauthenticated request receives 401; the authenticated
-  MCP handshake and tool catalog succeed; project/session/Agent operations use
-  the same IPC validation and host permission boundaries as the renderer; the
-  visible desktop refreshes/selects the project and session; destructive
-  operations fail with a confirmation error until acknowledged; secret and
-  native-picker channels are absent from `pi_control_describe`; the endpoint
-  binds loopback only; disallowed Origins and unsupported protocol versions are
-  rejected; and the manifest changes to `active: false` on shutdown.
+  `pi_session_delete` and `pi_session_configure` without confirmation, then
+  repeat with `confirm: true`. 8) Stop the app and inspect the manifest.
+- **Expected**: An unauthenticated request receives 401; `initialize` with an
+  unsupported protocol version negotiates `2025-06-18`; the authenticated MCP
+  handshake and tool catalog succeed; project/session/Agent operations use the
+  same IPC validation and host permission boundaries as the renderer; mutating
+  calls refresh/select the visible project and session while `pi_session_get`
+  does not; destructive operations and `pi_session_configure` fail with a
+  confirmation error until acknowledged; secret writes, `plugin/loadDev`, and
+  native-picker channels are absent from `pi_control_describe`; secret-shaped
+  fields are stripped; the endpoint binds loopback only; disallowed Origins and
+  unsupported protocol version headers are rejected; and the manifest changes
+  to `active: false` on shutdown.
 - **Specs linked**: `02-architecture/01-architecture.md`,
   `03-runtime/01-ipc-protocol.md`, `05-security/01-security.md`, ADR 0203,
-  D370
+  D370, D372
 - **Acceptance**: A (app control), C (sessions), Security, Quality
 - **Milestone**: M6+
 - **Status**: MCP protocol/unit-covered by `apps/desktop/test/mcp-control.test.mjs`;

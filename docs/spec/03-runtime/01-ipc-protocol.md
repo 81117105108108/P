@@ -1555,9 +1555,12 @@ Electron Main binds `127.0.0.1` only and serves Streamable HTTP MCP at
 normal desktop configuration uses the default or an explicit local port. The
 server uses MCP protocol version `2025-06-18` and supports `initialize`,
 `notifications/initialized`, `ping`, `tools/list`, `tools/call`,
-`resources/list`, and `logging/setLevel`. It accepts the standard POST
-transport; GET is handled with 405 because this server does not offer an SSE
-stream.
+`resources/list`, and `logging/setLevel`. `initialize` negotiates `2025-06-18`
+or the compatible `2025-03-26` value and never echoes an unsupported client
+version. Listen is asserted to be loopback after bind. It accepts the standard
+POST transport; GET is handled with 405 because this server does not offer an
+SSE stream. Clients poll `pi_session_get` or `pi_agent_status` for turn
+progress.
 
 ### Connection and authentication
 
@@ -1616,13 +1619,19 @@ accepts an operation id and positional IPC arguments:
 ```
 
 Only main-process channels registered in the reviewed catalog are available.
-Secret reads/writes and renderer-only native picker/dialog channels are not
-exposed. Each catalog entry is tagged `read`, `write`, or `dangerous`;
-dangerous generic operations and the named session-delete/plan-resolution
-tools require `confirm: true`. All calls still pass through the existing IPC
-handler validation, host permissions, workspace boundaries, and error model.
+The first-version catalog is the project/session/Agent/workspace flow plus
+reviewed reads. Secret get/set/delete channels, provider/OAuth/MCP secret-write
+paths, settings writes, plugin/marketplace install, window/OS control, and
+renderer-only native picker/dialog channels (including `plugin/loadDev`) are
+not exposed. Secret-shaped argument fields are stripped before IPC dispatch.
+Each catalog entry is tagged `read`, `write`, or `dangerous`; dangerous
+generic operations and the named session-delete, session-configure, and
+plan-resolution tools require `confirm: true`. That flag is an agent
+acknowledgement, not a desktop user prompt. All calls still pass through the
+existing IPC handler validation, host permissions, workspace boundaries, and
+error model. Both the text payload and `structuredContent` are size-bounded.
 
-After successful external calls, Electron Main may emit the existing
+After successful **mutating** external calls, Electron Main may emit the existing
 `pi-desktop/session/event/changed` event with additive fields:
 
 ```ts

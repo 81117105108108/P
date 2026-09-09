@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-09
-- Decision: D370
+- Decision: D370 (amended by D372)
 
 ## Context
 
@@ -29,12 +29,21 @@ Gateway / WebUI control boundary remains out of scope under baseline decision
   flow and a generic `pi_desktop_invoke` over an explicit, risk-tagged catalog.
   `pi_control_describe` is the discovery surface for that catalog.
 - Require `confirm: true` for dangerous generic operations and destructive
-  named tools. Exclude secret get/set/delete channels and renderer-only native
-  picker/dialog channels. A new IPC handler is not exposed automatically.
-- After successful project/session/Agent calls, reuse the existing
+  named tools, including `session/configure` (permission mode). `confirm` is an
+  agent acknowledgement, not a desktop user prompt. Exclude secret
+  get/set/delete channels, provider/OAuth/MCP secret-write paths, settings
+  writes, and renderer-only native picker/dialog channels (including
+  `plugin/loadDev`). Strip secret-shaped fields from accepted arguments. A new
+  IPC handler is not exposed automatically.
+- Bind only loopback addresses; `initialize` negotiates `2025-06-18` or the
+  compatible `2025-03-26` value and never echoes an unsupported version. Bound
+  both the text payload and `structuredContent`. Stop the server with
+  `closeAllConnections` before host shutdown and mark the connection manifest
+  inactive.
+- After successful **mutating** project/session/Agent calls, reuse the existing
   `pi-desktop/session/event/changed` renderer event with additive project and
-  selection fields. Stop the server before host shutdown and mark the
-  connection manifest inactive.
+  selection fields. Reads such as `session/get` do not refresh the visible
+  desktop.
 
 ## Consequences
 
@@ -51,9 +60,20 @@ limit accidental exposure but do not protect against an untrusted process that
 can read the user's application-data directory or token. Remote clients,
 secret material, native pickers, and remote Gateway semantics remain excluded.
 
+## Amendment (D372)
+
+Narrow the first-version catalog to the project/session/Agent/workspace flow
+plus reviewed reads. `session/configure` is dangerous because it can set
+`permissionMode: "auto"`. Secret material is stripped from arguments even when
+a remaining operation accepts a generic object. The listen address is asserted
+to be loopback after bind. Renderer session refresh is mutation-only.
+
 ## Verification
 
-`apps/desktop/test/mcp-control.test.mjs` covers token authentication,
-initialization, tool discovery, project/session dispatch, dangerous-operation
-confirmation, and inactive shutdown manifests. E2E-220 records the full
-Electron journey; full local desktop E2E remains deferred by repository policy.
+`apps/desktop/test/mcp-control.test.mjs` and
+`apps/desktop/test/mcp-control-wiring.test.mjs` cover token authentication,
+protocol negotiation, tool discovery, project/session dispatch,
+dangerous-operation confirmation (including session configure), secret
+stripping, catalog exclusions, loopback bind refusal, mutation-only renderer
+refresh, and inactive shutdown manifests. E2E-220 records the full Electron
+journey; full local desktop E2E remains deferred by repository policy.

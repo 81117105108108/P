@@ -94,9 +94,10 @@ Streamable HTTP MCP 服务。服务提供项目/会话/Agent/工作区常用命�
 创建第二套权限或持久化实现。
 
 服务在 Electron 用户数据目录创建 bearer token 和连接清单，只绑定回环地址，不暴露
-密钥通道或渲染器专属原生选择器。危险通用操作要求 `confirm: true`。成功的项目/会话
-调用复用现有会话变更事件，使外部 Agent 和可见桌面收敛到同一状态。这是本地自动化
-接口，不是延后的远程 Gateway / WebUI 架构。
+密钥通道、provider/OAuth/MCP 密钥写入路径，或渲染器专属原生选择器。危险通用操作和
+`session/configure` 要求 `confirm: true`，这是 Agent 确认而非用户弹窗。成功的
+**变更性** 项目/会话调用复用现有会话变更事件，使外部 Agent 和可见桌面收敛到同一状态。
+这是本地自动化接口，不是延后的远程 Gateway / WebUI 架构。
 
 ## 4. 请求路径（对话+工具）
 

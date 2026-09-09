@@ -240,7 +240,9 @@ PI-Desktop can also be controlled by an external MCP Agent. Start the app with
 `PI_DESKTOP_MCP_CONTROL=1`; then read the loopback endpoint and bearer token
 from `mcp-control.json` in the Electron user-data directory. The endpoint
 supports project/session/Agent workflows and a reviewed desktop operation
-catalog. It is disabled by default and never binds a non-loopback address.
+catalog. It is disabled by default, binds loopback only, and grants the
+calling local Agent the same authority as the desktop for those operations —
+`confirm: true` is not a user prompt.
 
 ### Subagents
 

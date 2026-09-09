@@ -2933,3 +2933,12 @@ D193 和 D194。
 - 端点仅限本地并在启动失败时降级，不创建远程认证、云同步或第二套权限实现。参见
   `02-architecture/01-architecture.md`、`03-runtime/01-ipc-protocol.md`、
   `05-security/01-security.md` 和 E2E-220。
+
+## 2026-09-10 —— 收紧本地 MCP 控制面边界（D372）
+
+- D370 的第一版目录仍暴露了原生选择器（`plugin/loadDev`）、provider/OAuth/MCP
+  密钥写入路径，以及无需确认的 `session/configure`，并把会话读取当成渲染器变更。
+- 决策 D372 修订 ADR 0203：第一版目录改为项目/会话/Agent/工作区流程加上已审查的
+  只读操作；剥离密钥形态参数；`session/configure` 视为危险；监听地址必须是回环；
+  协议版本协商而不是回显；包括 `structuredContent` 在内的结果有界；渲染器会话刷新
+  仅限变更操作。参见 E2E-220。

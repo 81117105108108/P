@@ -1405,8 +1405,10 @@ Electron Main 只绑定 `127.0.0.1`，并在 `/mcp` 提供 Streamable HTTP MCP�
 测试时端口可以设为 `0` 以请求临时端口；正常桌面配置使用默认端口或显式的本地端口。
 服务使用 MCP 协议版本 `2025-06-18`，支持 `initialize`、
 `notifications/initialized`、`ping`、`tools/list`、`tools/call`、
-`resources/list` 和 `logging/setLevel`。服务接受标准 POST 传输；由于不提供 SSE
-流，GET 会返回 405。
+`resources/list` 和 `logging/setLevel`。`initialize` 只协商 `2025-06-18` 或兼容的
+`2025-03-26`，不会回显不支持的客户端版本。监听地址在 bind 后必须仍是回环。
+服务接受标准 POST 传输；由于不提供 SSE 流，GET 会返回 405。客户端通过轮询
+`pi_session_get` 或 `pi_agent_status` 观察回合进度。
 
 ### 连接与认证
 
@@ -1459,12 +1461,16 @@ Electron 等待主机关闭之前会停止服务，并将清单标记为非活�
 }
 ```
 
-只有审查目录中注册到主进程的通道可用。不会暴露密钥读写通道，以及仅属于渲染器的
-原生选择器/对话框通道。每个目录项标记为 `read`、`write` 或 `dangerous`；通用危险
-操作，以及命名的删除会话/决议计划工具，都要求 `confirm: true`。所有调用仍会经过
-现有 IPC 处理器的校验、主机权限、工作区边界和错误模型。
+只有审查目录中注册到主进程的通道可用。第一版目录覆盖项目/会话/Agent/工作区流程
+和已审查的只读操作。不会暴露密钥 get/set/delete、provider/OAuth/MCP 密钥写入、
+设置写入、插件/市场安装、窗口/OS 控制，以及仅属于渲染器的原生选择器/对话框通道
+（包括 `plugin/loadDev`）。分发前会剥离参数中的密钥形态字段。每个目录项标记为
+`read`、`write` 或 `dangerous`；通用危险操作，以及命名的删除会话、配置会话和决议
+计划工具，都要求 `confirm: true`。该标志是 Agent 确认，不是桌面用户弹窗。所有调用
+仍会经过现有 IPC 处理器的校验、主机权限、工作区边界和错误模型。文本负载和
+`structuredContent` 都有大小上限。
 
-外部调用成功后，Electron Main 可以通过现有的
+**变更性** 外部调用成功后，Electron Main 可以通过现有的
 `pi-desktop/session/event/changed` 事件发送附加字段：
 
 ```ts

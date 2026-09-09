@@ -215,4 +215,4 @@ Each ADR includes:
 | 0201 | Explicit plugin project ids and host-owned session refresh | Accepted |
 | 0202 | Expose effective subagent thinking metadata | Accepted |
 | 0204 | Explicit unsigned macOS first-launch helper | Accepted |
-| 0203 | Local MCP control plane for desktop operations | Accepted |
+| 0203 | Local MCP control plane for desktop operations | Accepted (amended by D372) |
