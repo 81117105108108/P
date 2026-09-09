@@ -90,7 +90,9 @@
 > remote Agent Host, Gateway, and multi-binding control-plane target for a
 > future post-MVP milestone; D376 amends that target to one normative
 > WebSocket binding, a headless Agent Host module, and the full local
-> approval vocabulary. Neither changes the current exclusion.
+> approval vocabulary, and D377 schedules the SSH-tunnel remote Host first
+> while Gateway and browser access stay unscheduled. None of them changes the
+> current exclusion.
 
 ## Frozen Decisions
 

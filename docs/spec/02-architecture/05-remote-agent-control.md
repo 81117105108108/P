@@ -1,7 +1,7 @@
 # Remote Agent Control Target Architecture
 
 - Status: Target specification; post-MVP
-- Decision: D373 / ADR 0205, amended by D376
+- Decision: D373 / ADR 0205, amended by D376 and D377
 - Scope: Remote observation and control of a PI-Desktop Agent Host
 - Source of truth: `03-runtime/19-remote-agent-control-protocol.md`
 
@@ -27,20 +27,28 @@ The feature is a control-plane API. It is not remote desktop streaming, an
 arbitrary shell service, a provider proxy, or a replacement for the local
 MCP control plane.
 
+D377 fixes the order in which the topologies ship. The first remote
+deployment is the desktop itself acting as the Remote Client of a headless
+Host on another machine over an SSH tunnel, which is what users asked for in
+issues #176 and #140. The second is an outbound messaging integration that
+runs beside the Host (issue #100). Gateway routing and browser access remain
+fully specified here and in the protocol, but they are unscheduled until a
+demand signal or product decision schedules them.
+
 ## 2. Design principles
 
 1. **The Agent Host is the source of truth.** A client is a viewer and
    controller that may disconnect. A running turn is not owned by a browser
    tab or Electron window.
 2. **The semantic contract is transport-neutral.** `RACP-WS` is the normative
-   v1 binding. `RACP-HTTP` is the browser profile of the same contract.
-   `RACP-GRPC` is reserved and is not part of v1 conformance. Every shipped
-   binding exposes the same session, turn, event, approval, and attachment
-   semantics.
+   v1 binding and is first deployed over an SSH tunnel. `RACP-HTTP` is the
+   browser profile of the same contract and is unscheduled. `RACP-GRPC` is
+   reserved. Every shipped binding exposes the same session, turn, event,
+   approval, and attachment semantics.
 3. **Local boundaries remain local.** Rust host-core continues to speak only
-   stdio NDJSON JSON-RPC with its trusted Electron Main or standalone host
-   supervisor. The Node pi sidecar continues to reach host services through
-   the main-process proxy.
+   stdio NDJSON JSON-RPC with its trusted Electron Main or headless host
+   supervisor, wherever that host runs. The Node pi sidecar continues to
+   reach host services through the host-process proxy.
 4. **The public edge is a capability boundary.** Remote clients never receive
    raw `host.proxy`, Electron IPC, host-core RPC, provider credentials, or an
    arbitrary operation catalog.
@@ -53,8 +61,12 @@ MCP control plane.
    capabilities without changing the Agent Host's behavior.
 8. **The Host is headless.** Session and turn admission, the turn queue, the
    approval broker, the event log, and the snapshot builder live in a module
-   with no Electron dependency. Desktop IPC, the local MCP control plane, and
-   RACP are three callers of that one module.
+   with no Electron dependency. Desktop IPC, the local MCP control plane,
+   RACP, and the messaging integration are callers of that one module.
+9. **A remote session lives entirely on its Host.** Its transcript, tools,
+   workspace, permissions, and provider secrets are on the machine that runs
+   the Host. The desktop displays and controls it; it never executes remote
+   tools locally or stores the remote transcript beyond display state.
 
 ## 3. Reference implementations and design inputs
 
@@ -76,6 +88,10 @@ public projects:
   separates a canonical data model and abstract operations from JSON-RPC,
   gRPC, and HTTP/JSON bindings.
 
+The SSH-tunnel topology follows the VS Code Remote-SSH and JetBrains Gateway
+model: the server side is bootstrapped over the user's own SSH session and
+the client reaches it through a forwarded loopback port.
+
 PI-Desktop does not revive the withdrawn subagent A2A/Peer channel. ADR 0165
 continues to govern subagent coordination.
 
@@ -84,16 +100,19 @@ continues to govern subagent coordination.
 | Component | Responsibility | Must not own |
 |---|---|---|
 | Remote Client | Render state, send user intent, answer approvals and input requests | Workspace authority, provider credentials, final permission decisions, the prompt queue |
+| Desktop RACP client adapter (Electron Main) | Present a remote Host to the renderer through the existing `lib/api.ts` surface; own SSH bootstrap, pairing, and port forwarding | A second transcript store; local execution of remote tools |
 | Agent Host | Own sessions, turns, the per-session turn queue, event cursors, attachment records, tool execution, and lifecycle | Browser presentation state |
-| Headless Agent Host module (`packages/agent-host`) | Own session/turn admission, the turn queue, the approval broker, the in-memory event log, and the snapshot builder; expose one typed API to desktop IPC, local MCP, and RACP | Electron, renderer, or transport dependencies; a second permission or persistence implementation |
-| Gateway | Authenticate users, authorize routing, maintain Host links, rate-limit, audit, buffer attachment uploads transiently, and (reserved) push redacted approval and turn summaries | Provider secrets, durable transcript truth, arbitrary host-core access, attachment bytes beyond the upload window |
+| Headless Agent Host module (`packages/agent-host`) | Own session/turn admission, the turn queue, the approval broker, the in-memory event log, and the snapshot builder; expose one typed API to desktop IPC, local MCP, RACP, and integrations | Electron, renderer, or transport dependencies; a second permission or persistence implementation |
+| `pi-host` headless bundle | Run the module, the Node pi sidecar, and Rust host-core on a remote machine, bound to loopback, at the same version as the desktop | A desktop UI, plugin panels, another Host's secrets |
+| Messaging integration adapter | Subscribe to host-scope events in the Host process and relay redacted summaries to outbound channels; map a fixed command vocabulary to turn and approval operations | Its own permission policy, an inbound listener, raw transcript content |
+| Gateway (unscheduled) | Authenticate users, authorize routing, maintain Host links, rate-limit, audit, buffer attachment uploads transiently, and (reserved) push redacted summaries | Provider secrets, durable transcript truth, arbitrary host-core access, attachment bytes beyond the upload window |
 | Node pi sidecar | Run the pi Agent loop and provider streams | Remote authentication, workspace policy, secret storage |
 | Rust host-core | Own SQLite, tools, workspace boundaries, permissions and the pending permission table, secrets, and durable local records | Public network listeners |
 
 In the first phase the logical Agent Host is Electron Main hosting the
-headless module beside its supervised sidecars. The production target moves
-the same module and supervision into a standalone process group next to the
-workspace. The external contract is the same in both deployments.
+headless module beside its supervised sidecars. The `pi-host` bundle runs the
+same module and supervision on a remote machine. The external contract is the
+same in both deployments.
 
 ## 5. Deployment topologies
 
@@ -113,20 +132,42 @@ PI-Desktop
 The local MCP endpoint remains governed by ADR 0203. It is not a remote
 Gateway and cannot be configured to bind a LAN or public interface.
 
-### 5.2 Development or trusted LAN
+### 5.2 Remote Host over an SSH tunnel (first remote topology)
 
 ```text
-Remote Client ── WSS / SSH tunnel ── Agent Host
-                                      ├── pi sidecar
-                                      └── Rust host-core
+PI-Desktop (Remote Client)                    Remote machine
+├── Renderer ── lib/api.ts ─┐                 ┌── pi-host (headless Agent Host)
+├── Electron Main           │ RACP-WS over    │   ├── packages/agent-host
+│   ├── RACP client adapter ┼─ SSH port ──────┼──▶│   ├── Node pi sidecar
+│   └── local sessions      │ forward         │   │   └── Rust host-core (loopback)
+│       (unchanged)         │                 │   └── workspace, ~/.agents, secrets
+└── Rust host-core (local)  │                 └── sshd (user's own keys and config)
 ```
 
-Direct public exposure is not a supported production topology. A development
-host may bind loopback and be reached through an authenticated SSH or device
-tunnel. A trusted LAN deployment still requires TLS, authentication, and the
-same authorization checks as a Gateway deployment.
+Bootstrap runs over the user's own SSH session, never over RACP:
 
-### 5.3 Production Gateway
+1. The desktop opens SSH with the user's existing configuration and keys.
+2. It ensures a `pi-host` bundle for the remote platform is present at the
+   desktop's version, uploading or downloading it if needed.
+3. It starts `pi-host` bound to loopback and receives a single-use pairing
+   token over the SSH channel.
+4. It forwards a local port to the Host's loopback port and connects
+   `RACP-WS` with the header profile, exchanging the pairing token for a
+   device token that the desktop stores in its secure storage.
+5. The Host records the desktop device as `owner` of that Host.
+
+Provider configuration for the remote Host is written over the same SSH
+channel by the bootstrap step, as Host-local configuration. It never crosses
+RACP, so the secret boundary in `05-security/02-remote-control-security.md`
+§7 is unchanged.
+
+The Host binds loopback only. Plain `ws://` is accepted on that port only
+when both the bind address and the peer address are loopback and a valid
+device token is presented, because the SSH channel provides confidentiality
+and the SSH login already proves shell access to the machine. A non-loopback
+bind requires TLS and a device token exactly as before.
+
+### 5.3 Production Gateway (unscheduled)
 
 ```text
 Browser / Native Client ── HTTPS or WSS ── Remote Gateway
@@ -147,7 +188,8 @@ logical client connections so that server-initiated approval requests reach
 the right client and attachment bytes reach the Host without an inbound port.
 The Gateway keeps a short-lived route from a host identity to a live
 connection and may queue control-plane metadata, but it does not queue
-non-idempotent turn commands while the Agent Host is offline.
+non-idempotent turn commands while the Agent Host is offline. This topology
+is specified so the contract does not drift; it is not scheduled.
 
 ## 6. Ownership and authority
 
@@ -186,10 +228,36 @@ Only one turn may run in a session. Multiple viewers are allowed. Queued
 turns are Host state shared by every client, including the local desktop.
 Concurrent mutations are serialized by the Agent Host and rejected with a
 conflict when their expected session revision is stale. A turn started by a
-remote principal runs under the Host's remote permission ceiling
-(`03-runtime/19-remote-agent-control-protocol.md` §7.3).
+Gateway-routed principal runs under the Host's remote permission ceiling
+(`03-runtime/19-remote-agent-control-protocol.md` §7.3). A desktop device
+paired through the SSH bootstrap holds `owner` and is exempt from the
+ceiling, because SSH access to the machine already exceeds anything the
+ceiling withholds.
 
-### 6.3 Gateway ownership
+### 6.3 Remote session ownership split
+
+For a session on a remote Host:
+
+- **On the remote Host**: transcript and SQLite, turns and the queue, the
+  built-in tool catalog and workspace boundaries, permissions and session
+  grants, provider secrets, skills and subagent definitions from that
+  machine's `~/.agents`, MCP servers configured on that Host, and scheduled
+  tasks.
+- **On the desktop**: the window and shell, local sessions, the settings UI
+  for the local application, plugin panels, the browser preview, and the
+  display of notifications.
+- **Unavailable in a remote session in the first version**: desktop plugin
+  tools and desktop-configured user MCP servers, because they execute inside
+  Electron Main today through the `plugins.execute` dispatch. A remote
+  session sees only the remote Host's catalog. A reverse tool relay is
+  reserved, not specified.
+- **Work panel**: file listing, file reads, and the working-tree diff use the
+  remote-host profile operations in
+  `03-runtime/19-remote-agent-control-protocol.md` §6.2 against the remote
+  session root; the terminal must run on the remote machine and is a
+  rollout R2 design-gate item; the browser preview stays local.
+
+### 6.4 Gateway ownership (unscheduled)
 
 The Gateway owns identity-to-host routing, not workspace state. It may store:
 
@@ -209,7 +277,7 @@ retention.
 The Gateway's identity source is either an OIDC/OAuth 2.0 provider or the
 first-party product account service; both satisfy
 `05-security/02-remote-control-security.md` §3.1, and the choice is recorded
-when rollout R3 starts.
+when the Gateway milestone is scheduled.
 
 ## 7. Transport profiles
 
@@ -219,10 +287,10 @@ bindings:
 | Profile | Intended client | Direction | Status |
 |---|---|---|---|
 | Local stdio JSON-RPC | Electron Main and sidecars | Full duplex | Existing; unchanged |
-| `RACP-WS` JSON-RPC over WSS | Native clients, Electron, browser clients on the cookie profile | Full duplex | Normative v1 binding |
-| `RACP-HTTP` HTTP/JSON + SSE | Browser and simple integrations | Commands plus server stream | Browser profile; required before a browser client ships |
+| `RACP-WS` JSON-RPC over WSS | Desktop as Remote Client over SSH, native clients, Electron | Full duplex | Normative v1 binding; first deployed over the SSH tunnel |
+| `RACP-HTTP` HTTP/JSON + SSE | Browser and simple integrations | Commands plus server stream | Browser profile; unscheduled |
 | `RACP-GRPC` gRPC over TLS | Native service clients | Unary plus server stream | Reserved; not in v1 conformance |
-| Host link `racp-hostlink.v1` | Gateway to Host | Multiplexed full duplex | Relay profile over `RACP-WS` framing |
+| Host link `racp-hostlink.v1` | Gateway to Host | Multiplexed full duplex | Relay profile over `RACP-WS` framing; unscheduled with the Gateway |
 
 The binding-neutral contract is specified in
 `03-runtime/19-remote-agent-control-protocol.md`. A binding may be added only
@@ -302,12 +370,14 @@ receives the same decision vocabulary the desktop offers: `allow-once`,
 `allow-session`, and `deny` for tools; `approve` with an explicit permission
 mode, or `reject`, for Plan and Goal contracts; and per-question answers or
 skips for asktool prompts. A Plan or Goal approval is a session-level
-transition that outlives the submitting turn. A remote client cannot change a
-durable mode, select an unadvertised permission mode, or execute a tool
-directly, and a remote-initiated turn never exceeds the Host's remote
-permission ceiling. Approval lifetime is Host policy: the local default stays
-120 seconds then deny, and a Host with remote control enabled may configure a
-longer bounded lifetime because a remote approver is rarely at the keyboard.
+transition that outlives the submitting turn. A remote client cannot select
+an unadvertised permission mode or execute a tool directly; changing a
+durable mode uses `session/configure` from the remote-host profile and is
+idle-only, exactly as locally. A Gateway-routed turn never exceeds the Host's
+remote permission ceiling. Approval lifetime is Host policy: the local
+default stays 120 seconds then deny, and a Host with remote control enabled
+may configure a longer bounded lifetime because a remote approver is rarely
+at the keyboard.
 
 ## 10. Failure and recovery model
 
@@ -315,8 +385,9 @@ longer bounded lifetime because a remote approver is rarely at the keyboard.
 |---|---|
 | Client disconnect | Keep the turn running; retain durable events within the replay window |
 | Client reconnect | Authenticate again, attach, replay from cursor or return snapshot |
+| SSH tunnel drop | The desktop adapter re-establishes the forward and resumes by cursor; the remote turn continues |
 | Gateway disconnect | Agent Host retries the Host link with bounded exponential backoff; local turns continue |
-| Agent Host unavailable | Gateway rejects new mutations with `AGENT_UNAVAILABLE`; it does not replay them automatically |
+| Agent Host unavailable | Reject new mutations with `AGENT_UNAVAILABLE`; never replay them automatically |
 | Agent Host restart | New epoch; clients resync from a snapshot; queued turns are gone and the snapshot shows an empty queue; nothing is replayed |
 | Agent Host crash | Existing host recovery rules apply; interrupted work is never replayed automatically |
 | Duplicate mutation | Return the original idempotent result for the same principal and key |
@@ -343,10 +414,15 @@ clients receive open requests, and the renderer's in-memory prompt queue is
 replaced by the Host-owned turn queue before more than one client can control
 a session.
 
-The standalone Agent Host extraction moves the module and supervision into a
-new process without changing the wire contract. The migration is complete
-when the local desktop, a standalone host, and a Gateway route expose the same
-session/turn/event behavior.
+The SSH-tunnel milestone adds two pieces without changing the wire contract:
+the `pi-host` bundle, which packages the module with the Node sidecar and the
+platform's host-core binary, and the desktop RACP client adapter, which sits
+under `lib/api.ts` so the renderer needs no transport knowledge. The
+messaging integration is a further caller of the module inside the Host
+process and needs no transport at all.
+
+The migration is complete when the local desktop, a `pi-host` bundle, and,
+once scheduled, a Gateway route expose the same session/turn/event behavior.
 
 ## 12. Acceptance criteria
 
@@ -362,14 +438,20 @@ session/turn/event behavior.
 6. Permission, contract, and input requests can be answered remotely with the
    full local decision vocabulary without bypassing host policy, and a client
    that attaches late sees requests raised before it attached.
-7. Rust host-core remains unreachable from the network.
+7. Rust host-core remains unreachable from the network, on the desktop and on
+   a remote machine.
 8. Every shipped binding produces equivalent domain results for the same
    command sequence.
 9. The current local stdio JSON-RPC and loopback MCP paths remain unchanged.
-10. A remote-initiated turn never runs above the Host's remote permission
+10. A Gateway-routed turn never runs above the Host's remote permission
     ceiling.
 11. The headless Agent Host module runs its test suite without Electron, and
     desktop IPC, local MCP, and RACP call the same module.
+12. A remote session's transcript, tools, workspace, and secrets live on the
+    remote Host; the desktop stores nothing from the remote workspace beyond
+    display state.
+13. A remote session's tool catalog contains only the remote Host's tools;
+    desktop plugin tools never execute against a remote workspace.
 
 ## 13. Amendment history
 
@@ -379,3 +461,11 @@ headless Agent Host module as the first deliverable, the Host-owned turn
 queue, `{ epoch, sequence }` cursors with ephemeral deltas, the full local
 approval vocabulary, the Host link relay profile, the remote permission
 ceiling, and the remote approval lifetime policy.
+
+D377 (2026-09-10) re-sequenced the topologies around recorded demand: the
+SSH-tunnel remote Host with the desktop as Remote Client ships first, the
+outbound messaging integration second, and the Gateway and browser
+topologies stay specified but unscheduled. It added the `pi-host` bundle,
+the desktop RACP client adapter, the SSH bootstrap and loopback rule, the
+remote session ownership split, and the ceiling exemption for SSH-paired
+owner devices.

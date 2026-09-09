@@ -1,8 +1,8 @@
 # ADR 0205: Remote Agent Control Uses a Dedicated Host Boundary
 
-- Status: Accepted for implementation (post-MVP); amended by D376
+- Status: Accepted for implementation (post-MVP); amended by D376 and D377
 - Date: 2026-09-09
-- Decision: D373 (amended by D376)
+- Decision: D373 (amended by D376 and D377)
 - Related: ADR 0004, ADR 0011, ADR 0203, ADR 0165,
   `02-architecture/05-remote-agent-control.md`,
   `03-runtime/19-remote-agent-control-protocol.md`,
@@ -178,3 +178,47 @@ required more than v1 can carry. The following changes apply to decisions 3,
 12. **Catalog additions.** `host/list`, `project/list`, `session/history`,
     host-scope event subscriptions, and `turn/cancel` are added; deferred
     local operations are listed by name so no binding invents a substitute.
+
+## Amendment (D377)
+
+Date: 2026-09-10. Recorded demand, not transport breadth, now orders the
+milestones. Issues #176 and #140 ask to operate a project on a remote Linux
+or WSL machine from the local desktop; issue #100 asks for task and approval
+notifications on messaging channels with simple commands back; no recorded
+request asks for a browser or phone client of the desktop.
+
+1. **First remote topology: the desktop as Remote Client of a `pi-host`
+   over an SSH tunnel.** The `pi-host` bundle packages the headless module,
+   the Node sidecar, and the platform's host-core binary at the desktop's
+   version. It is bootstrapped and paired over the user's own SSH session,
+   binds loopback only, and is reached through an SSH port forward on the
+   `RACP-WS` header profile. Plain `ws://` is accepted only when bind and
+   peer are loopback and a device token is presented.
+2. **Desktop RACP client adapter.** Electron Main presents a remote Host to
+   the renderer through the existing `lib/api.ts` surface; the renderer
+   stays transport-agnostic and hides uncovered features by capability.
+3. **Remote-host profile (RACP v1.1).** `session/configure`, `session/fork`,
+   `session/rename`, `session/delete`, `session/compact`, `workspace/list`,
+   `workspace/read`, and `workspace/diff` join the catalog so mode, model,
+   and the work panel's files and diff work against a remote session.
+4. **Remote session ownership split.** Transcript, tools, workspace,
+   permissions, provider secrets, `~/.agents` definitions, MCP servers, and
+   scheduled tasks live on the remote Host. Desktop plugin tools and desktop
+   MCP servers are unavailable in remote sessions in the first version; a
+   reverse tool relay and `terminal/*` streaming are reserved. Provider
+   configuration for the remote Host is written over the SSH bootstrap
+   channel, never through RACP.
+5. **Ceiling exemption.** A desktop device paired through the SSH bootstrap
+   holds `owner` and is exempt from the remote permission ceiling, because
+   SSH access already exceeds anything the ceiling withholds.
+6. **Second scheduled milestone: outbound messaging integration.** An
+   adapter beside the Host relays redacted event summaries to webhook,
+   Telegram, and Slack through outbound channels and maps a fixed command
+   vocabulary to turn and approval operations under the linked principal's
+   roles. It opens no listener and never blocks a turn.
+7. **Unscheduled.** The Gateway with its Host link, the browser profile with
+   its cookie authentication, and the reserved gRPC binding keep their
+   specifications and are scheduled only by a later product decision.
+8. **Acceptance.** E2E-232 and E2E-233 are the acceptance targets of the
+   scheduled milestones; E2E-227 and E2E-228 apply when their milestones are
+   scheduled.

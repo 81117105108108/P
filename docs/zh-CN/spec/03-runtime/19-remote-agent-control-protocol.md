@@ -3,7 +3,7 @@
 - 协议：`PI Remote Agent Control Protocol`（`RACP`）
 - 版本：`1.0`
 - 状态：目标规格，属于 MVP 之后
-- 决策：D373 / ADR 0205，经 D376 修订
+- 决策：D373 / ADR 0205，经 D376 与 D377 修订
 - 英文源规格：[英文源规格](/spec/03-runtime/19-remote-agent-control-protocol)
 
 英文页面是规范源。本页保留协议字段、方法名、错误码和代码结构，便于
@@ -13,7 +13,8 @@
 
 RACP 控制 Agent Host，不是 Electron IPC、`host.proxy`、Rust host-core
 协议、provider proxy、本地 MCP 或子代理 A2A/Peer 协议。RACP v1 是桌面本地
-能力的严格子集；本地有而 v1 暂不开放的操作在 §3 的保留表中列名。
+能力的严格子集；§3 的远端 Host profile 是让桌面本身成为另一台机器上 `pi-host`
+的客户端所需的 v1.1 扩展（D377），仍推迟的操作在保留表中列名。
 
 | Term | Meaning |
 |---|---|
@@ -46,7 +47,7 @@ HTTP/SSE 使用 POST 命令和带 `Last-Event-ID` 的事件流。资源以
 ```
 
 ```json
-{"protocolVersion":"1.0","capabilities":{"turnQueue":true,"hostEvents":true},"policy":{"remoteMaxPermissionMode":"ask","approvalLifetimeMs":120000}}
+{"protocolVersion":"1.0","capabilities":{"turnQueue":true,"hostEvents":true,"remoteHostProfile":true},"bindings":["RACP-WS"],"policy":{"remoteMaxPermissionMode":"ask","approvalLifetimeMs":120000}}
 ```
 
 ```ts
@@ -189,15 +190,30 @@ Host 队列；持久事件使用每 epoch 递增且不复用的 `sequence`；附
 | `session/revoke` | owner | 撤销客户端或会话成员资格 |
 | `session/archive` | owner | 归档空闲会话 |
 
-v1 保留但不开放的本地操作：
+远端 Host profile（v1.1，rollout R2 必需）：当桌面是另一台机器上 `pi-host` 的
+客户端时，renderer 期望本地拥有的会话控制。这些操作从 v1.1 起属于契约，通过
+`remoteHostProfile` 能力公布，各自保持本地规则：配置与 fork 仅限空闲，删除仅限
+owner，工作区读取都按会话持久根、Host 忽略规则和 `PATH_OUTSIDE_WORKSPACE` 边界解析。
+
+| Operation | Role | Behavior |
+|---|---|---|
+| `session/configure` | controller | 空闲时修改模式、provider/模型、思考等级或权限模式，规则同 `pi-desktop/session/configure` |
+| `session/fork` | controller | 将空闲会话（可指定消息 id）fork 为新的空闲会话 |
+| `session/rename` | controller | 重命名会话 |
+| `session/delete` | owner | 删除会话及其在 Host 上的 transcript |
+| `session/compact` | controller | 对活动会话执行手动上下文检查点 |
+| `workspace/list` | viewer | 有界列出会话根下的条目，遵守 Host 忽略规则 |
+| `workspace/read` | viewer | 读取会话根下的一个有界文件，图片以 data URL 返回 |
+| `workspace/diff` | viewer | 返回会话根的工作树 diff |
+
+仍推迟的本地操作：
 
 | Reserved operation | Local equivalent | Why deferred |
 |---|---|---|
-| `session/configure` | `pi-desktop/session/configure` | 远程修改模式、模型、思考等级或权限模式需要单独的策略评审 |
-| `session/fork` | `session.fork` | fork 语义和快照边界目前仅空闲时由 UI 驱动 |
-| `session/rename`、`session/delete` | 会话组织 IPC | 观察与控制不需要 |
-| 逐回合模型或思考等级覆盖 | composer 下一回合配置 | v1 由 Host 选择生效的 provider 配置 |
-| provider、secret 和 vendor 账号管理 | settings 与 secrets IPC | 明确超出范围；凭据管理能力需单独决策 |
+| `terminal/*` 流式 | 工作面板终端 | pty 必须在远端机器运行；R2 设计门槛决定 R2 还是 R2.1 |
+| `tools/relay` 反向通道 | 经 `plugins.execute` 的桌面插件工具与用户 MCP 服务器 | 首版远程会话只看到远端 Host 的目录 |
+| 逐回合模型或思考等级覆盖 | composer 下一回合配置 | `session/configure` 覆盖空闲情形；逐回合覆盖需单独策略评审 |
+| provider、secret 和 vendor 账号管理 | settings 与 secrets IPC | 明确超出范围；远端 Host 的 provider 经 SSH 引导通道配置 |
 
 ## 4. 游标、队列、审批和附件
 
@@ -243,8 +259,12 @@ Plan/Goal 审批为带显式 `permissionMode` 的 `approve` 或 `reject`，且�
 | Resolve approval | `POST /v1/approvals/{approvalId}:respond` |
 | Resolve input | `POST /v1/inputs/{inputId}:respond` |
 
-`RACP-WS` 是 v1 唯一规范绑定；`RACP-HTTP` 是浏览器 profile，在任何浏览器客户端
-发布前必须交付；`RACP-GRPC` 保留，若采用则 `.proto` 由 typebox 来源生成。浏览器
+`RACP-WS` 是 v1 唯一规范绑定，首个部署（rollout R2）是远端机器上只绑定 loopback
+的 `pi-host`，桌面经 SSH 端口转发以 header profile 和 SSH 引导配对得到的设备 token
+连接，绑定与对端都是 loopback 时才接受明文 `ws://`；`RACP-HTTP` 是浏览器 profile，
+在任何浏览器客户端发布前必须交付，但浏览器里程碑不排期（D377），映射保留以免
+契约漂移；`RACP-GRPC` 保留，若采用则 `.proto` 由 typebox 来源生成。Host link 属于
+不排期的 Gateway 里程碑，SSH 隧道拓扑不使用它。浏览器
 无法在 WebSocket/EventSource 上设置请求头，因此非浏览器客户端用
 `Authorization` 头（header profile），浏览器客户端用 HttpOnly cookie + Origin 白名单
 + CSRF token（cookie profile）；两者都禁止 URL 中的 token。Host link
@@ -301,4 +321,7 @@ idempotency key 时返回原结果；使用相同 key 发送不同输入则失�
 审批词汇、引入 epoch 与瞬态事件、加入 Host 队列与 `permissions.pending`、
 新增 `host/list`、`project/list`、`session/history`、`turn/stop`、`turn/cancel`
 和 Host 流订阅、收敛为单一规范绑定与单一 IDL、定义浏览器认证 profile、Host link
-中继、远程权限上限和远程审批寿命。完整状态机、示例和验收条款见英文源规格。
+中继、远程权限上限和远程审批寿命。D377 又加入远端 Host profile、`RACP-WS` 的
+SSH 隧道部署与 loopback 规则、SSH 配对 owner 设备的上限豁免，并把 `RACP-HTTP`、
+cookie profile 与 Host link 标记为不排期，把 `terminal/*` 与反向工具中继移入保留表。
+完整状态机、示例和验收条款见英文源规格。

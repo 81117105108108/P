@@ -2968,3 +2968,18 @@ D193 和 D194。
   `ask`；审批寿命成为面向远程订阅者的有界 Host 策略；Host link 是中继 profile；浏览器
   客户端使用 cookie profile；Gateway 身份源在 R3 时决定；首个部署为单租户。参见修订后的
   远程架构、协议、安全、发布规格以及 E2E-221 至 E2E-230。
+
+## 2026-09-10 —— 按已记录的需求排序远程控制（D377）
+
+- #176 与 #140 要求从本地桌面操作远程 Linux 或 WSL 机器上的项目；#100 要求把任务与
+  审批通知推送到 Telegram、微信、Slack 或 Webhook 并能回传简单指令。没有任何已记录的
+  请求要求浏览器或手机端控制桌面，而维护者已公开承诺 #100。
+- 决策 D377 第二次修订 ADR 0205：rollout R2 改为 SSH 隧道远端 Host，`pi-host` 包通过
+  用户自己的 SSH 会话引导与配对，只绑定 loopback，经端口转发以 `RACP-WS` header profile
+  连接，并由不变的 renderer 通过 `lib/api.ts` 下的桌面 RACP 客户端适配层渲染。RACP 新增
+  远端 Host profile（`session/configure`、`session/fork`、`session/rename`、
+  `session/delete`、`session/compact`、`workspace/list`、`workspace/read`、
+  `workspace/diff`）。远程会话完全存在于其 Host 上；首版中桌面插件工具和桌面 MCP 服务器
+  在远程会话不可用，provider 配置经 SSH 写入，SSH 配对的桌面设备豁免远程权限上限。R3 改为
+  Host 旁的出站消息集成。Gateway、浏览器 profile 和 gRPC 绑定保留规格但不排期。参见修订后
+  的远程规格以及 E2E-232 / E2E-233。

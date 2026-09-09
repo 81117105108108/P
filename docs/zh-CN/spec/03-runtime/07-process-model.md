@@ -175,8 +175,9 @@ sidecar/host 关闭序列在更新程序替换应用程序之前运行。
 远程控制不会给 Rust host-core 或当前 renderer IPC 表面增加公共监听器。目标 Agent
 Host 是无头模块（`packages/agent-host`），拥有会话与回合准入、回合队列、审批代理和
 事件日志，与 Node pi sidecar、Rust host-core 一起受监督，其上是已认证的 RACP 服务
-（D376）。生产环境中 Host 发起出站 Gateway 链路；Gateway 负责路由已认证客户，
-但不拥有工作区状态。
+（D376）。首个远程部署（D377）把该模块作为无头 `pi-host` 运行在远端机器上，只绑定
+loopback，桌面经 SSH 端口转发连接。未排期的 Gateway 拓扑会增加出站 Host link；
+Gateway 负责路由已认证客户，但不拥有工作区状态。
 
 详细拓扑、所有权和迁移边界见
 [`02-architecture/05-remote-agent-control.md`](/zh-CN/spec/02-architecture/05-remote-agent-control)。

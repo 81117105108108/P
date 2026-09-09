@@ -3,9 +3,10 @@
 - Protocol name: `PI Remote Agent Control Protocol` (`RACP`)
 - Version: `1.0`
 - Status: Target specification; post-MVP
-- Decision: D373 / ADR 0205, amended by D376
-- Transport profiles: `RACP-WS` (normative v1 binding), `RACP-HTTP`
-  (browser profile), `RACP-GRPC` (reserved)
+- Decision: D373 / ADR 0205, amended by D376 and D377
+- Transport profiles: `RACP-WS` (normative v1 binding; first deployed over an
+  SSH tunnel), `RACP-HTTP` (browser profile; unscheduled), `RACP-GRPC`
+  (reserved)
 
 This document is normative for the remote control contract. It defines the
 operation model once and maps it to transports. It does not change the
@@ -32,9 +33,11 @@ workspace selection, tool policy, permission decisions, persistence, and
 provider credentials. A RACP server MUST route a request through those same
 authorities rather than reproducing them in a Gateway or client.
 
-RACP v1 is a strict subset of what the local desktop can do. Operations the
-desktop offers locally but v1 defers are listed in §6.2 so that no binding
-invents them under another name.
+RACP v1 is a strict subset of what the local desktop can do. The remote-host
+profile in §6.2 is the v1.1 addition that lets the desktop itself act as the
+Remote Client of a `pi-host` on another machine (D377); operations that stay
+deferred are listed in §6.3 so that no binding invents them under another
+name.
 
 ## 2. Terminology
 
@@ -116,8 +119,9 @@ The Host returns:
       "turnQueue": true,
       "hostEvents": true,
       "history": true,
+      "remoteHostProfile": true,
       "notifications": false,
-      "bindings": ["RACP-WS", "RACP-HTTP"]
+      "bindings": ["RACP-WS"]
     },
     "limits": {
       "maxFrameBytes": 1048576,
@@ -545,19 +549,39 @@ to this same catalog.
 The server MUST reject unknown operations with `METHOD_NOT_FOUND`. A client
 MUST use capability discovery rather than assuming optional operations exist.
 
-### 6.2 Deferred operations
+### 6.2 Remote-host profile (v1.1, required by rollout R2)
 
-The desktop offers these locally. RACP v1 does not expose them; the names are
-reserved so a later minor version adds them under the same catalog and no
-binding invents a substitute.
+When the desktop is the Remote Client of a `pi-host` on another machine, the
+renderer expects the session controls it has locally. These operations are
+part of the contract from v1.1 and are advertised through the
+`remoteHostProfile` capability. Each one keeps its local rule: configuration
+and fork are idle-only, deletion is owner-only, and every workspace read is
+resolved against the Session's durable root with the Host's ignore rules and
+`PATH_OUTSIDE_WORKSPACE` boundary.
+
+| Operation | Role | Behavior |
+|---|---|---|
+| `session/configure` | controller | Change mode, provider/model, thinking level, or permission mode while idle; same rules as `pi-desktop/session/configure` |
+| `session/fork` | controller | Fork an idle session, optionally through a message id, into a new idle session |
+| `session/rename` | controller | Rename a session |
+| `session/delete` | owner | Delete a session and its transcript on the Host |
+| `session/compact` | controller | Run a manual context checkpoint on the active session |
+| `workspace/list` | viewer | List entries under the session root, bounded, honoring the Host ignore rules |
+| `workspace/read` | viewer | Read one bounded file under the session root; images as data URLs |
+| `workspace/diff` | viewer | Return the working-tree diff of the session root |
+
+### 6.3 Deferred operations
+
+The desktop offers these locally. RACP does not expose them yet; the names
+are reserved so a later minor version adds them under the same catalog and
+no binding invents a substitute.
 
 | Reserved operation | Local equivalent | Why deferred |
 |---|---|---|
-| `session/configure` | `pi-desktop/session/configure` | Changing mode, model, thinking level, or permission mode remotely needs its own policy review |
-| `session/fork` | `session.fork` | Fork semantics and snapshot boundaries are idle-only and UI-driven today |
-| `session/rename`, `session/delete` | session organization IPC | Not needed for observation and control |
-| per-turn model or thinking override | composer next-turn configuration | The Host chooses the effective provider configuration in v1 |
-| provider, secret, and vendor account management | settings and secrets IPC | Explicitly out of scope; a credential-management capability would be a separate decision |
+| `terminal/*` streaming | work-panel terminal | The pty must run on the remote machine; rollout R2 design gate decides R2 or R2.1 |
+| `tools/relay` reverse channel | desktop plugin tools and user MCP servers via `plugins.execute` | A remote session sees only the remote Host's catalog in the first version |
+| per-turn model or thinking override | composer next-turn configuration | `session/configure` covers the idle case; per-turn overrides need their own policy review |
+| provider, secret, and vendor account management | settings and secrets IPC | Explicitly out of scope; remote Host providers are configured over the SSH bootstrap channel |
 
 ## 7. Core operation shapes
 
@@ -694,7 +718,9 @@ principal runs under the lower of `Session.permissionMode` and the Host's
 `accept-edits` < `auto`) unless the principal also holds `approver` and Host
 policy allows approvers to use the session's own mode. The result reports the
 applied value as `effectivePermissionMode`; the durable session mode is never
-changed by the ceiling.
+changed by the ceiling. A desktop device paired through the SSH bootstrap
+holds `owner` and is exempt from the ceiling
+(`05-security/02-remote-control-security.md` §4.3).
 
 ### 7.4 `turn/stop`, `turn/interrupt`, and `turn/cancel`
 
@@ -913,6 +939,14 @@ binding defines two authentication profiles:
 
 A token in the URL is rejected in both profiles.
 
+First deployment (rollout R2): a `pi-host` binds loopback on the remote
+machine and the desktop reaches it through an SSH port forward on the header
+profile with a device token obtained by the SSH bootstrap pairing. Plain
+`ws://` is accepted on that port only when both the bind address and the peer
+address are loopback; the SSH channel provides confidentiality
+(`05-security/02-remote-control-security.md` §5.1). The cookie profile ships
+with the unscheduled browser milestone.
+
 ### 11.2 HTTP/JSON + SSE (`RACP-HTTP`, browser profile)
 
 | Operation family | HTTP mapping |
@@ -942,8 +976,10 @@ MAY instead consume the stream through `fetch` with header authentication, in
 which case it sends `Last-Event-ID` as a request header itself and implements
 its own reconnect.
 
-`RACP-HTTP` is required before any browser client ships and is delivered in
-rollout R4. It shares the conformance fixture with `RACP-WS`.
+`RACP-HTTP` is required before any browser client ships. The browser
+milestone is unscheduled (D377); the mapping is retained so the contract does
+not drift, and the binding joins the conformance fixture with `RACP-WS` when
+it is scheduled.
 
 ### 11.3 gRPC (`RACP-GRPC`, reserved)
 
@@ -962,6 +998,10 @@ Reserving gRPC rather than requiring it keeps v1 at one interactive binding
 and one browser profile; the Host link (§11.4) uses `RACP-WS` framing.
 
 ### 11.4 Host link relay profile
+
+The Host link belongs to the unscheduled Gateway milestone (D377). It is
+specified here so the contract does not drift; the SSH-tunnel topology does
+not use it.
 
 The Host link is the outbound connection from an Agent Host to a Gateway. It
 is not a third client binding: it multiplexes logical client connections onto
@@ -1117,3 +1157,15 @@ D376 (2026-09-10) revised the D373 draft before implementation:
   permission ceiling, and the remote approval lifetime policy were defined;
 - `replayComplete`, a single `revision`, `ItemSummary`, and the
   `APPROVAL_EXPIRED` mapping replaced the inconsistent draft names.
+
+D377 (2026-09-10) re-sequenced the deployments and extended the catalog:
+
+- the remote-host profile (§6.2) with `session/configure`, `session/fork`,
+  `session/rename`, `session/delete`, `session/compact`, `workspace/list`,
+  `workspace/read`, and `workspace/diff`, advertised as `remoteHostProfile`;
+- the SSH-tunnel deployment of `RACP-WS` with the loopback rule and the
+  ceiling exemption for SSH-paired owner devices;
+- `RACP-HTTP`, the cookie profile, and the Host link marked as belonging to
+  unscheduled milestones; and
+- `terminal/*` and the reverse tool relay moved to the deferred list.
+

@@ -4137,3 +4137,25 @@ D193, and D194.
   the Gateway identity source is decided at R3; and the first deployment is
   single-tenant. See the amended remote architecture, protocol, security,
   and rollout specifications and E2E-221 through E2E-230.
+
+## 2026-09-10 — Sequence remote control around recorded demand (D377)
+
+- Issues #176 and #140 ask to operate projects on a remote Linux or WSL
+  machine from the local desktop; issue #100 asks for task and approval
+  notifications on Telegram, WeChat, Slack, or a webhook with simple commands
+  back. No recorded request asks for a browser or phone client of the
+  desktop, and the maintainer has publicly committed to #100.
+- Decision D377 amends ADR 0205 a second time: rollout R2 becomes the
+  SSH-tunnel remote Host, with a `pi-host` bundle bootstrapped and paired over
+  the user's own SSH session, bound to loopback, reached through a port
+  forward on the `RACP-WS` header profile, and rendered by the unchanged
+  renderer through a desktop RACP client adapter under `lib/api.ts`. RACP
+  gains the remote-host profile (`session/configure`, `session/fork`,
+  `session/rename`, `session/delete`, `session/compact`, `workspace/list`,
+  `workspace/read`, `workspace/diff`). A remote session lives entirely on its
+  Host; desktop plugin tools and desktop MCP servers are unavailable there in
+  the first version, provider configuration is written over SSH, and the
+  SSH-paired desktop device is exempt from the remote permission ceiling.
+  R3 becomes the outbound messaging integration beside the Host. The Gateway,
+  browser profile, and gRPC binding stay specified but unscheduled. See the
+  amended remote specifications and E2E-232 / E2E-233.
