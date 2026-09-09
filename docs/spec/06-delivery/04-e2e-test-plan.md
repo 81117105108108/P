@@ -5466,6 +5466,9 @@ Each scenario is documented in this format:
       Composer, grouped by provider, with an inherit-session option, not a
       free-typed `provider/model` input. Pin a configured model, save, and
       confirm the document's `model:` frontmatter is `vendorKey-or-name/modelId`.
+      When two configured providers share a generic or vendor key, confirm each
+      provider remains a separate group and its model pin uses a unique display
+      name (or provider id when the names also collide).
       Edit a definition whose pin is no longer configured and confirm that pin
       remains selected instead of snapping to inherit.
   12. Narrow the window to the toolbar's stacking breakpoint. Confirm the
@@ -5497,8 +5500,9 @@ Each scenario is documented in this format:
     and revealing a project-level skill opens that project's file rather than a
     global file sharing its id. The Subagents editor Model field is a grouped
     select of configured runnable models plus inherit-session, not a free-typed
-    id; saving writes `vendorKey-or-name/modelId`, and an unconfigured existing
-    pin remains selected.
+    id; saving writes `vendorKey-or-name/modelId` (using a unique provider name
+    or id when aliases collide), and an unconfigured existing pin remains
+    selected.
   - Capability files contain configuration/frontmatter only; enablement is
     persisted in the app-local `agent-capabilities` state files.
   - Project records shadow global records by id or name even when disabled,

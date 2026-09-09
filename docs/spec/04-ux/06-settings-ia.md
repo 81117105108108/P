@@ -356,7 +356,9 @@ system while preserving their different data ownership:
   an inherit-session option. It does not take a free-typed `provider/model`
   id. A pin that is no longer configured remains visible so editing does not
   silently drop it. The stored frontmatter value is still
-  `vendorKey-or-name/modelId`.
+  `vendorKey-or-name/modelId`; generic or colliding provider aliases use a
+  unique display name, then the stored provider id, to keep each provider's
+  choices distinct.
 
 ### Instructions (`instructions` tab)
 - Edit the global instruction Markdown used by every PI-Desktop Agent session.
