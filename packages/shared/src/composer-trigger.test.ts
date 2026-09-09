@@ -6,8 +6,10 @@ import {
   formatCommandInsert,
   formatFileInsert,
   normalizeLargePasteThreshold,
+  restoreInlineComposerFileReferenceTokens,
   serializeComposerFileReferences,
   serializeInlineComposerFileReferences,
+  stripInlineComposerFileReferenceTokens,
 } from "./composer-trigger.js";
 
 describe("detectTrigger — slash mode", () => {
@@ -216,6 +218,28 @@ describe("compact file references", () => {
         { path: "src/b.ts", token: "\uE002" },
       ]),
     ).toBe("@src/a.ts @src/b.ts inspect");
+  });
+
+  it("keeps inline chips intact while enhancing their surrounding text", () => {
+    const references = [{ path: "/tmp/image.png", token: "\uE001" }];
+    const source = "\uE001make this clearer";
+    expect(stripInlineComposerFileReferenceTokens(source, references)).toBe(
+      "make this clearer",
+    );
+    expect(
+      restoreInlineComposerFileReferenceTokens(
+        source,
+        "\uE001Make this much clearer",
+        references,
+      ),
+    ).toBe("\uE001Make this much clearer");
+    expect(
+      restoreInlineComposerFileReferenceTokens(
+        source,
+        "Make this much clearer",
+        references,
+      ),
+    ).toBe("\uE001Make this much clearer");
   });
 
   it("normalizes large-paste thresholds to the supported range", () => {

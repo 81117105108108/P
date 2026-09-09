@@ -22,8 +22,10 @@ import {
   modelIdsMatch,
   normalizeLargePasteThreshold,
   PERMISSION_MODES,
+  restoreInlineComposerFileReferenceTokens,
   serializeComposerFileReferences,
   serializeInlineComposerFileReferences,
+  stripInlineComposerFileReferenceTokens,
 } from "@pi-desktop/shared";
 import { materializeDraftSession, useAppStore } from "../stores/app-store";
 import type { ComposerDraftSnapshot } from "../lib/composer-smart-stop";
@@ -704,11 +706,9 @@ export function Composer({
   const activeFileReferences = fileReferences.filter(
     (fileReference) => fileReference.sessionId === referenceSessionId,
   );
-  // Chips are inline now: every attachment occupies one sentinel character in
-  // the draft, so "inline" is the only kind of reference.
-  const activeInlineFileReferences = activeFileReferences.filter(
-    (fileReference) =>
-      Boolean(fileReference.token && value.includes(fileReference.token)),
+  const enhancementDraft = stripInlineComposerFileReferenceTokens(
+    value,
+    activeFileReferences,
   );
   const referenceByToken = useMemo(() => {
     const map = new Map<string, ComposerFileReference>();
@@ -1517,14 +1517,17 @@ export function Composer({
 
   const enhancePrompt = async () => {
     const sourceText = value;
+    const textToEnhance = stripInlineComposerFileReferenceTokens(
+      sourceText,
+      activeFileReferences,
+    );
     const sourceKey = draftKey;
     const sourceVersion = enhancementVersionRef.current;
     if (
-      !sourceText.trim() ||
-      sourceText.trim().startsWith("/") ||
+      !textToEnhance.trim() ||
+      textToEnhance.trim().startsWith("/") ||
       !modelReady ||
       sendBlocked ||
-      activeInlineFileReferences.length > 0 ||
       enhancingPrompt
     ) {
       return;
@@ -1538,7 +1541,7 @@ export function Composer({
     try {
       const result = await api.enhancePrompt({
         sessionId: activeSessionId,
-        draft: sourceText,
+        draft: textToEnhance,
         providerId: provider?.id,
         modelId,
         thinkingLevel,
@@ -1551,12 +1554,20 @@ export function Composer({
       ) {
         return;
       }
-      const enhancedDraft = result.enhancedDraft.trim();
-      if (!enhancedDraft) {
+      const modelDraft = result.enhancedDraft.trim();
+      if (
+        !modelDraft ||
+        !stripInlineComposerFileReferenceTokens(modelDraft, activeFileReferences).trim()
+      ) {
         throw Object.assign(new Error("The model returned an empty enhanced draft."), {
           code: "PROMPT_ENHANCEMENT_EMPTY",
         });
       }
+      const enhancedDraft = restoreInlineComposerFileReferenceTokens(
+        sourceText,
+        modelDraft,
+        activeFileReferences,
+      );
       enhancementVersionRef.current += 1;
       setValue(enhancedDraft);
       setCursor(enhancedDraft.length);
@@ -2596,11 +2607,10 @@ export function Composer({
                 }
                 aria-busy={enhancingPrompt}
                 disabled={
-                  !value.trim() ||
-                  value.trim().startsWith("/") ||
+                  !enhancementDraft.trim() ||
+                  enhancementDraft.trim().startsWith("/") ||
                   !modelReady ||
                   sendBlocked ||
-                  activeInlineFileReferences.length > 0 ||
                   enhancingPrompt
                 }
                 onClick={() => void enhancePrompt()}

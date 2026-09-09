@@ -2096,7 +2096,8 @@ reasoning-level control.
   current reasoning level separated by `·`; `off` omits the level text. The
   prompt-enhancement action shows Sparkles while idle, uses the shared
   `.tool-spinner` and localized `Enhancing…` label while running, and remains
-  a one-shot draft rewrite action.
+  a one-shot draft rewrite action. Inline file-reference chips, including
+  pasted image chips, do not disable this action and remain in the draft.
 - The combined chip opens one anchored menu above itself. The menu starts with
   only Model and Reasoning level entries, each showing its current value and a
   chevron. Selecting an entry replaces the menu contents in place with a back
