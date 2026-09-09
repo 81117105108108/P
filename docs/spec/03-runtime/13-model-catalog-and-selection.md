@@ -90,14 +90,15 @@ rows and shows the same summary as a compact banner.
 
 The Subagents create/edit sheet reuses the configured, runnable models the
 Composer already offers (enabled providers with a credential or `authKind:
-none`). The control is a grouped select, not a free-typed id: inherit-session
-is the empty value, options are `vendorKey-or-name/modelId` grouped by
-provider display name, and a pin that is no longer configured stays as an extra
-option so an edit cannot silently drop it. Custom model IDs remain allowed in
-the Markdown file edited outside the app. When a generic or duplicate vendor
-key would be ambiguous, the option uses a unique provider display name; if the
-names also collide, it uses the stored provider id so no configured provider
-disappears from the picker.
+none`), but only bindings explicitly marked `availableForSubagents`. The
+control is a grouped select: inherit-session is the empty value, options are
+`vendorKey-or-name/modelId` grouped by provider display name, and a pin that is
+no longer configured stays as an extra option so an edit cannot silently drop
+it. A **Custom (provider/model)** option opens a free-text field, and the same
+field is shown directly when no delegation model is configured. When a generic
+or duplicate vendor key would be ambiguous, the option uses a unique provider
+display name; if the names also collide, it uses the stored provider id so no
+configured provider disappears from the picker.
 
 ### Advanced
 - “Use custom model ID”

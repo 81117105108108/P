@@ -353,8 +353,11 @@ system while preserving their different data ownership:
   keeps the width.
 - The Subagents create/edit sheet pins a model with a select of the same
   configured, runnable models the Composer offers, grouped by provider, plus
-  an inherit-session option. It does not take a free-typed `provider/model`
-  id. A pin that is no longer configured remains visible so editing does not
+  an inherit-session option. Only model bindings explicitly marked
+  `availableForSubagents` appear. A **Custom (provider/model)** option opens a
+  free-text field for a model outside the list; when no delegation model is
+  configured, the sheet shows that field directly with a hint to open Models.
+  A pin that is no longer configured remains visible so editing does not
   silently drop it. The stored frontmatter value is still
   `vendorKey-or-name/modelId`; generic or colliding provider aliases use a
   unique display name, then the stored provider id, to keep each provider's
