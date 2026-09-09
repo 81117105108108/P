@@ -2,7 +2,7 @@
 
 - Baseline Version: `0.4.16`
 - Date: `2026-08-14`
-- Status: `Frozen for implementation details (Plan checkpoint artifact + approval/execution startup fence + protocol v11 + schema v13 + selectable shell catalog + icon-free composer prompt row + turn-boundary context checkpoint compaction + session-scoped work panel + edge-specific work-panel/chat resize ownership + models.dev model catalog with a bundled release snapshot + provider/runtime safety + M5 hardening + settings IA + project archive + sidebar organization + app update delivery + three-platform release + Extensions page density and theme-readable actions + custom global UI font)`
+- Status: `Frozen for implementation details (Plan checkpoint artifact + approval/execution startup fence + protocol v11 + schema v14 + host-owned plugin session import/read/update/delete P0/P1 + selectable shell catalog + icon-free composer prompt row + turn-boundary context checkpoint compaction + session-scoped work panel + edge-specific work-panel/chat resize ownership + models.dev model catalog with a bundled release snapshot + provider/runtime safety + M5 hardening + settings IA + project archive + sidebar organization + app update delivery + three-platform release + Extensions page density and theme-readable actions + custom global UI font)`
 - Language policy: **English-first**
 - Backend policy: **Rust host core + pi agent sidecar**
 
@@ -77,6 +77,11 @@
 > families are enumerated by Electron main through the additive allowlisted
 > channel `pi-desktop/app/systemFonts`. No host protocol or storage schema
 > changes.
+
+> The current post-baseline amendment adds the P0/P1 host-owned plugin session
+> API through ADR 0194 / D356. Protocol v11 remains unchanged; schema v14 adds
+> the plugin origin sidecar and soft-delete marker. P2/P3 session mutation,
+> binding, batch-delete, and tag operations remain deferred.
 
 ## Frozen Decisions
 

@@ -111,7 +111,7 @@ Electron 和 sidecar 不能独立过度接纳相同的资源。
 
 ```ts
 type HandshakeParams = {
-  protocolVersion: 9
+  protocolVersion: 11
   client: "electron-main"
   clientVersion: string
   locale: string // default "en"
@@ -122,7 +122,7 @@ type HandshakeParams = {
 
 ```ts
 type HandshakeResult = {
-  protocolVersion: 9
+  protocolVersion: 11
   host: "rust-host-core"
   hostVersion: string
   features: string[]
@@ -147,9 +147,11 @@ type HandshakeResult = {
    以及来自 `config_json` 的计划任务模式投影。 v7 或不兼容
    在 UI 变为交互式之前，必须拒绝 v8 主机。
 
-协议 v9 仍然与 host-core 存储架构 v11 配对（v11 添加了
-`plan_approvals.kind` 鉴别器）。架构版本
-是一个内部持久性不变量，而不是附加的 JSON-RPC 字段；的
+9. 版本 11 撤回 A2A 协议栈（ADR 0165 / D326）。`a2a.*` 方法和通知
+   已移除，握手不再声明 `a2a`；v10 主机或客户端必须在 UI 交互前拒绝。
+
+协议 v11 与 host-core 存储架构 v14 配对。v14 增加插件会话来源 sidecar
+和软删除字段；架构版本是内部持久性不变量，而不是额外的 JSON-RPC 字段，
 检查点架构仍然由主机拥有。
 
 ## 4. 方法目录(MVP)
@@ -285,6 +287,21 @@ ids 和非负 `tokensBefore`；它不会插入 message/search 行
 - `session.import` — 以原子方式导入一个转换后的会话；一个非空的
   项目路径在会话之前进行规范化并更新插入到 `projects` 中
   引用它；返回 `{ imported, skipped }`
+
+插件拥有的会话方法是协议 v11 的增量方法，仅由 Electron main 在完成插件
+权限和 manifest 来源校验后调用：
+
+- `plugin.session.import` — 使用 `(pluginId, source, externalId)` 幂等键导入
+  一个由主机拥有的会话；主机生成 id，且不绑定项目、provider 或 model
+- `plugin.session.importBatch` — 有界的 `skip` 或全有或全无 `fail` 批量导入
+- `plugin.session.list` / `plugin.session.get` / `plugin.session.listMessages` —
+  只读取调用插件自己导入且仍处于活动状态的会话
+- `plugin.session.rename` — 重命名自己拥有的活动导入会话
+- `plugin.session.delete` — `trash` 隐藏并保留转录本；`purge` 删除并允许重新导入
+
+主机会拒绝未知角色、非 RFC3339 或非单调时间戳，以及超大或过深的 payload；
+工具值会清理主机保留键。每个插件每 60 秒最多 10 次单条导入、5 次批量导入和
+20 次删除。P2/P3 方法不在协议 v11 中。
 
 ### Plan 和 Goal 状态和批准
 

@@ -5,7 +5,7 @@
 
 - 基线版本：`0.4.16`
 - 日期：`2026-08-14`
-- 状态：`Frozen for implementation details (Plan checkpoint artifact + approval/execution startup fence + protocol v11 + schema v13 + selectable shell catalog + icon-free composer prompt row + turn-boundary context checkpoint compaction + session-scoped work panel + pi-owned model metadata + provider/runtime safety + M5 hardening + settings IA + project archive + sidebar organization + app update delivery + three-platform release + Extensions page density and theme-readable actions + custom global UI font)`
+- 状态：`Frozen for implementation details (Plan checkpoint artifact + approval/execution startup fence + protocol v11 + schema v14 + host-owned plugin session import/read/update/delete P0/P1 + selectable shell catalog + icon-free composer prompt row + turn-boundary context checkpoint compaction + session-scoped work panel + pi-owned model metadata + provider/runtime safety + M5 hardening + settings IA + project archive + sidebar organization + app update delivery + three-platform release + Extensions page density and theme-readable actions + custom global UI font)`
 - 语言政策：**英语优先**
 - 后端策略：**Rust 主机核心 + pi 代理 sidecar**
 
@@ -75,6 +75,10 @@
 > 随应用本地发布并附带许可证文本，系统已安装字体由 Electron
 > 主进程通过新增的白名单通道 `pi-desktop/app/systemFonts` 枚举。
 > 主机协议或存储架构没有更改。
+
+> 当前基线后的修订通过 ADR 0194 / D356 增加了 P0/P1 宿主拥有的插件会话
+> API。协议仍为 v11；schema v14 增加插件来源 sidecar 和软删除标记。
+> P2/P3 会话变更、绑定、批量删除和标签操作仍延期。
 
 ## 冻结的决定
 

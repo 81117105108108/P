@@ -624,7 +624,7 @@ Electron 主进程用该会话精确 provider/API URL 与 model 的本地 models
 键盘钩子检测和弦；钩子消耗了那个和弦，所以活动的
 窗口系统菜单打不开。非 Windows 主机将该方法视为
 无操作。 `responseDurationMs` 和 `responseOutputTokens` 是可选的转录本
-元数据保留在消息元数据中，因此协议 v10 和存储架构 v12
+元数据保留在消息元数据中，因此协议 v11 和存储架构 v14
 保持不变。
 
 设置字体选择器（ADR 0083）通过一个仅 Electron 的允许通道读取

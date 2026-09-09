@@ -4009,3 +4009,18 @@ D193, and D194.
   activity-group capsule.
 - See ADR 0198, `03-runtime/01-ipc-protocol.md`, `03-runtime/02-agent-runtime.md`,
   `04-ux/09-interaction-patterns.md`, and E2E-008c / E2E-094.
+
+## 2026-09-09 — Host-owned plugin session import and ownership API (D366)
+
+- External-history plugins need durable import/read/update/delete operations, but
+  the existing in-flight `session.getLlmContext` and core `session.import`
+  boundaries are not safe plugin ownership boundaries.
+- Decision D366 / ADR 0199 adds the P0/P1 `pi.session` methods: `import`,
+  `importBatch`, `list`, `get`, `listMessages`, `rename`, and `delete`.
+  `contributes.sessionSources` is required for every source. Host-core generates
+  ids and scopes all operations to `(pluginId, source, externalId)` ownership;
+  imports never activate project/provider/model bindings.
+- Schema v14 adds `session_import_origins` and `sessions.deleted_at`; protocol
+  v11 remains unchanged. Trash preserves the transcript for owner-only purge.
+  P2/P3 create, message mutation, binding, batch-delete, and tag APIs remain
+  deferred. See ADR 0199 and E2E-213/E2E-214.

@@ -291,6 +291,10 @@ Namespace: `pi.plugin.*`
 - `pi.agent.unregisterTool(name)`
 - `pi.models.list()` // `models.list`
 - `pi.session.getLlmContext()` // `session.read`; in-flight tool session only
+- `pi.session.import()` / `importBatch()` // `session.import`; declared sources only
+- `pi.session.list()` / `get()` / `listMessages()` // `session.read.own`
+- `pi.session.rename()` // `session.update.own`
+- `pi.session.delete()` // `session.delete.own`
 - `pi.agent.complete(input)` // `agent.complete`; host-owned one-shot
 
 Skills are contributed declaratively (`contributes.skills` + `agent.prompt.inject`),

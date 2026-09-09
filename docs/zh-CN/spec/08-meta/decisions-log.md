@@ -2887,3 +2887,16 @@ D193 和 D194。
 - 参见 ADR 0198、`03-runtime/01-ipc-protocol.md`、
   `03-runtime/02-agent-runtime.md`、`04-ux/09-interaction-patterns.md`，
   以及 E2E-008c / E2E-094。
+
+## 2026-09-09 —— 宿主拥有的插件会话导入与归属 API（D366）
+
+- 外部历史迁移插件需要持久的导入/读取/更新/删除能力，但现有的进行中
+  `session.getLlmContext` 和核心 `session.import` 并不是安全的插件归属边界。
+- 决定 D366 / ADR 0199 增加 P0/P1 `pi.session` 方法：`import`、
+  `importBatch`、`list`、`get`、`listMessages`、`rename` 和 `delete`。每个来源
+  必须由 `contributes.sessionSources` 声明。主机生成 id，并按
+  `(pluginId, source, externalId)` 归属限制所有操作；导入不会激活项目、provider
+  或 model 绑定。
+- Schema v14 增加 `session_import_origins` 和 `sessions.deleted_at`；协议仍为
+  v11。Trash 为归属插件保留转录本以便 purge。P2/P3 创建、消息变更、绑定、
+  批量删除和标签 API 继续延期。参见 ADR 0199 和 E2E-213/E2E-214。

@@ -1,4 +1,4 @@
-# 04. Data Storage (Schema v11)
+# 04. Data Storage (Schema v14)
 
 ## 0. Ownership decision
 
@@ -16,7 +16,7 @@ store with it (D119). Plan/Goal artifacts and queue records are also host-owned
 ## 1. Goals
 
 Local-first, recoverable after restart, sensitive data isolated — plus, for
-schema v7, v8, and v11:
+schema v7, v8, v11, and v14:
 
 1. **Lossless transcripts** — store the runtime message shape (content blocks),
    not the UI projection; UI shapes are derived at the RPC boundary.
@@ -41,9 +41,9 @@ schema v7, v8, and v11:
 ~/.pi-desktop/
  ├── pi.sqlite            # index database (WAL: + -wal/-shm) — host-core only
  ├── pi.sqlite.v6.bak     # archived pre-v7 database (D119 breaking reset)
- ├── pi.sqlite.v8.bak     # exact readable backup before v8→v11 destructive work
- ├── pi.sqlite.v9.bak     # exact readable backup before v9→v11 destructive work
- ├── pi.sqlite.v10.bak    # exact readable backup before v10→v11 destructive work
+ ├── pi.sqlite.v8.bak     # exact readable backup before v8→v14 destructive work
+ ├── pi.sqlite.v9.bak     # exact readable backup before v9→v14 destructive work
+ ├── pi.sqlite.v10.bak    # exact readable backup before v10→v14 destructive work
  ├── sessions/            # transcript file store (D119) — host-core only
  │    ├── <sessionId>.jsonl           # live transcript (header + messages)
  │    ├── <sessionId>.revisions.jsonl # regenerate branches, append-only
@@ -174,7 +174,7 @@ PRAGMA trusted_schema = ON;       -- required by the FTS triggers (§4.8); the D
 PRAGMA auto_vacuum = INCREMENTAL; -- set at creation, before any table
 ```
 
-- Schema version lives in `PRAGMA user_version` (v11 = `11`). The v1 `meta`
+- Schema version lives in `PRAGMA user_version` (v14 = `14`). The v1 `meta`
   table is gone.
 - host-core is the **single writer**; statements use `prepare_cached`; every
   multi-row write runs in one transaction.
@@ -349,6 +349,7 @@ CREATE TABLE sessions (
   permission_mode TEXT NOT NULL DEFAULT 'inherit' -- D115: inherit follows settings
                 CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto')),
   source      TEXT,                            -- import origin: claude-code | codex | opencode | pi
+  deleted_at  INTEGER,                         -- plugin trash marker; null means active
   pinned      INTEGER NOT NULL DEFAULT 0,
   last_seq    INTEGER NOT NULL DEFAULT 0,      -- current message count / ordinal allocator
   created_at  INTEGER NOT NULL,
@@ -356,6 +357,26 @@ CREATE TABLE sessions (
 );
 CREATE INDEX idx_sessions_updated ON sessions(updated_at DESC);
 CREATE INDEX idx_sessions_project ON sessions(project_id) WHERE project_id IS NOT NULL;
+CREATE INDEX idx_sessions_deleted ON sessions(deleted_at) WHERE deleted_at IS NOT NULL;
+```
+
+Plugin imports add a host-owned origin sidecar. It is deliberately separate
+from the core session identity and scopes every plugin read/write to the
+`plugin_id` that created the row:
+
+```sql
+CREATE TABLE session_import_origins (
+  plugin_id    TEXT NOT NULL,
+  source_id    TEXT NOT NULL,
+  external_id  TEXT NOT NULL,
+  session_id   TEXT NOT NULL UNIQUE REFERENCES sessions(id) ON DELETE CASCADE,
+  source_label TEXT,
+  origin_json  TEXT,
+  created_at   INTEGER NOT NULL,
+  UNIQUE(plugin_id, source_id, external_id)
+);
+CREATE INDEX idx_session_import_origins_plugin
+  ON session_import_origins(plugin_id, source_id, created_at DESC);
 ```
 
 - `provider_id`/`model_id` are **loose references** (no FK), like on `turns`:
@@ -386,6 +407,13 @@ CREATE INDEX idx_sessions_project ON sessions(project_id) WHERE project_id IS NO
   state.
 - `source` + deterministic imported ids keep re-imports idempotent and let the
   UI badge imported sessions.
+- `deleted_at` is a host timestamp used by the plugin `trash` operation. A
+  trashed plugin session is hidden from normal session lists and plugin reads,
+  but its transcript and origin remain until the owning plugin purges it. Core
+  session deletion cascades the sidecar; purging also removes transcript files.
+- `session_import_origins` stores the plugin/source/external idempotency key and
+  the original `projectPath`, `modelId`, and `providerId` as history JSON. Those
+  values never become active session bindings for plugin imports.
 - `project_id` is also the tool-root authority for that session. Switching the
   visible workspace cannot redirect an in-flight or later tool call belonging
   to a different session.
@@ -986,7 +1014,7 @@ truncating at a guessed position.
 - JSON columns are read blind on hot paths (shipped to the renderer as-is);
   anything filtered or summed is a promoted column by rule.
 
-## 7. Versioning, v7 reset, and v8-to-v11 Plan/Goal migration
+## 7. Versioning, v7 reset, and v8-to-v14 migration
 
 - `PRAGMA user_version` stays the schema authority; future structural changes
   add ordered Rust migration fns again, each in one transaction, with a
@@ -997,12 +1025,12 @@ truncating at a guessed position.
   Sessions, providers, and settings from the old file are not carried over;
   the archive remains for manual recovery. All pre-v7 migration code
   (v1 `settings.sqlite` import, v2→v6 chain) is deleted.
-- Fresh installs run the full v11 DDL directly.
+- Fresh installs run the full v14 DDL directly.
 - **Schema v7 first reaches v8, then uses the guarded path.** The v7→v8
-  migration is followed by the same guarded v8→v11 migration; schema-v9 and
+  migration is followed by the same guarded v8→v14 migration; schema-v9 and
   schema-v10 databases take the same guarded path and receive an exact readable
   `pi.sqlite.v9.bak` / `pi.sqlite.v10.bak` before destructive work.
-- **v8-to-v11 is an in-place transactional migration.** Before migration,
+- **The historical v8-to-v11 core migration is in-place and transactional.** Before migration,
   host-core checkpoints the WAL, then creates the exact readable
   `pi.sqlite.v8.bak`; both happen before destructive work. Within one atomic
   transaction it:
@@ -1024,7 +1052,8 @@ truncating at a guessed position.
      first so a v8 database that already created the table from the current DDL
      is not altered twice; existing rows are Plan contracts by definition, which
      is exactly the column default; and
-  9. sets `PRAGMA user_version = 11` only after every change succeeds.
+  9. sets `PRAGMA user_version = 11` only after every change succeeds; the
+     subsequent v14 migration adds the plugin-session ownership sidecar.
   A malformed app-settings value, malformed scheduled-task `config_json`,
   invalid session or top-level scheduled mode, unknown or wrong-platform
   `defaultCommandShell`, parse, constraint, or write failure fails closed,
@@ -1033,6 +1062,12 @@ truncating at a guessed position.
   remains available for recovery.
   Legacy `planApprovalPermissionMode` is removed from the app settings JSON
   during migration; all unrelated settings remain intact.
+
+- **Schema v14 is additive.** It adds nullable `sessions.deleted_at`, the
+  partial deletion index, and `session_import_origins`. Existing sessions stay
+  active and have no origin rows. The migration runs in the same guarded
+  transaction and leaves the pre-v14 backup until the new schema passes its
+  integrity checks.
 
 The `largePasteThreshold` app setting is additive JSON rather than a database
 schema field. Host settings reads normalize a missing, malformed, or
@@ -1147,3 +1182,7 @@ columns for anything the host filters, joins, sums, or indexes.
 19. A scheduled or unattended Plan **or Goal** run fails before provider/artifact/
     queue work with `PLAN_REQUIRES_INTERACTIVE_SESSION`; no background path
     auto-approves either kind
+20. Schema v14 plugin imports have host-generated session ids, one origin row per
+    session, `(pluginId, source, externalId)` idempotency, no active project or
+    model binding, ownership-scoped reads/mutations, and recoverable trash before
+    purge.
