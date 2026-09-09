@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const deEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.4",
+    "date": "2026-09-09",
+    "highlights": [
+      "Fügen Sie begrenzte Bereichslesevorgänge für große Dateien und an echte Zieh-und-Ablegen-Gesten gebundene Dateifreigaben für Plugins hinzu.",
+      "Verlangen Sie für macOS-Signierung und Notarisierung eine ausdrückliche Aktivierung und liefern Sie Hinweise zum Öffnen vertrauenswürdiger unsignierter Builds."
+    ]
+  },
+  {
     "version": "0.14.3",
     "date": "2026-09-09",
     "highlights": [

@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const koEntries: ChangelogEntry[] = [
   {
+    version: "0.14.4",
+    date: "2026-09-09",
+    highlights: [
+      "플러그인에 제한된 대용량 파일 범위 읽기와 실제 드래그 앤 드롭 동작에 연결된 파일 권한을 추가합니다.",
+      "macOS 서명과 공증을 명시적으로 선택하도록 바꾸고 신뢰할 수 있는 미서명 빌드를 여는 안내를 제공합니다.",
+    ],
+  },
+  {
     version: "0.14.3",
     date: "2026-09-09",
     highlights: [
