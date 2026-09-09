@@ -5,6 +5,7 @@ import {
   calculateCacheRate,
   calculateTokenRate,
   calculateContextUsage,
+  contextOccupancyTokens,
   estimateResponseOutputTokens,
   estimateToolTokenUsage,
   resolveContextWindow,
@@ -107,6 +108,20 @@ test("context usage falls back to input and output when total is absent", () => 
     usageTokenTotal({ inputTokens: 12, outputTokens: 8, totalTokens: 0 }),
     20,
   );
+});
+
+test("occupancy sums last-request input, output, reasoning, and cache", () => {
+  const usage = {
+    inputTokens: 10,
+    outputTokens: 5,
+    cacheReadTokens: 80,
+    cacheWriteTokens: 2,
+    reasoningTokens: 3,
+    totalTokens: 15,
+  };
+  assert.equal(contextOccupancyTokens(usage), 100);
+  assert.equal(calculateContextUsage(usage, 200).usedTokens, 100);
+  assert.equal(usageTokenTotal(usage), 15);
 });
 
 test("generation throughput uses provider output and stream duration", () => {

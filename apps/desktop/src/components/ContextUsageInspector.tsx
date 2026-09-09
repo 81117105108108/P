@@ -15,7 +15,7 @@ import {
   calculateCacheRate,
   calculateContextUsage,
   calculateTokenRate,
-  usageTokenTotal,
+  contextOccupancyTokens,
 } from "../lib/context-usage";
 
 function formatTokenCount(value: number): string {
@@ -67,14 +67,17 @@ export function ContextUsageInspector({
   const [popoverPosition, setPopoverPosition] =
     useState<ContextPopoverPosition | null>(null);
   const context = calculateContextUsage(usage, contextWindow);
-  const turnTotal = usageTokenTotal(turnUsage);
+  // Occupancy, turn total, and provider cache/input/output are the last
+  // model request. Summing every tool-loop call inflates cache read past
+  // the window (OpenCode last-message accounting).
+  const turnTotal = contextOccupancyTokens(usage);
   const throughput = calculateTokenRate(
     responseOutputTokens ?? turnUsage.outputTokens,
     responseDurationMs,
   );
   const cacheRate = calculateCacheRate(
-    turnUsage.inputTokens,
-    turnUsage.cacheReadTokens,
+    usage.inputTokens,
+    usage.cacheReadTokens,
   );
   const toolRows = aggregateToolTokenUsage(tools);
   const toolTotal = toolRows.reduce(
@@ -271,14 +274,14 @@ export function ContextUsageInspector({
           <strong>{t("chat.usageProviderUsage")}</strong>
           <span className="context-inspector-summary-values">
             <span>
-              {t("chat.usageInput")} {formatTokenCount(turnUsage.inputTokens)}
+              {t("chat.usageInput")} {formatTokenCount(usage.inputTokens)}
             </span>
             <span>
-              {t("chat.usageOutput")} {formatTokenCount(turnUsage.outputTokens)}
+              {t("chat.usageOutput")} {formatTokenCount(usage.outputTokens)}
             </span>
-            {turnUsage.cacheReadTokens !== undefined ? (
+            {usage.cacheReadTokens !== undefined ? (
               <span>
-                {t("chat.usageCacheRead")} {formatTokenCount(turnUsage.cacheReadTokens)}
+                {t("chat.usageCacheRead")} {formatTokenCount(usage.cacheReadTokens)}
               </span>
             ) : null}
             {cacheRate !== undefined ? (
@@ -286,14 +289,14 @@ export function ContextUsageInspector({
                 {t("chat.usageCacheRate")} {cacheRate}%
               </span>
             ) : null}
-            {turnUsage.cacheWriteTokens !== undefined ? (
+            {usage.cacheWriteTokens !== undefined ? (
               <span>
-                {t("chat.usageCacheWrite")} {formatTokenCount(turnUsage.cacheWriteTokens)}
+                {t("chat.usageCacheWrite")} {formatTokenCount(usage.cacheWriteTokens)}
               </span>
             ) : null}
-            {turnUsage.reasoningTokens !== undefined ? (
+            {usage.reasoningTokens !== undefined ? (
               <span>
-                {t("chat.usageReasoning")} {formatTokenCount(turnUsage.reasoningTokens)}
+                {t("chat.usageReasoning")} {formatTokenCount(usage.reasoningTokens)}
               </span>
             ) : null}
           </span>

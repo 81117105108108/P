@@ -22,6 +22,21 @@ export function usageTokenTotal(usage: MessageUsage): number {
   return positiveTokenCount(usage.inputTokens) + positiveTokenCount(usage.outputTokens);
 }
 
+/**
+ * Occupancy of one model request, matching OpenCode's context widget:
+ * `input + output + reasoning + cache.read + cache.write` on that request.
+ * Cache reads from earlier tool-loop calls are not occupancy.
+ */
+export function contextOccupancyTokens(usage: MessageUsage): number {
+  const occupancy =
+    positiveTokenCount(usage.inputTokens) +
+    positiveTokenCount(usage.outputTokens) +
+    positiveTokenCount(usage.reasoningTokens) +
+    positiveTokenCount(usage.cacheReadTokens) +
+    positiveTokenCount(usage.cacheWriteTokens);
+  return occupancy > 0 ? occupancy : usageTokenTotal(usage);
+}
+
 export function latestMessageUsage(messages: UiMessage[]): MessageUsage | undefined {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     if (messages[index].usage) return messages[index].usage;
@@ -90,7 +105,7 @@ export function calculateContextUsage(
   contextWindow: number,
 ): ContextUsage {
   const safeWindow = positiveTokenCount(contextWindow) || DEFAULT_CONTEXT_WINDOW;
-  const usedTokens = usageTokenTotal(usage);
+  const usedTokens = contextOccupancyTokens(usage);
   const usedRatio = Math.min(1, usedTokens / safeWindow);
   const remainingRatio = 1 - usedRatio;
   const usedPercent = Math.round(usedRatio * 100);
