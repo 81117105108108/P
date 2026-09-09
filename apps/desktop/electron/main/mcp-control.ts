@@ -1,5 +1,6 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { isIP } from "node:net";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -21,6 +22,7 @@ export type McpControlOperation = {
   channel: string;
   description: string;
   risk: McpControlRisk;
+  argumentShape: string[] | string;
 };
 
 export type McpControlConnectionInfo = {
@@ -33,12 +35,19 @@ export type McpControlConnectionInfo = {
   startedAt?: string;
 };
 
+export type McpControlRendererEvent = {
+  reason: string;
+  projectPath?: string | null;
+  selectSessionId?: string;
+};
+
 type IpcInvoke = (channel: string, args: readonly unknown[]) => Promise<unknown>;
 type OperationSpec = {
   channelKey: string;
   id: string;
   description: string;
   risk: McpControlRisk;
+  argumentShape: string[] | string;
 };
 
 type McpTool = {
@@ -71,12 +80,46 @@ type DispatchResult = {
 type Logger = (level: "info" | "warn" | "error", message: string, data?: unknown) => void;
 
 const MCP_PROTOCOL_VERSION = "2025-06-18";
+const MCP_COMPATIBLE_PROTOCOL_VERSIONS = new Set(["2025-06-18", "2025-03-26"]);
 const MCP_SERVER_NAME = "pi-desktop";
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 37_123;
 const MAX_REQUEST_BYTES = 2 * 1024 * 1024;
 const MAX_RESULT_CHARS = 512 * 1024;
 const MAX_ARGUMENT_ITEMS = 32;
+const MAX_MCP_SESSIONS = 32;
+const SHUTDOWN_CLOSE_MS = 1_000;
+const GENERIC_ARGUMENT_SHAPE =
+  "renderer IPC arguments; use the corresponding pi_* tool when available";
+
+const SECRET_FIELD_NAMES = new Set([
+  "secretvalue",
+  "secret_value",
+  "apikey",
+  "api_key",
+  "clientsecret",
+  "client_secret",
+  "accesstoken",
+  "refreshtoken",
+  "password",
+  "passwd",
+]);
+
+const SECRET_HEADER_NAMES = new Set(["authorization", "x-api-key", "api-key"]);
+const SECRET_ENV_NAME = /(?:secret|token|password|passwd|api[_-]?key)/i;
+
+const SESSION_MUTATION_IDS = new Set([
+  "session/create",
+  "session/fork",
+  "session/delete",
+  "session/rename",
+  "session/configure",
+  "session/summarizeTitle",
+  "session/replaceMessages",
+  "session/saveRevision",
+  "session/activateRevision",
+  "session/importRun",
+]);
 
 const objectSchema = (
   properties: Record<string, McpJsonSchema>,
@@ -102,174 +145,95 @@ const booleanSchema = (description?: string): McpJsonSchema => ({
   ...(description ? { description } : {}),
 });
 
-const operationSpecs = (...specs: OperationSpec[]): OperationSpec[] => specs;
-
 const spec = (
   channelKey: string,
   id: string,
   description: string,
   risk: McpControlRisk = "write",
-): OperationSpec => ({ channelKey, id, description, risk });
+  argumentShape: string[] | string = GENERIC_ARGUMENT_SHAPE,
+): OperationSpec => ({ channelKey, id, description, risk, argumentShape });
 
 /**
- * IPC operations that are safe to expose through the local control plane.
+ * IPC operations exposed through the local control plane.
  *
- * The list deliberately excludes secret reads/writes and renderer-only native
- * pickers. A future IPC channel is not automatically exposed until its
- * external-agent behavior and risk have been reviewed here.
+ * First-version surface is the project/session/Agent/workspace flow plus
+ * reviewed reads. Secret writes, native pickers, plugin/marketplace install,
+ * window/OS control, and provider/OAuth credential mutations stay out.
+ * A future IPC channel is not automatically exposed until reviewed here.
  */
-const CONTROL_OPERATION_SPECS = operationSpecs(
-  spec("appGetVersion", "app/getVersion", "Return PI-Desktop and host versions.", "read"),
-  spec("appHealth", "app/health", "Return host health.", "read"),
-  spec("appGetOnboarding", "app/getOnboarding", "Read onboarding state.", "read"),
-  spec("appDismissOnboarding", "app/dismissOnboarding", "Dismiss onboarding."),
-  spec("systemFontsList", "app/systemFonts", "List installed system fonts.", "read"),
-  spec("appOpenFeedback", "app/openFeedback", "Open the PI-Desktop feedback page.", "dangerous"),
-  spec("pluginLauncherToggle", "pluginLauncher/toggle", "Toggle the command launcher."),
-  spec("updatesGetState", "updates/getState", "Read application update state.", "read"),
-  spec("updatesCheck", "updates/check", "Check for application updates.", "write"),
-  spec("updatesDownload", "updates/download", "Download the available application update.", "dangerous"),
-  spec("updatesInstall", "updates/install", "Install a downloaded application update.", "dangerous"),
-  spec("updatesOpenReleases", "updates/openReleases", "Open the release page.", "dangerous"),
-  spec("notificationList", "notification/list", "List durable notifications.", "read"),
-  spec("notificationMarkRead", "notification/markRead", "Mark one notification as read."),
-  spec("notificationMarkAllRead", "notification/markAllRead", "Mark all notifications as read."),
-  spec("notificationClear", "notification/clear", "Clear durable notifications.", "dangerous"),
-  spec("notificationSetViewingSession", "notification/setViewingSession", "Set the session currently visible to notification policy."),
-  spec("notificationShowNative", "notification/showNative", "Show a native notification.", "dangerous"),
-  spec("agentInstructionsGet", "agent/instructions/get", "Read global or project AGENTS.md instructions.", "read"),
-  spec("agentInstructionsSave", "agent/instructions/save", "Write global or project AGENTS.md instructions.", "dangerous"),
-  spec("agentPrompt", "agent/prompt", "Send a prompt to a session's Agent."),
-  spec("promptEnhance", "prompt/enhance", "Enhance a prompt using the configured model."),
-  spec("agentCompact", "agent/compact", "Compact an idle session context."),
-  spec("agentAbort", "agent/abort", "Abort an active Agent turn."),
-  spec("agentStop", "agent/stop", "Request a graceful Agent stop."),
-  spec("agentGetStatus", "agent/getStatus", "Read Agent runtime status.", "read"),
-  spec("sessionList", "session/list", "List durable sessions.", "read"),
-  spec("sessionCreate", "session/create", "Create a durable session."),
-  spec("sessionFork", "session/fork", "Fork a session."),
-  spec("sessionGet", "session/get", "Read a session and its transcript.", "read"),
-  spec("sessionDelete", "session/delete", "Delete a session.", "dangerous"),
-  spec("sessionRename", "session/rename", "Rename a session."),
-  spec("sessionConfigure", "session/configure", "Configure a session for its next turn."),
-  spec("sessionReplaceMessages", "session/replaceMessages", "Replace a session transcript.", "dangerous"),
-  spec("sessionSaveRevision", "session/saveRevision", "Save a transcript revision.", "dangerous"),
-  spec("sessionListRevisions", "session/listRevisions", "List transcript revisions.", "read"),
-  spec("sessionActivateRevision", "session/activateRevision", "Activate a transcript revision.", "dangerous"),
-  spec("sessionGetScratchPath", "session/getScratchPath", "Return a session scratch path.", "read"),
-  spec("sessionImportScan", "session/importScan", "Scan supported external session sources.", "read"),
-  spec("sessionImportRun", "session/importRun", "Import selected external sessions.", "dangerous"),
-  spec("modelConfigImportScan", "modelConfig/importScan", "Scan supported model configuration sources.", "read"),
-  spec("modelConfigImportRun", "modelConfig/importRun", "Import selected model configurations.", "dangerous"),
-  spec("sessionSummarizeTitle", "session/summarizeTitle", "Generate a session title."),
-  spec("settingsGet", "settings/get", "Read application settings.", "read"),
-  spec("settingsSet", "settings/set", "Replace application settings.", "dangerous"),
-  spec("networkProxyTest", "network/testProxy", "Test a network proxy configuration.", "read"),
-  spec("commandShellList", "commandShell/list", "List supported command shells.", "read"),
-  spec("providersList", "providers/list", "List configured providers without plaintext secrets.", "read"),
-  spec("providersCreate", "providers/create", "Create a provider configuration.", "dangerous"),
-  spec("providersUpdate", "providers/update", "Update a provider configuration.", "dangerous"),
-  spec("providersDelete", "providers/delete", "Delete a provider configuration.", "dangerous"),
-  spec("providersTest", "providers/testConnection", "Test a provider connection.", "dangerous"),
-  spec("providersListModels", "providers/listModels", "List cached provider models.", "read"),
-  spec("providersRefreshModelCatalog", "providers/refreshModelCatalog", "Refresh the models.dev catalog.", "write"),
-  spec("providersModelCatalogStatus", "providers/modelCatalogStatus", "Read model catalog status.", "read"),
-  spec("providersOauthVendors", "providers/oauth/vendors", "List OAuth vendors and local accounts.", "read"),
-  spec("providersOauthStart", "providers/oauth/start", "Start an OAuth login flow.", "dangerous"),
-  spec("providersOauthRespond", "providers/oauth/respond", "Respond to an OAuth login prompt.", "dangerous"),
-  spec("providersOauthCancel", "providers/oauth/cancel", "Cancel an OAuth login flow.", "dangerous"),
-  spec("providersOauthDelete", "providers/oauth/delete", "Delete a local OAuth account.", "dangerous"),
-  spec("projectGet", "project/get", "Read the active project workspace.", "read"),
-  spec("projectList", "project/list", "List durable projects.", "read"),
-  spec("projectSet", "project/set", "Open and bind a project path."),
-  spec("projectClear", "project/clear", "Clear the active project."),
-  spec("projectOpenFolder", "project/openFolder", "Open a known project folder in the OS file manager.", "dangerous"),
-  spec("workspaceDiff", "workspace/diff", "Read the active workspace diff.", "read"),
-  spec("workspaceReviewRollback", "workspace/review/rollback", "Roll back a reversible workspace review change.", "dangerous"),
-  spec("statsGetTokenUsageHistory", "stats/getTokenUsageHistory", "Read completed-turn token usage history.", "read"),
-  spec("browserNavigate", "browser/navigate", "Navigate the embedded Browser panel."),
-  spec("browserAction", "browser/action", "Control the embedded Browser panel."),
-  spec("browserSetBounds", "browser/setBounds", "Set the embedded Browser panel bounds.", "dangerous"),
-  spec("browserSetVisible", "browser/setVisible", "Show or hide the embedded Browser panel."),
-  spec("browserOpenExternal", "browser/openExternal", "Open the Browser URL externally.", "dangerous"),
-  spec("browserGetState", "browser/getState", "Read embedded Browser state.", "read"),
-  spec("fsList", "fs/list", "List files in the active workspace.", "read"),
-  spec("fsRead", "fs/read", "Read an allowed workspace or session file.", "read"),
-  spec("fsReadImageDataUrl", "fs/readImageDataUrl", "Read an allowed image as a data URL.", "read"),
-  spec("fsReveal", "fs/reveal", "Reveal an allowed file in the OS file manager.", "dangerous"),
-  spec("fsOpen", "fs/open", "Open an allowed file with its OS handler.", "dangerous"),
-  spec("fsIndex", "fs/index", "Index files in the active workspace.", "read"),
-  spec("composerCommands", "composer/commands", "List composer command templates.", "read"),
-  spec("windowSetWorkPanelReservation", "window/setWorkPanelReservation", "Set the work-panel reservation."),
-  spec("windowSetWorkPanelChatWidth", "window/setWorkPanelChatWidth", "Set the work-panel chat width."),
-  spec("windowSetBackgroundColor", "window/setBackgroundColor", "Set the native window background theme."),
-  spec("windowControl", "window/control", "Control the main window.", "dangerous"),
-  spec("closeBehaviorGet", "window/closeBehavior/get", "Read close behavior.", "read"),
-  spec("closeBehaviorSet", "window/closeBehavior/set", "Set close-to-tray or close-to-quit behavior.", "dangerous"),
-  spec("nativeMenuAction", "menu/nativeAction", "Run a native application-menu action.", "dangerous"),
-  spec("pullsList", "pulls/list", "List pull requests for the active workspace.", "read"),
-  spec("scheduledList", "scheduled/list", "List scheduled tasks.", "read"),
-  spec("scheduledCreate", "scheduled/create", "Create a scheduled task.", "dangerous"),
-  spec("scheduledUpdate", "scheduled/update", "Update a scheduled task.", "dangerous"),
-  spec("scheduledDelete", "scheduled/delete", "Delete a scheduled task.", "dangerous"),
-  spec("scheduledRun", "scheduled/run", "Run a scheduled task now.", "dangerous"),
-  spec("toolResolvePermission", "tool/resolvePermission", "Resolve a pending tool permission request.", "dangerous"),
-  spec("askToolResolve", "agent/askTool/resolve", "Answer an Agent question.", "dangerous"),
-  spec("plansPending", "plans/pending", "List pending Plan or Goal approvals.", "read"),
-  spec("plansResolve", "plans/resolve", "Approve or reject a Plan or Goal checkpoint.", "dangerous"),
-  spec("pluginList", "plugin/list", "List installed plugins.", "read"),
-  spec("pluginSettingsGet", "plugin/settings/get", "Read plugin setting definitions.", "read"),
-  spec("pluginSettingsSet", "plugin/settings/set", "Set plugin settings.", "dangerous"),
-  spec("pluginLoadDev", "plugin/loadDev", "Load a development plugin.", "dangerous"),
-  spec("pluginReload", "plugin/reload", "Reload a development plugin.", "dangerous"),
-  spec("pluginEnable", "plugin/enable", "Enable a plugin.", "dangerous"),
-  spec("pluginDisable", "plugin/disable", "Disable a plugin.", "dangerous"),
-  spec("pluginUninstall", "plugin/uninstall", "Uninstall a plugin.", "dangerous"),
-  spec("pluginSetAutoUpdate", "plugin/setAutoUpdate", "Set a plugin's auto-update policy.", "dangerous"),
-  spec("pluginSetScope", "plugin/setScope", "Set a plugin activation scope.", "dangerous"),
-  spec("pluginOpenPanel", "plugin/openPanel", "Open a plugin panel."),
-  spec("pluginViews", "plugin/views", "List plugin-contributed views.", "read"),
-  spec("pluginViewOpen", "plugin/view/open", "Open a plugin view."),
-  spec("pluginViewClose", "plugin/view/close", "Close a plugin view."),
-  spec("pluginViewSetBounds", "plugin/view/setBounds", "Set a plugin view bounds.", "dangerous"),
-  spec("pluginViewSetVisible", "plugin/view/setVisible", "Show or hide a plugin view."),
-  spec("pluginThemes", "plugin/themes", "List plugin themes.", "read"),
-  spec("pluginServices", "plugin/services", "List plugin service states.", "read"),
-  spec("mcpList", "mcp/list", "List user-owned MCP servers.", "read"),
-  spec("mcpUpsert", "mcp/upsert", "Create or update a user-owned MCP server.", "dangerous"),
-  spec("mcpRemove", "mcp/remove", "Remove a user-owned MCP server.", "dangerous"),
-  spec("mcpSetEnabled", "mcp/setEnabled", "Enable or disable a user-owned MCP server.", "dangerous"),
-  spec("mcpSetScope", "mcp/setScope", "Set an MCP server activation scope.", "dangerous"),
-  spec("mcpTest", "mcp/test", "Test a user-owned MCP server.", "dangerous"),
-  spec("mcpImport", "mcp/import", "Import user-owned MCP server definitions.", "dangerous"),
-  spec("skillList", "skill/list", "List user-owned Skills.", "read"),
-  spec("skillCreate", "skill/create", "Create a user-owned Skill.", "dangerous"),
-  spec("skillUpdate", "skill/update", "Update a user-owned Skill.", "dangerous"),
-  spec("skillRead", "skill/read", "Read a user-owned Skill.", "read"),
-  spec("skillRemove", "skill/remove", "Remove a user-owned Skill.", "dangerous"),
-  spec("skillSetEnabled", "skill/setEnabled", "Enable or disable a user-owned Skill.", "dangerous"),
-  spec("skillSetScope", "skill/setScope", "Set a Skill activation scope.", "dangerous"),
-  spec("skillReveal", "skill/reveal", "Reveal a Skill file.", "dangerous"),
-  spec("subagentList", "subagent/list", "List user-owned Subagents.", "read"),
-  spec("subagentCatalog", "subagent/catalog", "Read the effective Subagent catalog.", "read"),
-  spec("subagentCreate", "subagent/create", "Create a user-owned Subagent.", "dangerous"),
-  spec("subagentUpdate", "subagent/update", "Update a user-owned Subagent.", "dangerous"),
-  spec("subagentRead", "subagent/read", "Read a user-owned Subagent.", "read"),
-  spec("subagentRemove", "subagent/remove", "Remove a user-owned Subagent.", "dangerous"),
-  spec("subagentSetEnabled", "subagent/setEnabled", "Enable or disable a user-owned Subagent.", "dangerous"),
-  spec("subagentSetScope", "subagent/setScope", "Set a Subagent activation scope.", "dangerous"),
-  spec("subagentReveal", "subagent/reveal", "Reveal a Subagent file.", "dangerous"),
-  spec("marketRefresh", "market/refresh", "Refresh the plugin marketplace catalog.", "dangerous"),
-  spec("marketSearch", "market/search", "Search the plugin marketplace.", "read"),
-  spec("marketGetDetail", "market/getDetail", "Read marketplace plugin details.", "read"),
-  spec("marketInstall", "market/install", "Install a marketplace plugin.", "dangerous"),
-  spec("marketCheckUpdates", "market/checkUpdates", "Check marketplace plugin updates.", "dangerous"),
-  spec("marketApplyUpdates", "market/applyUpdates", "Apply marketplace plugin updates.", "dangerous"),
-  spec("commandPaletteSearch", "commandPalette/search", "Search command-palette commands.", "read"),
-  spec("commandPaletteExecute", "commandPalette/execute", "Execute a command-palette command.", "dangerous"),
-  spec("logOpenFolder", "log/openFolder", "Open the PI-Desktop log folder.", "dangerous"),
-  spec("devtoolsToggle", "devtools/toggle", "Open or close developer tools.", "dangerous"),
-);
+const CONTROL_OPERATION_SPECS: OperationSpec[] = [
+  spec("appGetVersion", "app/getVersion", "Return PI-Desktop and host versions.", "read", []),
+  spec("appHealth", "app/health", "Return host health.", "read", []),
+  spec("appGetOnboarding", "app/getOnboarding", "Read onboarding state.", "read", []),
+  spec("appDismissOnboarding", "app/dismissOnboarding", "Dismiss onboarding.", "write", []),
+  spec("systemFontsList", "app/systemFonts", "List installed system fonts.", "read", []),
+  spec("updatesGetState", "updates/getState", "Read application update state.", "read", []),
+  spec("updatesCheck", "updates/check", "Check for application updates.", "write", []),
+  spec("notificationList", "notification/list", "List durable notifications.", "read", []),
+  spec("notificationMarkRead", "notification/markRead", "Mark one notification as read.", "write", ["id"]),
+  spec("notificationMarkAllRead", "notification/markAllRead", "Mark all notifications as read.", "write", []),
+  spec("agentInstructionsGet", "agent/instructions/get", "Read global or project AGENTS.md instructions.", "read", ["query"]),
+  spec("agentInstructionsSave", "agent/instructions/save", "Write global or project AGENTS.md instructions.", "dangerous", ["input"]),
+  spec("agentPrompt", "agent/prompt", "Send a prompt to a session's Agent.", "write", ["request"]),
+  spec("promptEnhance", "prompt/enhance", "Enhance a prompt using the configured model.", "write", ["request"]),
+  spec("agentCompact", "agent/compact", "Compact an idle session context.", "write", ["request"]),
+  spec("agentAbort", "agent/abort", "Abort an active Agent turn.", "write", ["request"]),
+  spec("agentStop", "agent/stop", "Request a graceful Agent stop.", "write", ["request"]),
+  spec("agentGetStatus", "agent/getStatus", "Read Agent runtime status.", "read", ["sessionId"]),
+  spec("sessionList", "session/list", "List durable sessions.", "read", []),
+  spec("sessionCreate", "session/create", "Create a durable session.", "write", ["input"]),
+  spec("sessionFork", "session/fork", "Fork a session.", "write", ["input"]),
+  spec("sessionGet", "session/get", "Read a session and its transcript.", "read", ["input"]),
+  spec("sessionDelete", "session/delete", "Delete a session.", "dangerous", ["id"]),
+  spec("sessionRename", "session/rename", "Rename a session.", "write", ["id", "title"]),
+  spec("sessionConfigure", "session/configure", "Configure a session for its next turn, including permission mode.", "dangerous", ["id", "config"]),
+  spec("sessionListRevisions", "session/listRevisions", "List transcript revisions.", "read", ["input"]),
+  spec("sessionGetScratchPath", "session/getScratchPath", "Return a session scratch path.", "read", ["input"]),
+  spec("sessionImportScan", "session/importScan", "Scan supported external session sources.", "read", []),
+  spec("modelConfigImportScan", "modelConfig/importScan", "Scan supported model configuration sources.", "read", []),
+  spec("sessionSummarizeTitle", "session/summarizeTitle", "Generate a session title.", "write", ["request"]),
+  spec("settingsGet", "settings/get", "Read application settings.", "read", []),
+  spec("networkProxyTest", "network/testProxy", "Test a network proxy configuration.", "read", ["settings"]),
+  spec("commandShellList", "commandShell/list", "List supported command shells.", "read", []),
+  spec("providersList", "providers/list", "List configured providers without plaintext secrets.", "read", []),
+  spec("providersListModels", "providers/listModels", "List cached provider models.", "read", ["input"]),
+  spec("providersRefreshModelCatalog", "providers/refreshModelCatalog", "Refresh the models.dev catalog.", "write", []),
+  spec("providersModelCatalogStatus", "providers/modelCatalogStatus", "Read model catalog status.", "read", []),
+  spec("providersOauthVendors", "providers/oauth/vendors", "List OAuth vendors and local accounts.", "read", []),
+  spec("projectGet", "project/get", "Read the active project workspace.", "read", []),
+  spec("projectList", "project/list", "List durable projects.", "read", []),
+  spec("projectSet", "project/set", "Open and bind a project path.", "write", ["path"]),
+  spec("projectClear", "project/clear", "Clear the active project.", "write", []),
+  spec("workspaceDiff", "workspace/diff", "Read the active workspace diff.", "read", []),
+  spec("statsGetTokenUsageHistory", "stats/getTokenUsageHistory", "Read completed-turn token usage history.", "read", ["input"]),
+  spec("browserGetState", "browser/getState", "Read embedded Browser state.", "read", []),
+  spec("fsList", "fs/list", "List files in the active workspace.", "read", ["input"]),
+  spec("fsRead", "fs/read", "Read an allowed workspace or session file.", "read", ["input"]),
+  spec("fsReadImageDataUrl", "fs/readImageDataUrl", "Read an allowed image as a data URL.", "read", ["input"]),
+  spec("fsIndex", "fs/index", "Index files in the active workspace.", "read", ["input"]),
+  spec("composerCommands", "composer/commands", "List composer command templates.", "read", []),
+  spec("closeBehaviorGet", "window/closeBehavior/get", "Read close behavior.", "read", []),
+  spec("pullsList", "pulls/list", "List pull requests for the active workspace.", "read", []),
+  spec("scheduledList", "scheduled/list", "List scheduled tasks.", "read", []),
+  spec("toolResolvePermission", "tool/resolvePermission", "Resolve a pending tool permission request.", "dangerous", ["resolution"]),
+  spec("askToolResolve", "agent/askTool/resolve", "Answer an Agent question.", "dangerous", ["resolution"]),
+  spec("plansPending", "plans/pending", "List pending Plan or Goal approvals.", "read", ["input"]),
+  spec("plansResolve", "plans/resolve", "Approve or reject a Plan or Goal checkpoint.", "dangerous", ["resolution"]),
+  spec("pluginList", "plugin/list", "List installed plugins.", "read", []),
+  spec("pluginSettingsGet", "plugin/settings/get", "Read plugin setting definitions.", "read", ["input"]),
+  spec("pluginViews", "plugin/views", "List plugin-contributed views.", "read", []),
+  spec("pluginThemes", "plugin/themes", "List plugin themes.", "read", []),
+  spec("pluginServices", "plugin/services", "List plugin service states.", "read", []),
+  spec("mcpList", "mcp/list", "List user-owned MCP servers.", "read", ["query"]),
+  spec("skillList", "skill/list", "List user-owned Skills.", "read", ["query"]),
+  spec("skillRead", "skill/read", "Read a user-owned Skill.", "read", ["input"]),
+  spec("subagentList", "subagent/list", "List user-owned Subagents.", "read", ["query"]),
+  spec("subagentCatalog", "subagent/catalog", "Read the effective Subagent catalog.", "read", ["query"]),
+  spec("subagentRead", "subagent/read", "Read a user-owned Subagent.", "read", ["input"]),
+  spec("marketSearch", "market/search", "Search the plugin marketplace.", "read", ["query"]),
+  spec("marketGetDetail", "market/getDetail", "Read marketplace plugin details.", "read", ["input"]),
+  spec("commandPaletteSearch", "commandPalette/search", "Search command-palette commands.", "read", ["query"]),
+];
 
 const coreTool = (
   name: string,
@@ -277,7 +241,13 @@ const coreTool = (
   inputSchema: McpJsonSchema,
   operationId: string,
   toArgs: (input: Record<string, unknown>) => readonly unknown[],
-): { name: string; description: string; inputSchema: McpJsonSchema; operationId: string; toArgs: (input: Record<string, unknown>) => readonly unknown[] } => ({
+): {
+  name: string;
+  description: string;
+  inputSchema: McpJsonSchema;
+  operationId: string;
+  toArgs: (input: Record<string, unknown>) => readonly unknown[];
+} => ({
   name,
   description,
   inputSchema,
@@ -310,7 +280,7 @@ const CORE_TOOL_SPECS = [
       thinkingLevel: { type: "string", enum: ["off", "minimal", "low", "medium", "high", "xhigh", "max"] },
     }),
     "session/create",
-    (input) => [input],
+    (input) => [stripSecretMaterial(input)],
   ),
   coreTool(
     "pi_session_get",
@@ -347,7 +317,7 @@ const CORE_TOOL_SPECS = [
   ),
   coreTool(
     "pi_session_configure",
-    "Configure a session for its next turn.",
+    "Configure a session for its next turn, including permission mode. Set confirm=true; this can enable Auto tool approval.",
     objectSchema({
       id: stringSchema("Session id."),
       mode: { type: "string", enum: ["agent", "plan", "goal"] },
@@ -355,16 +325,17 @@ const CORE_TOOL_SPECS = [
       modelId: stringSchema(),
       thinkingLevel: { type: "string", enum: ["off", "minimal", "low", "medium", "high", "xhigh", "max"] },
       permissionMode: { type: "string", enum: ["inherit", "ask", "accept-edits", "auto"] },
-    }, ["id", "mode"]),
+      confirm: booleanSchema("Required acknowledgement, including permission-mode changes."),
+    }, ["id", "mode", "confirm"]),
     "session/configure",
     (input) => {
-      const { id, ...config } = input;
+      const { id, confirm: _confirm, ...config } = input;
       return [id, config];
     },
   ),
   coreTool(
     "pi_agent_prompt",
-    "Send a prompt to a session's Agent.",
+    "Send a prompt to a session's Agent. Returns when the turn is accepted, not when it finishes.",
     objectSchema({
       sessionId: stringSchema("Target session id."),
       content: stringSchema("Prompt text."),
@@ -372,7 +343,7 @@ const CORE_TOOL_SPECS = [
       attachments: { type: "array", items: anySchema() },
     }, ["sessionId", "content"]),
     "agent/prompt",
-    (input) => [input],
+    (input) => [stripSecretMaterial(input)],
   ),
   coreTool(
     "pi_agent_status",
@@ -445,9 +416,37 @@ const CORE_TOOL_SPECS = [
   ),
 ] as const;
 
-function operationIdForChannel(channel: string): string {
-  return channel.startsWith("pi-desktop/") ? channel.slice("pi-desktop/".length) : channel;
-}
+export const MCP_CONTROL_CATALOG_CHANNEL_KEYS = CONTROL_OPERATION_SPECS.map((entry) => entry.channelKey);
+
+export const MCP_CONTROL_BLOCKED_CHANNEL_KEYS = [
+  "secretsSet",
+  "secretsDelete",
+  "secretsHas",
+  "projectOpen",
+  "pluginLoadDev",
+  "pluginCreateFromTemplate",
+  "pluginInstallFromPath",
+  "pluginInstallFromPackage",
+  "pluginLauncherDismiss",
+  "skillImport",
+  "composerPickFiles",
+  "composerPickPhotos",
+  "composerImportFiles",
+  "composerPasteFiles",
+  "clipboardRecordPaste",
+  "menuRendererReady",
+  "providersCreate",
+  "providersUpdate",
+  "providersDelete",
+  "providersTest",
+  "providersOauthStart",
+  "providersOauthRespond",
+  "providersOauthCancel",
+  "providersOauthDelete",
+  "settingsSet",
+  "mcpUpsert",
+  "mcpImport",
+] as const;
 
 function asObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -456,19 +455,63 @@ function asObject(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function serialize(value: unknown): string {
+function assertRequiredFields(schema: McpJsonSchema, input: Record<string, unknown>, toolName: string): void {
+  for (const key of schema.required ?? []) {
+    if (input[key] === undefined) {
+      throw Object.assign(new Error(`${toolName} requires ${key}`), { code: "INVALID_PARAMS" });
+    }
+  }
+}
+
+export function stripSecretMaterial(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((entry) => stripSecretMaterial(entry));
+  if (!value || typeof value !== "object") return value;
+  const output: Record<string, unknown> = {};
+  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    const normalized = key.replaceAll("-", "_").toLowerCase();
+    if (SECRET_FIELD_NAMES.has(normalized)) continue;
+    if (key === "headers" && nested && typeof nested === "object" && !Array.isArray(nested)) {
+      const headers: Record<string, unknown> = {};
+      for (const [headerName, headerValue] of Object.entries(nested as Record<string, unknown>)) {
+        if (SECRET_HEADER_NAMES.has(headerName.toLowerCase())) continue;
+        headers[headerName] = headerValue;
+      }
+      output[key] = headers;
+      continue;
+    }
+    if (key === "env" && nested && typeof nested === "object" && !Array.isArray(nested)) {
+      const env: Record<string, unknown> = {};
+      for (const [envName, envValue] of Object.entries(nested as Record<string, unknown>)) {
+        if (SECRET_ENV_NAME.test(envName)) continue;
+        env[envName] = envValue;
+      }
+      output[key] = env;
+      continue;
+    }
+    output[key] = stripSecretMaterial(nested);
+  }
+  return output;
+}
+
+export function boundMcpResult(value: unknown): unknown {
   let text: string;
   try {
     text = JSON.stringify(value ?? null);
   } catch {
     text = JSON.stringify({ value: String(value) });
   }
-  if (text.length <= MAX_RESULT_CHARS) return text;
-  return JSON.stringify({
+  if (text.length <= MAX_RESULT_CHARS) {
+    try {
+      return value ?? null;
+    } catch {
+      return { value: String(value) };
+    }
+  }
+  return {
     truncated: true,
     reason: "MCP_RESULT_LIMIT",
     preview: text.slice(0, MAX_RESULT_CHARS),
-  });
+  };
 }
 
 function errorInfo(error: unknown): { code: string; message: string; details?: unknown } {
@@ -492,14 +535,87 @@ function rpcError(id: JsonRpcId, code: number, message: string, data?: unknown):
   return { jsonrpc: "2.0", id, error: { code, message, ...(data === undefined ? {} : { data }) } };
 }
 
+export function isLoopbackBindHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  if (normalized === "::1") return true;
+  if (isIP(normalized) === 4) {
+    const octets = normalized.split(".").map((part) => Number(part));
+    return octets[0] === 127;
+  }
+  return false;
+}
+
+export function negotiateMcpProtocolVersion(requested: unknown): string {
+  if (typeof requested === "string" && MCP_COMPATIBLE_PROTOCOL_VERSIONS.has(requested.trim())) {
+    return requested.trim();
+  }
+  return MCP_PROTOCOL_VERSION;
+}
+
+export function tokensEqual(provided: string, expected: string): boolean {
+  const left = Buffer.from(provided);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length) {
+    timingSafeEqual(right, right);
+    return false;
+  }
+  return timingSafeEqual(left, right);
+}
+
 export function createMcpControlOperations(
   channels: Readonly<Record<string, string>>,
 ): McpControlOperation[] {
   return CONTROL_OPERATION_SPECS.flatMap((entry) => {
     const channel = channels[entry.channelKey];
     if (!channel) return [];
-    return [{ id: entry.id, channel, description: entry.description, risk: entry.risk }];
+    return [{
+      id: entry.id,
+      channel,
+      description: entry.description,
+      risk: entry.risk,
+      argumentShape: entry.argumentShape,
+    }];
   });
+}
+
+export function mcpControlRendererEvent(
+  operation: McpControlOperation,
+  result: unknown,
+  args: readonly unknown[],
+): McpControlRendererEvent | null {
+  const payload = result as {
+    session?: { id?: string; projectPath?: string | null } | null;
+    workspace?: { path?: string | null } | null;
+  } | null;
+  const sessionId = payload?.session?.id?.trim();
+  if (operation.id === "session/create" || operation.id === "session/fork") {
+    if (!sessionId) return null;
+    return {
+      reason: "mcp.session",
+      selectSessionId: sessionId,
+      projectPath: payload?.session?.projectPath ?? null,
+    };
+  }
+  const promptedSessionId =
+    operation.id === "agent/prompt" &&
+    args[0] &&
+    typeof args[0] === "object" &&
+    typeof (args[0] as { sessionId?: unknown }).sessionId === "string"
+      ? (args[0] as { sessionId: string }).sessionId.trim()
+      : "";
+  if (operation.id === "agent/prompt" && promptedSessionId) {
+    return { reason: "mcp.prompt", selectSessionId: promptedSessionId };
+  }
+  if (operation.id === "project/set") {
+    return { reason: "mcp.project", projectPath: payload?.workspace?.path ?? null };
+  }
+  if (operation.id === "project/clear") {
+    return { reason: "mcp.project", projectPath: null };
+  }
+  if (SESSION_MUTATION_IDS.has(operation.id) || operation.id === "plans/resolve") {
+    return { reason: "mcp.session" };
+  }
+  return null;
 }
 
 export type McpControlServerOptions = {
@@ -508,6 +624,7 @@ export type McpControlServerOptions = {
   channels: Readonly<Record<string, string>>;
   host?: string;
   port?: number;
+  version?: string;
   onOperationComplete?: (
     operation: McpControlOperation,
     result: unknown,
@@ -529,10 +646,12 @@ export class McpControlServer {
   private readonly invoke: IpcInvoke;
   private readonly host: string;
   private readonly requestedPort: number;
+  private readonly version: string;
   private readonly onOperationComplete?: McpControlServerOptions["onOperationComplete"];
   private readonly log: Logger;
   private readonly operations: McpControlOperation[];
   private readonly operationById = new Map<string, McpControlOperation>();
+  private readonly toolsList: McpTool[];
   private readonly sessions = new Set<string>();
   private readonly serverName = MCP_SERVER_NAME;
   private server: ReturnType<typeof createServer> | null = null;
@@ -545,10 +664,12 @@ export class McpControlServer {
     this.invoke = options.invoke;
     this.host = options.host ?? DEFAULT_HOST;
     this.requestedPort = options.port ?? DEFAULT_PORT;
+    this.version = options.version ?? "1";
     this.onOperationComplete = options.onOperationComplete;
     this.log = options.log ?? (() => undefined);
     this.operations = createMcpControlOperations(options.channels);
     for (const operation of this.operations) this.operationById.set(operation.id, operation);
+    this.toolsList = this.buildTools();
   }
 
   get isRunning(): boolean {
@@ -557,11 +678,12 @@ export class McpControlServer {
 
   get connectionInfo(): McpControlConnectionInfo | null {
     if (!this.port || !this.token) return null;
+    const hostname = this.host.includes(":") && !this.host.startsWith("[") ? `[${this.host}]` : this.host;
     return {
       active: this.isRunning,
       serverName: this.serverName,
       protocol: "streamable-http",
-      url: `http://${this.host}:${this.port}/mcp`,
+      url: `http://${hostname}:${this.port}/mcp`,
       token: this.token,
       pid: process.pid,
       ...(this.startedAt ? { startedAt: this.startedAt } : {}),
@@ -570,6 +692,9 @@ export class McpControlServer {
 
   async start(): Promise<McpControlConnectionInfo | null> {
     if (this.server) return this.connectionInfo;
+    if (!isLoopbackBindHost(this.host)) {
+      throw new Error("MCP control server must bind a loopback address");
+    }
     if (!Number.isInteger(this.requestedPort) || this.requestedPort < 0 || this.requestedPort > 65_535) {
       throw new Error("invalid MCP control port");
     }
@@ -603,6 +728,10 @@ export class McpControlServer {
       await this.stop();
       throw new Error("MCP control server did not expose a TCP address");
     }
+    if (!isLoopbackBindHost(address.address)) {
+      await this.stop();
+      throw new Error("MCP control server bound a non-loopback address");
+    }
     this.port = address.port;
     this.startedAt = new Date().toISOString();
     const info = this.connectionInfo;
@@ -629,7 +758,16 @@ export class McpControlServer {
     this.server = null;
     this.sessions.clear();
     if (server) {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
+      if (typeof server.closeAllConnections === "function") {
+        server.closeAllConnections();
+      }
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, SHUTDOWN_CLOSE_MS);
+        server.close(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
     }
     const info = this.connectionInfo;
     if (info) await this.writeConnectionInfo({ ...info, active: false });
@@ -640,7 +778,10 @@ export class McpControlServer {
     const path = join(this.dataDir, "mcp-control.token");
     try {
       const existing = (await readFile(path, "utf8")).trim();
-      if (/^[a-f0-9]{64}$/i.test(existing)) return existing;
+      if (/^[a-f0-9]{64}$/i.test(existing)) {
+        await chmod(path, 0o600).catch(() => undefined);
+        return existing;
+      }
     } catch {
       // Generate the first token below.
     }
@@ -667,17 +808,23 @@ export class McpControlServer {
     }
   }
 
+  private headerValue(request: IncomingMessage, name: string): string | null {
+    const value = request.headers[name];
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  }
+
   private isAuthorized(request: IncomingMessage): boolean {
-    const authorization = request.headers.authorization;
+    const authorization = this.headerValue(request, "authorization");
     const token = authorization?.startsWith("Bearer ")
       ? authorization.slice("Bearer ".length).trim()
-      : request.headers["x-pi-desktop-token"];
-    return typeof token === "string" && token === this.token;
+      : this.headerValue(request, "x-pi-desktop-token");
+    return typeof token === "string" && token.length > 0 && tokensEqual(token, this.token);
   }
 
   private isAllowedOrigin(request: IncomingMessage): boolean {
     const rawOrigin = request.headers.origin;
     if (!rawOrigin) return true;
+    if (Array.isArray(rawOrigin)) return false;
     try {
       const origin = new URL(rawOrigin);
       if (origin.protocol !== "http:" && origin.protocol !== "https:") return false;
@@ -690,14 +837,29 @@ export class McpControlServer {
     }
   }
 
+  private isAllowedHostHeader(request: IncomingMessage): boolean {
+    const raw = this.headerValue(request, "host");
+    if (!raw) return true;
+    const hostname = raw.startsWith("[")
+      ? raw.slice(1, raw.indexOf("]"))
+      : raw.split(":")[0] ?? "";
+    return hostname === "127.0.0.1" ||
+      hostname === "localhost" ||
+      hostname === "::1" ||
+      hostname === this.host;
+  }
+
   private protocolVersion(request: IncomingMessage): string | null {
-    const value = request.headers["mcp-protocol-version"];
-    return typeof value === "string" && value.trim() ? value.trim() : null;
+    return this.headerValue(request, "mcp-protocol-version");
   }
 
   private async handleRequest(request: IncomingMessage, result: ServerResponse): Promise<void> {
     result.setHeader("Cache-Control", "no-store");
     result.setHeader("X-Content-Type-Options", "nosniff");
+    if (!this.isAllowedOrigin(request) || !this.isAllowedHostHeader(request)) {
+      this.sendHttp(result, 403, { error: "origin not allowed" });
+      return;
+    }
     if (request.method === "OPTIONS") {
       result.writeHead(204, {
         Allow: "POST, DELETE, OPTIONS",
@@ -710,10 +872,6 @@ export class McpControlServer {
     const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
     if (pathname !== "/mcp" && pathname !== "/mcp/") {
       this.sendHttp(result, 404, { error: "not found" });
-      return;
-    }
-    if (!this.isAllowedOrigin(request)) {
-      this.sendHttp(result, 403, { error: "origin not allowed" });
       return;
     }
     if (!this.isAuthorized(request)) {
@@ -751,11 +909,16 @@ export class McpControlServer {
       return;
     }
     const requestBody = body as JsonRpcRequest;
-    const id = requestBody.id ?? null;
+    if (requestBody.jsonrpc !== undefined && requestBody.jsonrpc !== "2.0") {
+      this.sendJsonRpc(result, rpcError(requestBody.id ?? null, -32600, "jsonrpc must be \"2.0\""));
+      return;
+    }
+    const hasId = Object.prototype.hasOwnProperty.call(requestBody, "id");
+    const id = hasId ? requestBody.id ?? null : null;
     const method = typeof requestBody.method === "string" ? requestBody.method : "";
     const sessionId = this.sessionId(request);
     const protocolVersion = this.protocolVersion(request);
-    if (protocolVersion && protocolVersion !== MCP_PROTOCOL_VERSION && protocolVersion !== "2025-03-26") {
+    if (protocolVersion && !MCP_COMPATIBLE_PROTOCOL_VERSIONS.has(protocolVersion)) {
       this.sendHttp(result, 400, { error: "unsupported MCP protocol version" });
       return;
     }
@@ -765,6 +928,20 @@ export class McpControlServer {
     }
     if (method !== "initialize" && sessionId && !this.sessions.has(sessionId)) {
       this.sendHttp(result, 404, { error: "unknown MCP session" });
+      return;
+    }
+    if (!hasId && method.startsWith("notifications/")) {
+      if (method === "notifications/initialized") {
+        result.writeHead(202);
+        result.end();
+        return;
+      }
+      result.writeHead(202);
+      result.end();
+      return;
+    }
+    if (!hasId) {
+      this.sendHttp(result, 400, { error: "JSON-RPC id is required" });
       return;
     }
     try {
@@ -787,17 +964,23 @@ export class McpControlServer {
   private async dispatch(request: JsonRpcRequest): Promise<DispatchResult | null> {
     const id = request.id ?? null;
     const method = typeof request.method === "string" ? request.method : "";
-    const params = request.params && typeof request.params === "object" ? request.params as Record<string, unknown> : {};
+    const params = request.params && typeof request.params === "object" && !Array.isArray(request.params)
+      ? request.params as Record<string, unknown>
+      : {};
     if (method === "initialize") {
       const sessionId = randomUUID();
+      if (this.sessions.size >= MAX_MCP_SESSIONS) {
+        const oldest = this.sessions.values().next().value;
+        if (oldest) this.sessions.delete(oldest);
+      }
       this.sessions.add(sessionId);
-      const requested = typeof params.protocolVersion === "string" ? params.protocolVersion : MCP_PROTOCOL_VERSION;
       return {
         response: response(id, {
-          protocolVersion: requested,
+          protocolVersion: negotiateMcpProtocolVersion(params.protocolVersion),
           capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: this.serverName, version: "1" },
-          instructions: "Use pi_session_create, pi_project_open, pi_agent_prompt, and pi_desktop_invoke to control PI-Desktop.",
+          serverInfo: { name: this.serverName, version: this.version },
+          instructions:
+            "Local PI-Desktop control plane. Named tools cover project/session/Agent/workspace. Dangerous operations, including session/configure permissionMode, require confirm=true. confirm is an agent acknowledgement, not a desktop user prompt. Poll pi_session_get or pi_agent_status for turn progress; this server does not stream SSE.",
         }),
         sessionId,
       };
@@ -805,19 +988,19 @@ export class McpControlServer {
     if (method === "notifications/initialized") return null;
     if (method === "ping") return { response: response(id, {}) };
     if (method === "tools/list") {
-      return { response: response(id, { tools: this.tools() }) };
+      return { response: response(id, { tools: this.toolsList.map(({ execute: _execute, ...tool }) => tool) }) };
     }
     if (method === "resources/list") return { response: response(id, { resources: [] }) };
     if (method === "tools/call") {
       const name = typeof params.name === "string" ? params.name : "";
       const input = params.arguments ?? {};
-      const tool = this.tools().find((candidate) => candidate.name === name);
+      const tool = this.toolsList.find((candidate) => candidate.name === name);
       if (!tool) return { response: rpcError(id, -32602, `unknown tool: ${name}`) };
       try {
-        const value = await tool.execute(input);
+        const value = boundMcpResult(await tool.execute(input));
         return {
           response: response(id, {
-            content: [{ type: "text", text: serialize(value) }],
+            content: [{ type: "text", text: JSON.stringify(value) }],
             structuredContent: value,
           }),
         };
@@ -826,7 +1009,7 @@ export class McpControlServer {
         return {
           response: response(id, {
             isError: true,
-            content: [{ type: "text", text: serialize({ ok: false, error: details }) }],
+            content: [{ type: "text", text: JSON.stringify({ ok: false, error: details }) }],
             structuredContent: { ok: false, error: details },
           }),
         };
@@ -837,7 +1020,7 @@ export class McpControlServer {
     return { response: rpcError(id, -32601, `method not found: ${method}`) };
   }
 
-  private tools(): McpTool[] {
+  private buildTools(): McpTool[] {
     const common = CORE_TOOL_SPECS.flatMap((entry) => {
       const operation = this.operationById.get(entry.operationId);
       if (!operation) return [];
@@ -847,6 +1030,7 @@ export class McpControlServer {
         inputSchema: entry.inputSchema,
         execute: async (raw: unknown) => {
           const input = asObject(raw);
+          assertRequiredFields(entry.inputSchema, input, entry.name);
           if (operation.risk === "dangerous" && input.confirm !== true) {
             throw Object.assign(new Error(`confirm=true is required for ${operation.id}`), { code: "CONFIRMATION_REQUIRED" });
           }
@@ -856,7 +1040,7 @@ export class McpControlServer {
     });
     const generic: McpTool = {
       name: "pi_desktop_invoke",
-      description: "Invoke any reviewed PI-Desktop operation. Use pi_control_describe to inspect operation ids and argument conventions. Dangerous operations require confirm=true.",
+      description: "Invoke a reviewed PI-Desktop operation. Use pi_control_describe for ids and argument shapes. Dangerous operations require confirm=true. This is an agent acknowledgement, not a user prompt.",
       inputSchema: objectSchema({
         operation: {
           type: "string",
@@ -893,51 +1077,57 @@ export class McpControlServer {
         id: operation.id,
         risk: operation.risk,
         description: operation.description,
-        argumentShape: operation.id === "session/rename"
-          ? ["sessionId", "title"]
-          : operation.id === "project/set"
-            ? ["path"]
-            : operation.id === "agent/getStatus"
-              ? ["sessionId"]
-              : "renderer IPC arguments; use the corresponding pi_* tool when available",
+        argumentShape: operation.argumentShape,
       })),
     };
     return [generic, describe, ...common];
   }
 
   private async invokeOperation(operation: McpControlOperation, args: readonly unknown[]): Promise<unknown> {
-    const result = await this.invoke(operation.channel, args);
-    await this.onOperationComplete?.(operation, result, args);
+    const sanitized = args.map((value) => stripSecretMaterial(value)) as unknown[];
+    const result = await this.invoke(operation.channel, sanitized);
+    await this.onOperationComplete?.(operation, result, sanitized);
     return result;
   }
 
   private sessionId(request: IncomingMessage): string | null {
-    const value = request.headers["mcp-session-id"];
-    return typeof value === "string" && value.trim() ? value.trim() : null;
+    return this.headerValue(request, "mcp-session-id");
   }
 
   private readJson(request: IncomingMessage): Promise<unknown> {
     return new Promise((resolve, reject) => {
       let size = 0;
       const chunks: Buffer[] = [];
+      let settled = false;
+      const fail = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        request.destroy();
+        reject(error);
+      };
       request.on("data", (chunk: Buffer | string) => {
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         size += buffer.byteLength;
         if (size > MAX_REQUEST_BYTES) {
-          reject(new Error("MCP request exceeds 2 MiB"));
-          request.destroy();
+          fail(new Error("MCP request exceeds 2 MiB"));
           return;
         }
         chunks.push(buffer);
       });
       request.on("end", () => {
+        if (settled) return;
+        settled = true;
         try {
           resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
         } catch (error) {
           reject(error);
         }
       });
-      request.on("error", reject);
+      request.on("error", (error) => {
+        if (settled) return;
+        settled = true;
+        reject(error);
+      });
     });
   }
 
@@ -962,3 +1152,4 @@ export class McpControlServer {
 }
 
 export const MCP_CONTROL_DEFAULT_PORT = DEFAULT_PORT;
+export const MCP_CONTROL_PROTOCOL_VERSION = MCP_PROTOCOL_VERSION;

@@ -249,7 +249,7 @@ import {
   writeWindowState,
 } from "./window-preferences";
 import { createPlanUiProbe } from "./plan-ui-probe";
-import { McpControlServer } from "./mcp-control";
+import { McpControlServer, mcpControlRendererEvent } from "./mcp-control";
 
 // The shared error-code union is reconciled in the shared lane. Keep desktop
 // source type-safe while that lane is temporarily staged at main.
@@ -9033,62 +9033,13 @@ app.whenReady().then(async () => {
         dataDir,
         invoke: invokeIpc,
         channels: IPC.invoke,
+        version: APP_VERSION,
         port: process.env.PI_DESKTOP_MCP_PORT
           ? Number(process.env.PI_DESKTOP_MCP_PORT)
           : undefined,
         onOperationComplete: async (operation, result, args) => {
-          const payload = result as {
-            session?: { id?: string; projectPath?: string | null } | null;
-            workspace?: { path?: string | null } | null;
-          } | null;
-          const sessionId = payload?.session?.id?.trim();
-          if (
-            operation.id === "session/create" ||
-            operation.id === "session/fork"
-          ) {
-            if (sessionId) {
-              sendToRenderer(IPC.event.sessionsChanged, {
-                reason: "mcp.session",
-                selectSessionId: sessionId,
-                projectPath: payload?.session?.projectPath ?? null,
-              });
-            }
-            return;
-          }
-          const promptedSessionId =
-            operation.id === "agent/prompt" &&
-            args[0] &&
-            typeof args[0] === "object" &&
-            typeof (args[0] as { sessionId?: unknown }).sessionId === "string"
-              ? (args[0] as { sessionId: string }).sessionId.trim()
-              : "";
-          if (operation.id === "agent/prompt" && promptedSessionId) {
-            sendToRenderer(IPC.event.sessionsChanged, {
-              reason: "mcp.prompt",
-              selectSessionId: promptedSessionId,
-            });
-            return;
-          }
-          if (operation.id === "project/set") {
-            sendToRenderer(IPC.event.sessionsChanged, {
-              reason: "mcp.project",
-              projectPath: payload?.workspace?.path ?? null,
-            });
-            return;
-          }
-          if (operation.id === "project/clear") {
-            sendToRenderer(IPC.event.sessionsChanged, {
-              reason: "mcp.project",
-              projectPath: null,
-            });
-            return;
-          }
-          if (
-            operation.id.startsWith("session/") ||
-            operation.id === "plans/resolve"
-          ) {
-            sendToRenderer(IPC.event.sessionsChanged, { reason: "mcp.session" });
-          }
+          const event = mcpControlRendererEvent(operation, result, args);
+          if (event) sendToRenderer(IPC.event.sessionsChanged, event);
         },
         log: (level, message, data) => logger.app("runtime", level, message, { data }),
       });
