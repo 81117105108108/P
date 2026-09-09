@@ -244,6 +244,9 @@ export function modelIdsMatch(candidate: string, requested: string): boolean {
 /** Provider-local model settings persisted with the provider configuration. */
 export type ModelBinding = {
   id: string;
+  /** Optional display alias. When set it names the model everywhere the UI
+   * shows a model label; the id remains the wire identity. */
+  alias?: string;
   contextWindow: number;
   maxTokens: number;
   /** Explicit endpoint levels; an empty or off-only set disables thinking. */

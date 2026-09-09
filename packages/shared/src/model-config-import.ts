@@ -641,7 +641,7 @@ function clipName(name: string): string {
     : trimmed;
 }
 
-function resolveApiStyle(raw?: string | null): CatalogApiStyle | undefined {
+export function resolveApiStyle(raw?: string | null): CatalogApiStyle | undefined {
   if (!raw) return undefined;
   const key = raw.trim().toLowerCase().replace(/\s+/g, "-");
   return API_STYLE_ALIASES[key] ?? API_STYLE_ALIASES[key.replace(/_/g, "-")];

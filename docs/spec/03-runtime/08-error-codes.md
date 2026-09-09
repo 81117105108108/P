@@ -156,6 +156,7 @@ the failure that exhausts the budget surfaces as §3.3's
 | code | retriable | meaning |
 |---|---|---|
 | `PROVIDER_SECRET_MISSING` | no | enabled provider requires an API key |
+| `MODEL_ALIAS_TOO_LONG` | no | configured model alias exceeds 60 Unicode characters |
 | `SECRET_STORE_UNAVAILABLE` | maybe | OS secure storage unavailable (reserved) |
 | `SETTINGS_INVALID` | no | settings payload invalid (reserved) |
 

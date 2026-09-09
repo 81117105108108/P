@@ -124,6 +124,10 @@ pub struct ProviderUpdateInput {
 #[serde(rename_all = "camelCase")]
 pub struct ModelBinding {
     pub id: String,
+    /// Optional display alias. A blank or absent alias falls back to the catalog's
+    /// published name; `id` remains the wire identity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alias: Option<String>,
     pub context_window: u32,
     pub max_tokens: u32,
     #[serde(default)]
@@ -192,6 +196,7 @@ fn config_oauth_account_label(raw: &str) -> Option<String> {
 const MAX_HEADERS: usize = 32;
 const MAX_HEADER_KEY_BYTES: usize = 256;
 const MAX_HEADER_VALUE_BYTES: usize = 4096;
+const MAX_MODEL_ALIAS_CHARS: usize = 60;
 const FORBIDDEN_HEADER_KEYS: &[&str] = &[
     "authorization",
     "proxy-authorization",
@@ -353,6 +358,12 @@ fn normalize_model_bindings(bindings: &[ModelBinding]) -> Vec<ModelBinding> {
                 .or_else(|| thinking_levels.first().cloned());
             Some(ModelBinding {
                 id: id.to_string(),
+                alias: binding
+                    .alias
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_string),
                 context_window: if binding.context_window == 0 {
                     DEFAULT_CONTEXT_WINDOW
                 } else {
@@ -373,12 +384,28 @@ fn normalize_model_bindings(bindings: &[ModelBinding]) -> Vec<ModelBinding> {
         .collect()
 }
 
+fn validate_model_aliases(bindings: &[ModelBinding]) -> Result<()> {
+    for binding in bindings {
+        if let Some(alias) = binding.alias.as_deref() {
+            if alias.trim().chars().count() > MAX_MODEL_ALIAS_CHARS {
+                bail!(
+                    "MODEL_ALIAS_TOO_LONG: alias for model \"{}\" exceeds {} characters",
+                    binding.id.trim(),
+                    MAX_MODEL_ALIAS_CHARS
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
 fn legacy_model_binding(model_id: Option<String>) -> Vec<ModelBinding> {
     model_id
         .filter(|id| !id.trim().is_empty())
         .map(|id| {
             vec![ModelBinding {
                 id: id.trim().to_string(),
+                alias: None,
                 context_window: DEFAULT_CONTEXT_WINDOW,
                 max_tokens: DEFAULT_MAX_TOKENS,
                 thinking_levels: Vec::new(),
@@ -828,6 +855,11 @@ pub fn create_provider(
 ) -> Result<ProviderPublic> {
     let id = Uuid::new_v4().to_string();
     let now = now_ms();
+    // Validate before any side effect: a rejected alias must not leave a
+    // stored secret behind.
+    if let Some(models) = input.models.as_deref() {
+        validate_model_aliases(models)?;
+    }
     let secret_ref = secret_ref_for_provider(&id);
     let mut backend = None;
     if let Some(secret) = input.secret_value.as_ref().filter(|s| !s.is_empty()) {
@@ -905,6 +937,11 @@ pub fn update_provider(
     let existing = get_provider(db, secrets, &input.id)?;
     if existing.is_none() {
         return Ok(None);
+    }
+    // Validate before any side effect: a rejected alias must not replace the
+    // stored secret.
+    if let Some(models) = input.models.as_deref() {
+        validate_model_aliases(models)?;
     }
     // Derive from the API key ref directly: `has_secret` now also covers an
     // OAuth credential, so reusing it here would stamp an api_key ref onto a
@@ -1213,6 +1250,7 @@ mod tests {
                 models: Some(vec![
                     ModelBinding {
                         id: "reasoning-model".into(),
+                        alias: Some("pro".into()),
                         context_window: 256_000,
                         max_tokens: 16_000,
                         thinking_levels: vec!["high".into(), "medium".into()],
@@ -1223,6 +1261,7 @@ mod tests {
                     },
                     ModelBinding {
                         id: "plain-model".into(),
+                        alias: None,
                         context_window: 128_000,
                         max_tokens: 8_192,
                         thinking_levels: vec![],
@@ -1268,6 +1307,9 @@ mod tests {
             .unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(config["models"][0]["maxTokens"], 16_000);
+        assert_eq!(config["models"][0]["alias"], "pro");
+        assert!(config["models"][1].get("alias").is_none());
+        assert_eq!(provider.models[0].alias.as_deref(), Some("pro"));
         // Attachment overrides are explicit configuration: an answered switch is
         // persisted, while "follow the catalog" stays absent instead of being
         // frozen into a false that a later catalog fix could not correct.
@@ -1314,6 +1356,336 @@ mod tests {
             config_model_bindings(r#"{"modelId":"config-legacy"}"#, None)[0].id,
             "config-legacy"
         );
+    }
+
+    fn binding_with_alias(id: &str, alias: Option<&str>) -> ModelBinding {
+        ModelBinding {
+            id: id.into(),
+            alias: alias.map(str::to_string),
+            context_window: DEFAULT_CONTEXT_WINDOW,
+            max_tokens: DEFAULT_MAX_TOKENS,
+            thinking_levels: Vec::new(),
+            default_thinking_level: None,
+            supports_images: None,
+            supports_documents: None,
+            available_for_subagents: None,
+        }
+    }
+
+    #[test]
+    fn normalize_model_bindings_trims_aliases_and_drops_blank_ones() {
+        let normalized = normalize_model_bindings(&[
+            binding_with_alias("pro-model", Some("  pro  ")),
+            binding_with_alias("empty-alias", Some("")),
+            binding_with_alias("blank-alias", Some("   ")),
+            binding_with_alias("no-alias", None),
+        ]);
+        assert_eq!(normalized[0].alias.as_deref(), Some("pro"));
+        assert_eq!(normalized[1].alias, None);
+        assert_eq!(normalized[2].alias, None);
+        assert_eq!(normalized[3].alias, None);
+    }
+
+    #[test]
+    fn alias_survives_the_provider_config_round_trip() {
+        let bindings = vec![
+            binding_with_alias("pro-model", Some("  pro  ")),
+            binding_with_alias("plain-model", None),
+        ];
+        let config = build_provider_config_json(
+            None,
+            None,
+            Some(&bindings),
+            &LimitOverrides {
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+            },
+        )
+        .unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&config).unwrap();
+        assert_eq!(parsed["models"][0]["alias"], "pro");
+        assert!(parsed["models"][1].get("alias").is_none());
+        let restored: Vec<ModelBinding> = serde_json::from_value(parsed["models"].clone()).unwrap();
+        assert_eq!(restored[0].alias.as_deref(), Some("pro"));
+        assert_eq!(restored[1].alias, None);
+    }
+
+    #[test]
+    fn alias_survives_provider_create_and_update() {
+        let (_dir, db, secrets) = test_context();
+        let provider = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "Aliased".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: Some("none".into()),
+                models: Some(vec![binding_with_alias("pro-model", Some("  pro  "))]),
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                oauth_account_label: None,
+                headers: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(provider.models[0].alias.as_deref(), Some("pro"));
+
+        let updated = update_provider(
+            &db,
+            &secrets,
+            ProviderUpdateInput {
+                id: provider.id.clone(),
+                name: None,
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: None,
+                models: Some(vec![binding_with_alias("pro-model", Some("fast"))]),
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                oauth_account_label: None,
+                headers: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+                enabled: None,
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(updated.models[0].alias.as_deref(), Some("fast"));
+
+        let reloaded = get_provider(&db, &secrets, &provider.id).unwrap().unwrap();
+        assert_eq!(reloaded.models[0].alias.as_deref(), Some("fast"));
+    }
+
+    #[test]
+    fn alias_length_is_limited_to_sixty_characters() {
+        let at_limit = binding_with_alias("model", Some(&"a".repeat(MAX_MODEL_ALIAS_CHARS)));
+        assert!(validate_model_aliases(&[at_limit]).is_ok());
+
+        let over_limit = binding_with_alias("model", Some(&"a".repeat(MAX_MODEL_ALIAS_CHARS + 1)));
+        let error = validate_model_aliases(&[over_limit])
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("MODEL_ALIAS_TOO_LONG"), "{error}");
+
+        // Multi-byte aliases are counted in characters, not bytes.
+        let multi_byte = binding_with_alias("model", Some(&"あ".repeat(MAX_MODEL_ALIAS_CHARS)));
+        assert!(validate_model_aliases(&[multi_byte]).is_ok());
+        let multi_byte_over =
+            binding_with_alias("model", Some(&"あ".repeat(MAX_MODEL_ALIAS_CHARS + 1)));
+        let error = validate_model_aliases(&[multi_byte_over])
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("MODEL_ALIAS_TOO_LONG"), "{error}");
+    }
+
+    #[test]
+    fn over_long_alias_leaves_stored_secrets_untouched() {
+        let (dir, db, secrets) = test_context();
+        let over_limit = binding_with_alias("model", Some(&"a".repeat(MAX_MODEL_ALIAS_CHARS + 1)));
+        let stored_bins = || {
+            std::fs::read_dir(dir.path().join("secrets"))
+                .unwrap()
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "bin"))
+                .count()
+        };
+
+        // A rejected create must not leave a secret behind.
+        let before = stored_bins();
+        let error = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "Too long".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: Some("api_key_and_base_url".into()),
+                models: Some(vec![over_limit.clone()]),
+                default_model_id: None,
+                secret_value: Some("new-secret".into()),
+                api_style: None,
+                oauth_account_label: None,
+                headers: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+            },
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("MODEL_ALIAS_TOO_LONG"), "{error}");
+        assert_eq!(stored_bins(), before, "rejected create stored a secret");
+
+        // A rejected update must not replace the stored secret.
+        let provider = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "Aliased".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: Some("api_key_and_base_url".into()),
+                models: None,
+                default_model_id: Some("model".into()),
+                secret_value: Some("old-secret".into()),
+                api_style: None,
+                oauth_account_label: None,
+                headers: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+            },
+        )
+        .unwrap();
+        let api_key_ref = secret_ref_for_provider(&provider.id);
+        assert_eq!(
+            secrets.get(&api_key_ref).unwrap().as_deref(),
+            Some("old-secret")
+        );
+
+        let error = update_provider(
+            &db,
+            &secrets,
+            ProviderUpdateInput {
+                id: provider.id.clone(),
+                name: None,
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: None,
+                models: Some(vec![over_limit]),
+                default_model_id: None,
+                secret_value: Some("new-secret".into()),
+                api_style: None,
+                oauth_account_label: None,
+                headers: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                enabled: None,
+            },
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("MODEL_ALIAS_TOO_LONG"), "{error}");
+        assert_eq!(
+            secrets.get(&api_key_ref).unwrap().as_deref(),
+            Some("old-secret"),
+            "rejected update replaced the stored secret"
+        );
+    }
+
+    #[test]
+    fn over_long_alias_is_rejected_by_the_write_paths() {
+        let (_dir, db, secrets) = test_context();
+        let over_limit = binding_with_alias("model", Some(&"a".repeat(MAX_MODEL_ALIAS_CHARS + 1)));
+        let error = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "Too long".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: Some("none".into()),
+                models: Some(vec![over_limit.clone()]),
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                oauth_account_label: None,
+                headers: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+            },
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("MODEL_ALIAS_TOO_LONG"), "{error}");
+
+        let provider = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "Aliased".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: Some("none".into()),
+                models: None,
+                default_model_id: Some("model".into()),
+                secret_value: None,
+                api_style: None,
+                oauth_account_label: None,
+                headers: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+            },
+        )
+        .unwrap();
+        let error = update_provider(
+            &db,
+            &secrets,
+            ProviderUpdateInput {
+                id: provider.id,
+                name: None,
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: None,
+                models: Some(vec![over_limit]),
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                oauth_account_label: None,
+                headers: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+                enabled: None,
+            },
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("MODEL_ALIAS_TOO_LONG"), "{error}");
     }
 
     #[test]

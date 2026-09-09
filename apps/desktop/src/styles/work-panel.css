@@ -718,6 +718,10 @@
 }
 
 .subagent-detail > .subagent-run {
+  /* This is a flex child of the detail column. Without an explicit zero
+     minimum, a long command/path can win the min-content calculation and push
+     the whole side sheet past the work-panel edge. */
+  min-width: 0;
   margin: 0;
   border-radius: 0;
   background: transparent;

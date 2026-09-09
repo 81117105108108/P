@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ModelAuth } from "@earendil-works/pi-ai";
 import { convertMessages } from "@earendil-works/pi-ai/api/openai-completions";
+import type { ModelConfig } from "./thinking-level.js";
 import {
   apiBindingForStyle,
   buildProviderModel,
@@ -278,6 +279,100 @@ describe("createProviderModels auth resolution", () => {
       apiKey: "second-token",
       baseUrl: "https://per-account.acme.test",
     });
+  });
+});
+
+describe("buildProviderModel model-level wire API", () => {
+  const museCatalog: ModelConfig = {
+    source: "models.dev",
+    name: "Muse Spark 1.3 Contributor",
+    baseUrl: "https://opencode.ai/zen/go/v1",
+    api: "openai-responses",
+    reasoning: true,
+    input: ["text", "image"],
+    contextWindow: 1048576,
+    maxTokens: 131072,
+    compat: { supportsStrictMode: true },
+  };
+  const responsesCatalogProvider: RuntimeProviderConfig = {
+    ...keyedProvider,
+    id: "opencode-go",
+    name: "OpenCode Go",
+    vendorKey: "opencode-go",
+    baseUrl: "https://opencode.ai/zen/go/v1",
+    modelId: "muse-spark-1.3-contributor",
+    apiStyle: "opencode_go",
+    supportsReasoning: true,
+    supportedThinkingLevels: ["off", "low", "medium", "high", "xhigh"],
+    modelConfig: { ...museCatalog },
+  };
+
+  it("routes a responses-only model through the responses API (issue #105)", () => {
+    const model = buildProviderModel(responsesCatalogProvider) as any;
+    expect(model.api).toBe("openai-responses");
+    expect(model.baseUrl).toBe("https://opencode.ai/zen/go/v1");
+    expect(model.compat).toMatchObject({ supportsStrictMode: true });
+  });
+
+  it("keeps the provider-wide style when the catalog pins no wire API", () => {
+    const model = buildProviderModel({
+      ...responsesCatalogProvider,
+      modelId: "deepseek-v4-flash",
+      modelConfig: {
+        source: "models.dev",
+        name: "DeepSeek V4 Flash",
+        baseUrl: "https://opencode.ai/zen/go/v1",
+        reasoning: true,
+        input: ["text"],
+        contextWindow: 1000000,
+        maxTokens: 384000,
+      },
+    }) as any;
+    expect(model.api).toBe("openai-completions");
+  });
+
+  it("leaves the same model on completions under other providers (issue #105)", () => {
+    const model = buildProviderModel({
+      ...responsesCatalogProvider,
+      id: "llmgateway",
+      name: "LLM Gateway",
+      vendorKey: "llmgateway",
+      baseUrl: "https://llmgateway.example/v1",
+      apiStyle: "chat_completions",
+      modelConfig: {
+        source: "models.dev",
+        name: "Muse Spark 1.3 Contributor",
+        baseUrl: "https://llmgateway.example/v1",
+        reasoning: true,
+        input: ["text", "image"],
+        contextWindow: 1048576,
+        maxTokens: 131072,
+      },
+    }) as any;
+    expect(model.api).toBe("openai-completions");
+  });
+
+  it("posts responses models to the responses endpoint", async () => {
+    const provider = responsesCatalogProvider;
+    const model = buildProviderModel(provider);
+    const urls: string[] = [];
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      urls.push(input instanceof Request ? input.url : String(input));
+      return new Response("bad gateway", { status: 502 });
+    });
+    const result = await createProviderModels(provider, model)
+      .streamSimple(
+        model,
+        {
+          systemPrompt: "system",
+          messages: [{ role: "user", content: "hello", timestamp: Date.now() }],
+          tools: [],
+        },
+        { fetch },
+      )
+      .result();
+    expect(result.stopReason).toBe("error");
+    expect(urls).toEqual(["https://opencode.ai/zen/go/v1/responses"]);
   });
 });
 

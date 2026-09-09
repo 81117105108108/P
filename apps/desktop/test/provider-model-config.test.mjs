@@ -215,3 +215,28 @@ test("the rejected catalog-browser styles are gone from the cascade", () => {
   assert.match(styles, /\.provider-setup-body\s*\{[\s\S]*?overflow-y: auto;/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
+
+test("model ids are copyable and a configured model can carry an alias", () => {
+  // The shell is non-selectable, so the id/name text opts back in.
+  assert.match(pickerSource, /provider-models-row-copy selectable/);
+  assert.match(pickerSource, /provider-chosen-row-id font-mono selectable/);
+  // A drag-selection inside the row is a copy gesture, not a checkbox toggle.
+  // The guard is row-scoped, so a stale selection elsewhere on the page cannot
+  // cancel a plain click or the Space key's synthetic click.
+  assert.match(pickerSource, /selection\.isCollapsed/);
+  assert.match(pickerSource, /row\.contains\(selection\.anchorNode\)/);
+  assert.match(pickerSource, /row\.contains\(selection\.focusNode\)/);
+  // Keyboard activation reports detail 0 and must still toggle.
+  assert.match(pickerSource, /event\.detail === 0/);
+  // A selection left behind by copying must not block an explicit checkbox click.
+  assert.match(pickerSource, /event\.target instanceof HTMLInputElement/);
+  assert.match(pickerSource, /event\.preventDefault\(\)/);
+  assert.doesNotMatch(pickerSource, /window\.getSelection\(\)\?\.toString\(\)/);
+  // The alias is edited in the Advanced body and shown beside the id.
+  assert.match(pickerSource, /settings\.modelAlias/);
+  assert.match(pickerSource, /updateBinding\(binding\.id, \{/);
+  // The 60-character cap counts Unicode scalars, matching host-core.
+  assert.match(pickerSource, /\[\.\.\.event\.target\.value\]\.slice\(0, 60\)/);
+  assert.match(pickerSource, /provider-chosen-row-alias/);
+  assert.match(styles, /\.provider-chosen-row-alias\s*\{/);
+});
