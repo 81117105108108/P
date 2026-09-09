@@ -292,6 +292,10 @@ export function ModelSelectionPanes({
                 // Keyboard activation reports detail 0 and is not a click that
                 // carries a text selection, so it must keep toggling.
                 if (event.detail === 0) return;
+                // A copied selection can remain active when the user clicks the
+                // checkbox next. The checkbox is an explicit toggle target, so
+                // an old selection must not cancel its native activation.
+                if (event.target instanceof HTMLInputElement) return;
                 // A drag-selection inside this row is a copy gesture, not a toggle.
                 const selection = window.getSelection();
                 const row = event.currentTarget;

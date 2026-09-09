@@ -228,6 +228,8 @@ test("model ids are copyable and a configured model can carry an alias", () => {
   assert.match(pickerSource, /row\.contains\(selection\.focusNode\)/);
   // Keyboard activation reports detail 0 and must still toggle.
   assert.match(pickerSource, /event\.detail === 0/);
+  // A selection left behind by copying must not block an explicit checkbox click.
+  assert.match(pickerSource, /event\.target instanceof HTMLInputElement/);
   assert.match(pickerSource, /event\.preventDefault\(\)/);
   assert.doesNotMatch(pickerSource, /window\.getSelection\(\)\?\.toString\(\)/);
   // The alias is edited in the Advanced body and shown beside the id.
