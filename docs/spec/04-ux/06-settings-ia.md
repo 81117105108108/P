@@ -474,8 +474,9 @@ system while preserving their different data ownership:
   - developer mode is off unless the optional persisted
     `AppSettings.developerMode` value is `true`
   - the developer mode switch unlocks the Open console button, F12 on every
-    platform, Ctrl+Shift+I on Windows/Linux, and the macOS View-menu developer
-    tools item
+    platform, Ctrl+Shift+I on Windows/Linux, the macOS View-menu developer
+    tools item, and Copy conversation ID / Open session path on the
+    conversation overflow menu
   - disabling developer mode closes an open console and disables or removes
     every entry point; Settings search indexes the card, switch, and console
     action

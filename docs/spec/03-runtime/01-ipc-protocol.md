@@ -53,6 +53,8 @@ Examples:
 - `pi-desktop/session/summarizeTitle`
 - `pi-desktop/project/open`
 - `pi-desktop/project/openFolder`
+- `pi-desktop/session/getScratchPath`
+- `pi-desktop/session/openScratchPath`
 
 ## 4. Common Response Envelope
 
@@ -729,6 +731,12 @@ Minimal interface:
   completion. It never writes the title itself; the renderer applies the
   result through `session/rename` only while the session still has a default or
   first-prompt fallback title. A one-shot failure leaves that fallback intact.
+- `session/getScratchPath({ sessionId }) -> { path }` returns the session
+  scratch directory `<data_dir>/scratch/<sessionId>/` without creating it.
+- `session/openScratchPath({ sessionId }) -> { ok, path }` resolves that same
+  directory, creates it if missing, and opens it in the system file manager.
+  The renderer supplies only the session id; Main rejects a path outside the
+  scratch root.
 - `session/importScan`
 - `session/importRun(candidates) -> { imported, skipped, failed }`
 - `modelConfig/importScan -> { providers }`

@@ -12,7 +12,7 @@ import {
   shell,
   Tray,
 } from "electron";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
 import {
@@ -6218,6 +6218,25 @@ function registerIpc() {
     return host.call<{ path: string }>("session.getScratchPath", {
       sessionId: String(input?.sessionId || ""),
     });
+  });
+  handle(IPC.invoke.sessionOpenScratchPath, async (input: { sessionId: string }) => {
+    if (!host) throw new Error("host unavailable");
+    const sessionId = String(input?.sessionId || "").trim();
+    const result = await host.call<{ path: string }>("session.getScratchPath", {
+      sessionId,
+    });
+    const scratchPath = resolve(String(result?.path ?? ""));
+    const scratchRoot = resolve(join(dataDir, "scratch"));
+    const rel = relative(scratchRoot, scratchPath);
+    if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
+      throw Object.assign(new Error("invalid session id"), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    mkdirSync(scratchPath, { recursive: true });
+    const openError = await shell.openPath(stripWinLongPrefix(scratchPath));
+    if (openError) throw new Error(openError);
+    return { ok: true, path: scratchPath };
   });
   handle(
     IPC.invoke.sessionConfigure,

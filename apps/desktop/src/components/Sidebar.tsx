@@ -1068,15 +1068,23 @@ export function Sidebar({
     }
   };
 
-  const copySessionPath = async (session: SessionSummary) => {
+  const copyConversationId = async (session: SessionSummary) => {
     try {
-      const result = await api.getSessionScratchPath(session.id);
-      await navigator.clipboard.writeText(result.path);
+      await navigator.clipboard.writeText(session.id);
       showToast(t("chat.copied"));
     } catch (error) {
       reportError(error);
     }
     closeMenus();
+  };
+
+  const openSessionPath = async (session: SessionSummary) => {
+    closeMenus(false);
+    try {
+      await api.openSessionScratchPath(session.id);
+    } catch (error) {
+      reportError(error);
+    }
   };
 
   const toggleProjectPin = (entry: ProjectEntry) => {
@@ -1539,15 +1547,26 @@ export function Sidebar({
               {t("nav.createBranch")}
             </button>
             {settings?.developerMode === true ? (
-              <button
-                type="button"
-                role="menuitem"
-                data-action="copy-session-path"
-                onClick={() => void copySessionPath(session)}
-              >
-                <IconCopy size={14} />
-                {t("nav.copySessionPath")}
-              </button>
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-action="copy-conversation-id"
+                  onClick={() => void copyConversationId(session)}
+                >
+                  <IconCopy size={14} />
+                  {t("nav.copyConversationId")}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-action="open-session-path"
+                  onClick={() => void openSessionPath(session)}
+                >
+                  <IconFolder size={14} />
+                  {t("nav.openSessionPath")}
+                </button>
+              </>
             ) : null}
             <button
               type="button"

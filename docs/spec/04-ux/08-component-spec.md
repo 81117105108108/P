@@ -449,7 +449,10 @@ visually distinct from list content.
   project row.
 - Conversation overflow: pin/unpin, archive/restore, Create branch, delete.
   Create branch is disabled while that conversation is running; success
-  activates the independent child session and focuses the composer.
+  activates the independent child session and focuses the composer. When
+  developer mode is on, the menu also offers Copy conversation ID (clipboard)
+  and Open session path (the session scratch directory in the system file
+  manager).
 - The `Sessions` toolbar places the sort button before the message-plus New Chat
   control. The sort menu and every other body-level sidebar menu remain
   content-sized and open 4px to the right of their trigger or pointer. Their
@@ -1053,6 +1056,10 @@ SESSIONS                                      [msg+][↕]
   into an independent session. The child stays in the same project or
   standalone Sessions section and becomes active; later transcript/configuration changes
   do not affect the source. The action is disabled for a running source.
+- Copy conversation ID writes the durable session id to the clipboard. Open
+  session path opens `<data_dir>/scratch/<sessionId>/` in the system file
+  manager, creating the directory if it does not exist yet. Both actions
+  appear only while developer mode is on.
 - Selecting a conversation with a different project first activates that
   project's workspace. A running turn in the previously selected session is
   not aborted.

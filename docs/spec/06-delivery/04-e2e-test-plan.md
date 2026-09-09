@@ -1478,6 +1478,27 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Draft (do not run E2E locally unless explicitly requested)
 
+#### E2E-021b: Developer mode copies a conversation id and opens session scratch
+
+- **Preconditions**: Developer mode is enabled. A session exists, including one
+  whose scratch directory has not been created yet.
+- **Steps**: 1) Open a conversation overflow menu. 2) Confirm Copy conversation
+  ID and Open session path appear after Create branch and before Delete, and
+  that Copy session path is absent. 3) Choose Copy conversation ID and paste
+  the clipboard. 4) Choose Open session path. 5) Disable developer mode and
+  reopen the menu.
+- **Expected**: The clipboard contains the exact session id. The system file
+  manager opens `<data_dir>/scratch/<sessionId>/`, creating that directory if
+  it was missing. The renderer does not send a filesystem path; Main opens
+  only a resolved scratch directory for that session id. With developer mode
+  off, both actions are absent.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `04-ux/08-component-spec.md`, `04-ux/06-settings-ia.md`
+- **Acceptance**: C (sessions), Quality (developer tools)
+- **Milestone**: M2
+- **Status**: Unit-covered (`session-scratch-path.test.mjs`); desktop journey
+  Draft (do not run E2E locally unless explicitly requested)
+
 #### E2E-036: Localized import grouping starts collapsed
 
 - **Preconditions**: Supported local agent stores contain importable sessions across at least two project paths and two sources, including one session without a project path; the app can be launched once with an English system locale and once with a Simplified Chinese system locale.

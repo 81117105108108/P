@@ -110,8 +110,9 @@ recency only breaks ties between equally relevant matches.
   web-content behavior.
 - Developer tools are opt-in. With developer mode enabled, Main handles F12 on
   every platform and Ctrl+Shift+I on Windows/Linux; macOS exposes its native
-  developer-tools role in View. With the mode disabled these product entry
-  points remain unavailable, and disabling it closes an open console.
+  developer-tools role in View; the conversation overflow menu adds Copy
+  conversation ID and Open session path. With the mode disabled these product
+  entry points remain unavailable, and disabling it closes an open console.
 - Main queues native commands until the renderer acknowledges that its menu
   event subscription is active on macOS. Closing and recreating a window
   resets this handshake.

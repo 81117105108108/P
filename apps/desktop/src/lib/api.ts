@@ -337,6 +337,10 @@ export const api = {
   deleteSession: (id: string) => invoke(IPC.invoke.sessionDelete, id),
   getSessionScratchPath: (sessionId: string) =>
     invoke<{ path: string }>(IPC.invoke.sessionGetScratchPath, { sessionId }),
+  openSessionScratchPath: (sessionId: string) =>
+    invoke<{ ok: boolean; path: string }>(IPC.invoke.sessionOpenScratchPath, {
+      sessionId,
+    }),
   openProjectFolder: (path: string) =>
     invoke<{ ok: boolean; path: string }>(IPC.invoke.projectOpenFolder, path),
   renameSession: (id: string, title: string) =>
