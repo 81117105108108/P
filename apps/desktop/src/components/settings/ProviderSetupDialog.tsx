@@ -11,6 +11,7 @@ import {
   NAMED_ENDPOINT_PRESETS,
   OPENCODE_GO_API_STYLE,
   matchNamedPreset,
+  normalizeApiStyle,
   type CatalogApiStyle,
   type ModelBinding,
   type ProviderPublic,
@@ -48,6 +49,8 @@ function endpointPathSuffixes(apiStyle: CatalogApiStyle): string[] {
       return ["/responses", "/models"];
     case "google_generative_ai":
       return ["/models"];
+    default:
+      return ["/chat/completions", "/models"];
   }
 }
 
@@ -152,8 +155,8 @@ export function ProviderSetupDialog({
   const [name, setName] = useState(() => initialName(provider));
   const [baseUrl, setBaseUrl] = useState(() => initialBaseUrl(provider));
   const [apiKey, setApiKey] = useState("");
-  const [apiStyle, setApiStyle] = useState<CatalogApiStyle>(
-    (provider?.apiStyle as CatalogApiStyle) ?? "chat_completions",
+  const [apiStyle, setApiStyle] = useState<CatalogApiStyle>(() =>
+    normalizeApiStyle(provider?.apiStyle),
   );
   const [headerPairs, setHeaderPairs] = useState(() => recordToPairs(provider?.headers));
   const [advancedOpen, setAdvancedOpen] = useState(false);

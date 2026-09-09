@@ -279,6 +279,8 @@ a usage tab.
     stepper, or vendor-card grid. Saved named rows store the models.dev `vendorKey` and
     the preset `apiStyle` (Chat Completions, Responses, Anthropic, Gemini, or
     `opencode_go`).
+    A saved row carrying an unknown or legacy API style remains editable; the
+    form shows the Chat Completions fallback and can repair the value on save.
   - helper copy stays out of the model cards; labels, status badges, and the
     empty/error state carry the necessary context without explanatory
     paragraphs

@@ -348,6 +348,9 @@ change for the raw snapshot.
 - schema version via `PRAGMA user_version` (04-data-storage §7)
 - provider records additive-evolved; per-provider extension fields land in `config_json`
 - unknown future protocol values should not crash older app versions (ignore/disable with warning)
+- an unknown or legacy `apiStyle` remains editable: the provider editor uses
+  `chat_completions` as its safe UI fallback, and a subsequent save repairs the
+  stored style instead of crashing while normalizing the base URL
 
 ## 8. SQL (Rust-owned SQLite)
 

@@ -95,6 +95,11 @@ test("custom API format is a common-path choice, named services skip it", () => 
   assert.doesNotMatch(setupSource, /provider-setup-advanced-toggle/);
 });
 
+test("editing a provider with an unknown persisted API style stays renderable", () => {
+  assert.match(setupSource, /normalizeApiStyle\(provider\?\.apiStyle\)/);
+  assert.match(setupSource, /default:\s*return \["\/chat\/completions", "\/models"\]/);
+});
+
 test("both credential kinds share one live list and one binding shape", () => {
   assert.match(setupSource, /useProviderModels/);
   assert.match(vendorDialogSource, /useProviderModels/);
