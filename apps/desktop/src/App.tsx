@@ -1856,7 +1856,6 @@ function AppShell() {
             <Sidebar
               className={sidebarExiting ? "is-exiting" : undefined}
               onAnimationEnd={handleSidebarAnimationEnd}
-              onOpenSearch={() => setSearchOpen(true)}
               onToggleSidebar={toggleSidebar}
               sidebarToggleShortcut={sidebarToggleShortcut}
               sidebarWidth={sidebarWidth}

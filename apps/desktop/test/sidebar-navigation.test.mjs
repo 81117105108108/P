@@ -41,14 +41,15 @@ test("sidebar brand returns to the chat home", () => {
   assert.match(brandButton, /t\("app\.shellName"\)/);
 });
 
-test("sidebar header retains non-mac branding and keeps collapse beside search", () => {
+test("sidebar header retains non-mac branding and collapse without a search control", () => {
   const header = sidebarSource.match(
     /<div className="sidebar-header">[\s\S]*?<\/div>\s*<\/div>/,
   )?.[0] ?? "";
 
   assert.match(header, /className="brand no-drag"/);
   assert.match(header, /className="sidebar-header-actions no-drag"/);
-  assert.ok(header.indexOf("<IconSearch") < header.indexOf("<IconSidebar"));
+  assert.doesNotMatch(header, /IconSearch/);
+  assert.match(header, /<IconSidebar/);
   assert.match(header, /data-nav="toggle-sidebar"/);
   assert.doesNotMatch(appSource, /IconChevronLeft|IconChevronRight/);
 });

@@ -3538,19 +3538,20 @@ Each scenario is documented in this format:
 - **Preconditions**: PI-Desktop is open with the expanded sidebar and a chat
   session is active.
 - **Steps**: 1) Open Extensions on macOS windowed mode. 2) Inspect the expanded
-  sidebar titlebar. 3) Confirm no PI-Desktop logo/title is visible and Search
-  then Collapse sidebar appear at the right of the traffic lights. 4) Enter
+  sidebar titlebar. 3) Confirm no PI-Desktop logo/title is visible and Collapse
+  sidebar appears at the right of the traffic lights. 4) Enter
   fullscreen and inspect the same row. 5) On Windows/Linux, confirm the brand
   remains visible; activate it with a pointer, then with keyboard focus and
   Enter/Space.
 - **Expected**: macOS uses one 46px row with native lights at left, a usable
-  drag region, and separate accessible Search and Collapse buttons at right;
-  the Logo/Home brand is absent in both windowed and fullscreen modes.
+  drag region, and an accessible Collapse button at right; the Logo/Home brand
+  is absent in both windowed and fullscreen modes. Global search stays on the
+  conversation topbar, shortcuts, and application menu, not the sidebar header.
   Windows/Linux render the canonical 20px logo beside the 15px shell name; the
   complete brand has a localized Home accessible name, visible hover/focus
   feedback, and returns the main pane to chat without clearing the active
-  conversation or workspace. Collapse remains immediately after Search. The
-  logo itself is theme-aware: light mode shows `src/assets/brand/logo-light.png`,
+  conversation or workspace. The logo itself is theme-aware: light mode shows
+  `src/assets/brand/logo-light.png`,
   dark mode shows `src/assets/brand/logo-dark.png`, swapping live with
   `data-theme` (no reload).
 - **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/07-ui-design-system.md`,
@@ -6108,7 +6109,7 @@ This test plan spec is accepted when:
   icons, current-project identity, thread titles, and composer controls must remain
   readable dark-on-light (≥4.5:1). Never white/translucent text on the light
   sidebar.
-- The macOS traffic-light row keeps Search and Collapse sidebar readable at the
+- The macOS traffic-light row keeps Collapse sidebar readable at the
   right on light chrome without rendering the Logo/Home brand.
 
 ### US-UI-14 Semantic chrome tokens
@@ -6134,7 +6135,7 @@ This test plan spec is accepted when:
 - Clicking the build/version chip checks for updates when current, or opens
   Settings → Info when an actionable update is available.
 - Traffic lights sit at Codex `{x:16,y:16}` with a 46px toolbar; the expanded
-  macOS sidebar places Search plus Collapse sidebar at the right in that same
+  macOS sidebar places Collapse sidebar at the right in that same
   row, with no Logo/Home brand or back/forward buttons.
 
 ### US-UI-17 PI-Desktop home hero logo
@@ -6518,7 +6519,7 @@ This test plan spec is accepted when:
   one-item create menu that opens the same project picker as the folder-plus
   action.
 - Expect project and session lists to scroll inside the sidebar body without
-  clipping behind the footer; sidebar Search/Collapse remain in the sidebar
+  clipping behind the footer; sidebar Collapse remains in the sidebar
   header. When the work panel is open, expect its sole collapse control in the
   session pane top-right rather than the work-panel content header, flush against
   the divider at the main pane's right edge.

@@ -47,9 +47,9 @@ destination, chat as the home surface, tools and permissions inline.
   rows have no leading brand icon and session-creation controls use a dedicated
   message-plus icon. On
   Windows/Linux, the expanded sidebar begins with a keyboard-accessible Home
-  brand and Search plus Collapse sidebar controls at the right; activating the
+  brand and Collapse sidebar at the right; activating the
   brand returns the main pane to chat. The macOS expanded sidebar omits the
-  logo/title brand and places only Search and Collapse sidebar at the right of
+  logo/title brand and places only Collapse sidebar at the right of
   the traffic-light row. `Codex` remains only an external import source or a
   design-reference term.
 - **Main pane**: exactly one destination at a time; destinations replace the
@@ -61,7 +61,7 @@ destination, chat as the home surface, tools and permissions inline.
   the wider shell does not create an over-wide, low-density reading surface.
 - **Titlebar**: platform-native desktop chrome (D118). macOS uses
   `hiddenInset` traffic lights and the system application menu. The expanded
-  sidebar keeps Search and Collapse sidebar in the same 46px row, aligned to
+  sidebar keeps Collapse sidebar in the same 46px row, aligned to
   the right outside the traffic-light safety area; no logo/title is rendered
   there, including in fullscreen. When the work panel is open, the native
   window controls stay at the conversation pane's right edge while the panel

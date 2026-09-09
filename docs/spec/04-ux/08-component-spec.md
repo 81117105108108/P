@@ -48,7 +48,7 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
 
 ### 1.4 Interactions
 
-- Sidebar toggle: keyboard shortcut + icon button beside Search in the expanded
+- Sidebar toggle: keyboard shortcut + icon button in the expanded
   sidebar header; the button moves to the main titlebar while collapsed. The
   collapse and expand use a mounted-then-animated dock transition (entrance
   `sidebar-in`, exit `sidebar-out` keyframes) that mirrors the work-panel dock:
@@ -131,7 +131,7 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
 
 | Platform | Top-level chrome | Application menu |
 |---|---|---|
-| macOS | Native inset traffic lights at `{x:16,y:16}`; expanded sidebar Search and Collapse controls share the row at right, with no logo/title; open work-panel collapse sits in the session pane top-right | System menu: PI-Desktop, File, Edit, View, Window, Help |
+| macOS | Native inset traffic lights at `{x:16,y:16}`; expanded sidebar Collapse control at right, with no logo/title; open work-panel collapse sits in the session pane top-right | System menu: PI-Desktop, File, Edit, View, Window, Help |
 | Windows | Frameless 46px titlebar; sidebar actions at left, open work-panel collapse in session pane top-right ahead of minimize/maximize/close | None inside the window |
 | Linux | Frameless 46px titlebar; sidebar actions at left, open work-panel collapse in session pane top-right ahead of minimize/maximize/close | None inside the window |
 
@@ -213,7 +213,10 @@ palette / application menu, not the top bar.)
 
 (Icons described functionally; actual render uses Lucide SVGs. The `[☰ Sidebar]`
 toggle renders **only when the sidebar is collapsed**; when the sidebar is
-expanded it owns that control, so the top bar does not duplicate it.)
+expanded it owns that control, so the top bar does not duplicate it. The
+`[🔍 Search]` control is the chrome search entry; the expanded sidebar header
+does not duplicate it. Keyboard shortcuts and the application menu remain
+available.)
 
 The conversation top bar renders for the chat route only; Pull requests, Scheduled,
 Plugins, and Settings keep the frameless drag band. It owns the task title and
@@ -310,8 +313,8 @@ their hit areas remain in the layout so revealing them does not shift labels.
 ```text
 Expanded (~275px, D034/D070):
 +---------------------------+
-| [lights]          [⌕][◧] |  macOS
-| [π] PI-Desktop    [⌕][◧] |  Windows/Linux
+| [lights]             [◧] |  macOS
+| [π] PI-Desktop       [◧] |  Windows/Linux
 | SESSIONS         [msg+][↕]|
 |   • Path-less session   ↕|
 | PROJECTS            [dir+]|
@@ -411,8 +414,9 @@ visually distinct from list content.
 - The footer action group stays on the left and the build/version chip stays
   right-aligned; clicking the chip checks for updates or opens the available
   release in Settings
-- Click Search or Collapse sidebar at the right of the header row to
-  open global search or collapse the sidebar respectively
+- Click Collapse sidebar at the right of the header row to collapse the sidebar.
+  Global search opens from the conversation topbar, shortcuts, and application
+  menu; the expanded sidebar header does not host a search control
 - Drag the expanded sidebar's right edge to adjust its width. The main pane
   reflows continuously, the press position remains anchored, and the final
   width is saved on release. Focus the edge handle and use ArrowLeft/Right,
@@ -451,7 +455,7 @@ visually distinct from list content.
   conversation rows read as one dense navigation list rather than detached
   cards. Directory `+` and overflow actions remain hidden until hover or
   keyboard focus, without changing the directory label's position.
-- Sidebar toggle: expanded-header icon beside Search + keyboard shortcut; the
+- Sidebar toggle: expanded-header icon + keyboard shortcut; the
   collapsed main titlebar retains an Expand sidebar icon; when the work panel is
   open, the session-pane top-right hosts the sole panel collapse control
 - Click the local profile trigger: open or close the identity menu containing
@@ -521,14 +525,15 @@ visually distinct from list content.
   present; click, keyboard, and focus behavior remain unchanged.
 - The expanded sidebar brand is a localized button with a 20px logo and the
   shell name on Windows/Linux; pointer or keyboard activation navigates to the
-  chat home. macOS hides this brand and right-aligns Search then Collapse
-  sidebar in the same 46px row as the native traffic lights. Fullscreen keeps
-  the brand hidden while reclaiming the native-chrome padding.
+  chat home. macOS hides this brand and right-aligns Collapse sidebar in the
+  same 46px row as the native traffic lights. Fullscreen keeps the brand hidden
+  while reclaiming the native-chrome padding.
 
 ### 3.8 MVP constraints
 
-- Expanded sidebar search filters the visible session tree in place; the
-  collapsed rail continues to use the global command palette
+- Global search opens from the conversation topbar, keyboard shortcuts, and
+  the application menu; the expanded sidebar header does not host a search
+  control
 - No drag-to-reorder contract; `manual` is a persisted compatibility value
 - Project tabs do not create another host workspace or a second main pane
 

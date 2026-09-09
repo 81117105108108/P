@@ -10,6 +10,10 @@ const sidebarSource = await readFile(
   new URL("../src/components/Sidebar.tsx", import.meta.url),
   "utf8",
 );
+const topbarSource = await readFile(
+  new URL("../src/components/ConversationTopbar.tsx", import.meta.url),
+  "utf8",
+);
 
 test("project activation separates visible transcript state from background run state", () => {
   const activationBlock = storeSource.match(
@@ -65,12 +69,12 @@ test("project title toggles its conversation group without forcing it open", () 
   assert.doesNotMatch(sidebarSource, /className="project-collapse-toggle"/);
 });
 
-test("expanded sidebar search opens the global search surface", () => {
-  const searchButtonBlock = sidebarSource.match(
-    /aria-label=\{t\("nav\.search"\)\}[\s\S]*?<\/button>/,
-  )?.[0] ?? "";
-  assert.match(searchButtonBlock, /onOpenSearch/);
+test("global search stays on the conversation topbar, not the sidebar header", () => {
+  assert.doesNotMatch(sidebarSource, /onOpenSearch|IconSearch|nav\.search/);
   assert.doesNotMatch(sidebarSource, /sidebar-session-search|toggleSearch/);
+  assert.match(topbarSource, /onOpenSearch/);
+  assert.match(topbarSource, /<IconSearch/);
+  assert.match(topbarSource, /aria-label=\{t\("nav\.search"\)\}/);
 });
 
 test("manual ordering stays a persistence-only compatibility value", () => {

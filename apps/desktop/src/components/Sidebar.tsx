@@ -79,7 +79,6 @@ import {
   IconNewProject,
   IconPin,
   IconPencil,
-  IconSearch,
   IconSidebar,
   IconSettings,
   IconStar,
@@ -213,7 +212,6 @@ function compareOptionalDate(
 }
 
 export function Sidebar({
-  onOpenSearch,
   onToggleSidebar,
   sidebarToggleShortcut,
   sidebarWidth,
@@ -222,7 +220,6 @@ export function Sidebar({
   className,
   onAnimationEnd,
 }: {
-  onOpenSearch: () => void;
   onToggleSidebar: () => void;
   sidebarToggleShortcut: string;
   sidebarWidth: number;
@@ -1754,15 +1751,6 @@ export function Sidebar({
           <span>{t("app.shellName")}</span>
         </button>
         <div className="sidebar-header-actions no-drag">
-          <button
-            type="button"
-            className="icon-btn"
-            title={t("nav.search")}
-            aria-label={t("nav.search")}
-            onClick={onOpenSearch}
-          >
-            <IconSearch size={15} />
-          </button>
           <button
             type="button"
             className="icon-btn"
