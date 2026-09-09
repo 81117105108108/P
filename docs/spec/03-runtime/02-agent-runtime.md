@@ -607,7 +607,10 @@ core set rather than the on-demand catalog of §7.1:
 
 **Delegate loop.** A `SubagentRun` is a second pi `Agent` in the same sidecar
 process with the definition's system prompt, its (possibly pinned)
-provider/model, its declared tools, and the same host connection. It runs under
+provider/model, its declared tools, and the same host connection. A pinned or
+explicitly selected delegation model uses the exact provider/model binding
+saved in Settings for its effective thinking capability; models.dev supplies
+the baseline only. It runs under
 the same bounded provider retry policy as the parent. `maxTurns` is an optional
 per-definition backstop (maximum 80); omitted, `none`, or `0` means unlimited
 turns. The built-ins declare one sized to their job — `explorer` 60,

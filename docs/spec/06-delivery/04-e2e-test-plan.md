@@ -8675,3 +8675,29 @@ are withdrawn with ADR 0165.
 - **Status**: Unit-covered (`composer-models.test.mjs`,
   `provider-model-config.test.mjs`); rendered UI journey Draft (do not run E2E
   locally unless explicitly requested)
+
+#### E2E-202: Subagent thinking follows its exact model binding
+
+- **Preconditions**: A configured provider has a model binding marked
+  `availableForSubagents`. The catalog either reports that model as
+  non-reasoning or omits one of the levels the binding explicitly enables. A
+  user subagent definition and the builtin `Task` catalog are available.
+- **Steps**: 1) In Settings → Model configuration, enable `medium` and `high`
+  for the delegation model and mark it available for subagents. 2) Set the
+  subagent definition's thinking level to `high`, save, and restart the app.
+  3) Run the definition with its frontmatter model pin. 4) Run a builtin with
+  `Task.model` selecting the same binding, including the on-demand resolution
+  path. 5) Run a definition with no model pin while the parent session is set
+  to `medium`.
+- **Expected**: The pinned and explicitly selected delegates retain the
+  binding's enabled thinking levels and send the selected non-`off` level even
+  when models.dev says reasoning is unavailable or publishes a sparse set. The
+  unpinned delegate inherits the parent's effective level. A binding with no
+  non-`off` level still resolves to `off`.
+- **Specs linked**: `03-runtime/02-agent-runtime.md`,
+  `03-runtime/11-provider-model-system.md`, ADR 0144 / D283
+- **Acceptance**: B (model configuration) + C (chat/stream) + Quality
+- **Milestone**: M6+
+- **Status**: Unit/wiring-covered (`model-capabilities.test.ts`,
+  `apps/desktop/test/subagent-wiring.test.mjs`); full UI journey Draft (do not
+  run E2E locally unless explicitly requested)

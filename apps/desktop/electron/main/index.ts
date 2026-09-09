@@ -1011,6 +1011,26 @@ function modelsDevModelFor(
   });
 }
 
+/**
+ * Apply the exact provider/model binding before exposing a model to a
+ * subagent. The catalog supplies the baseline, but an explicit binding owns
+ * the effective thinking capability for the endpoint (D283).
+ */
+function effectiveSubagentModelConfig(
+  provider: Pick<RuntimeProvider, "models">,
+  modelId: string,
+  catalogModelConfig: Parameters<typeof modelConfigWithBinding>[0],
+) {
+  const modelConfig = modelConfigWithBinding(
+    catalogModelConfig,
+    bindingForModel(provider, modelId),
+  );
+  return {
+    modelConfig,
+    capabilities: capabilitiesFromModelConfig(modelConfig),
+  };
+}
+
 function enrichProvider<T extends RuntimeProvider>(
   provider: T,
   selectedModelId?: string,
@@ -1566,13 +1586,22 @@ async function resolveAgentRuntimeLaunch(
         baseUrl: pinned.baseUrl,
         modelId: pinnedModelId,
       });
-      const modelConfig = model
+      const catalogModelConfig = model
         ? modelConfigFromModelsDev(model, pinned.baseUrl)
         : genericModelConfig(pinnedModelId, pinned.baseUrl ?? "");
-      return {
-        modelConfig,
-        capabilities: capabilitiesFromModelConfig(modelConfig),
-      };
+      const configuredProvider = providers.providers.find(
+        (candidate) => candidate.id === pinned.id,
+      );
+      return configuredProvider
+        ? effectiveSubagentModelConfig(
+            configuredProvider,
+            pinnedModelId,
+            catalogModelConfig,
+          )
+        : {
+            modelConfig: catalogModelConfig,
+            capabilities: capabilitiesFromModelConfig(catalogModelConfig),
+          };
     },
   });
   // Delegation model catalog: every model binding flagged
@@ -1601,29 +1630,29 @@ async function resolveAgentRuntimeLaunch(
         }
         if (!apiKey) continue;
       }
-      let mc;
-      let caps;
+      let catalogModelConfig: Parameters<typeof modelConfigWithBinding>[0];
       if (isVendorAccount) {
         const vb = await vendorOAuth.bindingFor(row.id, binding.id);
         if (!vb) continue;
-        mc =
-          vb.modelConfig ??
-          genericModelConfig(binding.id, vb.baseUrl ?? row.baseUrl ?? "");
-        caps = {
-          supportsReasoning: vb.supportsReasoning,
-          supportedThinkingLevels: [...vb.supportedThinkingLevels],
-        };
+        catalogModelConfig =
+          vb.modelConfig ?? genericModelConfig(binding.id, vb.baseUrl ?? row.baseUrl ?? "");
       } else {
         const model = modelsDevCatalog.findModel({
           vendorKey: row.vendorKey,
           baseUrl: row.baseUrl,
           modelId: binding.id,
         });
-        mc = model
+        catalogModelConfig = model
           ? modelConfigFromModelsDev(model, row.baseUrl)
           : genericModelConfig(binding.id, row.baseUrl ?? "");
-        caps = capabilitiesFromModelConfig(mc);
       }
+      const effective = effectiveSubagentModelConfig(
+        row,
+        binding.id,
+        catalogModelConfig,
+      );
+      const mc = effective.modelConfig;
+      const caps = effective.capabilities;
       subagentBindings.providers[key] = {
         id: row.id,
         name: row.name,
@@ -4721,24 +4750,28 @@ async function startSidecar(): Promise<void> {
     }
 
     await modelsDevCatalog.ensureLoaded();
-    let modelConfig;
-    let capabilities;
+    let catalogModelConfig: Parameters<typeof modelConfigWithBinding>[0];
     if (isVendorAccount) {
       const vendorBinding = await vendorOAuth.bindingFor(provider.id, modelId);
       if (!vendorBinding) throw new Error(`vendor "${provider.name}" does not offer "${modelId}"`);
-      modelConfig = vendorBinding.modelConfig ?? genericModelConfig(modelId, vendorBinding.baseUrl ?? provider.baseUrl ?? "");
-      capabilities = { supportsReasoning: vendorBinding.supportsReasoning, supportedThinkingLevels: [...vendorBinding.supportedThinkingLevels] };
+      catalogModelConfig =
+        vendorBinding.modelConfig ??
+        genericModelConfig(modelId, vendorBinding.baseUrl ?? provider.baseUrl ?? "");
     } else {
       const model = modelsDevCatalog.findModel({
         vendorKey: provider.vendorKey,
         baseUrl: provider.baseUrl,
         modelId,
       });
-      modelConfig = model
+      catalogModelConfig = model
         ? modelConfigFromModelsDev(model, provider.baseUrl)
         : genericModelConfig(modelId, provider.baseUrl ?? "");
-      capabilities = capabilitiesFromModelConfig(modelConfig);
     }
+    const { modelConfig, capabilities } = effectiveSubagentModelConfig(
+      provider,
+      modelId,
+      catalogModelConfig,
+    );
 
     return {
       id: provider.id,

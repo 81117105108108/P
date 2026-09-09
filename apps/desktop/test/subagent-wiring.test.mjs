@@ -39,6 +39,21 @@ test("every launch resolves the subagent catalog and its pinned models", () => {
   assert.match(mainSource, /"subagent definitions have problems"/);
 });
 
+test("subagent models use the exact stored binding for thinking capability", () => {
+  assert.match(mainSource, /function effectiveSubagentModelConfig\(/);
+  assert.match(
+    mainSource,
+    /function effectiveSubagentModelConfig\([\s\S]*?bindingForModel\(provider, modelId\)[\s\S]*?modelConfigWithBinding\(/,
+  );
+  // The helper is used for definition pins, the pre-resolved delegation
+  // catalog, and the on-demand Task.model path.
+  assert.equal(mainSource.match(/effectiveSubagentModelConfig\(/g)?.length, 4);
+  assert.match(
+    mainSource,
+    /const configuredProvider = providers\.providers\.find\([\s\S]*?effectiveSubagentModelConfig\(/,
+  );
+});
+
 test("the sidecar forwards both subagent params to the runtime", () => {
   assert.match(sidecarSource, /subagents\?: SubagentDefinition\[\];/);
   assert.match(

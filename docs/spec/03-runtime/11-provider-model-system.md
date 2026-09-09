@@ -500,7 +500,10 @@ When starting a turn with `(providerId, modelId)`:
    URL. For `anthropic_messages`, the runtime removes a trailing `/v1` from
    that URL before passing it to pi-ai because the Anthropic SDK appends `/v1`
    itself; configured roots with or without `/v1` therefore both reach the
-   same `/v1/messages` route.
+   same `/v1/messages` route. Subagent providers resolved from a definition pin,
+   the delegation model catalog, or `Task.model` use this same binding-aware
+   model configuration before their thinking level is clamped; models.dev is
+   only the baseline and cannot erase explicit binding levels.
 8. execute stream with abort handle and separate answer/thinking events
 9. translate vendor errors into shared `AppError` codes (§15)
 
