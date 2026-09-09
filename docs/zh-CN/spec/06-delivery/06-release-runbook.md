@@ -200,7 +200,7 @@ xattr -cr /Applications/PI-Desktop.app
 签名完整性、Gatekeeper 评估以及已装订的应用票据。生成的 DMG 也会在任何
 工件上传前显式装订并验证。
 
-DMG、ZIP、NSIS、AppImage、deb、块图和更新程序提要输出已
+DMG、ZIP、NSIS、AppImage、deb、rpm、块图和更新程序提要输出已
 压缩或压缩不敏感。因此，工作流程会上传它们的
 发布作业之前压缩级别为零的临时操作工件
 组装 GitHub 版本。
@@ -345,8 +345,12 @@ Native-runner 输出矩阵：
 - macOS Intel x64：`PI-Desktop-<version>-x64.dmg` 和
   `PI-Desktop-<version>-x64-mac.zip`
 - Windows x64：NSIS 安装程序
-- Linux x64：AppImage 和 deb
+- Linux x64：AppImage、deb 和 rpm
 - Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`
+
+RPM 目标会向 FPM 传入 `_build_id_links none`。捆绑的 Electron 二进制文件位于
+`/opt/PI-Desktop` 下；省略全局 `/usr/lib/.build-id` 链接，可以避免与其他捆绑相同
+Electron 二进制文件的应用发生冲突。
 
 该 ASAR 产物包含的是 Electron 应用归档，而不是完整的 Linux 发行包。
 若要重新打包，请把它作为应用归档放入目标 Electron 的 resources 布局中，
@@ -368,7 +372,7 @@ electron PI-Desktop-<version>-linux-x64.asar
 
 ## 7. 已知限制
 
-- macOS 和 Linux deb 仍保持通知和链接更新模式。
+- macOS 和 Linux deb/rpm 仍保持通知和链接更新模式。
 - Linux x64 包在 Ubuntu 22.04 上构建，因此 host-core 需要 glibc 2.35 或更高
   版本（Ubuntu 22.04、Debian 12、Fedora 36+）。标签作业运行
   `scripts/check-linux-host-glibc.mjs`，拒绝需要更新 glibc 的二进制文件。

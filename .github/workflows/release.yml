@@ -7,7 +7,7 @@
 #   git push origin <branch> v0.2.0        # push → this workflow builds & publishes
 #
 # Builds installers for every platform defined in the electron-builder config
-# (macOS dmg/zip arm64 and x64, Windows NSIS x64, Linux AppImage/deb x64), each
+# (macOS dmg/zip arm64 and x64, Windows NSIS x64, Linux AppImage/deb/rpm x64), each
 # with its native pi-desktop-host-core Rust sidecar. The Linux app.asar is also
 # exported as a system-Electron repackaging asset, and all outputs — with their
 # electron-updater latest*.yml feeds — are published to the GitHub Release
@@ -217,6 +217,7 @@ jobs:
             apps/desktop/release/*.exe
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.deb
+            apps/desktop/release/*.rpm
             apps/desktop/release/*.asar
             apps/desktop/release/*.blockmap
             apps/desktop/release/latest*.yml

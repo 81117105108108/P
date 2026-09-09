@@ -219,7 +219,7 @@ xattr -cr /Applications/PI-Desktop.app
 This guidance is only for trusted unsigned artifacts. Signed and notarized
 builds should open without this command.
 
-DMG, ZIP, NSIS, AppImage, deb, blockmap, and updater feed outputs are already
+DMG, ZIP, NSIS, AppImage, deb, rpm, blockmap, and updater feed outputs are already
 compressed or compression-insensitive. The workflow therefore uploads their
 temporary Actions artifacts with compression level zero before the publish job
 assembles the GitHub Release. The Linux runner also copies
@@ -375,8 +375,12 @@ Native-runner output matrix:
 - macOS Intel x64: `PI-Desktop-<version>-x64.dmg` and
   `PI-Desktop-<version>-x64-mac.zip`
 - Windows x64: NSIS installer
-- Linux x64: AppImage and deb
+- Linux x64: AppImage, deb, and rpm
 - Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`
+
+RPM targets pass `_build_id_links none` to FPM. Bundled Electron binaries live
+under `/opt/PI-Desktop`; omitting global `/usr/lib/.build-id` links prevents
+collisions with other applications that bundle the same Electron binaries.
 
 The ASAR asset contains the Electron application archive, not a complete Linux
 distribution. To repackage it, place it as the application archive in the
@@ -399,7 +403,7 @@ Shell smoke on each native runner:
 
 ## 7. Known limitations
 
-- macOS and Linux deb remain notify-and-link update modes.
+- macOS and Linux deb/rpm remain notify-and-link update modes.
 - Linux x64 packages are built on Ubuntu 22.04 so host-core needs glibc 2.35
   or newer (Ubuntu 22.04, Debian 12, Fedora 36+). The tag job runs
   `scripts/check-linux-host-glibc.mjs` and refuses a binary that needs a

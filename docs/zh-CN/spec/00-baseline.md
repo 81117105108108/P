@@ -108,7 +108,7 @@
 26.插件信任第一步：**sha256校验和；稍后签名**
 27. 第一个发布平台：**macOS 仅arm64** — 在 preload/D126 中提升；
     标签构建现在发布本机 macOS arm64 和 Intel x64、Windows x64 及
-    Linux x64 工件
+    Linux x64 AppImage、deb 和 rpm 工件
 28. TS模式库：**typebox**
 29. i18n 库：**i18next**
 30. Bash：**非交互式、流式传输并从可选择的 shell 解析

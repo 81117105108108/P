@@ -1,6 +1,7 @@
 {
   "name": "@pi-desktop/desktop",
   "version": "0.14.5",
+  "desktopName": "pi-desktop.desktop",
   "private": true,
   "description": "PI-Desktop Electron application",
   "homepage": "https://github.com/vastsa/PI-Desktop",
@@ -203,8 +204,17 @@
       "packageName": "pi-desktop",
       "artifactName": "pi-desktop_${version}_${arch}.${ext}"
     },
+    "rpm": {
+      "packageName": "pi-desktop",
+      "artifactName": "pi-desktop-${version}-${arch}.${ext}",
+      "fpm": [
+        "--rpm-rpmbuild-define",
+        "_build_id_links none"
+      ]
+    },
     "linux": {
       "executableName": "pi-desktop",
+      "syncDesktopName": true,
       "target": [
         {
           "target": "AppImage",
@@ -214,6 +224,12 @@
         },
         {
           "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
           "arch": [
             "x64"
           ]
