@@ -360,6 +360,22 @@ system while preserving their different data ownership:
   unique display name, then the stored provider id, to keep each provider's
   choices distinct.
 
+- Subagents open one **New subagent / Edit subagent** sheet that
+  pre-fills the same fields the runtime's `BUILTIN_SUBAGENT_DOCUMENTS` ship
+  with. Above the name field the sheet shows a "Start from template" row of
+  preset chips (Explorer, Code reviewer, Test runner, Fixer, plus a blank
+  option) — picking one replaces the draft's description, tools, max turns
+  and body wholesale. The chip uses the same accent-tint state the tool
+  grant row uses, so the chosen option reads at a glance. The model field
+  is a picker over the configured providers' models flagged "Available for
+  AI delegation"; a model whose flag is off cannot be picked through the
+  picker (issue #60). The picker groups entries by provider and adds a
+  "Custom (provider/model)…" entry plus a free-text input for hand-typed
+  pins; with no providers configured it falls back to the single free-text
+  input that points the user to Models. Builtins and project shadows stay
+  on the existing read-only rows; the picker is for new and user-owned
+  subagents only.
+
 ### Instructions (`instructions` tab)
 - Edit the global instruction Markdown used by every PI-Desktop Agent session.
 - Show the resolved instruction-file path and save through the host-backed
