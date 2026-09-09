@@ -404,7 +404,7 @@ export const en = {
     preparingNextRequest: "Preparing next request…",
     compactingContext: "Compacting context…",
     recoveringTurn: "Recovering empty response…",
-    retryingModel: "Retrying model request · attempt {{attempt}}",
+    retryingModel: "Retrying in {{delaySeconds}}s · attempt {{attempt}}/{{maxAttempts}}",
     waitingForSubagentNamed: "Waiting for {{name}}",
     waitingForSubagents_one: "Waiting for {{count}} subagent",
     waitingForSubagents_other: "Waiting for {{count}} subagents",

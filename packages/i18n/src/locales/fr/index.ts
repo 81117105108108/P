@@ -395,7 +395,7 @@ export const fr = {
     "preparingNextRequest": "Préparation de la prochaine requête…",
     "compactingContext": "Compactage du contexte…",
     "recoveringTurn": "Récupération d’une réponse vide…",
-    "retryingModel": "Nouvelle tentative de demande de modèle · tentative {{attempt}}",
+    "retryingModel": "Nouvel essai dans {{delaySeconds}} s · tentative {{attempt}}/{{maxAttempts}}",
     "waitingForSubagentNamed": "En attente de {{name}}",
     "waitingForSubagents_one": "En attente de {{count}} sous-agents",
     "waitingForSubagents_other": "En attente de {{count}} sous-agents",

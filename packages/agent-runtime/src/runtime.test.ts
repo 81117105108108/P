@@ -2836,8 +2836,13 @@ describe("DesktopAgentRuntime assistant thinking events", () => {
     expect(claim(gateway502, "stream")).toBe(2);
     expect(claim(gateway502, "request")).toBe(3);
     expect(claim(gateway502, "stream")).toBe(4);
-    // Four retries after the initial attempt, then the failure is terminal.
-    expect(PROVIDER_TRANSIENT_MAX_RETRIES).toBe(4);
+    // Ten retries after the initial attempt, then the failure is terminal.
+    expect(PROVIDER_TRANSIENT_MAX_RETRIES).toBe(10);
+    for (let attempt = 5; attempt <= PROVIDER_TRANSIENT_MAX_RETRIES; attempt += 1) {
+      expect(claim(gateway502, attempt % 2 === 1 ? "request" : "stream")).toBe(
+        attempt,
+      );
+    }
     expect(claim(gateway502, "request")).toBeUndefined();
 
     (runtime as any).resetRunRecoveryState();
@@ -3038,7 +3043,7 @@ describe("DesktopAgentRuntime assistant thinking events", () => {
     await runtime.dispose();
   });
 
-  it("surfaces repeated 429s only after exhausting the five-retry budget", async () => {
+  it("surfaces repeated 429s only after exhausting the ten-retry budget", async () => {
     const onEvent = vi.fn();
     const runtime = createRuntime({ onEvent });
     const agent = (runtime as any).agent;
@@ -3096,7 +3101,7 @@ describe("DesktopAgentRuntime assistant thinking events", () => {
     }
 
     const events = onEvent.mock.calls.map(([envelope]) => (envelope as any).event);
-    expect(agent.continue).toHaveBeenCalledTimes(5);
+    expect(agent.continue).toHaveBeenCalledTimes(PROVIDER_RATE_LIMIT_MAX_RETRIES);
     expect(events).toContainEqual(
       expect.objectContaining({
         type: "message_end",
@@ -3108,7 +3113,7 @@ describe("DesktopAgentRuntime assistant thinking events", () => {
             retriable: true,
             details: expect.objectContaining({
               phase: "stream",
-              retryAttempt: 5,
+              retryAttempt: PROVIDER_RATE_LIMIT_MAX_RETRIES,
             }),
           }),
         }),

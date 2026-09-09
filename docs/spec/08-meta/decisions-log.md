@@ -4164,3 +4164,20 @@ D193, and D194.
   gRPC binding stay specified but unscheduled, and the Gateway identity
   source is fixed to the PI account service of the pi-backend specification.
   See the amended remote specifications and E2E-231 / E2E-232.
+
+## 2026-09-10 — Extend provider retries and show bounded progress (D378)
+
+- The runtime-owned provider retry budgets surfaced short provider outages
+  earlier than the product target, and the active-turn row showed only a retry
+  number without the current wait or its bound.
+- Decision D378 amends D245 / D259 and ADR 0091 / ADR 0128: both the HTTP 429
+  and admitted non-429 transient provider paths receive ten retries after the
+  initial attempt, with setup and stream failures sharing one counter per error
+  class. The two classes stay separate, pi-ai's nested retry remains disabled,
+  and non-429 waits stay at the 8-second cap after the 1/2/4-second schedule.
+- `PROVIDER_RETRY_MAX_RETRIES` becomes the shared runtime/renderer budget
+  constant. The active-turn status derives a countdown from the existing
+  `retryDelayMs` and `since` fields and renders the attempt bound, for example
+  `Retrying in 0s · attempt 9/10`. No host protocol, storage schema, provider
+  configuration, or unrelated recovery policy changes. See ADR 0206 and
+  E2E-096 / E2E-149.

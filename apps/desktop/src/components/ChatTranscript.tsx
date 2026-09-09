@@ -22,6 +22,7 @@ import type {
   UiMessage,
 } from "@pi-desktop/shared";
 import {
+  PROVIDER_RETRY_MAX_RETRIES,
   proposalKindForMode,
   THINKING_LEVELS,
   type ThinkingLevel,
@@ -1528,7 +1529,20 @@ function waitingSubagentsLabel(
   return `${base} · ${details}`;
 }
 
-function runActivityLabel(activity: AgentActivity, t: Translate): string {
+function retryDelaySeconds(
+  activity: Extract<AgentActivity, { phase: "retrying" }>,
+  now: number,
+): number {
+  const delayMs = activity.retryDelayMs ?? 0;
+  const elapsedMs = Math.max(0, now - activity.since);
+  return Math.max(0, Math.ceil((delayMs - elapsedMs) / 1000));
+}
+
+function runActivityLabel(
+  activity: AgentActivity,
+  t: Translate,
+  now = Date.now(),
+): string {
   switch (activity.phase) {
     case "starting":
       return t("chat.startingTurn");
@@ -1541,7 +1555,11 @@ function runActivityLabel(activity: AgentActivity, t: Translate): string {
     case "recovering":
       return t("chat.recoveringTurn");
     case "retrying":
-      return t("chat.retryingModel", { attempt: activity.attempt });
+      return t("chat.retryingModel", {
+        delaySeconds: retryDelaySeconds(activity, now),
+        attempt: activity.attempt,
+        maxAttempts: PROVIDER_RETRY_MAX_RETRIES,
+      });
     case "waiting-subagents":
       return waitingSubagentsLabel(activity, t);
   }
@@ -1862,7 +1880,7 @@ function RunActivityIndicator({ activity }: { activity: AgentActivity }) {
   const elapsed = formatToolDuration(
     Math.max(0, Math.floor((now - activity.since) / 1000)),
   );
-  const label = runActivityLabel(activity, t as Translate);
+  const label = runActivityLabel(activity, t as Translate, now);
   const retryError = activity.phase === "retrying" ? activity.error : undefined;
   const retryErrorSummary = retryError
     ? (() => {

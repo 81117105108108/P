@@ -406,7 +406,7 @@ export const tr = {
     preparingNextRequest: "Sonraki istek hazırlanıyor…",
     compactingContext: "Bağlam sıkıştırılıyor…",
     recoveringTurn: "Boş yanıt kurtarılıyor…",
-    retryingModel: "Model isteği yeniden deneniyor · {{attempt}}. deneme",
+    retryingModel: "{{delaySeconds}} sn içinde yeniden deneniyor · {{attempt}}/{{maxAttempts}}. deneme",
     waitingForSubagentNamed: "{{name}} bekleniyor",
     waitingForSubagents_one: "{{count}} alt ajan bekleniyor",
     waitingForSubagents_other: "{{count}} alt ajan bekleniyor",

@@ -402,7 +402,7 @@ export const zhCN = {
     preparingNextRequest: "正在准备下一次请求…",
     compactingContext: "正在压缩上下文…",
     recoveringTurn: "正在补救空回复…",
-    retryingModel: "正在重试模型请求 · 第 {{attempt}} 次",
+    retryingModel: "将在 {{delaySeconds}} 秒后重试 · 第 {{attempt}}/{{maxAttempts}} 次",
     waitingForSubagentNamed: "正在等待 {{name}}",
     waitingForSubagents_one: "正在等待 {{count}} 个 Subagent",
     waitingForSubagents_other: "正在等待 {{count}} 个 Subagent",

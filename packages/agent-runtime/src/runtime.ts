@@ -4011,7 +4011,7 @@ Delegation rules:
 
   /**
    * Claim a retry without exposing an intermediate error to the user. Rate
-   * limits use one shared five-attempt budget across request setup and stream
+   * limits use one shared ten-retry budget across request setup and stream
    * recovery. Other transient failures — upstream gateway 5xx, dropped sockets,
    * timeouts, truncated streams — share their own bounded budget across both
    * phases, so a flapping gateway is retried instead of surfacing an error

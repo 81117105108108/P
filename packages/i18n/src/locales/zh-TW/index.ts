@@ -402,7 +402,7 @@ export const zhTW = {
     preparingNextRequest: "正在準備下一次請求…",
     compactingContext: "正在壓縮上下文…",
     recoveringTurn: "正在補救空回覆…",
-    retryingModel: "正在重試模型請求 · 第 {{attempt}} 次",
+    retryingModel: "將在 {{delaySeconds}} 秒後重試 · 第 {{attempt}}/{{maxAttempts}} 次",
     waitingForSubagentNamed: "正在等待 {{name}}",
     waitingForSubagents_one: "正在等待 {{count}} 個 Subagent",
     waitingForSubagents_other: "正在等待 {{count}} 個 Subagent",

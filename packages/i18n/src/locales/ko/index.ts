@@ -406,7 +406,7 @@ export const ko = {
     preparingNextRequest: "다음 요청 준비 중…",
     compactingContext: "컨텍스트 압축 중…",
     recoveringTurn: "빈 응답 복구 중…",
-    retryingModel: "모델 요청 재시도 중 · {{attempt}}번째 시도",
+    retryingModel: "{{delaySeconds}}초 후 재시도 · {{attempt}}/{{maxAttempts}}번째 시도",
     waitingForSubagentNamed: "{{name}} 대기 중",
     waitingForSubagents_one: "서브에이전트 {{count}}개 대기 중",
     waitingForSubagents_other: "서브에이전트 {{count}}개 대기 중",

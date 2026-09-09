@@ -395,7 +395,7 @@ export const de = {
     "preparingNextRequest": "Nächste Anfrage wird vorbereitet…",
     "compactingContext": "Kontext wird verdichtet…",
     "recoveringTurn": "Leere Antwort wird nachgeholt…",
-    "retryingModel": "Modellanforderung wird wiederholt · Versuch {{attempt}}",
+    "retryingModel": "Erneuter Versuch in {{delaySeconds}} s · Versuch {{attempt}}/{{maxAttempts}}",
     "waitingForSubagentNamed": "Warten auf {{name}}",
     "waitingForSubagents_one": "Warten auf {{count}} Subagenten",
     "waitingForSubagents_other": "Warten auf {{count}} Subagenten",
