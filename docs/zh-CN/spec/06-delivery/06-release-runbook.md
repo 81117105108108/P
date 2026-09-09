@@ -176,11 +176,12 @@ macOS 矩阵使用 arm64 的 `macos-15` 和 Intel x64 的
 `pi-desktop-host-core`。每个架构的 `latest-mac.yml` 会在上传前重命名，
 发布作业下载两个工件后再合并为一个更新源。
 
-Intel x64 打包命令会覆盖 macOS 目标的工件命名模板，使公开下载名明确区分：
-`PI-Desktop-<version>-Intel.dmg` 和 `PI-Desktop-<version>-Intel-mac.zip`。
-arm64 通道保留通用的 `PI-Desktop-<version>.dmg` 和
-`PI-Desktop-<version>-mac.zip` 名称。命名模板在 electron-builder 打包时生效，
-因此生成的 `latest-mac-x64.yml` 会引用带 Intel 后缀的工件及其匹配校验和。
+macOS 打包命令会覆盖目标专用的工件命名模板，让两个公开架构都明确可见：
+arm64 通道发布 `PI-Desktop-<version>-arm64.dmg` 和
+`PI-Desktop-<version>-arm64-mac.zip`，Intel x64 通道发布
+`PI-Desktop-<version>-x64.dmg` 和 `PI-Desktop-<version>-x64-mac.zip`。
+这同时适用于未签名和已签名的 macOS 通道。命名模板在 electron-builder
+打包时生效，因此每个按架构生成的更新源都会引用带架构后缀的工件名及其匹配校验和。
 
 每个 macOS DMG 和 ZIP 的安装包根目录还会包含
 `PI-Desktop-macOS-opening-help.txt`。如果 macOS 对可信的未签名应用提示应用已损坏，
@@ -339,9 +340,10 @@ macOS 软件包包括按本机架构构建的 `bin/pi-desktop-host-core`；Windo
 
 Native-runner 输出矩阵：
 
-- macOS arm64：`PI-Desktop-<version>.dmg` 和 `PI-Desktop-<version>-mac.zip`
-- macOS Intel x64：`PI-Desktop-<version>-Intel.dmg` 和
-  `PI-Desktop-<version>-Intel-mac.zip`
+- macOS arm64：`PI-Desktop-<version>-arm64.dmg` 和
+  `PI-Desktop-<version>-arm64-mac.zip`
+- macOS Intel x64：`PI-Desktop-<version>-x64.dmg` 和
+  `PI-Desktop-<version>-x64-mac.zip`
 - Windows x64：NSIS 安装程序
 - Linux x64：AppImage 和 deb
 - Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`
@@ -370,5 +372,6 @@ electron PI-Desktop-<version>-linux-x64.asar
 - Linux x64 包在 Ubuntu 22.04 上构建，因此 host-core 需要 glibc 2.35 或更高
   版本（Ubuntu 22.04、Debian 12、Fedora 36+）。标签作业运行
   `scripts/check-linux-host-glibc.mjs`，拒绝需要更新 glibc 的二进制文件。
-- 签名的应用内 macOS 交付、回滚、分阶段部署和预发布
-  渠道政策仍保持公开发布工作。
+- 应用内 macOS 交付、回滚、分阶段部署和预发布渠道政策仍保持公开发布工作。
+  GitHub Release 的 macOS 工件默认未签名；只有手动运行并明确设置
+  `sign_macos: true` 时，才会在发布前完成 Developer ID 签名、公证和装订。

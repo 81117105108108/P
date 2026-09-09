@@ -3193,6 +3193,56 @@ IPC 请求无法关闭。
 - **状态**：单位覆盖（`mermaid-rendering.test.mjs`）；提供安全性和
   视觉场景草稿
 
+#### E2E-196a：默认未签名的 macOS 发布通道
+
+- **先决条件**：`vX.Y.Z` 标签与 `apps/desktop/package.json` 匹配，或手动运行
+  Release 工作流时省略 `sign_macos` 或将其设为 false；Windows 和 Linux 的发布
+  凭据不受影响。
+- **步骤**：1) 运行标签工作流，或使用默认签名输入手动运行。2) 确认两个 macOS
+  架构都完成普通的 DMG/ZIP 打包，且没有使用证书密钥。3) 检查工件和工作流步骤。
+- **预期**：macOS DMG/ZIP 工件生成并上传，文件名分别带有 `-arm64` 和 `-x64`
+  架构标记，不包含 Developer ID 签名或公证；macOS 装订和 Gatekeeper 检查明确跳过。
+  Windows/Linux 工件和合并后的更新源仍正常发布。该例外必须在下一个稳定版本前移除，
+  且不满足 E2E-196c。
+- **关联规格**：`06-delivery/06-release-runbook.md`
+- **验收**：质量（默认发布打包）
+- **里程碑**：M6+
+- **状态**：当前默认行为；本场景不满足 E2E-196c。
+
+#### E2E-196b：未签名的 macOS 软件包包含打开说明
+
+- **先决条件**：默认未签名的 macOS 发布已为至少一个本机架构生成 DMG 和 ZIP 工件。
+- **步骤**：1) 打开 DMG 并检查根目录。2) 不解压应用内容，检查 ZIP 根目录。3) 阅读
+  `PI-Desktop-macOS-opening-help.txt`。
+- **预期**：两个软件包的根目录都包含同一份打开说明文件，其中包含
+  `xattr -cr /Applications/PI-Desktop.app`，并说明该命令仅适用于 macOS 报告可信的
+  未签名应用已损坏时的场景；已签名/公证版本无需执行。说明不会声称未签名工件已通过
+  Gatekeeper 资质验证。
+- **关联规格**：`06-delivery/06-release-runbook.md`、`05-security/01-security.md`
+- **验收**：质量、安全
+- **里程碑**：M6+
+- **状态**：`packaging-footprint.test.mjs` 已自动覆盖；本机归档检查仍由发布运行器验证
+
+#### E2E-196c：macOS 标签工件通过 Gatekeeper 且无需移除隔离属性
+
+- **先决条件**：针对 `vX.Y.Z` 标签手动运行 Release 工作流并设置
+  `sign_macos: true`；标签与 `apps/desktop/package.json` 匹配；GitHub Actions
+  已配置 `CSC_LINK`、`CSC_KEY_PASSWORD`、`APPLE_ID`、
+  `APPLE_APP_SPECIFIC_PASSWORD` 和 `APPLE_TEAM_ID` 密钥；两个本机 macOS
+  运行器均可用。
+- **步骤**：1) 运行明确启用签名的工作流。2) 对每个 macOS 架构检查解压后的应用，
+  使用 `codesign -dv --verbose=4` 确认 `Developer ID Application` 权限。3) 对应用运行
+  `codesign --verify --deep --strict`、`spctl -a -vv` 和 `xcrun stapler validate`。
+  4) 对对应的 DMG 运行 `xcrun stapler validate`。5) 在干净的 macOS 配置文件中下载
+  DMG，将应用移到 `/Applications` 后不清除 `com.apple.quarantine` 直接打开。
+- **预期**：每个 macOS 应用通过签名完整性检查，Gatekeeper 报告
+  `Notarized Developer ID`，应用和 DMG 都包含有效的装订票据；应用正常打开，无需
+  `xattr` 命令或“安全性与隐私”覆盖操作。
+- **关联规格**：`06-delivery/06-release-runbook.md`、`05-security/01-security.md`
+- **验收**：质量、安全
+- **里程碑**：M6+
+- **状态**：工作流脚本/单元已覆盖；每次发布仍需在干净机器上验证（除非明确要求，不要在本地运行 E2E）
+
 #### E2E-092：打包的运行时是独立的，没有重复的依赖项
 
 - **先决条件**：本机 macOS arm64 和 Intel x64、Windows x64 及 Linux x64
@@ -3210,9 +3260,9 @@ IPC 请求无法关闭。
   3. 对每个 macOS 软件包使用 `file`（或 `lipo -info`）检查应用程序
      可执行文件和 `Resources/bin/pi-desktop-host-core`；确认 arm64 和
      x86_64 软件包只包含声明的架构，且 Rust 主机与 Electron 应用一致。
-     确认 arm64 工件仍使用通用的 `PI-Desktop-X.Y.Z.dmg` 和
-     `PI-Desktop-X.Y.Z-mac.zip` 名称，而 Intel 工件使用
-     `PI-Desktop-X.Y.Z-Intel.dmg` 和 `PI-Desktop-X.Y.Z-Intel-mac.zip`；
+     确认 arm64 工件使用 `PI-Desktop-X.Y.Z-arm64.dmg` 和
+     `PI-Desktop-X.Y.Z-arm64-mac.zip`，Intel 工件使用
+     `PI-Desktop-X.Y.Z-x64.dmg` 和 `PI-Desktop-X.Y.Z-x64-mac.zip`；
      确认发布目录包含 DMG、ZIP 和合并后的 `latest-mac.yml` 更新源，且
      更新源中的 URL 和校验和与这些打包工件一致。
   4. 配置环回装置提供程序，禁用外部出口，然后
@@ -3223,9 +3273,9 @@ IPC 请求无法关闭。
      和代理边车健康状况。
 - **预期**：每个 macOS 软件包仅包含一个捆绑代理 sidecar、一个与声明
   架构匹配的 Rust 主机，并且仅包含配置的 Chromium 区域设置包。发布
-  输出包含两个本机 macOS 架构、DMG/ZIP 工件和一个合并的更新源。Intel
-  DMG 和 ZIP 带有 `-Intel` 标记，x64 更新元数据指向这些名称，不会与
-  arm64 工件冲突。该
+  输出包含两个本机 macOS 架构、DMG/ZIP 工件和一个合并的更新源。每个 macOS
+  DMG 和 ZIP 都带有标准的 `-arm64` 或 `-x64` 架构标记，按架构的更新元数据
+  指向这些名称且不会发生冲突。该
   软件包仅包含一个捆绑代理 sidecar，即
   目标本机 Rust 主机，并且仅配置了 Chromium 区域设置
   包。 Renderer 依赖关系通过 Vite 输出存在，而不是重复
