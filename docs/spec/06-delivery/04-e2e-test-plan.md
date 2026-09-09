@@ -7487,11 +7487,11 @@ This test plan spec is accepted when:
 - **Preconditions**: A workspace containing a file with Windows-style CRLF
   (`\r\n`) line endings.
 - **Steps**:
-  1. Use Read to display the file content (Read strips `\r` before returning).
-  2. Issue an Edit with `old_string` and `new_string` using LF-only endings
-     (as the model always produces from Read output).
+  1. Use Read to display the file content and record the whole-file `tag`.
+  2. Issue an Edit with that `tag` and a `PUT N.=N:` whose body uses LF-only
+     endings (as the model always produces from Read output).
   3. Inspect the file on disk after the edit.
-- **Expected**: The Edit succeeds with `replacements: 1`. The written file
+- **Expected**: The Edit succeeds and returns a new `tag`. The written file
   preserves CRLF line endings throughout — both in modified and unmodified
   lines. No `MUTATION_RETRY_BUDGET_EXHAUSTED` error occurs.
 - **Specs linked**: `03-runtime/18-line-anchored-edit-contract.md` §3.1,
@@ -8000,8 +8000,12 @@ This test plan spec is accepted when:
   explicitly. PDF input records the capability without changing transport: the PDF
   stays a bounded file reference the model reads with its file tools. Each
   capability is one checkbox with a short label and no per-row explanatory copy.
-  A configured model absent from live discovery still shows its published
-  capabilities rather than reading as undescribed.
+  The Advanced body is a compact sheet: the alias hint is a title tooltip, limit
+  fields hide native spinners, thinking chips span the pane with the default
+  selector on the label row, and attachment plus delegation checkboxes share one
+  wrapping row. The first chosen row starts expanded. A configured model absent
+  from live discovery still shows its published capabilities rather than reading
+  as undescribed.
 - **Specs linked**: `03-runtime/11-provider-model-system.md` §6.2,
   `03-runtime/12-provider-config-schema.md`, `04-ux/08-component-spec.md` §19
 - **Acceptance**: B (model config), Quality

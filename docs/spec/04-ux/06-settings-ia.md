@@ -218,7 +218,11 @@ a usage tab.
     configuration row for context window, max output, supported thinking
     levels, and the default thinking level. The row keeps the model ID,
     source, capabilities, and token limits visible at a glance, and expands
-    in place for edits. The first row starts expanded so the form remains
+    in place for edits. The expanded body is a compact sheet, not a stacked
+    form dump: 2xs labels, dense numeric fields without native spinners, the
+    alias hint as a title tooltip rather than a paragraph, the default
+    thinking selector on the thinking label row, and attachments plus
+    subagent delegation on one wrapping row. The first row starts expanded so the form remains
     discoverable; additional rows stay collapsed to keep large model sets
     scannable. The bundled models.dev release snapshot pre-fills known rows; custom IDs
     absent from it use the runtime generic values. The portaled
@@ -243,8 +247,9 @@ a usage tab.
     catalog does not describe — a hand-typed ID, a vendor-account model, or an
     endpoint that went quiet — still keeps its stored selections, so discovery
     being unavailable can never erase configuration.
-    The label and optional hint sit above one compact grouped control; the
-    options wrap only when the pane is narrow.
+    The label, optional hint, and default selector sit on one row above one
+    compact grouped control that spans the pane; the seven options share the
+    width equally and wrap only when the pane is narrow.
     Removing the current default falls back to the first enabled level; no
     enabled levels disable the default selector and show the model's
     manual-override hint

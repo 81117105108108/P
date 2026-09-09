@@ -194,7 +194,9 @@ export function ModelSelectionPanes({
   const [modelQuery, setModelQuery] = useState("");
   const [customModelId, setCustomModelId] = useState("");
   const [customModelError, setCustomModelError] = useState("");
-  const [expandedModelId, setExpandedModelId] = useState<string | null>(null);
+  const [expandedModelId, setExpandedModelId] = useState<string | null>(
+    () => models[0]?.id ?? null,
+  );
 
   // The returned list is short and already local, so filtering is client-side:
   // no host search and no debounced IPC round trip.
@@ -229,9 +231,13 @@ export function ModelSelectionPanes({
     return byId;
   }, [rows]);
 
-  const toggleModel = (row: ModelRow) =>
+  const toggleModel = (row: ModelRow) => {
+    const wanted = row.id.toLowerCase();
+    const alreadyChosen = models.some(
+      (binding) => binding.id.toLowerCase() === wanted,
+    );
+    if (!alreadyChosen) setExpandedModelId((open) => open ?? row.id);
     setModels((current) => {
-      const wanted = row.id.toLowerCase();
       if (current.some((binding) => binding.id.toLowerCase() === wanted)) {
         return current.filter((binding) => binding.id.toLowerCase() !== wanted);
       }
@@ -242,9 +248,12 @@ export function ModelSelectionPanes({
         row.info ? bindingFromModelInfo(row.info) : bindingForCustomModel(row.id),
       ];
     });
+  };
 
-  const toggleVisibleModels = (select: boolean) =>
+  const toggleVisibleModels = (select: boolean) => {
+    if (select) setExpandedModelId((open) => open ?? visibleRows[0]?.id ?? null);
     setModels((current) => applyVisibleModelSelection(current, visibleRows, select));
+  };
 
   const updateBinding = (id: string, update: Partial<ModelBinding>) =>
     setModels((current) =>
@@ -262,6 +271,7 @@ export function ModelSelectionPanes({
       return;
     }
     setModels((current) => [...current, bindingForCustomModel(id)]);
+    setExpandedModelId(id);
     setCustomModelId("");
     setCustomModelError("");
   };
@@ -428,6 +438,8 @@ export function ModelSelectionPanes({
               const info = infoById.get(binding.id.toLowerCase());
               const publishedImages = info ? modelMatchesFilter(info, "vision") : false;
               const publishedDocuments = info ? modelMatchesFilter(info, "pdf") : false;
+              const expanded = expandedModelId === binding.id;
+              const advancedId = `model-advanced-${binding.id}`;
               return (
                 <li className="provider-chosen-row" key={binding.id}>
                   <div className="provider-chosen-row-head">
@@ -444,7 +456,8 @@ export function ModelSelectionPanes({
                     <button
                       type="button"
                       className="provider-chosen-advanced-toggle"
-                      aria-expanded={expandedModelId === binding.id}
+                      aria-expanded={expanded}
+                      aria-controls={advancedId}
                       onClick={() =>
                         setExpandedModelId((current) =>
                           current === binding.id ? null : binding.id,
@@ -468,17 +481,20 @@ export function ModelSelectionPanes({
                       <IconClose size={12} />
                     </button>
                   </div>
+                  {/* Dense sheet: 2xs labels, alias hint as a title tooltip. */}
                   <div
                     className="provider-chosen-row-body"
-                    hidden={expandedModelId !== binding.id}
+                    id={advancedId}
+                    hidden={!expanded}
                   >
-                    <Field
-                      label={t("settings.modelAlias")}
-                      hint={t("settings.modelAliasHint")}
-                    >
+                    <label className="provider-chosen-field">
+                      <span className="provider-chosen-field-label">
+                        {t("settings.modelAlias")}
+                      </span>
                       <Input
                         value={binding.alias ?? ""}
                         placeholder={t("settings.modelAliasPlaceholder")}
+                        title={t("settings.modelAliasHint")}
                         spellCheck={false}
                         autoCorrect="off"
                         autoCapitalize="off"
@@ -490,12 +506,16 @@ export function ModelSelectionPanes({
                           })
                         }
                       />
-                    </Field>
+                    </label>
                     <div className="provider-chosen-limits">
-                      <Field label={t("settings.contextWindow")}>
+                      <label className="provider-chosen-field">
+                        <span className="provider-chosen-field-label">
+                          {t("settings.contextWindow")}
+                        </span>
                         <Input
                           type="number"
                           min={1}
+                          inputMode="numeric"
                           value={binding.contextWindow}
                           onChange={(event) =>
                             updateBinding(binding.id, {
@@ -503,11 +523,15 @@ export function ModelSelectionPanes({
                             })
                           }
                         />
-                      </Field>
-                      <Field label={t("settings.maxOutput")}>
+                      </label>
+                      <label className="provider-chosen-field">
+                        <span className="provider-chosen-field-label">
+                          {t("settings.maxOutput")}
+                        </span>
                         <Input
                           type="number"
                           min={1}
+                          inputMode="numeric"
                           value={binding.maxTokens}
                           onChange={(event) =>
                             updateBinding(binding.id, {
@@ -515,7 +539,7 @@ export function ModelSelectionPanes({
                             })
                           }
                         />
-                      </Field>
+                      </label>
                     </div>
                     <div className="provider-chosen-thinking">
                       <div className="provider-chosen-thinking-head">
@@ -526,6 +550,34 @@ export function ModelSelectionPanes({
                           <span className="provider-chosen-thinking-hint">
                             {t("settings.thinkingManualOverrideHint")}
                           </span>
+                        ) : null}
+                        {enabledLevels.length > 1 ? (
+                          <label className="provider-chosen-thinking-default">
+                            <span className="provider-chosen-thinking-label">
+                              {t("settings.defaultThinkingLevel")}
+                            </span>
+                            <select
+                              className="provider-chosen-thinking-select"
+                              value={
+                                binding.defaultThinkingLevel &&
+                                enabledLevels.includes(binding.defaultThinkingLevel)
+                                  ? binding.defaultThinkingLevel
+                                  : (enabledLevels[0] ?? "")
+                              }
+                              onChange={(event) =>
+                                updateBinding(binding.id, {
+                                  defaultThinkingLevel: event.target
+                                    .value as ThinkingLevel,
+                                })
+                              }
+                            >
+                              {enabledLevels.map((level) => (
+                                <option key={level} value={level}>
+                                  {t(`thinkingLevel.${level}`)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                         ) : null}
                       </div>
                       <div
@@ -541,6 +593,7 @@ export function ModelSelectionPanes({
                               type="button"
                               className={cx("provider-thinking-chip", on && "selected")}
                               aria-pressed={on}
+                              title={t(`thinkingLevel.${level}`)}
                               onClick={() => {
                                 const next: ThinkingLevel[] = on
                                   ? binding.thinkingLevels.filter(
@@ -562,34 +615,6 @@ export function ModelSelectionPanes({
                           );
                         })}
                       </div>
-                      {enabledLevels.length > 1 ? (
-                        <label className="provider-chosen-thinking-default">
-                          <span className="provider-chosen-thinking-label">
-                            {t("settings.defaultThinkingLevel")}
-                          </span>
-                          <select
-                            className="provider-chosen-thinking-select"
-                            value={
-                              binding.defaultThinkingLevel &&
-                              enabledLevels.includes(binding.defaultThinkingLevel)
-                                ? binding.defaultThinkingLevel
-                                : (enabledLevels[0] ?? "")
-                            }
-                            onChange={(event) =>
-                              updateBinding(binding.id, {
-                                defaultThinkingLevel: event.target
-                                  .value as ThinkingLevel,
-                              })
-                            }
-                          >
-                            {enabledLevels.map((level) => (
-                              <option key={level} value={level}>
-                                {t(`thinkingLevel.${level}`)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : null}
                     </div>
                     <div className="provider-chosen-capabilities">
                       <span className="provider-chosen-thinking-label">
@@ -612,27 +637,28 @@ export function ModelSelectionPanes({
                             updateBinding(binding.id, { supportsDocuments: next })
                           }
                         />
+                        <span className="provider-chosen-delegation">
+                          <label className="provider-chosen-capability">
+                            <input
+                              type="checkbox"
+                              checked={binding.availableForSubagents ?? false}
+                              onChange={(event) =>
+                                updateBinding(binding.id, {
+                                  availableForSubagents:
+                                    event.target.checked || undefined,
+                                })
+                              }
+                            />
+                            <span>{t("settings.availableForSubagents")}</span>
+                          </label>
+                          <span
+                            className="provider-chosen-delegation-help"
+                            data-tip={t("settings.availableForSubagentsHint")}
+                          >
+                            <IconHelp size={13} />
+                          </span>
+                        </span>
                       </div>
-                    </div>
-                    <div className="provider-chosen-delegation">
-                      <label className="provider-chosen-capability">
-                        <input
-                          type="checkbox"
-                          checked={binding.availableForSubagents ?? false}
-                          onChange={(event) =>
-                            updateBinding(binding.id, {
-                              availableForSubagents: event.target.checked || undefined,
-                            })
-                          }
-                        />
-                        <span>{t("settings.availableForSubagents")}</span>
-                      </label>
-                      <span
-                        className="provider-chosen-delegation-help"
-                        data-tip={t("settings.availableForSubagentsHint")}
-                      >
-                        <IconHelp size={13} />
-                      </span>
                     </div>
                   </div>
                 </li>
