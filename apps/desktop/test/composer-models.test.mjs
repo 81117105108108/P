@@ -69,6 +69,31 @@ test("legacy providers fall back to their default model binding", () => {
   assert.equal(models[0].displayName, "Legacy model");
 });
 
+test("a configured alias renames the composer row without changing its id", () => {
+  const models = composerModelsForProvider(
+    {
+      id: "deepseek",
+      models: [{ ...binding("deepseek-v4-pro"), alias: "  pro  " }],
+    },
+    [model("deepseek-v4-pro", "DeepSeek V4 Pro")],
+  );
+
+  assert.equal(models[0].modelId, "deepseek-v4-pro");
+  assert.equal(models[0].displayName, "pro");
+});
+
+test("a blank alias leaves the published display name alone", () => {
+  const models = composerModelsForProvider(
+    {
+      id: "deepseek",
+      models: [{ ...binding("deepseek-v4-pro"), alias: "   " }],
+    },
+    [model("deepseek-v4-pro", "DeepSeek V4 Pro")],
+  );
+
+  assert.equal(models[0].displayName, "DeepSeek V4 Pro");
+});
+
 test("composer model rows expose published reasoning and vision markers", () => {
   assert.deepEqual(
     composerModelBadges({
