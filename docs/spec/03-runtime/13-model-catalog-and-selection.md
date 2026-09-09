@@ -263,6 +263,13 @@ the configured IDs remain visible by themselves.
 The Settings provider dialog continues to use discovery to add and configure
 models; saving a model binding is what makes it eligible for the Composer.
 
+When the combined Composer menu opens, the renderer starts provider-model
+hydration before the Model submenu is entered. The first visible rows therefore
+come from the cached catalog or configured bindings; live discovery remains a
+background update. A configured non-empty alias is resolved from the binding
+for every equivalent model ID and remains the sole visible model name while
+the catalog is refreshed.
+
 ## 10. Default model policy
 
 App-level default:

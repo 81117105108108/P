@@ -26,13 +26,6 @@ export function composerModelsForProvider(
   provider: ConfiguredProvider,
   discovered: readonly ModelInfo[] | undefined,
 ): ModelInfo[] {
-  /** A configured alias renames the row wherever the composer names a model. */
-  const aliasById = new Map<string, string>();
-  for (const binding of provider.models ?? []) {
-    const id = binding.id.trim();
-    const alias = binding.alias?.trim();
-    if (id && alias) aliasById.set(id, alias);
-  }
   return configuredModelIds(provider).map((modelId) => {
     const metadata = (discovered ?? []).find((model) =>
       modelIdsMatch(model.modelId, modelId),
@@ -46,9 +39,30 @@ export function composerModelsForProvider(
           capabilities: ["text"],
           source: "user" as const,
         };
-    const alias = aliasById.get(modelId);
-    return alias ? { ...row, displayName: alias } : row;
+    const displayName = composerModelDisplayName(provider, modelId, row.displayName);
+    return displayName === row.displayName ? row : { ...row, displayName };
   });
+}
+
+/**
+ * Resolve the one visible model name used by the Composer.
+ *
+ * Bindings and discovery can use equivalent namespaced or regional IDs. Use
+ * the same tolerant identity match for aliases so a refresh cannot briefly
+ * fall back to the wire ID before the configured label is reapplied.
+ */
+export function composerModelDisplayName(
+  provider: ConfiguredProvider,
+  modelId: string,
+  fallback?: string,
+): string {
+  const normalizedModelId = modelId.trim().toLowerCase();
+  const bindings = provider.models ?? [];
+  const binding =
+    bindings.find((candidate) => candidate.id.trim().toLowerCase() === normalizedModelId) ??
+    bindings.find((candidate) => modelIdsMatch(candidate.id, modelId));
+  const alias = binding?.alias?.trim();
+  return alias || fallback?.trim() || modelId;
 }
 
 /** Short capability markers shown on a composer model row. */

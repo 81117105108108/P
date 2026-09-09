@@ -29,6 +29,15 @@ test("model and reasoning selection return to the root without closing", () => {
   assert.match(composerSource, /const thinkingMenuLevels: ThinkingLevel\[\] = availableThinkingLevels\.length/);
 });
 
+test("opening the combined menu preloads model metadata before its submenu", () => {
+  assert.match(
+    composerSource,
+    /useEffect\(\(\) => \{\n    if \(!modelThinkingOpen\) return;\n    for \(const candidate of providers\)\s*\{/,
+  );
+  assert.match(composerSource, /void loadProviderModels\(candidate\.id\);/);
+  assert.match(composerSource, /\}, \[loadProviderModels, modelThinkingOpen, providers\]\);/);
+});
+
 test("the combined chip and menu meet the compact accessible visual contract", () => {
   assert.match(composerSource, /aria-haspopup="menu"/);
   assert.match(composerSource, /aria-expanded=\{modelThinkingOpen\}/);

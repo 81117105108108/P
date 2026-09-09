@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   composerModelBadges,
+  composerModelDisplayName,
   composerModelMatchesQuery,
   composerModelsForProvider,
 } from "../src/lib/composer-models.ts";
@@ -80,6 +81,49 @@ test("a configured alias renames the composer row without changing its id", () =
 
   assert.equal(models[0].modelId, "deepseek-v4-pro");
   assert.equal(models[0].displayName, "pro");
+});
+
+test("a configured alias is visible before discovery data is available", () => {
+  const models = composerModelsForProvider(
+    {
+      id: "openai",
+      models: [{ ...binding("gpt-5.3-codex-spark"), alias: "  Spark  " }],
+    },
+    undefined,
+  );
+
+  assert.equal(models[0].displayName, "Spark");
+});
+
+test("the selected label keeps its alias across equivalent model ids", () => {
+  assert.equal(
+    composerModelDisplayName(
+      {
+        id: "openai",
+        models: [{ ...binding("openai/gpt-5.3-codex-spark"), alias: "Spark" }],
+      },
+      "gpt-5.3-codex-spark",
+      "GPT-5.3 Codex Spark",
+    ),
+    "Spark",
+  );
+});
+
+test("an exact binding alias wins over a broader equivalent id match", () => {
+  assert.equal(
+    composerModelDisplayName(
+      {
+        id: "openai",
+        models: [
+          { ...binding("gpt-5.3-codex-spark"), alias: "Base" },
+          { ...binding("openai/gpt-5.3-codex-spark"), alias: "Namespaced" },
+        ],
+      },
+      "openai/gpt-5.3-codex-spark",
+      "GPT-5.3 Codex Spark",
+    ),
+    "Namespaced",
+  );
 });
 
 test("a blank alias leaves the published display name alone", () => {

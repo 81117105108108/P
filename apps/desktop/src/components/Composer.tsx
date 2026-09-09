@@ -46,6 +46,7 @@ import type { QueuedPrompt } from "../lib/queued-prompts";
 import { runPaletteCommand } from "../lib/commands";
 import {
   composerModelBadges,
+  composerModelDisplayName,
   composerModelMatchesQuery,
   composerModelsForProvider,
 } from "../lib/composer-models";
@@ -1217,10 +1218,12 @@ export function Composer({
   });
   const selectedModel = provider?.id
     ? composerModelsForProvider(provider, providerModels[provider.id]).find(
-        (model) => model.modelId === modelId,
+        (model) => modelIdsMatch(model.modelId, modelId ?? ""),
       )
     : undefined;
-  const modelLabel = selectedModel?.displayName || modelId || t("chat.model");
+  const modelLabel = provider && modelId
+    ? composerModelDisplayName(provider, modelId, selectedModel?.displayName)
+    : selectedModel?.displayName || modelId || t("chat.model");
   const thinkingMenuLevels: ThinkingLevel[] = availableThinkingLevels.length
     ? availableThinkingLevels
     : ["off"];
@@ -1332,13 +1335,13 @@ export function Composer({
   }, [modelThinkingOpen, modelThinkingView, thinkingHighlight]);
 
   useEffect(() => {
-    if (!modelThinkingOpen || modelThinkingView !== "model") return;
+    if (!modelThinkingOpen) return;
     for (const candidate of providers) {
       if (candidate.enabled && (candidate.hasSecret || candidate.authKind === "none")) {
         void loadProviderModels(candidate.id);
       }
     }
-  }, [loadProviderModels, modelThinkingOpen, modelThinkingView, providers]);
+  }, [loadProviderModels, modelThinkingOpen, providers]);
 
   const showModelThinkingView = (view: ComposerMenuView) => {
     setModelThinkingView(view);
@@ -2465,7 +2468,7 @@ export function Composer({
                                       const index = flatIndex++;
                                       const active =
                                         provider?.id === group.provider.id &&
-                                        modelId === model.modelId;
+                                        modelIdsMatch(modelId ?? "", model.modelId);
                                       const optionTitle =
                                         model.displayName || model.modelId;
                                       return (

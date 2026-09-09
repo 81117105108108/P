@@ -2273,6 +2273,10 @@ reasoning-level control.
   bindings. Cached or freshly discovered rows may enrich those configured
   models, but unconfigured discovery results never appear in the conversation
   list; configured IDs remain visible when discovery is unavailable.
+- Opening the combined menu starts model hydration before the Model submenu is
+  entered. The first visible rows use cached metadata or configured bindings;
+  live discovery updates them in the background without replacing a configured
+  alias with the wire ID or a second visible name.
 - The combined model × reasoning menu opens at `bottom: calc(100% + 8px)` with
   `role="menu"`. Its root has exactly two `role="menuitem"` entries. The Model
   submenu has a search input and sticky provider headings, while the Reasoning
@@ -2477,7 +2481,8 @@ there is no separate top-bar model selector.
 ### 12.4 Interactions
 
 - Click: opens the Composer menu with model and reasoning entries
-- Cached provider models are available on the first open after restart; a
+- Cached provider models are available on the first open after restart; opening
+  the menu begins hydration before the Model submenu is entered, and a
   background refresh updates the list without clearing it first
 - Select: switches model for current session
 - On the home/new-session draft, selecting a model also updates the Composer's
@@ -2488,7 +2493,8 @@ there is no separate top-bar model selector.
   one display name only, falling back to the model ID when no display name is
   available. The native hover tooltip exposes that complete display name
   without resizing or reflowing the menu; the model ID is not rendered as a
-  second visible label.
+  second visible label. A configured alias is applied from the persisted
+  binding on both the initial and refreshed row.
 
 ### 12.5 Accessibility
 
