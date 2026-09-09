@@ -2510,8 +2510,10 @@ Each scenario is documented in this format:
 
 - **Preconditions**: App running with any workspace state.
 - **Steps**: 1) Relaunch and inspect the titlebar and application menu; confirm
-  the panel starts closed. Press Cmd/Ctrl+J and inspect the empty panel title
-  and context menu, then press it again to confirm the shortcut collapses the
+  the panel starts closed and a viewport-fixed work-panel toggle is present
+  (disabled with no session). Press Cmd/Ctrl+J or click the toggle and inspect
+  the empty panel title and context menu, then press/click again to confirm it
+  collapses the
   panel and no tab is created or deleted; a third press must restore the same
   context. 2) Open two distinct file artifacts, the same first file again,
   a URL preview, and a completed Bash row. 3) Open the header's unified
@@ -2525,7 +2527,7 @@ Each scenario is documented in this format:
   neighbor, press Escape and confirm focus returns to the trigger, then close the
   active item from the header. Confirm the right action cluster stays at the
   header's right edge for both the shortest and longest labels. 4) Close active middle and edge items
-  and verify neighbor selection. 5) Use the sole session-pane collapse control and
+  and verify neighbor selection. 5) Use the viewport-fixed work-panel toggle and
   trigger another artifact. 6) In session A, leave the panel open with multiple
   tabs and a Browser resource; switch to session B, create a different tab set,
   then switch repeatedly between A and B and select a project without an active
@@ -2545,8 +2547,10 @@ Each scenario is documented in this format:
   work-area geometry. 12) Send valid and malformed reservation payloads,
   including positive values, and confirm the compatibility seam never changes
   native bounds. 13) Relaunch.
-- **Expected**: Startup shows no panel, welcome chooser, fixed tool buttons, or
-  titlebar/menu launcher. Cmd/Ctrl+J opens the active session's panel at its
+- **Expected**: Startup shows no panel, welcome chooser, or fixed tool buttons.
+  A viewport-fixed toggle in the window's top-right corner is the pointer
+  equivalent of Cmd/Ctrl+J; there is still no application-menu launcher.
+  Cmd/Ctrl+J opens the active session's panel at its
   committed width without creating a resource tab and collapses it again on the
   next press while retaining that context,
   and the shortcut does nothing without an active session or while Settings is
@@ -2570,7 +2574,7 @@ Each scenario is documented in this format:
   preserves its Browser URL. The right action cluster stays pinned to the
   header's right edge regardless of label length. Opening the menu temporarily
   hides the native Browser preview so it is never occluded. The sole collapse
-  control sits in the session pane top-right rather than the content header.
+  control is the viewport-fixed toggle rather than a content-header chevron.
   Active close selects the right neighbor then left; closing the last tab hides
   the panel. Collapse retains runtime tabs but hides the panel until another
   artifact reopens it. Width clamps to the fixed `244px–720px` range and
@@ -2596,7 +2600,8 @@ Each scenario is documented in this format:
   longer exists.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`, `04-ux/01-ui-ia.md`,
   `04-ux/07-ui-design-system.md`, `04-ux/08-component-spec.md`,
-  `04-ux/09-interaction-patterns.md`, ADR 0068, ADR 0151, D207, D292
+  `04-ux/09-interaction-patterns.md`, ADR 0068, ADR 0151, ADR 0195, D207, D292,
+  D357
 - **Acceptance**: F (persistence), Quality
 - **Milestone**: M5
 - **Status**: Unit-covered (`work-panel-resize.test.mjs`,
@@ -3106,8 +3111,9 @@ Each scenario is documented in this format:
   commands, and acknowledge renderer readiness after the replacement loads.
   Verify one window and one delivery per command. 4) On Windows/Linux, repeat
   from the main chat, Settings, and an open work panel. With the work panel
-  open, confirm the panel collapse button is flush with the main-pane right
-  divider and does not retain the 120px outer-window control clearance. In the
+  open, confirm the viewport-fixed toggle and native window controls stay at
+  the window's right edge over the panel header, and that resource close
+  remains clickable to their left. In the
   main chat, send a first user message and confirm its full bubble starts below
   the 46px titlebar control band. Open the Extensions page and confirm its header
   actions, then the detail sheet's close button, also start below that band and
@@ -3125,9 +3131,10 @@ Each scenario is documented in this format:
   macOS follows native menu conventions and accelerators.
   Windows/Linux show no application menu inside the window; navigation and
   right-side controls do not collide with drag regions, keyboard shortcuts
-  remain operational, and no work-panel launcher is present. The open-panel
-  collapse button touches the main-pane right divider without an inset or a
-  duplicate native-control gap. Check for Updates
+  remain operational, and a viewport-fixed work-panel toggle is present on
+  non-Settings routes (not an application-menu command). While the panel is
+  open the native control band and that toggle overlay the panel header; the
+  header pads so resource close stays clickable. Check for Updates
   invokes the allowlisted update command from the macOS system menu and the
   Settings surface and shows the resulting up-to-date state. Replacement-window
   commands wait for renderer readiness without
@@ -3149,7 +3156,7 @@ Each scenario is documented in this format:
   `04-ux/01-ui-ia.md`, `04-ux/02-i18n-english-first.md`,
   `04-ux/07-ui-design-system.md`, `04-ux/08-component-spec.md`,
   `04-ux/09-interaction-patterns.md`, `06-delivery/06-release-runbook.md`,
-  `08-meta/decisions-log.md` (D118, D121, D129)
+  `08-meta/decisions-log.md` (D118, D121, D129, D357)
 - **Acceptance**: A (app startup), Quality
 - **Milestone**: M5 on macOS; post-MVP release qualification on Windows/Linux
 - **Status**: Unit-covered (`window-menu.test.mjs`,
@@ -6520,9 +6527,9 @@ This test plan spec is accepted when:
   action.
 - Expect project and session lists to scroll inside the sidebar body without
   clipping behind the footer; sidebar Collapse remains in the sidebar
-  header. When the work panel is open, expect its sole collapse control in the
-  session pane top-right rather than the work-panel content header, flush against
-  the divider at the main pane's right edge.
+  header. When the work panel is open, expect its sole collapse control to be
+  the viewport-fixed toggle in the window's top-right corner rather than a
+  chevron in the work-panel content header.
 - Collapse A by clicking its directory label, expand it from the chevron area,
   then activate B and return to A. Only A's child rows collapse; project `+`
   and overflow actions do not toggle it; the

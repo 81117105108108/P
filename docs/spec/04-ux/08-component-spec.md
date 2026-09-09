@@ -62,11 +62,11 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
   The 8px edge hit area stays transparent when the sidebar body is hovered;
   direct handle hover reveals only a centered compact marker, while focus and
   active dragging use the accent marker without changing layout.
-- Work panel collapse: sole control lives in the session pane titlebar top-right
-  while the panel is open, with its outer edge flush against the divider
-  between the session pane and work panel so the work-panel content header is
-  not occupied. Opening and collapsing change only the shell's internal flex
-  allocation; the native window bounds stay unchanged.
+- Work panel collapse: the sole control is the viewport-fixed toggle in the
+  window's top-right corner, available on every non-Settings route whether the
+  panel is open or closed. It does not sit in the work-panel content header.
+  Opening and collapsing change only the shell's internal flex allocation; the
+  native window bounds stay unchanged.
 - Work panel resize: its inner left-edge handle changes the committed panel
   width in the renderer, so dragging left gives the panel more internal space
   and dragging right returns space to MainChat (§5.4)
@@ -131,9 +131,9 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
 
 | Platform | Top-level chrome | Application menu |
 |---|---|---|
-| macOS | Native inset traffic lights at `{x:16,y:16}`; expanded sidebar Collapse control at right, with no logo/title; open work-panel collapse sits in the session pane top-right | System menu: PI-Desktop, File, Edit, View, Window, Help |
-| Windows | Frameless 46px titlebar; sidebar actions at left, open work-panel collapse in session pane top-right ahead of minimize/maximize/close | None inside the window |
-| Linux | Frameless 46px titlebar; sidebar actions at left, open work-panel collapse in session pane top-right ahead of minimize/maximize/close | None inside the window |
+| macOS | Native inset traffic lights at `{x:16,y:16}`; expanded sidebar Collapse control at right, with no logo/title; work-panel toggle is viewport-fixed at the window's top-right | System menu: PI-Desktop, File, Edit, View, Window, Help |
+| Windows | Frameless 46px titlebar; sidebar actions at left; work-panel toggle then minimize/maximize/close stay viewport-fixed at the window's top-right | None inside the window |
+| Linux | Frameless 46px titlebar; sidebar actions at left; work-panel toggle then minimize/maximize/close stay viewport-fixed at the window's top-right | None inside the window |
 
 - macOS enables the native Electron `vibrancy: "sidebar"` source-list material
   with `visualEffectState: "followWindow"` and a transparent window backing
@@ -235,7 +235,10 @@ combined model × reasoning selection (§11).
   `no-drag` on interactive controls; macOS reserves the left ~76px for traffic
   lights (only when the sidebar is collapsed), Windows/Linux reserve the right
   120px for native window controls (112px hit targets plus an 8px visual
-  buffer from adjacent work-panel actions)
+  buffer). The conversation titlebar also reserves the 28px work-panel toggle
+  while the panel is closed. While the panel is open, that 120px band plus the
+  toggle overlay the panel header instead, and the header pads to keep
+  resource close reachable (D357).
 - Title cluster (task title) flexes and shows at most the first 10 Unicode
   characters plus an ellipsis; the full title remains in the native tooltip.
   The right cluster (action icons) is `flex: 0 0 auto`
@@ -249,9 +252,11 @@ combined model × reasoning selection (§11).
 - Shell consistency: the chat topbar, non-chat drag band, Settings drag band,
   sidebar header, work-panel header, and native window-control band all use
   `--ds-toolbar-height`. Windows/Linux keep the same `--ds-window-controls-width`
-  reservation so the right boundary and native controls stay aligned when the
-  route or work panel changes; the control band continues the titlebar's
-  `border-subtle` bottom rule and uses the same token for its leading divider.
+  for the viewport-fixed control band; when the work panel opens, that
+  reservation moves from the conversation titlebar onto the panel header so the
+  controls do not travel with MainPane (D357). The control band continues the
+  titlebar's `border-subtle` bottom rule and uses the same token for its
+  leading divider.
 - Band reservation is platform-independent (D269). The band is opaque and
   absolutely positioned, so scrolling route content passes underneath it on
   every platform, macOS included. Every route surface that starts its own
@@ -421,9 +426,9 @@ visually distinct from list content.
   reflows continuously, the press position remains anchored, and the final
   width is saved on release. Focus the edge handle and use ArrowLeft/Right,
   Home, or End for keyboard resizing; Escape cancels an active pointer resize.
-- While the work panel is open, click the session-pane top-right panel collapse
-  control to hide the panel without deleting tabs; the work-panel header keeps
-  only dynamic tabs
+- Click the viewport-fixed work-panel toggle to reveal or hide the panel
+  without deleting tabs; the work-panel header keeps only dynamic tabs and
+  the active-resource close control
 - Click the `Projects` heading folder-plus action: open the project picker and
   retain the selected project
 - Right-click the `Projects` heading or empty project-list chrome: open a
@@ -456,8 +461,9 @@ visually distinct from list content.
   cards. Directory `+` and overflow actions remain hidden until hover or
   keyboard focus, without changing the directory label's position.
 - Sidebar toggle: expanded-header icon + keyboard shortcut; the
-  collapsed main titlebar retains an Expand sidebar icon; when the work panel is
-  open, the session-pane top-right hosts the sole panel collapse control
+  collapsed main titlebar retains an Expand sidebar icon; the work-panel
+  toggle stays viewport-fixed in the window's top-right corner on every
+  non-Settings route
 - Click the local profile trigger: open or close the identity menu containing
   Settings, Logs, and Theme
 - Click the footer bell: open or close the durable notification inbox
@@ -766,9 +772,9 @@ copy — followed by the same plugin views the header menu lists, as plain rows:
 - The 46px header follows a "context left, actions right" model: the unified
   context trigger anchors the left and shows the active tool icon and ellipsized
   label; a right action cluster is pinned to the right edge behind a thin
-  divider, so the close / collapse controls never shift with the label length.
-  The gap between the two remains a window-drag region. The collapse control
-  uses a right chevron so it reads as "push the panel away", not "open a panel"
+  divider, so the close control never shifts with the label length.
+  The gap between the two remains a window-drag region. Panel collapse is the
+  viewport-fixed shell toggle, not a header chevron
 - Active tabs, file-tree rows, diff headers, and the resize handle ease hover
   fills with `--motion-duration-fast` / `--motion-ease-out`
 - Browser URL and empty-tool chrome share the light inset field treatment used
@@ -817,8 +823,8 @@ workflow while rendering entirely inside the plugin's isolated page:
 
 | State | Behavior |
 |---|---|
-| Closed (default) | Not rendered; startup has no retained tabs. `Cmd/Ctrl + J` reveals the active session's panel context without creating a tab. Inline review cards remain available in the transcript because they are message-scoped and do not require the work panel. |
-| Open | Docked flex row right of the main pane; opened by an artifact or `Cmd/Ctrl + J` at a fixed committed width of 244–720px (default 280px). `Cmd/Ctrl + J` again collapses it, retaining the session context. Its flex allocation eases from zero to the committed width so MainChat reflows continuously inside the unchanged client area. |
+| Closed (default) | Not rendered; startup has no retained tabs. The viewport-fixed toggle or `Cmd/Ctrl + J` reveals the active session's panel context without creating a tab. Inline review cards remain available in the transcript because they are message-scoped and do not require the work panel. |
+| Open | Docked flex row right of the main pane; opened by an artifact, the viewport-fixed toggle, or `Cmd/Ctrl + J` at a fixed committed width of 244–720px (default 280px). The toggle or `Cmd/Ctrl + J` again collapses it, retaining the session context. Its flex allocation eases from zero to the committed width so MainChat reflows continuously inside the unchanged client area. |
 | Multiple artifacts | The current-resource header keeps one readable label at the panel minimum; its bounded menu lists the tools first and then the transcript-opened resources in first-open order, with full-path tooltips and independent close controls |
 | Session switch | The destination session's retained open state, tabs, active tab, and Browser resource replace the previous session's panel context atomically; neither context is deleted |
 | Resizing | The inner left divider follows anchored pointer delta or keyboard input for the panel target; pointer changes are frame-coalesced and committed in the renderer. Escape, pointer cancellation, or lost capture restores the prior panel width. Native window edges resize only the fixed application window. |
@@ -835,10 +841,11 @@ workflow while rendering entirely inside the plugin's isolated page:
   events carry `sessionId`, and the renderer retains that session's preview
   path/URL as its Browser resource. Successful workspace Write/Edit artifacts
   create/activate Review in the originating session.
-  `Cmd/Ctrl + J` toggles the active session's retained panel context: it
-  reveals the panel without creating a resource and collapses the visible panel
-  without deleting one. With no active session it does nothing. The shortcut is
-  ignored while Settings is the active page.
+  The viewport-fixed toggle and `Cmd/Ctrl + J` both toggle the active session's
+  retained panel context: they reveal the panel without creating a resource and
+  collapse the visible panel without deleting one. With no active session the
+  toggle is disabled and the shortcut does nothing. Both are ignored while
+  Settings is the active page.
   Background artifacts may update that retained context but never reveal it,
   resize the window, or change visible selection/focus. The transcript does
   not create a global Review changes launcher: each successful workspace
@@ -883,9 +890,9 @@ workflow while rendering entirely inside the plugin's isolated page:
   directly. Arrow keys, Home, End, and Escape operate the menu; opening the menu
   hides the native Browser preview until it closes.
 - Tab close: closing an active tab selects its right neighbor, then its left;
-  closing the last tab hides the panel. The panel-level collapse control lives
-  in the session pane top-right (not the work-panel content header) and hides the
-  panel without deleting the runtime tab set; a later artifact reopens it.
+  closing the last tab hides the panel. The panel-level collapse control is the
+  viewport-fixed shell toggle (not in the work-panel content header) and hides
+  the panel without deleting the runtime tab set; a later artifact reopens it.
 - Context change: selecting another session atomically projects that session's
   retained `{open, tabs, activeTabId, browserResource}` state. The previous
   session's context remains in renderer memory and is restored when selected
@@ -927,8 +934,8 @@ workflow while rendering entirely inside the plugin's isolated page:
   `aria-orientation="vertical"`, a localized label, dynamic
   `aria-valuemin` / `aria-valuemax` / `aria-valuenow`, visible focus, and
   Arrow/Home/End keyboard control. Escape cancels an active pointer gesture.
-- Every resource close and the sole session-pane panel collapse button expose
-  localized names
+- Every resource close and the viewport-fixed panel toggle expose localized
+  names. The toggle uses `aria-pressed` for open versus closed.
 
 ### 5.6 MVP constraints
 

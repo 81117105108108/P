@@ -63,34 +63,36 @@ destination, chat as the home surface, tools and permissions inline.
   `hiddenInset` traffic lights and the system application menu. The expanded
   sidebar keeps Collapse sidebar in the same 46px row, aligned to
   the right outside the traffic-light safety area; no logo/title is rendered
-  there, including in fullscreen. When the work panel is open, the native
-  window controls stay at the conversation pane's right edge while the panel
-  header uses its full width for the active resource.
+  there, including in fullscreen. When the work panel is open, native window
+  controls stay viewport-fixed at the window's right edge and the panel header
+  reserves that band plus the work-panel toggle so resource close remains
+  reachable (D357).
   Windows/Linux use a menu-free frameless 46px row with sidebar actions on the
   left and accessible minimize / maximize-or-restore / close controls at the
-  right edge of the conversation pane (D129). When the work panel is open, the
-  controls stay with the conversation pane and the panel header uses its full
-  width for resource actions. Destination history is shortcut-only (`Cmd/Ctrl+[` and
+  right edge of the conversation pane when the panel is closed (D129). When
+  the work panel is open, those controls stay viewport-fixed over the panel
+  header rather than travelling with MainPane. Destination history is shortcut-only (`Cmd/Ctrl+[` and
   `Cmd/Ctrl+]`); no back/forward buttons are rendered. The main titlebar has no
   notification action; the durable local inbox opens from the sidebar footer
   bell instead (D130/D117).
-- **Work panel**: docked right column (not an overlay) opened by an artifact
-  or `Cmd/Ctrl + J`. File, URL, browser-preview, and successful workspace-edit
+- **Work panel**: docked right column (not an overlay) opened by an artifact,
+  the viewport-fixed toggle, or `Cmd/Ctrl + J`. File, URL, browser-preview, and successful workspace-edit
   artifacts create their resources atomically. A combined panel entry keeps
   Browser and in-scope plugin views available while
   the panel is visible; opened-but-inactive views show a quiet dot and the active
   resource has a restrained edge marker. The 46px content header names the
   current resource, closes it directly, and opens a compact switcher for all
   current session resources. File paths stay distinct in that switcher while
-  plugin views deduplicate by view reference. `Cmd/Ctrl + J` toggles the
-  active session's retained panel context — revealing it without creating a
-  resource tab and collapsing it without discarding one; the create trigger
-  remains unavailable while the panel is closed. A
+  plugin views deduplicate by view reference. The viewport-fixed toggle and
+  `Cmd/Ctrl + J` both toggle the active session's retained panel context —
+  revealing it without creating a resource tab and collapsing it without
+  discarding one; the create trigger remains unavailable while the panel is
+  closed. A
   successful active-session workspace Write/Edit artifact opens Review;
   scratch, failed, and background-session writes never steal focus. The outer
   inner divider resizes the panel from 244px to 720px; moving it left takes
   more space from MainChat and moving it right gives space back. The sole
-  panel-level control collapses the panel; each session retains its own runtime
+  panel-level control is the viewport-fixed toggle; each session retains its own runtime
   open state, tab set, active tab, and Browser resource in renderer memory.
   Selecting another session swaps the visible panel context without deleting
   either session's state; selecting a workspace without an active conversation

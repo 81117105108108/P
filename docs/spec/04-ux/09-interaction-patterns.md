@@ -93,10 +93,11 @@ recency only breaks ties between equally relevant matches.
   platform text-editing, zoom, fullscreen, hide, and quit behavior.
 - Windows/Linux render no application menu in the window. Their frameless
   titlebar keeps sidebar actions at the left edge and native window controls at
-  the conversation pane's right edge. While the work panel is open, the
-  controls remain in the conversation pane and the panel header uses its full
-  width for resource actions; its collapse control no longer sits ahead of the
-  window controls. Destination history has no visible back/forward
+  the conversation pane's right edge while the work panel is closed. While the
+  work panel is open, those controls stay viewport-fixed at the window's right
+  edge over the panel header, which reserves the control band plus the
+  work-panel toggle so resource close remains reachable. The sole panel
+  collapse control is that viewport-fixed toggle. Destination history has no visible back/forward
   controls and remains available through the renderer shortcuts. The first
   transcript row starts below the 46px titlebar control band so user and
   assistant content cannot overlap the minimize, maximize/restore, or close
@@ -388,11 +389,11 @@ may be retained while exactly one workspace supplies the visible shell context.
 
 ### 1.8 Work panel entry and resources (D128, D142, D154, D173, D179, D207, D221)
 
-- The shell starts without a visible work panel. `Cmd/Ctrl + J` toggles the
-  active session's panel: it reveals the retained context without creating a
-  resource tab, and collapses the visible panel through the same path as the
-  header collapse control, retaining tabs, active resource, and committed
-  width. It is a no-op without an active session or while Settings is the
+- The shell starts without a visible work panel. The viewport-fixed toggle and
+  `Cmd/Ctrl + J` both toggle the active session's panel: they reveal the
+  retained context without creating a resource tab, and collapse the visible
+  panel without deleting tabs, retaining tabs, active resource, and committed
+  width. They are a no-op without an active session or while Settings is the
   active page. The panel's context trigger can then create Browser or an
   in-scope plugin view.
 - An artifact trigger atomically creates or reuses its resource, activates it,
@@ -418,9 +419,8 @@ may be retained while exactly one workspace supplies the visible shell context.
   of replacing it, so Browser keeps its URL and Files its selection (D173).
 - Every resource can be closed from the menu, and the active resource has
   a direct header close control. Closing the active resource selects the right
-  neighbor, then the left; closing the final tab hides the panel. The separate
-  panel collapse control in the session pane top-right hides the panel without
-  deleting tabs.
+  neighbor, then the left; closing the final tab hides the panel. The
+  viewport-fixed panel toggle hides the panel without deleting tabs.
 - On every platform, opening and collapsing the visible panel change only the
   internal flex allocation; native window bounds remain unchanged. The inner
   divider updates the renderer-owned panel target between 244px and 720px,
