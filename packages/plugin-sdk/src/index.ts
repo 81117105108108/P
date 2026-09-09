@@ -362,6 +362,18 @@ export type PluginFsEntry = {
   isDirectory: boolean;
   /** Files only. */
   size?: number;
+  /** Files only; milliseconds since the Unix epoch. */
+  mtimeMs?: number;
+};
+
+export type PluginFsStat = {
+  size: number;
+  mtimeMs: number;
+};
+
+export type PluginFsRange = {
+  bytes: Uint8Array;
+  totalSize: number;
 };
 
 /** Classified preview returned by `fs.readPreview`. */
@@ -411,6 +423,15 @@ export type PluginHostApi = {
    */
   fs: {
     readText: (pathFromRoot: string) => Promise<string>;
+    /** Read the size and modification time of one file without loading it. */
+    stat: (pathFromRoot: string, grantId?: string) => Promise<PluginFsStat>;
+    /** Read a bounded byte range; `grantId` is only for a dropped-file grant. */
+    readRange: (
+      pathFromRoot: string,
+      byteOffset: number,
+      length: number,
+      grantId?: string,
+    ) => Promise<PluginFsRange>;
     /**
      * Bounded classified preview of one existing readable file. Images return
      * a data URL; text is capped; binary and oversized files are reported

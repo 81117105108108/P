@@ -29,6 +29,21 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "0.14.4",
+    date: "2026-09-09",
+    highlights: [
+      "Add bounded large-file range reads and gesture-bound dropped-file grants for plugins.",
+      "Make macOS signing and notarization explicit opt-in, with opening guidance for trusted unsigned builds.",
+    ],
+  },
+  {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "Label Intel macOS release downloads explicitly so the installer architecture is clear.",
+    ],
+  },
+  {
     version: "0.14.2",
     date: "2026-09-08",
     highlights: [
@@ -705,6 +720,21 @@ const enEntries: ChangelogEntry[] = [
 
 const zhCNEntries: ChangelogEntry[] = [
   {
+    version: "0.14.4",
+    date: "2026-09-09",
+    highlights: [
+      "为插件新增有上限的大文件范围读取和绑定真实拖拽手势的文件授权。",
+      "将 macOS 签名和公证改为明确的可选流程，并为可信未签名构建提供打开指引。",
+    ],
+  },
+  {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "为 Intel macOS 发布下载添加明确后缀，方便区分安装包架构。",
+    ],
+  },
+  {
     version: "0.14.2",
     date: "2026-09-08",
     highlights: [
@@ -1379,6 +1409,21 @@ const zhCNEntries: ChangelogEntry[] = [
 ];
 
 const zhTWEntries: ChangelogEntry[] = [
+  {
+    version: "0.14.4",
+    date: "2026-09-09",
+    highlights: [
+      "為外掛新增有上限的大型檔案範圍讀取，以及繫結真實拖放手勢的檔案授權。",
+      "將 macOS 簽署與公證改為明確的選用流程，並為可信的未簽署版本提供開啟指引。",
+    ],
+  },
+  {
+    version: "0.14.3",
+    date: "2026-09-09",
+    highlights: [
+      "為 Intel macOS 發布下載加入明確後綴，方便區分安裝包架構。",
+    ],
+  },
   {
     version: "0.14.2",
     date: "2026-09-08",

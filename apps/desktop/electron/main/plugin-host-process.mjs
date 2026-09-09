@@ -88,6 +88,21 @@ function normalizeClipboardHistory(value) {
   );
 }
 
+function normalizeBytes(value) {
+  if (value instanceof Uint8Array) return value;
+  if (Array.isArray(value)) return Uint8Array.from(value);
+  if (!value || typeof value !== "object") return new Uint8Array();
+  if (value.type === "Buffer" && Array.isArray(value.data)) {
+    return Uint8Array.from(value.data);
+  }
+  return Uint8Array.from(
+    Object.entries(value)
+      .filter(([key]) => /^\d+$/.test(key))
+      .sort(([left], [right]) => Number(left) - Number(right))
+      .map(([, byte]) => Number(byte)),
+  );
+}
+
 // Contribution points registered by this plugin. The callable half stays here;
 // the broker only ever holds the descriptor plus a proxy back into this process.
 const commands = new Map();
@@ -155,6 +170,12 @@ function buildApi() {
     },
     fs: {
       readText: (path) => call("fs.readText", [path]),
+      stat: (path, grantId) => call("fs.stat", [path, grantId]),
+      readRange: (path, byteOffset, length, grantId) =>
+        call("fs.readRange", [path, byteOffset, length, grantId]).then((result) => ({
+          ...result,
+          bytes: normalizeBytes(result?.bytes),
+        })),
       readPreview: (path) => call("fs.readPreview", [path]),
       openDefault: (path) => call("fs.openDefault", [path]),
       reveal: (path) => call("fs.reveal", [path]),

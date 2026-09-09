@@ -141,13 +141,52 @@ Each scenario is documented in this format:
 - **Status**: Documented; artifact export is unit-covered, native system-Electron
   repackaging remains runner validation
 
+#### E2E-196a: Default unsigned macOS release lane
+
+- **Preconditions**: A `vX.Y.Z` tag matches `apps/desktop/package.json`, or the
+  Release workflow is manually dispatched with `sign_macos` omitted or false;
+  Windows and Linux release credentials are not affected.
+- **Steps**: 1) Run the tag workflow or dispatch it with the default signing
+  input. 2) Confirm both macOS architectures complete ordinary DMG/ZIP
+  packaging without certificate secrets. 3) Inspect the artifacts and workflow
+  steps.
+- **Expected**: macOS DMG/ZIP artifacts are produced and uploaded without
+  Developer ID signatures or notarization; macOS staple and Gatekeeper checks
+  are explicitly skipped. Windows/Linux artifacts and the merged updater feed
+  still publish normally. This exception must be removed before the next stable
+  release; it does not satisfy E2E-196.
+- **Specs linked**: `06-delivery/06-release-runbook.md`
+- **Acceptance**: Quality (default release packaging)
+- **Milestone**: M6+
+- **Status**: Active default; this scenario does not satisfy E2E-196.
+
+#### E2E-196b: Unsigned macOS packages include opening guidance
+
+- **Preconditions**: A default unsigned macOS release has produced both DMG and
+  ZIP artifacts for at least one native architecture.
+- **Steps**: 1) Open the DMG and inspect its root. 2) Inspect the ZIP root
+  without extracting the application contents. 3) Read
+  `PI-Desktop-macOS-opening-help.txt`.
+- **Expected**: Both packages contain the same opening-help file at the package
+  root. It includes `xattr -cr /Applications/PI-Desktop.app`, explains that the
+  command is for the trusted unsigned artifact when macOS reports that the app
+  is damaged, and says signed/notarized builds do not need it. The guidance
+  does not claim that an unsigned artifact has passed Gatekeeper qualification.
+- **Specs linked**: `06-delivery/06-release-runbook.md`,
+  `05-security/01-security.md`
+- **Acceptance**: Quality, Security
+- **Milestone**: M6+
+- **Status**: Automated by `packaging-footprint.test.mjs`; native archive
+  inspection remains release-runner validation
+
 #### E2E-196: macOS tag artifacts pass Gatekeeper without a quarantine bypass
 
-- **Preconditions**: A `vX.Y.Z` tag matches `apps/desktop/package.json`; GitHub
-  Actions has `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
+- **Preconditions**: The Release workflow is manually dispatched for a
+  `vX.Y.Z` tag with `sign_macos: true`; the tag matches
+  `apps/desktop/package.json`; GitHub Actions has `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`,
   `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` secrets; both native macOS
   runners are available.
-- **Steps**: 1) Run the tag release workflow. 2) For each macOS architecture,
+- **Steps**: 1) Run the explicitly signed workflow. 2) For each macOS architecture,
   inspect the unpacked app with `codesign -dv --verbose=4` and confirm a
   `Developer ID Application` authority. 3) Run `codesign --verify --deep
   --strict`, `spctl -a -vv`, and `xcrun stapler validate` against the app. 4)
@@ -1728,6 +1767,28 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`, `04-ux/07-ui-design-system.md`, `07-plugins/01-plugin-system.md`, `07-plugins/03-plugin-api.md`, `07-plugins/04-plugin-security.md`, ADR 0081, ADR 0082, ADR 0092, ADR 0093
 - **Acceptance**: G (isolated panel)
 - **Status**: Documented
+
+#### E2E-024Y: Large-file plugin reads and dropped-file grants stay host-gated
+
+- **Preconditions**: A test plugin declares `fs.read`; the workspace contains a
+  readable log and a protected credential fixture; the plugin panel is open.
+- **Steps**: 1) Pick a directory and open a large log. 2) Confirm initial page,
+  search, follow, and a file-growth poll complete through `fs.stat` and bounded
+  `fs.readRange`. 3) Drag a regular file into the panel and open it. 4) Drag a
+  second file or forge an absolute path with the first grant and retry. 5)
+  Reload/unload the plugin and retry the old grant.
+- **Expected**: Directory reads remain relative to the selected root and are
+  permission/audit checked. Range reads reject invalid values and lengths above
+  8 MiB, return an empty byte array at EOF, and preserve total size. A real
+  drop creates a one-file, read-only, memory-only grant; the dropped file uses
+  the same paging/search/follow engine, while another path, a protected path,
+  and a grant after unload fail closed with `PERMISSION_DENIED` or `NOT_FOUND`.
+  No renderer worker or raw plugin `node:fs` path is used.
+- **Specs linked**: `07-plugins/03-plugin-api.md`,
+  `07-plugins/04-plugin-security.md`, `07-plugins/12-plugin-ipc-and-host-services.md`,
+  `07-plugins/13-plugin-permissions-matrix.md`, ADR 0190
+- **Acceptance**: Security + G (plugin host services)
+- **Status**: Unit/integration-covered; real drag gesture remains manual
 
 #### E2E-024E: High-risk plugin APIs require grants
 
@@ -4093,8 +4154,12 @@ Each scenario is documented in this format:
   3. On each macOS package, run `file` (or `lipo -info`) against the app
      executable and `Resources/bin/pi-desktop-host-core`; confirm arm64 and
      x86_64 packages contain only their declared architecture and that the
-     Rust host matches the Electron app. Confirm the release directory has
-     both DMG and ZIP artifacts and one merged `latest-mac.yml` feed.
+     Rust host matches the Electron app. Confirm the arm64 assets retain the
+     generic `PI-Desktop-X.Y.Z.dmg` and `PI-Desktop-X.Y.Z-mac.zip` names while
+     the Intel assets use `PI-Desktop-X.Y.Z-Intel.dmg` and
+     `PI-Desktop-X.Y.Z-Intel-mac.zip`; confirm the release directory has both
+     DMG and ZIP artifacts and one merged `latest-mac.yml` feed whose URLs and
+     checksums match those generated assets.
   4. Inspect the renderer output for its size controls: emitted JS is minified,
      no `.woff` or `.ttf` files are present, the KaTeX `woff2` faces remain, and
      the brand marks are the renderer-sized `assets/brand/logo-*.png` rather
@@ -4112,8 +4177,10 @@ Each scenario is documented in this format:
 - **Expected**: Each macOS package contains exactly one bundled agent sidecar,
   one Rust host matching its declared architecture, and only configured
   Chromium locale packs. The release output contains both native macOS
-  architectures, DMG/ZIP artifacts, and one merged updater feed. Renderer
-  dependencies exist through Vite output rather than duplicate raw
+  architectures, DMG/ZIP artifacts, and one merged updater feed. The Intel
+  DMG and ZIP carry the `-Intel` marker and the x64 updater metadata points to
+  those names without colliding with the arm64 assets. Renderer dependencies
+  exist through Vite output rather than duplicate raw
   `node_modules`; dependency source maps, tests, examples, declarations,
   a second agent-runtime tree, and reliably excludable non-target native assets
   are absent. Curated Shiki grammars highlight locally while an unknown fence
@@ -5814,8 +5881,8 @@ Each scenario is documented in this format:
 | F — Persistence | E2E-020, E2E-021, E2E-021a, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062, E2E-064, E2E-066, E2E-068, E2E-071, E2E-072, E2E-073, E2E-082, E2E-084, E2E-096, E2E-098, E2E-102, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-103, E2E-AGENTS-001, E2E-061a, E2E-073a, E2E-104, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-118, E2E-119, E2E-120, E2E-121, E2E-123, E2E-142, E2E-146, E2E-148, E2E-151, E2E-158, E2E-160, E2E-168, E2E-171, E2E-177, E2E-178, E2E-183, E2E-186, E2E-005J |
 | G — Plugins | E2E-022, E2E-022A, E2E-022B, E2E-022C, E2E-023, E2E-024, E2E-024B, E2E-024C, E2E-024D, E2E-024E, E2E-024W, E2E-024F, E2E-024G, E2E-024H, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M, E2E-024N, E2E-024O, E2E-024P, E2E-025, E2E-026, E2E-105, E2E-117, E2E-120, E2E-122, E2E-123, E2E-024Q, E2E-148, E2E-152, E2E-153 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042, E2E-096, E2E-098, E2E-104, E2E-107, E2E-108, E2E-109, E2E-110, E2E-113, E2E-115, E2E-116, E2E-118, E2E-121, E2E-146, E2E-155, E2E-159, E2E-176, E2E-194, E2E-195 |
-| Security | E2E-028, E2E-029, E2E-030, E2E-024J, E2E-024K, E2E-024M, E2E-049, E2E-068, E2E-086, E2E-102c, E2E-102d, E2E-102e, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-113, E2E-115, E2E-116, E2E-117, E2E-119, E2E-121, E2E-122, E2E-123, E2E-142, E2E-148, E2E-151, E2E-153, E2E-158, E2E-187, E2E-196 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-024O, E2E-059a, E2E-060b, E2E-060c, E2E-060d, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-196, E2E-198 |
+| Security | E2E-028, E2E-029, E2E-030, E2E-024J, E2E-024K, E2E-024M, E2E-049, E2E-068, E2E-086, E2E-102c, E2E-102d, E2E-102e, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-113, E2E-115, E2E-116, E2E-117, E2E-119, E2E-121, E2E-122, E2E-123, E2E-142, E2E-148, E2E-151, E2E-153, E2E-158, E2E-187, E2E-196, E2E-196b |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-024O, E2E-059a, E2E-060b, E2E-060c, E2E-060d, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-196, E2E-196b, E2E-198 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -5825,14 +5892,15 @@ Each scenario is documented in this format:
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
 | M5 | E2E-008a, E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-AGENTS-001, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-094, E2E-095, E2E-143, E2E-145, E2E-146, E2E-147, E2E-177, E2E-178, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195 |
 | M6 | E2E-104, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-103, E2E-172 |
-| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196, E2E-198 |
+| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196, E2E-196b, E2E-198 |
 | Post-MVP | E2E-022A, E2E-022B, E2E-022C, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M (plugin roadmap R2/R3/R6) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
 rather than the A–H criteria; their gold source is the capture suite.
 
-The release artifact paths are covered by E2E-192 and E2E-196 (Quality, M6+).
+The release artifact paths are covered by E2E-192, E2E-196, and E2E-196b
+(Quality, M6+).
 
 ---
 

@@ -148,7 +148,7 @@ scripts/release-macos.sh
 `MAC_ARCH=x64`，但该值必须与主机匹配，以保持 Rust 本机主机和 Electron
 软件包的架构一致。
 
-### 4.3 GitHub 标签工作流程
+### 4.3 GitHub 标签和手动工作流程
 
 GitHub Release 工作流程启动所有本机平台运行程序，无需
 单独的验证作业障碍。每个运行器都会验证推送的标签
@@ -164,17 +164,40 @@ GitHub Release 工作流程启动所有本机平台运行程序，无需
 调用电子构建器。这避免了多余的桌面构建，而无需
 更改包脚本或发布工件。
 
+**macOS 默认发布策略：** GitHub Release 工作流程默认生成未签名的 macOS
+DMG/ZIP。标签推送以及 `sign_macos` 未填写或设为 `false` 的手动运行都会关闭
+身份发现，不接收签名或公证密钥，并跳过 macOS 装订和签名验证。如需明确签名，
+请针对目标标签手动运行工作流程并设置 `sign_macos: true`。本地
+`scripts/release-macos.sh` 仍是明确的签名通道。
+
 macOS 矩阵使用 arm64 的 `macos-15` 和 Intel x64 的
 `macos-15-intel`。每个作业验证 `uname -m`，向 electron-builder 传入匹配
 的 `--arm64` 或 `--x64`，并在同一本机运行器上构建
 `pi-desktop-host-core`。每个架构的 `latest-mac.yml` 会在上传前重命名，
 发布作业下载两个工件后再合并为一个更新源。
 
-macOS 打包步骤仅从 GitHub Actions 密钥接收 `CSC_LINK`、
+Intel x64 打包命令会覆盖 macOS 目标的工件命名模板，使公开下载名明确区分：
+`PI-Desktop-<version>-Intel.dmg` 和 `PI-Desktop-<version>-Intel-mac.zip`。
+arm64 通道保留通用的 `PI-Desktop-<version>.dmg` 和
+`PI-Desktop-<version>-mac.zip` 名称。命名模板在 electron-builder 打包时生效，
+因此生成的 `latest-mac-x64.yml` 会引用带 Intel 后缀的工件及其匹配校验和。
+
+每个 macOS DMG 和 ZIP 的安装包根目录还会包含
+`PI-Desktop-macOS-opening-help.txt`。如果 macOS 对可信的未签名应用提示应用已损坏，
+文件会提醒用户将 `PI-Desktop.app` 移动到 `/Applications` 后在终端执行：
+
+```sh
+xattr -cr /Applications/PI-Desktop.app
+```
+
+该提示仅适用于可信来源的未签名工件；已签名并公证的版本无需执行此命令。
+
+默认 macOS 打包步骤生成未签名工件。只有手动运行明确设置
+`sign_macos: true` 时，才会从 GitHub Actions 密钥接收 `CSC_LINK`、
 `CSC_KEY_PASSWORD`、`APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD` 和
-`APPLE_TEAM_ID`。该步骤强制执行代码签名和公证，然后验证 Developer ID
-权限、代码签名完整性、Gatekeeper 评估以及已装订的应用票据。生成的 DMG
-也会在任何工件上传前显式装订并验证。
+`APPLE_TEAM_ID`，强制执行代码签名和公证，然后验证 Developer ID 权限、代码
+签名完整性、Gatekeeper 评估以及已装订的应用票据。生成的 DMG 也会在任何
+工件上传前显式装订并验证。
 
 DMG、ZIP、NSIS、AppImage、deb、rpm、块图和更新程序提要输出已
 压缩或压缩不敏感。因此，工作流程会上传它们的
@@ -182,6 +205,9 @@ DMG、ZIP、NSIS、AppImage、deb、rpm、块图和更新程序提要输出已
 组装 GitHub 版本。
 
 ## 5. 验证门
+
+对于默认未签名的 macOS 通道，不要将工件视为通过 Gatekeeper 资格验证；
+以下签名和装订检查仅适用于明确设置 `sign_macos: true` 的运行。
 
 每次发布版本后运行：
 
@@ -313,8 +339,9 @@ macOS 软件包包括按本机架构构建的 `bin/pi-desktop-host-core`；Windo
 
 Native-runner 输出矩阵：
 
-- macOS arm64：DMG 和 ZIP
-- macOS Intel x64：DMG 和 ZIP
+- macOS arm64：`PI-Desktop-<version>.dmg` 和 `PI-Desktop-<version>-mac.zip`
+- macOS Intel x64：`PI-Desktop-<version>-Intel.dmg` 和
+  `PI-Desktop-<version>-Intel-mac.zip`
 - Windows x64：NSIS 安装程序
 - Linux x64：AppImage、deb 和 rpm
 - Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`

@@ -2,6 +2,21 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const esEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.4",
+    "date": "2026-09-09",
+    "highlights": [
+      "Añada lecturas por rangos acotadas para archivos grandes y permisos de archivos vinculados a gestos reales de arrastrar y soltar para los complementos.",
+      "Convierta la firma y notarización de macOS en una opción explícita e incluya instrucciones para abrir compilaciones sin firmar de confianza."
+    ]
+  },
+  {
+    "version": "0.14.3",
+    "date": "2026-09-09",
+    "highlights": [
+      "Identifique claramente las descargas de macOS para Intel para que la arquitectura del instalador sea evidente."
+    ]
+  },
+  {
     "version": "0.14.2",
     "date": "2026-09-08",
     "highlights": [

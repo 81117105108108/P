@@ -2,6 +2,21 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const frEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.4",
+    "date": "2026-09-09",
+    "highlights": [
+      "Ajoutez aux plugins des lectures par plage limitées pour les gros fichiers et des autorisations de fichiers liées à de vrais gestes de glisser-déposer.",
+      "Rendez explicites l’activation de la signature et de la notarisation macOS et ajoutez des indications pour ouvrir les versions non signées de confiance."
+    ]
+  },
+  {
+    "version": "0.14.3",
+    "date": "2026-09-09",
+    "highlights": [
+      "Identifiez clairement les téléchargements macOS Intel afin que l’architecture de l’installeur soit évidente."
+    ]
+  },
+  {
     "version": "0.14.2",
     "date": "2026-09-08",
     "highlights": [

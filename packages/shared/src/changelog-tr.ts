@@ -2,6 +2,21 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const trEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.4",
+    "date": "2026-09-09",
+    "highlights": [
+      "Eklentiler için sınırlı büyük dosya aralığı okumaları ve gerçek sürükle-bırak hareketlerine bağlı dosya izinleri ekleyin.",
+      "macOS imzalama ve noter onayını açıkça seçilebilir hale getirin ve güvenilir imzasız derlemeleri açma yönergeleri ekleyin."
+    ]
+  },
+  {
+    "version": "0.14.3",
+    "date": "2026-09-09",
+    "highlights": [
+      "Intel macOS indirmelerini açıkça etiketleyerek yükleyici mimarisini anlaşılır hale getirin."
+    ]
+  },
+  {
     "version": "0.14.2",
     "date": "2026-09-08",
     "highlights": [

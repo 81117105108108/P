@@ -40,6 +40,15 @@ test("plugin runtime exposes gated high-risk host APIs", () => {
   }
 });
 
+test("large-file host reads stay behind the fs.read gateway", () => {
+  for (const api of ["fs.stat", "fs.readRange", "fs.registerDropped"]) {
+    assert.match(runtimeSrc, new RegExp(`\\"${api}\\"`));
+  }
+  assert.match(runtimeSrc, /MAX_FS_READ_RANGE_BYTES/);
+  assert.match(runtimeSrc, /dropped-file grants are read-only/);
+  assert.match(runtimeSrc, /new Map\(\)/);
+});
+
 test("native plugin notifications stay behind the existing notify permission", () => {
   for (const channel of [
     "ui.getNotificationPermission",

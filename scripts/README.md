@@ -68,5 +68,7 @@ job uses Ubuntu 22.04 so host-core stays on glibc 2.35, then
 `scripts/check-linux-host-glibc.mjs` refuses a binary that needs a newer
 glibc. The Linux runner also exports the exact app.asar from `linux-unpacked`
 as a versioned release asset; the macOS matrix covers arm64 and Intel x64 and
-the publish job assembles the GitHub Release. See the
-[release runbook](../docs/spec/06-delivery/06-release-runbook.md).
+the publish job assembles the GitHub Release. The release workflow defaults to
+unsigned macOS artifacts; manually dispatch it with `sign_macos: true` to opt
+into signing and notarization. See the [release
+runbook](../docs/spec/06-delivery/06-release-runbook.md).

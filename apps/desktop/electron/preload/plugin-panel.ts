@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import {
   PLUGIN_PANEL_TITLEBAR_HEIGHT,
   PLUGIN_PANEL_CHROME_META_NAME,
@@ -25,9 +25,30 @@ const bridge = {
     ipcRenderer.on(`pi-plugin-panel-event:${event}`, wrapped);
     return () => ipcRenderer.removeListener(`pi-plugin-panel-event:${event}`, wrapped);
   },
+  /** Resolve a real dropped File without exposing Node or Electron to the page. */
+  getDroppedFilePath: (file: File): string | null => {
+    try {
+      return webUtils.getPathForFile(file) || null;
+    } catch {
+      return null;
+    }
+  },
 };
 
 contextBridge.exposeInMainWorld("pluginBridge", bridge);
+
+// Record the gesture before page code handles it. The host consumes one of
+// these short-lived paths when the panel asks for fs.registerDropped.
+window.addEventListener(
+  "drop",
+  (event) => {
+    const paths = [...(event.dataTransfer?.files ?? [])]
+      .map((file) => bridge.getDroppedFilePath(file))
+      .filter((path): path is string => Boolean(path));
+    if (paths.length) ipcRenderer.send("pi-plugin-panel-drop", paths);
+  },
+  true,
+);
 
 type ChromeLabels = {
   toolbar: string;
