@@ -2862,24 +2862,6 @@ D193 和 D194。
 - 仅渲染器改动。宿主已完成回合汇总和 Token Insights 仍做账单累加。
   参见 ADR 0193 与 E2E-060d。
 
-## 2026-09-09 —— 宿主拥有的插件会话导入与归属 API（D357）
-
-- 外部历史迁移插件需要持久的导入/读取/更新/删除能力，但现有的进行中
-  `session.getLlmContext` 和核心 `session.import` 并不是安全的插件归属边界。
-- 决定 D357 / ADR 0195 增加 P0/P1 `pi.session` 方法：`import`、
-  `importBatch`、`list`、`get`、`listMessages`、`rename` 和 `delete`。每个来源
-  必须由 `contributes.sessionSources` 声明。主机生成 id，并按
-  `(pluginId, source, externalId)` 归属限制所有操作；导入不会激活项目、provider
-  或 model 绑定。
-- Schema v14 增加 `session_import_origins` 和 `sessions.deleted_at`；协议仍为
-  v11。Trash 为归属插件保留转录本以便 purge。P2/P3 创建、消息变更、绑定、
-  批量删除和标签 API 继续延期。参见 ADR 0195 和 E2E-204/E2E-205。
-
-## 2026-09-09 —— 显式插件项目 id 与宿主拥有的会话刷新（D358）
-
-- 导入会话需要显式归属持久化项目，但向插件暴露 `workspace.set` 还会改变用户当前工作区；插件写入也需要由宿主拥有的渲染器刷新路径。
-- 决策 D358 / ADR 0196 增加受权限保护的 `pi.project.create({ path })`。它创建或复用项目并返回宿主生成的 id，但不会激活工作区。导入项可以提供已有的 `projectId`；省略时仍保持未绑定，历史来源路径不会变成工具根目录。list/get 投影会报告显式绑定。
-- Electron 主进程在插件导入、重命名和删除成功后发送 `pi-desktop/session/event/changed`；渲染器复用 `refreshSessions()`，跳过的导入不发送事件，已关闭的项目标签页不会被重新打开。参见 E2E-206。
 ## 2026-09-09 —— Windows 免安装便携版 exe（D364）
 
 - Windows 标签发布此前只提供 `PI-Desktop-Setup-<version>.exe`，公司环境若只能
@@ -2916,3 +2898,22 @@ D193 和 D194。
   `--prod` 的 Vercel CLI。
 - 项目和账户标识保存在 GitHub Actions secrets 中。Vercel 可以继续连接 GitHub
   以保留源信息，同时关闭自动 Git 部署。参见 E2E-213。
+
+## 2026-09-09 —— 宿主拥有的插件会话导入与归属 API（D367）
+
+- 外部历史迁移插件需要持久的导入/读取/更新/删除能力，但现有的进行中
+  `session.getLlmContext` 和核心 `session.import` 并不是安全的插件归属边界。
+- 决定 D367 / ADR 0200 增加 P0/P1 `pi.session` 方法：`import`、
+  `importBatch`、`list`、`get`、`listMessages`、`rename` 和 `delete`。每个来源
+  必须由 `contributes.sessionSources` 声明。主机生成 id，并按
+  `(pluginId, source, externalId)` 归属限制所有操作；导入不会激活项目、provider
+  或 model 绑定。
+- Schema v14 增加 `session_import_origins` 和 `sessions.deleted_at`；协议仍为
+  v11。Trash 为归属插件保留转录本以便 purge。P2/P3 创建、消息变更、绑定、
+  批量删除和标签 API 继续延期。参见 ADR 0200 和 E2E-214/E2E-215。
+
+## 2026-09-09 —— 显式插件项目 id 与宿主拥有的会话刷新（D368）
+
+- 导入会话需要显式归属持久化项目，但向插件暴露 `workspace.set` 还会改变用户当前工作区；插件写入也需要由宿主拥有的渲染器刷新路径。
+- 决策 D368 / ADR 0201 增加受权限保护的 `pi.project.create({ path })`。它创建或复用项目并返回宿主生成的 id，但不会激活工作区。导入项可以提供已有的 `projectId`；省略时仍保持未绑定，历史来源路径不会变成工具根目录。list/get 投影会报告显式绑定。
+- Electron 主进程在插件导入、重命名和删除成功后发送 `pi-desktop/session/event/changed`；渲染器复用 `refreshSessions()`，跳过的导入不发送事件，已关闭的项目标签页不会被重新打开。参见 E2E-216。

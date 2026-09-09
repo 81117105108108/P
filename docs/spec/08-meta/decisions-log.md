@@ -3956,36 +3956,6 @@ D193, and D194.
 - Renderer only. Host completed-turn rollups and Token Insights stay additive
   billing. See ADR 0193 and E2E-060d.
 
-## 2026-09-09 — Host-owned plugin session import and ownership API (D357)
-
-- External-history plugins need durable import/read/update/delete operations, but
-  the existing in-flight `session.getLlmContext` and core `session.import`
-  boundaries are not safe plugin ownership boundaries.
-- Decision D357 / ADR 0195 adds the P0/P1 `pi.session` methods: `import`,
-  `importBatch`, `list`, `get`, `listMessages`, `rename`, and `delete`.
-  `contributes.sessionSources` is required for every source. Host-core generates
-  ids and scopes all operations to `(pluginId, source, externalId)` ownership;
-  imports never activate project/provider/model bindings.
-- Schema v14 adds `session_import_origins` and `sessions.deleted_at`; protocol
-  v11 remains unchanged. Trash preserves the transcript for owner-only purge.
-  P2/P3 create, message mutation, binding, batch-delete, and tag APIs remain
-  deferred. See ADR 0195 and E2E-204/E2E-205.
-
-## 2026-09-09 — Explicit plugin project ids and host-owned session refresh (D358)
-
-- Imported sessions need an explicit way to belong to a durable project, but
-  exposing `workspace.set` to plugins would also change the user's active
-  workspace. Plugin writes also need a host-owned renderer refresh path.
-- Decision D358 / ADR 0196 adds permission-gated `pi.project.create({ path })`.
-  It creates or reuses a project and returns its host-generated id without
-  activating the workspace. Import items may provide an existing `projectId`;
-  omitted ids remain unbound, and historical origin paths do not become tool
-  roots. List/get projections report the explicit binding.
-- Electron main emits `pi-desktop/session/event/changed` after successful plugin
-  imports, renames, and deletes; the renderer reuses `refreshSessions()`, while
-  skipped imports emit nothing and closed project tabs are not reopened. See
-  E2E-206.
-
 ## 2026-09-09 — Optional subagent thinking override and readable selected levels (D356)
 
 - The subagent editor now offers inherit-session, do-not-send, and the seven
@@ -4051,3 +4021,33 @@ D193, and D194.
 - This keeps project and account identifiers in GitHub Actions secrets. Vercel
   can remain connected to GitHub for source metadata while automatic Git
   deployment is disabled. See E2E-213.
+
+## 2026-09-09 — Host-owned plugin session import and ownership API (D367)
+
+- External-history plugins need durable import/read/update/delete operations, but
+  the existing in-flight `session.getLlmContext` and core `session.import`
+  boundaries are not safe plugin ownership boundaries.
+- Decision D367 / ADR 0200 adds the P0/P1 `pi.session` methods: `import`,
+  `importBatch`, `list`, `get`, `listMessages`, `rename`, and `delete`.
+  `contributes.sessionSources` is required for every source. Host-core generates
+  ids and scopes all operations to `(pluginId, source, externalId)` ownership;
+  imports never activate project/provider/model bindings.
+- Schema v14 adds `session_import_origins` and `sessions.deleted_at`; protocol
+  v11 remains unchanged. Trash preserves the transcript for owner-only purge.
+  P2/P3 create, message mutation, binding, batch-delete, and tag APIs remain
+  deferred. See ADR 0200 and E2E-214/E2E-215.
+
+## 2026-09-09 — Explicit plugin project ids and host-owned session refresh (D368)
+
+- Imported sessions need an explicit way to belong to a durable project, but
+  exposing `workspace.set` to plugins would also change the user's active
+  workspace. Plugin writes also need a host-owned renderer refresh path.
+- Decision D368 / ADR 0201 adds permission-gated `pi.project.create({ path })`.
+  It creates or reuses a project and returns its host-generated id without
+  activating the workspace. Import items may provide an existing `projectId`;
+  omitted ids remain unbound, and historical origin paths do not become tool
+  roots. List/get projections report the explicit binding.
+- Electron main emits `pi-desktop/session/event/changed` after successful plugin
+  imports, renames, and deletes; the renderer reuses `refreshSessions()`, while
+  skipped imports emit nothing and closed project tabs are not reopened. See
+  E2E-216.

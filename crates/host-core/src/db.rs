@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 /// index data only; transcript content lives in per-session JSONL files
 /// (D119, `transcripts.rs`). v11 adds the Plan/Goal approval kind (D198).
 /// v12 added A2A broker tables (ADR 0147); v13 drops them (ADR 0165).
-/// v14 adds plugin session ownership and the soft-delete marker (D357).
+/// v14 adds plugin session ownership and the soft-delete marker (D367).
 pub const SCHEMA_VERSION: i64 = 14;
 
 /// Absolute approval deadline for a newly submitted Plan or Goal proposal.

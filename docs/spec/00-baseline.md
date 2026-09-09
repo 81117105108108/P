@@ -79,8 +79,8 @@
 > changes.
 
 > The current post-baseline amendments add the P0/P1 host-owned plugin session
-> API through ADR 0195 / D357 and explicit project ids plus host-owned session
-> refresh through ADR 0196 / D358. Protocol v11 remains unchanged; schema v14
+> API through ADR 0200 / D367 and explicit project ids plus host-owned session
+> refresh through ADR 0201 / D368. Protocol v11 remains unchanged; schema v14
 > adds the plugin origin sidecar and soft-delete marker. Session mutation,
 > arbitrary re-binding, provider/model binding, batch-delete, and tag operations
 > remain deferred; an explicit `projectId` is the limited project-binding
