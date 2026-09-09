@@ -2033,6 +2033,9 @@ reasoning-level control.
   toolbar rhythm. Agent and Plan expose the effective selectable permission;
   Goal displays the localized Auto label as a disabled, non-opening chip while
   the approval card remains the separate place for choosing execution policy.
+  The permission menu stays 120px wide; its Chinese Composer short label for
+  Accept edits is `允许编辑` / `允許編輯` so the option remains single-line
+  beside its selection indicator.
 - The right toolbar owns the remaining-capacity context inspector (when the
   newest assistant turn has usage) immediately left of one combined model ×
   reasoning-level chip, then the standalone prompt-enhancement action and the

@@ -1065,6 +1065,8 @@ Each scenario is documented in this format:
   until the destination commits, the only wait affordance is the thin progress
   track, nothing is dimmed, and prompt submission stays inert until the visible
   pane is the active session, so a prompt cannot reach the session being left.
+  In zh-CN/zh-TW, the Composer permission menu renders the Accept edits option
+  as `允许编辑` / `允許編輯` and keeps it on one line.
 - **Specs linked**: `04-ux/08-component-spec.md` (§11),
   `04-ux/09-interaction-patterns.md` (§5A), ADR 0137
 - **Acceptance**: C (new project/session composer)
