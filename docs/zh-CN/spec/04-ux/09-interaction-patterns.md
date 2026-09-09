@@ -442,7 +442,7 @@
   紧凑的徽章。列表独立滚动，通过其关闭控制关闭，
   转义或背景，并将焦点恢复到调用控件。
 - D126 标签版本发布所有平台清单和安装程序。 Windows
-  因此，NSIS 和 Linux AppImage 使用应用内通道； macOS 和 Linux deb
+  因此，NSIS 和 Linux AppImage 使用应用内通道； macOS 和 Linux deb/rpm
   保持通知和链接传递模式。
 
 ## 2. 流消息行为

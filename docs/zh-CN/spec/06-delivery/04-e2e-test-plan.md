@@ -1406,7 +1406,7 @@ M5。
 
 - **先决条件**：Linux x64 打包应用；本机 glibc 低于 2.35（例如 Ubuntu 20.04 /
   Debian 11 / Fedora 35），或测试将 `process.report` 设为 `2.31`。
-- **步骤**：1) 启动 AppImage 或 deb。2) 观察主窗口和致命横幅。3) 确认
+- **步骤**：1) 启动 AppImage、deb 或 rpm。2) 观察主窗口和致命横幅。3) 确认
   host-core 没有进入重启循环。
 - **预期**：Electron 仍能打开。没有未捕获的 `write EPIPE` 对话框。致命横幅
   说明构建需要 glibc 2.35 或更高版本，并列出 Ubuntu 22.04、Debian 12 和

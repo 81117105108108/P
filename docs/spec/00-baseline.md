@@ -110,7 +110,7 @@
 26. Plugin trust first step: **sha256 checksum; signature later**
 27. First release platform: **macOS arm64 only** — lifted in `0.4.7`/D126;
     tag builds now publish native macOS arm64 and Intel x64, Windows x64, and
-    Linux x64 artifacts
+    Linux x64 AppImage, deb, and rpm artifacts
 28. TS schema library: **typebox**
 29. i18n library: **i18next**
 30. Bash: **non-interactive, streamed, and resolved from the selectable shell

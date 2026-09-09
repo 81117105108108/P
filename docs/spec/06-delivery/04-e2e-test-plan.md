@@ -133,7 +133,7 @@ Each scenario is documented in this format:
   and other resources, then launch it with `electron <archive>.asar`.
 - **Expected**: The ASAR is copied byte-for-byte from
   `linux-unpacked/resources/app.asar`, is uploaded alongside the Linux
-  AppImage and deb, and the system Electron opens the PI-Desktop application
+  AppImage, deb, and rpm, and the system Electron opens the PI-Desktop application
   archive without requiring the bundled Electron executable.
 - **Specs linked**: `06-delivery/06-release-runbook.md`, `03-runtime/07-process-model.md`
 - **Acceptance**: Quality (release artifact and packaging compatibility)
@@ -2077,7 +2077,7 @@ Each scenario is documented in this format:
 - **Preconditions**: Linux x64 packaged app; the machine glibc is older than
   2.35 (for example Ubuntu 20.04 / Debian 11 / Fedora 35), or a test doubles
   `process.report` to `2.31`.
-- **Steps**: 1) Launch the AppImage or deb. 2) Observe the main window and
+- **Steps**: 1) Launch the AppImage, deb, or rpm. 2) Observe the main window and
   fatal banner. 3) Confirm host-core is not restarted in a loop.
 - **Expected**: Electron still opens. There is no uncaught `write EPIPE`
   dialog. The fatal banner says the build needs glibc 2.35 or newer and names

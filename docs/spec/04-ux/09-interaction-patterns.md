@@ -493,7 +493,7 @@ may be retained while exactly one workspace supplies the visible shell context.
   compact badges. The list scrolls independently, closes by its close control,
   Escape, or the backdrop, and restores focus to the invoking control.
 - D126 tag releases publish all platform manifests and installers. Windows
-  NSIS and Linux AppImage therefore use the in-app lane; macOS and Linux deb
+  NSIS and Linux AppImage therefore use the in-app lane; macOS and Linux deb/rpm
   remain notify-and-link delivery modes.
 
 ## 2. Streaming message behavior
