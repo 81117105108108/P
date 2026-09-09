@@ -79,7 +79,7 @@
 > changes.
 
 > The current post-baseline amendment adds the P0/P1 host-owned plugin session
-> API through ADR 0194 / D356. Protocol v11 remains unchanged; schema v14 adds
+> API through ADR 0195 / D357. Protocol v11 remains unchanged; schema v14 adds
 > the plugin origin sidecar and soft-delete marker. P2/P3 session mutation,
 > binding, batch-delete, and tag operations remain deferred.
 

@@ -241,3 +241,16 @@ test("the editor model field offers configured, custom, and empty-list paths", a
   assert.match(source, /extensions\.subagents\.modelPickCustomHint/);
   assert.match(source, /resetSubagentTemplate\(draft\)/);
 });
+
+test("the editor exposes the no-pass thinking option", async () => {
+  const source = await readFile(
+    new URL("../src/components/settings/SubagentEditorSheet.tsx", import.meta.url),
+    "utf8",
+  );
+  const thinkingField = source.slice(
+    source.indexOf('label={t("extensions.subagents.thinking")}'),
+  );
+  assert.match(thinkingField, /value="omit"/);
+  assert.match(thinkingField, /extensions\.subagents\.thinkingOmit/);
+  assert.match(thinkingField, /SUBAGENT_THINKING_LEVELS/);
+});

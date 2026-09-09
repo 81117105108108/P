@@ -4822,6 +4822,35 @@ describe("DesktopAgentRuntime subagents", () => {
     await runtime.dispose();
   });
 
+  it("preserves a definition's no-pass thinking selection", async () => {
+    const remote: RuntimeProviderConfig = {
+      ...provider,
+      id: "remote",
+      name: "Remote",
+      modelId: "remote-model",
+      modelConfig: undefined,
+    };
+    const runtime = createRuntime({
+      subagents: [{ ...pinned, thinkingLevel: "omit" }],
+      subagentProviders: { "remote/remote-model": remote },
+    });
+    subagentRuns.calls.length = 0;
+    subagentRuns.deferred = false;
+    subagentRuns.result = undefined;
+
+    const result = await taskTool(runtime).execute("task-omit", {
+      agent: "reviewer",
+      task: "Inspect the provider request.",
+    });
+
+    expect(result.details).toMatchObject({
+      agent: "reviewer",
+      status: "running",
+    });
+    expect(subagentRuns.calls[0].thinkingLevel).toBe("omit");
+    await runtime.dispose();
+  });
+
   it("starts the delegate in the background and returns a delegation id", async () => {
     const remote: RuntimeProviderConfig = {
       ...provider,

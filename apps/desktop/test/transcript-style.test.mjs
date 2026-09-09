@@ -310,6 +310,15 @@ test("message toolbars are icon-only with hover tooltips", () => {
   assert.match(transcriptSource, /withLabel/);
 });
 
+test("streaming assistant turns hide answer copy until idle", () => {
+  assert.ok(transcriptSource.includes("{complete ? ("));
+  assert.ok(
+    transcriptSource.includes(
+      '<CopyButton text={content} label={t("chat.copy")} />',
+    ),
+  );
+});
+
 test("assistant context inspector keeps a compact summary and retry action wired", () => {
   assert.match(transcriptSource, /function MessageMeta/);
   assert.match(transcriptSource, /message-meta-chip/);

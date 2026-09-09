@@ -1766,6 +1766,7 @@ export const en = {
       thinking: "Reasoning",
       thinkingHint: "Optional, and capped by what the model supports.",
       thinkingInherit: "Same as the session",
+      thinkingOmit: "Do not send",
       maxTurns: "Turn limit",
       maxTurnsHint: "Stops a delegate that never finishes. 1–{{max}}, or leave empty for no limit.",
       maxTurnsUnlimited: "No limit",

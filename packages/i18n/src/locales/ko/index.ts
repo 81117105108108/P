@@ -1768,6 +1768,7 @@ export const ko = {
       thinking: "추론",
       thinkingHint: "선택 사항이며 모델이 지원하는 범위로 제한됩니다.",
       thinkingInherit: "세션과 동일",
+      thinkingOmit: "전달하지 않음",
       maxTurns: "턴 제한",
       maxTurnsHint: "끝나지 않는 위임 작업을 중지합니다. 1–{{max}} 또는 제한 없이 비워 두세요.",
       maxTurnsUnlimited: "제한 없음",

@@ -1,8 +1,8 @@
-# ADR 0194: Host-Owned Plugin Session Import and Ownership API
+# ADR 0195: Host-Owned Plugin Session Import and Ownership API
 
 - Status: Accepted
 - Date: 2026-09-09
-- Decision: D356
+- Decision: D357
 
 ## Context
 

@@ -1742,6 +1742,7 @@ export const zhCN = {
       thinking: "推理强度",
       thinkingHint: "可选，且受模型支持范围限制。",
       thinkingInherit: "与会话一致",
+      thinkingOmit: "不传递",
       maxTurns: "轮次上限",
       maxTurnsHint: "用来兜住停不下来的子智能体。1–{{max}}，留空表示不限制。",
       maxTurnsUnlimited: "不限制",

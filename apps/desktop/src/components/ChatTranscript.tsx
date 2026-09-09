@@ -22,7 +22,6 @@ import type {
 } from "@pi-desktop/shared";
 import { proposalKindForMode } from "@pi-desktop/shared";
 import { ConversationMinimap } from "./ConversationMinimap";
-import { TurnOutcomeCard } from "./TurnOutcomeCard";
 import { ReviewChangeCard } from "./ReviewChangeCard";
 import { Markdown, useCopy } from "./Markdown";
 import { ToolChips, ToolDetailBlocks } from "./ToolDetails";
@@ -1363,27 +1362,6 @@ function SubagentTopology({
  */
 type ActivityItem = AssistantActivityItem;
 
-function activityItemStatus(
-  item: ActivityItem,
-  t: (key: string) => string,
-): string {
-  if (item.kind === "thinking") return t("chat.thinking");
-  const lifecycle = lifecycleKindOf(item.message);
-  if (lifecycle) {
-    return t(
-      (item.message.toolStatus === "running"
-        ? LIFECYCLE_RUNNING_KEYS
-        : LIFECYCLE_LABEL_KEYS)[lifecycle],
-    );
-  }
-  const action = getToolAction(item.message.toolName);
-  return t(
-    item.message.toolStatus === "running"
-      ? TOOL_RUNNING_KEYS[action]
-      : TOOL_ACTION_KEYS[action],
-  );
-}
-
 function activityItemDetail(item: ActivityItem): string {
   if (item.kind === "thinking") {
     // Latest thought line, so a collapsed header reads like a live ticker.
@@ -1630,13 +1608,6 @@ const ActivityGroup = memo(function ActivityGroup({
               count: runtimeActivity.subagentCount,
             })
           : "";
-  const currentStatus =
-    live && (!hasSubagentTopology || runtimeStatus)
-      ? runtimeStatus ||
-        (lastItem && lastItem.kind !== "thinking"
-          ? activityItemStatus(lastItem, t)
-          : "")
-      : "";
   const currentDetail =
     live && !runtimeStatus && lastItem ? activityItemDetail(lastItem) : "";
   const tail = live && !open ? currentDetail : "";
@@ -1711,12 +1682,6 @@ const ActivityGroup = memo(function ActivityGroup({
         <span className={`tool-activity-label ${live ? "running" : ""}`}>
           {label}
         </span>
-        {currentStatus ? (
-          <span className="tool-activity-current" aria-live="polite">
-            <span className="tool-activity-current-dot" aria-hidden />
-            <span className="tool-activity-current-label">{currentStatus}</span>
-          </span>
-        ) : null}
         {hasSubagentTopology ? (
           <span className="subagent-activity-metrics">
             {t("chat.subagentCount", { count: subagentSummary.total })}
@@ -2410,7 +2375,9 @@ const AssistantTurn = memo(function AssistantTurn({
         ) : null}
         {(content || hasError) && actionMessage ? (
           <div className="message-actions">
-            {content ? <CopyButton text={content} label={t("chat.copy")} /> : null}
+            {complete ? (
+              <CopyButton text={content} label={t("chat.copy")} />
+            ) : null}
             {complete ? (
               <button
                 className="copy-btn icon"
@@ -2494,9 +2461,6 @@ export const ChatTranscript = memo(function ChatTranscript({
   paneVisible?: boolean;
 }) {
   const { t } = useTranslation();
-  const latestTurnResult = useAppStore((state) =>
-    sessionId ? state.latestTurnResults[sessionId] : undefined,
-  );
   const approvalPending = useAppStore((state) =>
     Boolean(
       sessionId && state.pendingPlans[sessionId]?.status === "pending",
@@ -3179,10 +3143,6 @@ export const ChatTranscript = memo(function ChatTranscript({
               runtimeActivity={specializedActivity}
             />
           ) : null}
-          <TurnOutcomeCard
-            messages={messages}
-            result={latestTurnResult}
-          />
           {pendingPermission ? (
             <PermissionCard
               key={pendingPermission.requestId}

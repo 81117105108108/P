@@ -3948,12 +3948,12 @@ D193, and D194.
 - Renderer only. Host completed-turn rollups and Token Insights stay additive
   billing. See ADR 0193 and E2E-060d.
 
-## 2026-09-09 — Host-owned plugin session import and ownership API (D356)
+## 2026-09-09 — Host-owned plugin session import and ownership API (D357)
 
 - External-history plugins need durable import/read/update/delete operations, but
   the existing in-flight `session.getLlmContext` and core `session.import`
   boundaries are not safe plugin ownership boundaries.
-- Decision D356 / ADR 0194 adds the P0/P1 `pi.session` methods: `import`,
+- Decision D357 / ADR 0195 adds the P0/P1 `pi.session` methods: `import`,
   `importBatch`, `list`, `get`, `listMessages`, `rename`, and `delete`.
   `contributes.sessionSources` is required for every source. Host-core generates
   ids and scopes all operations to `(pluginId, source, externalId)` ownership;
@@ -3961,4 +3961,15 @@ D193, and D194.
 - Schema v14 adds `session_import_origins` and `sessions.deleted_at`; protocol
   v11 remains unchanged. Trash preserves the transcript for owner-only purge.
   P2/P3 create, message mutation, binding, batch-delete, and tag APIs remain
-  deferred. See ADR 0194 and E2E-203/E2E-204.
+  deferred. See ADR 0195 and E2E-204/E2E-205.
+
+## 2026-09-09 — Optional subagent thinking override and readable selected levels (D356)
+
+- The subagent editor now offers inherit-session, do-not-send, and the seven
+  canonical thinking levels. Do-not-send is stored as `thinkingLevel: omit`.
+- `omit` keeps the agent's bookkeeping state at `off` but uses the low-level
+  provider stream so no thinking override is synthesized. Existing inheritance
+  and explicit `off` remain distinct.
+- Model-configuration thinking chips use an accent/inverted-text selected state
+  in both themes so enabled levels are obvious. No storage schema or protocol
+  version change is required. See ADR 0194 and E2E-203.

@@ -239,23 +239,19 @@ test("live thinking follows the latest step without auto-expanding tool details"
   assert.match(transcriptSource, /const tail = live && !open \? currentDetail : ""/);
 });
 
-test("activity headers expose the current runtime phase and action", () => {
-  for (const key of [
-    "activityItemStatus",
-    "currentStatus",
-    "tool-activity-current",
-    "waitingForModel",
-    "retryingModel",
-    "waitingForSubagents",
-  ]) {
-    assert.ok(transcriptSource.includes(key), key);
-  }
+test("activity headers omit the redundant status capsule", () => {
+  assert.doesNotMatch(
+    transcriptSource,
+    /activityItemStatus|currentStatus|tool-activity-current/,
+  );
   assert.match(transcriptSource, /aria-live="polite"/);
-  assert.match(stylesSource, /\.tool-activity-current\s*\{/);
-  assert.match(stylesSource, /\.tool-activity-current-dot\s*\{/);
-  assert.match(stylesSource, /\.tool-activity-group\.phase-waiting-model/);
-  assert.match(stylesSource, /\.tool-activity-group\.phase-retrying/);
-  assert.match(stylesSource, /\.tool-activity-group\.phase-waiting-subagents/);
+  assert.match(transcriptSource, /waitingForModel/);
+  assert.match(transcriptSource, /retryingModel/);
+  assert.match(transcriptSource, /waitingForSubagents/);
+  assert.doesNotMatch(stylesSource, /\.tool-activity-current/);
+  assert.match(stylesSource, /\.run-activity-indicator\[data-phase="waiting-model"\]/);
+  assert.match(stylesSource, /\.run-activity-indicator\[data-phase="retrying"\]/);
+  assert.match(stylesSource, /\.run-activity-indicator\[data-phase="waiting-subagents"\]/);
 });
 
 test("thinking-only assistant streams open the transcript surface", () => {

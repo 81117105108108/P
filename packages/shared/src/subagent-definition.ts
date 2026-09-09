@@ -14,7 +14,10 @@
  * - a delegate never inherits mutation rights from the parent session.
  */
 
-import { THINKING_LEVELS, type ThinkingLevel } from "./types.js";
+import {
+  SUBAGENT_THINKING_LEVELS,
+  type SubagentThinkingLevel,
+} from "./types.js";
 
 /**
  * Where a definition came from. User-owned global documents shadow builtins by
@@ -37,8 +40,11 @@ export type SubagentDefinition = {
   tools: string[];
   /** Provider/model this definition pins, when it pins one. */
   model?: SubagentModelPin;
-  /** Reasoning level for the delegate, clamped against the model in main. */
-  thinkingLevel?: ThinkingLevel;
+  /**
+   * Reasoning level for the delegate, clamped against the model in main.
+   * omit leaves the provider's own default untouched.
+   */
+  thinkingLevel?: SubagentThinkingLevel;
   /**
    * Permission scope for the delegate's tool calls (ADR 0089). `inherit`
    * follows the session's effective mode; the other values override it for the
@@ -301,11 +307,11 @@ export function parseSubagentDefinition(
   const model = parseModelPin(frontmatter, errors);
 
   const declaredThinking = asScalar(frontmatter.get("thinkinglevel"));
-  let thinkingLevel: ThinkingLevel | undefined;
+  let thinkingLevel: SubagentThinkingLevel | undefined;
   if (declaredThinking) {
     const candidate = declaredThinking.trim().toLowerCase();
-    if ((THINKING_LEVELS as readonly string[]).includes(candidate)) {
-      thinkingLevel = candidate as ThinkingLevel;
+    if ((SUBAGENT_THINKING_LEVELS as readonly string[]).includes(candidate)) {
+      thinkingLevel = candidate as SubagentThinkingLevel;
     } else {
       warnings.push(`ignoring unknown thinking level "${declaredThinking}"`);
     }

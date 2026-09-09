@@ -2979,10 +2979,13 @@ Delegation rules:
           parentToolCallId: toolCallId,
           task,
           provider,
-          thinkingLevel: clampThinkingLevel(
-            provider,
-            definition.thinkingLevel ?? this.thinkingLevel,
-          ),
+          thinkingLevel:
+            definition.thinkingLevel === "omit"
+              ? "omit"
+              : clampThinkingLevel(
+                  provider,
+                  definition.thinkingLevel ?? this.thinkingLevel,
+                ),
           systemPrompt: composeSubagentSystemPrompt({
             definition,
             guidance: this.subagentGuidance(definition),

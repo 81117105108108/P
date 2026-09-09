@@ -25,7 +25,9 @@ const ASSIGNABLE_TOOLS: [&str; 7] = [
     "Edit",
     "Write",
 ];
-const THINKING_LEVELS: [&str; 7] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+const THINKING_LEVELS: [&str; 8] = [
+    "off", "minimal", "low", "medium", "high", "xhigh", "max", "omit",
+];
 const SUBAGENT_KIND: &str = "subagents";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -462,6 +464,12 @@ mod tests {
             normalize_tools(Some(&vec!["read".into(), "Nope".into(), "Bash".into()])),
             vec!["Read", "Bash"]
         );
+    }
+
+    #[test]
+    fn omit_is_a_valid_thinking_override() {
+        assert_eq!(normalize_thinking(Some("omit")), Some("omit".into()));
+        assert_eq!(normalize_thinking(Some(" OMIT ")), Some("omit".into()));
     }
 
     #[test]

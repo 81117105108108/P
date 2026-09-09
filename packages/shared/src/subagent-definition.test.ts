@@ -62,6 +62,19 @@ Review the diff and report only defects you can point at a line for.
     expect(result.warnings).toEqual([]);
   });
 
+  it("preserves the no-pass thinking selection", () => {
+    const result = parse(`---
+description: Uses the provider default.
+thinkingLevel: omit
+---
+Leave the provider's thinking default unchanged.`);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.definition.thinkingLevel).toBe("omit");
+    expect(result.warnings).toEqual([]);
+  });
+
   it("is read-only when the document says nothing about tools", () => {
     const result = parse(`---
 description: Explains a subsystem.

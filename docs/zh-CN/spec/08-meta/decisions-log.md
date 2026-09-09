@@ -2834,15 +2834,15 @@ D193 和 D194。
 - 仅渲染器改动。宿主已完成回合汇总和 Token Insights 仍做账单累加。
   参见 ADR 0193 与 E2E-060d。
 
-## 2026-09-09 —— 宿主拥有的插件会话导入与归属 API（D356）
+## 2026-09-09 —— 宿主拥有的插件会话导入与归属 API（D357）
 
 - 外部历史迁移插件需要持久的导入/读取/更新/删除能力，但现有的进行中
   `session.getLlmContext` 和核心 `session.import` 并不是安全的插件归属边界。
-- 决定 D356 / ADR 0194 增加 P0/P1 `pi.session` 方法：`import`、
+- 决定 D357 / ADR 0195 增加 P0/P1 `pi.session` 方法：`import`、
   `importBatch`、`list`、`get`、`listMessages`、`rename` 和 `delete`。每个来源
   必须由 `contributes.sessionSources` 声明。主机生成 id，并按
   `(pluginId, source, externalId)` 归属限制所有操作；导入不会激活项目、provider
   或 model 绑定。
 - Schema v14 增加 `session_import_origins` 和 `sessions.deleted_at`；协议仍为
   v11。Trash 为归属插件保留转录本以便 purge。P2/P3 创建、消息变更、绑定、
-  批量删除和标签 API 继续延期。参见 ADR 0194 和 E2E-203/E2E-204。
+  批量删除和标签 API 继续延期。参见 ADR 0195 和 E2E-204/E2E-205。

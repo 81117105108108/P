@@ -653,7 +653,9 @@ provider id, vendor key or display name, and capped at
 from the binding map on purpose; the runtime turns the missing entry into a tool
 error naming the pin, and never falls back to the session model. A definition's
 `thinkingLevel` is clamped against the resolved model with the same
-nearest-supported rule as §5c.
+nearest-supported rule as §5c, except that the special `omit` value deliberately
+sends no thinking override and leaves the provider adapter's own default in
+control.
 
 **Events and context.** Every event a delegate emits carries
 `parentToolCallId` and `agentName` on its envelope, and Electron main copies both

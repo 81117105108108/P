@@ -94,11 +94,14 @@ none`), but only bindings explicitly marked `availableForSubagents`. The
 control is a grouped select: inherit-session is the empty value, options are
 `vendorKey-or-name/modelId` grouped by provider display name, and a pin that is
 no longer configured stays as an extra option so an edit cannot silently drop
-it. A **Custom (provider/model)** option opens a free-text field, and the same
-field is shown directly when no delegation model is configured. When a generic
-or duplicate vendor key would be ambiguous, the option uses a unique provider
-display name; if the names also collide, it uses the stored provider id so no
-configured provider disappears from the picker.
+it. The thinking selector offers inherit-session (empty), do-not-send, and the
+seven canonical levels; inherit keeps the session level, while do-not-send
+leaves the provider adapter's own default untouched. A **Custom
+(provider/model)** option opens a free-text field, and the same field is shown
+directly when no delegation model is configured. When a generic or duplicate
+vendor key would be ambiguous, the option uses a unique provider display name;
+if the names also collide, it uses the stored provider id so no configured
+provider disappears from the picker.
 
 ### Advanced
 - “Use custom model ID”

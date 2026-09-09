@@ -185,6 +185,9 @@ export const THINKING_LEVELS = [
   "max",
 ] as const;
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
+/** Per-subagent selector values; omit leaves the provider's default untouched. */
+export const SUBAGENT_THINKING_LEVELS = [...THINKING_LEVELS, "omit"] as const;
+export type SubagentThinkingLevel = (typeof SUBAGENT_THINKING_LEVELS)[number];
 
 export type ModelProviderMetadata = string | Record<string, unknown>;
 export type ModelExperimentalMetadata = boolean | Record<string, unknown>;
@@ -1532,7 +1535,7 @@ export type UserSubagentRecord = {
   tools: string[];
   /** `<provider>/<model>` pin, resolved against providers at launch. */
   model?: string;
-  thinkingLevel?: ThinkingLevel;
+  thinkingLevel?: SubagentThinkingLevel;
   maxTurns?: number;
   /** Absolute path of the document, for revealing it. */
   path: string;
@@ -1549,7 +1552,7 @@ export type UserSubagentInput = {
   tools?: string[];
   /** Empty string clears the pin; absent leaves it unchanged. */
   model?: string;
-  thinkingLevel?: ThinkingLevel | "";
+  thinkingLevel?: SubagentThinkingLevel | "";
   /** `0` clears the override; absent leaves it unchanged. */
   maxTurns?: number;
   enabled?: boolean;

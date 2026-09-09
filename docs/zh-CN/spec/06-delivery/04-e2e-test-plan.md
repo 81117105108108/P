@@ -6018,7 +6018,7 @@ IPC 请求无法关闭。
 - **里程碑**：M5
 - **状态**：静态/文档检查已覆盖（`pnpm docs:build` 与路径审计）；远程 GitHub 和浏览器旅程待验证
 
-#### E2E-203：插件会话导入与归属边界
+#### E2E-204：插件会话导入与归属边界
 
 - **前置条件**：测试插件声明两个 `contributes.sessionSources`，并只获得 P0/P1
   会话权限；第二个插件不能访问第一个插件的会话。
@@ -6031,12 +6031,12 @@ IPC 请求无法关闭。
   错误码；第二个插件看不到该行及其转录本。
 - **关联规格**：`07-plugins/02-plugin-manifest-schema.md`、
   `07-plugins/03-plugin-api.md`、`07-plugins/13-plugin-permissions-matrix.md`、
-  ADR 0194、D356
+  ADR 0195、D357
 - **验收**：安全、质量
 - **里程碑**：M6+
 - **状态**：单元/RPC/连线已覆盖；完整 UI 路径草稿（除非用户明确要求，不要在本地运行 E2E）
 
-#### E2E-204：插件批量导入与删除生命周期
+#### E2E-205：插件批量导入与删除生命周期
 
 - **前置条件**：测试插件可调用 `session.importBatch`、rename 和 delete；host-core 使用
   空的 v14 数据库启动。
@@ -6049,7 +6049,7 @@ IPC 请求无法关闭。
   归属者 purge；purge 删除转录本并允许重新导入；边界返回 `LIMIT_EXCEEDED`，滚动限制
   返回 `RATE_LIMITED`；迁移得到 schema v14，插件历史不创建项目行。
 - **关联规格**：`03-runtime/04-data-storage.md`、`03-runtime/06-host-rpc-protocol.md`、
-  ADR 0194、D356
+  ADR 0195、D357
 - **验收**：安全、质量、恢复
 - **里程碑**：M6+
 - **状态**：主机/RPC/单元已覆盖；完整 UI 路径草稿（除非用户明确要求，不要在本地运行 E2E）
