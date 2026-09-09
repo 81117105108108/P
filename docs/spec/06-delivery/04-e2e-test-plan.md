@@ -4220,7 +4220,8 @@ Each scenario is documented in this format:
   3. On each macOS package, run `file` (or `lipo -info`) against the app
      executable and `Resources/bin/pi-desktop-host-core`; confirm arm64 and
      x86_64 packages contain only their declared architecture and that the
-     Rust host matches the Electron app. Confirm the arm64 assets use
+     Rust host matches the Electron app. Confirm the shared
+     `apps/desktop/package.json` macOS configuration produces arm64 assets named
      `PI-Desktop-X.Y.Z-arm64.dmg` and `PI-Desktop-X.Y.Z-arm64-mac.zip`, while
      the Intel assets use `PI-Desktop-X.Y.Z-x64.dmg` and
      `PI-Desktop-X.Y.Z-x64-mac.zip`; confirm the release directory has both
@@ -4245,8 +4246,9 @@ Each scenario is documented in this format:
   Chromium locale packs. The release output contains both native macOS
   architectures, DMG/ZIP artifacts, and one merged updater feed. Each macOS
   DMG and ZIP carries its standard `-arm64` or `-x64` architecture marker, and
-  the per-architecture updater metadata points to those names without
-  collisions. Renderer dependencies
+  no generic macOS DMG, ZIP, or blockmap remains in the release output. The
+  per-architecture updater metadata points to those names without collisions.
+  Renderer dependencies
   exist through Vite output rather than duplicate raw
   `node_modules`; dependency source maps, tests, examples, declarations,
   a second agent-runtime tree, and reliably excludable non-target native assets

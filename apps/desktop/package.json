@@ -127,6 +127,7 @@
       }
     ],
     "mac": {
+      "artifactName": "PI-Desktop-${version}-${arch}-mac.${ext}",
       "target": [
         {
           "target": "dmg"
@@ -156,6 +157,7 @@
       ]
     },
     "dmg": {
+      "artifactName": "PI-Desktop-${version}-${arch}.${ext}",
       "contents": [
         {
           "x": 130,

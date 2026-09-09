@@ -176,12 +176,14 @@ macOS 矩阵使用 arm64 的 `macos-15` 和 Intel x64 的
 `pi-desktop-host-core`。每个架构的 `latest-mac.yml` 会在上传前重命名，
 发布作业下载两个工件后再合并为一个更新源。
 
-macOS 打包命令会覆盖目标专用的工件命名模板，让两个公开架构都明确可见：
-arm64 通道发布 `PI-Desktop-<version>-arm64.dmg` 和
-`PI-Desktop-<version>-arm64-mac.zip`，Intel x64 通道发布
-`PI-Desktop-<version>-x64.dmg` 和 `PI-Desktop-<version>-x64-mac.zip`。
-这同时适用于未签名和已签名的 macOS 通道。命名模板在 electron-builder
-打包时生效，因此每个按架构生成的更新源都会引用带架构后缀的工件名及其匹配校验和。
+共享的 electron-builder 配置在 macOS 平台级别为 ZIP 应用带架构后缀的命名模板，
+并在 DMG 目标级别覆盖该模板。两个公开架构都会明确可见：arm64 通道发布
+`PI-Desktop-<version>-arm64.dmg` 和 `PI-Desktop-<version>-arm64-mac.zip`，
+Intel x64 通道发布 `PI-Desktop-<version>-x64.dmg` 和
+`PI-Desktop-<version>-x64-mac.zip`。这同时适用于未签名、已签名和本地 macOS
+通道，并确保每个按架构生成的更新源都会引用带架构后缀的工件名及其匹配校验和。
+上传前，每个 macOS 运行器必须恰好生成一个带架构后缀的 DMG 和 ZIP（包括
+blockmap），任何无后缀或架构错误的 macOS 工件都会使发布失败。
 
 每个 macOS DMG 和 ZIP 的安装包根目录还会包含
 `PI-Desktop-macOS-opening-help.txt`。如果 macOS 对可信的未签名应用提示应用已损坏，
