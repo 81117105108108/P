@@ -682,9 +682,10 @@ may be retained while exactly one workspace supplies the visible shell context.
   transcript message, exposes the number of contained steps, and shows the
   latest action or runtime phase (`Editing`, `Thinking`, `Waiting for model`,
   `Retrying`, or `Waiting for subagents`) in a compact status capsule.
-- While the turn is active, the latest processing group opens automatically and
-  its latest inspectable row opens automatically. When the activity settles,
-  only disclosures still owned by that automatic behavior close. A click or
+- While the turn is active, the latest processing group opens automatically so
+  its activity list is visible, but tool-call details remain collapsed by
+  default. The latest thinking row opens automatically while it streams. When
+  the activity settles, only automatic thinking disclosures close. A click or
   keyboard activation on a group, row, or collapse rail makes that disclosure
   user-owned; stream updates and completion never override it.
 - A failed row is invocation-local truth and remains visible immediately. The

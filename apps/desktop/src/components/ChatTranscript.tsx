@@ -582,8 +582,6 @@ type ToolRowProps = {
   delegate?: SubagentRun;
   /** Card treatment used when several Task calls form a delegation topology. */
   variant?: "default" | "topology";
-  /** Open the latest live process unless the user has taken over the disclosure. */
-  autoOpen?: boolean;
   /** Claims the containing activity group when this row is manually used. */
   onUserInteraction?: () => void;
   /** Live delegation statuses read from the turn's lifecycle-tool rows. */
@@ -613,7 +611,6 @@ function toolRowPropsEqual(
   if (
     previous.message !== next.message ||
     previous.variant !== next.variant ||
-    previous.autoOpen !== next.autoOpen ||
     previous.onUserInteraction !== next.onUserInteraction ||
     !subagentRunsEqual(previous.delegate, next.delegate)
   ) {
@@ -638,7 +635,6 @@ const ToolRow = memo(function ToolRow({
   message,
   delegate,
   variant = "default",
-  autoOpen = false,
   onUserInteraction,
   delegationStatuses,
   delegationTimings,
@@ -656,7 +652,7 @@ const ToolRow = memo(function ToolRow({
   // (D227). Property reads only, so a streaming row can afford it every tick.
   const run = action === "run" ? runOutcome(message) : null;
   const failed = status === "error" || run === "failed";
-  const disclosure = useAutomaticDisclosure(autoOpen || failed);
+  const disclosure = useAutomaticDisclosure(failed);
   const { open, toggle: toggleDisclosure, collapse: collapseDisclosure } = disclosure;
   const toggleRow = useCallback(() => {
     onUserInteraction?.();
@@ -1672,7 +1668,6 @@ const ActivityGroup = memo(function ActivityGroup({
         <Fragment key={item.message.id}>
           <ToolRow
             message={item.message}
-            autoOpen={live && itemIndex === items.length - 1}
             onUserInteraction={claimDisclosure}
             {...(item.delegate ? { delegate: item.delegate } : {})}
           />

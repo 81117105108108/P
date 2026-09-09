@@ -1520,11 +1520,13 @@ and is intentionally not an elevated card.
 
 Consecutive tool calls form one ChatGPT-style processing group. Historical
 groups are collapsed by default. While the turn is active, the latest live
-group opens automatically, and only its latest activity row opens automatically
-when that row has inspectable details. When the group or turn settles, those
-automatically managed disclosures close so the answer remains the visual focus.
-A user click on a group, row, or collapse rail takes ownership of that
-choice; later stream updates and completion never reverse that choice.
+group opens automatically so the process list is visible. Tool-call details
+remain collapsed by default (except an error row, whose details remain visible
+for recovery); only the latest thinking row opens automatically. When the group
+or turn settles, automatically managed thinking disclosures close so the answer
+remains the visual focus. A user click on a group, row, or collapse rail takes
+ownership of that disclosure; later stream updates and completion never reverse
+that choice.
 The group header shows `Processing · 12s` while active or `Processed for 12s`
 after completion, and also carries a compact current-state capsule such as
 `Editing`, `Thinking`, `Waiting for model`, or `Retrying`. Expanding it reveals
@@ -1554,6 +1556,9 @@ are omitted, so `90m` is rendered as `1h 30m`.
   count. It stays in the transcript after completion. Historical groups remain
   collapsed; the latest active group opens automatically and returns to a
   collapsed state when it settles unless the user has interacted with it.
+- Tool-call details remain collapsed by default while the group is open. The
+  latest thinking row opens automatically while it streams and closes when the
+  turn settles unless the user has interacted with it.
 - The processing group spans the full available assistant column, so expanded
   result details keep a usable width even when the header or payload is short.
 - The visible label is a natural-language action (`Read`, `Ran`, `Searched`),
@@ -1618,16 +1623,17 @@ twice.
 
 | State | Header treatment | Expanded content |
 |---|---|---|
-| Running | Progressive action with readable text, a compact current-state capsule, and a pulsing marker; a `run` row also shows its spinner and pulses the status dot beside `Working…` | The latest live activity row opens automatically when it has inspectable details; older rows stay collapsed |
-| Success | Past-tense action + result chips; no green success badge, except a `run` row's dot and `Done` | Result blocks, then arguments if not already shown; automatic live disclosures close when the turn settles |
+| Running | Progressive action with readable text, a compact current-state capsule, and a pulsing marker; a `run` row also shows its spinner and pulses the status dot beside `Working…` | The latest thinking row opens automatically while it streams; tool-call details stay collapsed |
+| Success | Past-tense action + result chips; no green success badge, except a `run` row's dot and `Done` | Result blocks, then arguments if not already shown; automatic thinking disclosures close when the turn settles |
 | Error | Past-tense action + compact danger status; auto-expanded. A `run` row is in this state whenever its command exited non-zero, whatever the call reported (D227) | Error note first, then arguments |
 | Denied | Muted `Denied` status | Permission result when available |
 
 ### 9.6 Interactions
 
-- Click the row: expand/collapse the result blocks. The latest live row with
-  inspectable details opens automatically; historical rows default collapsed
-  and failed rows open automatically.
+- Click the row: expand/collapse the result blocks. Tool-call details are
+  collapsed by default while a live group is open; historical rows are also
+  collapsed by default, and failed rows open automatically so their error
+  remains visible.
 - Click the processing header: expand/collapse the ordered activity list.
   Historical groups default collapsed; the latest active group opens while the
   turn is running and closes when it settles if the user has not touched it.

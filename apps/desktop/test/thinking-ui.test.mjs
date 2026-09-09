@@ -217,7 +217,7 @@ test("expanded assistant activity rails collapse their disclosures", () => {
   assert.match(stylesSource, /\.disclosure-collapse-rail:focus-visible\s*\{/);
 });
 
-test("live processing follows the latest step without taking over manual disclosure", () => {
+test("live thinking follows the latest step without auto-expanding tool details", () => {
   assert.match(transcriptSource, /function useAutomaticDisclosure\(automaticOpen: boolean\)/);
   assert.match(transcriptSource, /const userInteractedRef = useRef\(false\)/);
   assert.match(transcriptSource, /useLayoutEffect\(\(\) => \{/);
@@ -226,8 +226,13 @@ test("live processing follows the latest step without taking over manual disclos
   assert.match(transcriptSource, /useAutomaticDisclosure\(live\)/);
   assert.match(
     transcriptSource,
-    /autoOpen=\{live && itemIndex === items\.length - 1\}/,
+    /<ThinkingRow[\s\S]*?autoOpen=\{live && itemIndex === items\.length - 1\}/,
   );
+  assert.doesNotMatch(
+    transcriptSource,
+    /<ToolRow[\s\S]{0,220}autoOpen=\{live && itemIndex === items\.length - 1\}/,
+  );
+  assert.match(transcriptSource, /const disclosure = useAutomaticDisclosure\(failed\)/);
   assert.match(transcriptSource, /onClick=\{toggleDisclosure\}/);
   assert.match(transcriptSource, /onCollapse=\{collapseDisclosure\}/);
   assert.match(transcriptSource, /onUserInteraction=\{claimDisclosure\}/);

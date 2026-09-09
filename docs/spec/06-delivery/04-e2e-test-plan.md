@@ -1550,14 +1550,15 @@ Each scenario is documented in this format:
   new stream updates do not reopen it. 7) Click the vertical rule beside an
   expanded row, then keyboard-focus and activate the processing group's
   vertical rule. 8) Reload the session and expand the restored group.
-- **Expected**: The latest active group opens automatically, and only its latest
-  inspectable step opens automatically; older groups and rows remain collapsed.
+- **Expected**: The latest active group opens automatically so the process list
+  is visible, but tool-call details remain collapsed. The latest thinking step
+  opens automatically while it streams; older groups and rows remain collapsed.
   The header shows a localized current-state capsule such as Editing,
   Thinking, Waiting for model, Retrying, or Waiting for subagents, alongside
-  elapsed time and the step count. When the turn settles, disclosures opened
-  only by automation close, while a group or row touched by the user keeps its
-  chosen state. Expanded calls use transparent semantic activity rows with an
-  action icon, natural-language verb, monospace primary argument, and quiet
+  elapsed time and the step count. When the turn settles, the automatic
+  thinking disclosure closes, while a group or row touched by the user keeps
+  its chosen state. Expanded calls use transparent semantic activity rows with
+  an action icon, natural-language verb, monospace primary argument, and quiet
   disclosure. The processing group uses the full assistant-column width, so a
   short label or payload does not shrink expanded details into a content-sized
   chip. Each expanded-content vertical rule is a pointer and keyboard-focusable
@@ -6462,9 +6463,11 @@ This test plan spec is accepted when:
 - In light and dark themes, tool calls use transparent compact activity rows,
   not elevated cards or colored success rails.
 - Historical consecutive calls appear inside a default-collapsed processing
-  group. During a live turn, the latest group and its latest inspectable row
-  open automatically; when the turn settles, only automation-owned disclosures
-  close. A group or row touched by the user keeps its chosen state.
+  group. During a live turn, the latest group opens automatically so its
+  process list is visible, but tool-call details stay collapsed. The latest
+  thinking step opens automatically; when the turn settles, only that automatic
+  thinking disclosure closes. A group or row touched by the user keeps its
+  chosen state.
 - Its active header shows `Processing · {elapsed}` and a localized current
   action/phase capsule such as `Editing`, `Thinking`, or `Waiting for model`;
   its completed header shows `Processed for {elapsed}`, plus a localized step
