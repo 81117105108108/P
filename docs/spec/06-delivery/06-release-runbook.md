@@ -377,9 +377,16 @@ Native-runner output matrix:
   `PI-Desktop-<version>-arm64-mac.zip`
 - macOS Intel x64: `PI-Desktop-<version>-x64.dmg` and
   `PI-Desktop-<version>-x64-mac.zip`
-- Windows x64: NSIS installer
+- Windows x64: NSIS installer `PI-Desktop-Setup-<version>.exe` and portable
+  exe `PI-Desktop-Portable-<version>.exe`
 - Linux x64: AppImage, deb, and rpm
 - Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`
+
+The portable Windows target does not write `latest.yml`. Packaged portable
+runs use notify-and-link delivery (`PORTABLE_EXECUTABLE_FILE`); NSIS keeps
+the in-app download and quit-and-install lane. Data stays in the existing
+application data directory. Portable requests user execution level, so launch
+does not require administrator rights.
 
 RPM targets pass `_build_id_links none` to FPM. Bundled Electron binaries live
 under `/opt/PI-Desktop`; omitting global `/usr/lib/.build-id` links prevents
@@ -406,7 +413,8 @@ Shell smoke on each native runner:
 
 ## 7. Known limitations
 
-- macOS and Linux deb/rpm remain notify-and-link update modes.
+- macOS, Linux deb/rpm, and the Windows portable exe remain notify-and-link
+  update modes.
 - Linux x64 packages are built on Ubuntu 22.04 so host-core needs glibc 2.35
   or newer (Ubuntu 22.04, Debian 12, Fedora 36+). The tag job runs
   `scripts/check-linux-host-glibc.mjs` and refuses a binary that needs a

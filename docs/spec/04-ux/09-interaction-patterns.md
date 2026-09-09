@@ -471,7 +471,8 @@ may be retained while exactly one workspace supplies the visible shell context.
 - Settings → Info and application-menu checks share one typed update state.
   Manual checks expose up-to-date or error feedback; automatic failures do not
   open a toast or ambient banner.
-- Manual delivery (`darwin` and non-AppImage Linux) stops at `available` and
+- Manual delivery (`darwin`, non-AppImage Linux, and Windows portable runs
+  with `PORTABLE_EXECUTABLE_FILE`) stops at `available` and
   offers the fixed GitHub Releases page. In-app delivery (Windows NSIS and
   Linux AppImage readiness builds) automatically advances through
   `downloading` to the stable `downloaded` state.

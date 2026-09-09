@@ -2459,7 +2459,9 @@ PI-Desktop 图标；两个表面都不会暴露库存 Electron 名称或图标�
   设置 → 信息。
 - **预期**：更新状态报告 `available`（手动平台）或
   通过应用内下载 Windows NSIS / Linux AppImage 取得进展
-  `availableVersion` 等于较新的稳定标签。客户不得举报
+  `availableVersion` 等于较新的稳定标签。Windows 便携版运行
+  （`PORTABLE_EXECUTABLE_FILE`）保持手动通知加链接路径，不得下载或运行
+  NSIS 安装程序。客户不得举报
   最新只是因为没有较新的版本共享相同的 `rc` 预发行版
   频道。
 - **链接规格**：`04-ux/09-interaction-patterns.md`，
@@ -6018,3 +6020,23 @@ IPC 请求无法关闭。
 - **验收**：质量
 - **里程碑**：M5
 - **状态**：静态/文档检查已覆盖（`pnpm docs:build` 与路径审计）；远程 GitHub 和浏览器旅程待验证
+
+#### E2E-211：Windows 便携版 exe 无需安装即可启动（D364）
+
+- **前提条件**：Windows x64 标签或 `dist:win` 包已从共享 electron-builder 配置
+  产出 `PI-Desktop-Setup-<version>.exe` 和 `PI-Desktop-Portable-<version>.exe`；
+  有干净用户配置；账户是无需管理员提升的标准用户。
+- **步骤**：1) 检查发布目录和 `latest.yml`。2) 不运行 NSIS 安装程序，直接启动
+  便携版 exe。3) 确认进程环境包含 `PORTABLE_EXECUTABLE_FILE`。4) 调用检查更新。
+  5) 确认设置 → 信息提供发布页而不是“重启以更新”。6) 退出并再次启动同一便携文件。
+- **预期**：两个 Windows 工件都无空格并已上传。`latest.yml` 只指向 NSIS 安装程序。
+  便携版 exe 无需安装向导或管理员提示即可启动，使用现有应用数据目录，
+  并报告更新模式 `manual`。可用更新不会下载或运行
+  `PI-Desktop-Setup-<version>.exe`。再次启动从同一配置恢复会话。
+- **链接规格**：`01-product/01-product-scope.md`、
+  `06-delivery/06-release-runbook.md`、`03-runtime/07-process-model.md`、
+  ADR 0197 / D364
+- **验收**：质量（发布打包）
+- **里程碑**：M6+
+- **状态**：单元/源合同已覆盖（`auto-update.test.mjs`）；本机 Windows 启动仍为
+  运行器验证（除非明确要求，否则不要在本地跑 E2E）

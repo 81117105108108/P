@@ -201,9 +201,9 @@ sidecar/host shutdown sequence runs before the updater replaces the app.
   pure-JS helpers it calls without changing process or protocol ownership
 - renderer dependencies ship through Vite output rather than duplicate raw
   package trees; no interactive PTY native module is packaged
-- packaged builds use the Main-owned update controller. macOS and non-AppImage
-  Linux are manual-delivery modes; Windows NSIS and Linux AppImage use the
-  in-app feeds published by D126 tag releases
+- packaged builds use the Main-owned update controller. macOS, non-AppImage
+  Linux, and Windows portable runs are manual-delivery modes; Windows NSIS and
+  Linux AppImage use the in-app feeds published by D126 tag releases
 
 ## 7. Acceptance
 

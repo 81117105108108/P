@@ -416,7 +416,8 @@
 - 设置 → 信息和应用程序菜单检查共享一种类型的更新状态。
   手动检查公开最新或错误反馈；自动故障不会
   打开 Toast 或环境横幅。
-- 手动交付（`darwin` 和非 AppImage Linux）在 `available` 停止，并且
+- 手动交付（`darwin`、非 AppImage Linux，以及带有
+  `PORTABLE_EXECUTABLE_FILE` 的 Windows 便携版运行）在 `available` 停止，并且
   提供固定的 GitHub 发布页面。应用内交付（Windows NSIS 和
   Linux AppImage 准备就绪构建）自动推进
   `downloading` 到稳定的 `downloaded` 状态。

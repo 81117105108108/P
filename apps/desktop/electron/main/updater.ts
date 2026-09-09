@@ -7,6 +7,8 @@
  * stables. Delivery mode per install:
  *  - Windows NSIS / Linux AppImage → full in-app flow: silent background
  *    download, "restart to update" prompt, install-on-quit fallback.
+ *  - Windows portable (`PORTABLE_EXECUTABLE_FILE`) → notify + link. The
+ *    NSIS installer must not replace a no-install run.
  *  - macOS → manual discovery and a releases-page link. In-app installation
  *    remains disabled pending a separate delivery-policy qualification.
  *  - Linux deb (no $APPIMAGE in env) → notify + link, like macOS.
@@ -57,10 +59,13 @@ export type UpdaterOptions = {
 export function resolveUpdateMode(
   platform: NodeJS.Platform,
   isPackaged: boolean,
+  env: NodeJS.ProcessEnv = process.env,
 ): UpdateMode {
   if (!isPackaged) return "disabled";
-  if (platform === "win32") return "in-app";
-  if (platform === "linux" && process.env.APPIMAGE) return "in-app";
+  if (platform === "win32") {
+    return env.PORTABLE_EXECUTABLE_FILE ? "manual" : "in-app";
+  }
+  if (platform === "linux" && env.APPIMAGE) return "in-app";
   // darwin (unsigned) and non-AppImage linux installs
   return "manual";
 }

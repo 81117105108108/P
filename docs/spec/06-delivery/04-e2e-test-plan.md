@@ -3238,7 +3238,9 @@ Each scenario is documented in this format:
   Settings → Info.
 - **Expected**: Update state reports `available` (manual platforms) or
   advances through in-app download for Windows NSIS / Linux AppImage with
-  `availableVersion` equal to the newer stable tag. The client must not report
+  `availableVersion` equal to the newer stable tag. A Windows portable run
+  (`PORTABLE_EXECUTABLE_FILE`) stays on the manual notify-and-link path and
+  must not download or run the NSIS installer. The client must not report
   up-to-date merely because no newer release shares the same `rc` prerelease
   channel.
 - **Specs linked**: `04-ux/09-interaction-patterns.md`,
@@ -8761,3 +8763,29 @@ are withdrawn with ADR 0165.
 - **Milestone**: M6+
 - **Status**: Unit/source-contract-covered; full UI journey Draft (do not run
   E2E locally unless explicitly requested)
+
+#### E2E-211: Windows portable exe launches without an installer (D364)
+
+- **Preconditions**: A Windows x64 tag or `dist:win` package has produced both
+  `PI-Desktop-Setup-<version>.exe` and `PI-Desktop-Portable-<version>.exe` from
+  the shared electron-builder config; a clean user profile is available; the
+  account is a standard user without administrator elevation.
+- **Steps**: 1) Inspect the release directory and `latest.yml`. 2) Launch the
+  portable exe without running the NSIS installer. 3) Confirm the process
+  environment includes `PORTABLE_EXECUTABLE_FILE`. 4) Invoke Check for Updates.
+  5) Confirm Settings → Info offers the releases page rather than Restart to
+  update. 6) Quit and relaunch the same portable file.
+- **Expected**: Both Windows artifacts are space-free and uploaded. `latest.yml`
+  points at the NSIS installer only. The portable exe starts without a setup
+  wizard or administrator prompt, uses the existing application data directory,
+  and reports update mode `manual`. An available update does not download or
+  run `PI-Desktop-Setup-<version>.exe`. Relaunch restores sessions from that
+  same profile.
+- **Specs linked**: `01-product/01-product-scope.md`,
+  `06-delivery/06-release-runbook.md`, `03-runtime/07-process-model.md`,
+  ADR 0197 / D364
+- **Acceptance**: Quality (release packaging)
+- **Milestone**: M6+
+- **Status**: Unit/source-contract covered (`auto-update.test.mjs`); native
+  Windows launch remains runner validation (do not run E2E locally unless
+  explicitly requested)

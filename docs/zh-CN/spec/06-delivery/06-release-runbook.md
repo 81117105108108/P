@@ -346,9 +346,14 @@ Native-runner 输出矩阵：
   `PI-Desktop-<version>-arm64-mac.zip`
 - macOS Intel x64：`PI-Desktop-<version>-x64.dmg` 和
   `PI-Desktop-<version>-x64-mac.zip`
-- Windows x64：NSIS 安装程序
+- Windows x64：NSIS 安装程序 `PI-Desktop-Setup-<version>.exe` 和便携版
+  exe `PI-Desktop-Portable-<version>.exe`
 - Linux x64：AppImage、deb 和 rpm
 - Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`
+
+便携版 Windows 目标不会写入 `latest.yml`。已打包的便携版运行使用通知加链接
+交付（`PORTABLE_EXECUTABLE_FILE`）；NSIS 仍走应用内下载并在退出时安装。
+数据仍在现有应用数据目录。便携版请求 user 执行级别，因此启动不需要管理员权限。
 
 RPM 目标会向 FPM 传入 `_build_id_links none`。捆绑的 Electron 二进制文件位于
 `/opt/PI-Desktop` 下；省略全局 `/usr/lib/.build-id` 链接，可以避免与其他捆绑相同
@@ -374,7 +379,7 @@ electron PI-Desktop-<version>-linux-x64.asar
 
 ## 7. 已知限制
 
-- macOS 和 Linux deb/rpm 仍保持通知和链接更新模式。
+- macOS、Linux deb/rpm 和 Windows 便携版 exe 仍保持通知和链接更新模式。
 - Linux x64 包在 Ubuntu 22.04 上构建，因此 host-core 需要 glibc 2.35 或更高
   版本（Ubuntu 22.04、Debian 12、Fedora 36+）。标签作业运行
   `scripts/check-linux-host-glibc.mjs`，拒绝需要更新 glibc 的二进制文件。
