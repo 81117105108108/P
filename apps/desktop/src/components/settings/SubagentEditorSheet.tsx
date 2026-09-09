@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DEFAULT_SUBAGENT_TOOLS,
@@ -12,8 +12,15 @@ import {
   type ThinkingLevel,
   type UserSubagentRecord,
 } from "@pi-desktop/shared";
+import { useAppStore } from "../../stores/app-store";
 import { Button, Field, Input, Select, Textarea, cx } from "../ui";
 import { IconFolderOpen, IconX } from "../icons";
+import {
+  groupSubagentModelChoices,
+  subagentModelChoices,
+  subagentModelOrphanPin,
+  subagentModelSelectValue,
+} from "./subagent-models";
 
 /** Hard cap host-core enforces on a definition document. */
 export const MAX_SUBAGENT_BYTES = 32 * 1024;
@@ -189,11 +196,19 @@ export function SubagentEditorSheet({
   onReveal?: () => void;
 }) {
   const { t } = useTranslation();
+  const providers = useAppStore((state) => state.providers);
   const [nameTouched, setNameTouched] = useState(!!editing);
   const errorKey = subagentDraftError(draft);
   const pristine = !editing && !draft.name.trim() && !draft.description.trim();
   const bytes = new TextEncoder().encode(draft.body).length;
   const slug = draft.id || subagentSlug(draft.name);
+  const modelChoices = useMemo(() => subagentModelChoices(providers), [providers]);
+  const modelGroups = useMemo(
+    () => groupSubagentModelChoices(modelChoices),
+    [modelChoices],
+  );
+  const modelValue = subagentModelSelectValue(draft.model, modelChoices);
+  const orphanModel = subagentModelOrphanPin(draft.model, modelChoices);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -329,11 +344,25 @@ export function SubagentEditorSheet({
               label={t("extensions.subagents.model")}
               hint={t("extensions.subagents.modelHint")}
             >
-              <Input
-                value={draft.model}
-                placeholder={t("extensions.subagents.modelPlaceholder")}
+              <Select
+                value={modelValue}
+                aria-label={t("extensions.subagents.model")}
                 onChange={(event) => set("model", event.target.value)}
-              />
+              >
+                <option value="">{t("extensions.subagents.modelInherit")}</option>
+                {modelGroups.map((group) => (
+                  <optgroup key={group.providerId} label={group.providerName}>
+                    {group.choices.map((choice) => (
+                      <option key={choice.value} value={choice.value}>
+                        {choice.modelId}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+                {orphanModel ? (
+                  <option value={orphanModel}>{orphanModel}</option>
+                ) : null}
+              </Select>
             </Field>
             <Field
               label={t("extensions.subagents.thinking")}
