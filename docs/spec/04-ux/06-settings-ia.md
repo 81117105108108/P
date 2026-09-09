@@ -377,10 +377,17 @@ system while preserving their different data ownership:
 - Subagents open one **New subagent / Edit subagent** sheet that
   pre-fills the same fields the runtime's `BUILTIN_SUBAGENT_DOCUMENTS` ship
   with. Above the name field the sheet shows a "Start from template" row of
-  preset chips (Explorer, Code reviewer, Test runner, Fixer, plus a blank
-  option) — picking one replaces the draft's description, tools, max turns
-  and body wholesale. The chip uses the same accent-tint state the tool
-  grant row uses, so the chosen option reads at a glance. The model field
+  compact name chips (Explorer, Code reviewer, Test runner, Fixer, plus a
+  blank option). Chips show the localized name only; the selected chip's
+  one-line caption sits once under the row. Hyphenated preset ids
+  (`code-reviewer`, `test-runner`) resolve through an explicit catalog map
+  (`presetReviewerName` / `presetTestRunnerName`) — they must not be
+  turned into keys by capitalizing the first letter. Picking a chip
+  replaces the draft's description, tools, max turns and body wholesale.
+  The chip uses the same accent-tint pill as the tool grant row. Create
+  omits the long subtitle and the per-chip Apply label; model, thinking,
+  turn limit and scope sit behind an Advanced disclosure that starts
+  closed on create and open on edit. The model field
   is a picker over the configured providers' models flagged "Available for
   AI delegation"; a model whose flag is off cannot be picked through the
   picker (issue #60). The picker groups entries by provider and adds a

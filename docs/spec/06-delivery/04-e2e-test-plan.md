@@ -7606,19 +7606,23 @@ This test plan spec is accepted when:
   present but no project subagent file overrides them.
 - **Steps**:
   1. Open Settings → Agent → Subagents, click **New subagent**, and confirm
-     the sheet opens above the form with a "Start from template" group
-     offering four preset chips (Explorer, Code reviewer, Test runner, Fixer)
-     plus a blank chip, with the same one-line description the builtins
-     ship.
+     the sheet opens with a "Start from template" row of compact name
+     chips (Explorer, Code reviewer, Test runner, Fixer, plus a blank
+     chip). Chips show names only; the selected chip's one-line caption
+     appears once under the row. Confirm there is no long subtitle, no
+     per-chip Apply label, and that Advanced starts collapsed. Confirm
+     hyphenated ids (`code-reviewer`, `test-runner`) render catalog names,
+     not raw keys such as `presetCode-reviewerName`.
   2. Click the **Explorer** chip without touching any field. Confirm the
      form is pre-filled: name `Explorer`, the description from the
-     builtin, the `Read / Glob / Grep / Bash` tool grant, max turns 60, and
-     the full Explorer system prompt. The model field is unchanged (still
-     inherit).
+     builtin, the `Read / Glob / Grep / Bash` tool grant, and the full
+     Explorer system prompt. Expand Advanced and confirm max turns 60 and
+     that the model field is unchanged (still inherit).
   3. Reopen the sheet, click **Fixer**, and confirm the grant expands to
-     `Read / Glob / Grep / Edit / Write / Bash`, max turns 80, and the
-     Fixer body. The mutating-hint line appears under the tools row.
-  4. Open the model picker. Confirm the picker lists every
+     `Read / Glob / Grep / Edit / Write / Bash` and the Fixer body. The
+     mutating-hint line appears under the tools row. Expand Advanced and
+     confirm max turns 80.
+  4. Expand Advanced. Open the model picker. Confirm the picker lists every
      `availableForSubagents` model from every provider, grouped by provider
      name; confirm a model whose flag is off is absent. Choose one and
      confirm the draft's `model` field becomes
@@ -7631,10 +7635,10 @@ This test plan spec is accepted when:
      `model` field is empty and the sidecar falls back to the session
      model.
   6. Disable the providers that contribute a delegate-bound model. Reopen
-     the editor and confirm the picker falls back to a single free-text
-     input with the `modelPickEmpty` hint pointing the user to Models.
-     Save and confirm the sheet still validates a hand-typed
-     `provider/model` value.
+     the editor, expand Advanced, and confirm the picker falls back to a
+     single free-text input with the `modelPickEmpty` hint pointing the
+     user to Models. Save and confirm the sheet still validates a
+     hand-typed `provider/model` value.
   7. Switch the locale to Simplified Chinese. Confirm the preset chips
      render the translated names (`探索者`, `代码审查员`, `测试执行者`,
      `修复者`, `空白开始`) and the picker labels (`沿用当前会话的模型`,
