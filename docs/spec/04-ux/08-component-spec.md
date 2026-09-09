@@ -1315,14 +1315,20 @@ Single message render — either user (plaintext) or assistant (markdown streami
 - Assistant meta: optional model badge under the answer. The compact
   Codex-style context inspector lives in the composer right toolbar,
   immediately left of the model × reasoning chip, and always mirrors the
-  newest assistant turn that reported usage (D347). It is hidden until that
+  newest assistant turn that reported usage (D347). Occupancy, remaining
+  capacity, used/window counts, turn total, and provider
+  input/output/cache/reasoning/hit-rate are that turn's newest usage-bearing
+  assistant message (the last model request), using
+  `input + output + reasoning + cacheRead + cacheWrite` (D355). They are not
+  the sum of every model call in the visual tool-loop. It is hidden until that
   usage exists. The trigger keeps a small remaining-capacity ring beside the
   percentage and omits the redundant `Context` label; low capacity changes
   the semantic color without making color the only signal. Clicking the
   trigger (or activating it from the keyboard) toggles a non-modal panel with
   a remaining-token-plus-percentage heading, used/window counts, and two
   unboxed turn/speed summary values. Model usage is compressed into one
-  inline summary row that retains exact input/output/cache/reasoning values
+  inline summary row that retains exact last-request
+  input/output/cache/reasoning values
   and the provider-reported cache hit rate when available. Tool usage is
   compressed into one aggregate row showing tool types, calls, and estimated
   tokens; per-tool rows, share bars, source badges, and the explanatory

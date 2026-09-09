@@ -48,6 +48,7 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
  | [ADR 0189：父级终态错误中止残留委托](/adr/0189-parent-fatal-error-aborts-leftover-delegates) | 父级空闲仍不中止委托；429 等终态错误会中止残留子智能体，让“继续”不再 AGENT_BUSY |
  | [ADR 0190：宿主门控的大文件与拖拽文件访问](/adr/0190-host-gated-large-file-and-drop-access) | 大文件范围读取与拖拽文件授权统一经过宿主权限网关，授权只覆盖单个文件且仅存于当前插件进程 |
  | [ADR 0191：明确标注两个 macOS 发布架构](/adr/0191-label-both-macos-release-architectures) | macOS DMG/ZIP 统一使用 `-arm64` / `-x64` 后缀，更新源 URL 与校验和保持一致 |
+ | [ADR 0193：上下文检查器按最后一次请求计算占用](/adr/0193-last-request-context-occupancy) | 占用、本轮合计和缓存读写取最新一条助手消息，不再把工具循环里的每次请求加总 |
 
 ## 什么时候看 ADR
 

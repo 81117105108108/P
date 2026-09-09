@@ -2826,7 +2826,10 @@ Each scenario is documented in this format:
   an outside click, or Escape, which returns focus to the trigger. Provider
   values remain exact, tool values remain visibly approximate through the `~`
   aggregate total, and no per-tool list, source badge, progress bar, or
-  explanatory estimate paragraph is rendered. The cache hit rate is omitted
+  explanatory estimate paragraph is rendered. Occupancy, turn total, and
+  provider cache/input/output/reasoning/hit-rate are the last usage-bearing
+  assistant message, not the summed tool-loop, so cache read stays on the
+  same scale as the context window. The cache hit rate is omitted
   when cache-read metadata is absent rather than inferred. A published 1m-class
   limit (for example `gpt-5.6-luna` at 1,050,000 tokens) is shown instead of
   128k, the same effective window is used by the agent runtime, and a non-default
