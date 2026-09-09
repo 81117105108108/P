@@ -677,9 +677,16 @@ may be retained while exactly one workspace supplies the visible shell context.
 
 - Tool activity starts as a lightweight collapsed row; failed calls open
   automatically so the error remains local to its invocation.
-- Consecutive tool activity is wrapped in one collapsed processing group. Its
-  header updates elapsed time once per second while active, freezes after the
-  next transcript message, and exposes the number of contained steps.
+- Consecutive tool activity is wrapped in one processing group. Its header
+  updates elapsed time once per second while active, freezes after the next
+  transcript message, exposes the number of contained steps, and shows the
+  latest action or runtime phase (`Editing`, `Thinking`, `Waiting for model`,
+  `Retrying`, or `Waiting for subagents`) in a compact status capsule.
+- While the turn is active, the latest processing group opens automatically and
+  its latest inspectable row opens automatically. When the activity settles,
+  only disclosures still owned by that automatic behavior close. A click or
+  keyboard activation on a group, row, or collapse rail makes that disclosure
+  user-owned; stream updates and completion never override it.
 - A failed row is invocation-local truth and remains visible immediately. The
   containing group reports processing duration only and settles as processed,
   even when a later call recovers. Terminal turn failure is derived only from

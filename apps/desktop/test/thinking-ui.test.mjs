@@ -204,17 +204,53 @@ test("expanded assistant activity rails collapse their disclosures", () => {
   );
   assert.match(
     transcriptSource,
-    /className="tool-row-body"[\s\S]*?<DisclosureCollapseRail[\s\S]*?onCollapse=\{\(\) => setOpen\(false\)\}/,
+    /className="tool-row-body"[\s\S]*?<DisclosureCollapseRail[\s\S]*?onCollapse=\{collapseDisclosure\}/,
   );
   assert.match(
     transcriptSource,
-    /className="tool-activity-body"[\s\S]*?<DisclosureCollapseRail[\s\S]*?onCollapse=\{\(\) => setOpen\(false\)\}/,
+    /className="tool-activity-body"[\s\S]*?<DisclosureCollapseRail[\s\S]*?onCollapse=\{collapseDisclosure\}/,
   );
   assert.match(
     stylesSource,
     /\.disclosure-collapse-rail\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?width:\s*16px;[\s\S]*?cursor:\s*pointer;/,
   );
   assert.match(stylesSource, /\.disclosure-collapse-rail:focus-visible\s*\{/);
+});
+
+test("live processing follows the latest step without taking over manual disclosure", () => {
+  assert.match(transcriptSource, /function useAutomaticDisclosure\(automaticOpen: boolean\)/);
+  assert.match(transcriptSource, /const userInteractedRef = useRef\(false\)/);
+  assert.match(transcriptSource, /useLayoutEffect\(\(\) => \{/);
+  assert.match(transcriptSource, /if \(userInteractedRef\.current\) return/);
+  assert.match(transcriptSource, /const \{ open, toggle: toggleDisclosure, collapse: collapseDisclosure \}/);
+  assert.match(transcriptSource, /useAutomaticDisclosure\(live\)/);
+  assert.match(
+    transcriptSource,
+    /autoOpen=\{live && itemIndex === items\.length - 1\}/,
+  );
+  assert.match(transcriptSource, /onClick=\{toggleDisclosure\}/);
+  assert.match(transcriptSource, /onCollapse=\{collapseDisclosure\}/);
+  assert.match(transcriptSource, /onUserInteraction=\{claimDisclosure\}/);
+  assert.match(transcriptSource, /const tail = live && !open \? currentDetail : ""/);
+});
+
+test("activity headers expose the current runtime phase and action", () => {
+  for (const key of [
+    "activityItemStatus",
+    "currentStatus",
+    "tool-activity-current",
+    "waitingForModel",
+    "retryingModel",
+    "waitingForSubagents",
+  ]) {
+    assert.ok(transcriptSource.includes(key), key);
+  }
+  assert.match(transcriptSource, /aria-live="polite"/);
+  assert.match(stylesSource, /\.tool-activity-current\s*\{/);
+  assert.match(stylesSource, /\.tool-activity-current-dot\s*\{/);
+  assert.match(stylesSource, /\.tool-activity-group\.phase-waiting-model/);
+  assert.match(stylesSource, /\.tool-activity-group\.phase-retrying/);
+  assert.match(stylesSource, /\.tool-activity-group\.phase-waiting-subagents/);
 });
 
 test("thinking-only assistant streams open the transcript surface", () => {

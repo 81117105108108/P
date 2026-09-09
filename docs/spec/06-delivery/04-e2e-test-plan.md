@@ -1523,15 +1523,22 @@ Each scenario is documented in this format:
 #### E2E-040: Codex-style tool activity survives transcript reload
 - **Preconditions**: Provider configured; project open; a session can run a
   successful tool and a failing or aborted tool.
-- **Steps**: 1) Run representative read, search, and command tools. 2) Inspect
-  the collapsed processing header while it is active. 3) Wait for completion
-  and expand the processing group. 4) Expand a completed row and copy its
-  output. 5) Click the vertical rule beside the expanded row, then keyboard-focus
-  and activate the processing group's vertical rule. 6) Reload the session and
-  expand the restored group.
-- **Expected**: Consecutive calls are collapsed by default under one localized
-  processing header that updates and then freezes its elapsed time and shows a
-  step count. Expanded calls use transparent semantic activity rows with an
+- **Steps**: 1) Run representative read, search, edit, and command tools. 2)
+  While the turn is active, inspect the latest processing group and its latest
+  tool/thinking row. 3) Confirm the group header exposes the current action or
+  runtime phase. 4) Wait for completion and inspect the settled transcript. 5)
+  Manually expand a completed group and row, then copy its output. 6) While a
+  later turn is streaming, manually collapse its active group and verify that
+  new stream updates do not reopen it. 7) Click the vertical rule beside an
+  expanded row, then keyboard-focus and activate the processing group's
+  vertical rule. 8) Reload the session and expand the restored group.
+- **Expected**: The latest active group opens automatically, and only its latest
+  inspectable step opens automatically; older groups and rows remain collapsed.
+  The header shows a localized current-state capsule such as Editing,
+  Thinking, Waiting for model, Retrying, or Waiting for subagents, alongside
+  elapsed time and the step count. When the turn settles, disclosures opened
+  only by automation close, while a group or row touched by the user keeps its
+  chosen state. Expanded calls use transparent semantic activity rows with an
   action icon, natural-language verb, monospace primary argument, and quiet
   disclosure. The processing group uses the full assistant-column width, so a
   short label or payload does not shrink expanded details into a content-sized
@@ -2432,13 +2439,15 @@ Each scenario is documented in this format:
 - **Steps**: 1) Start a turn in both light and dark themes. 2) Observe a
   thinking-only phase. 3) Let the answer complete. 4) Toggle the disclosure,
   test keyboard focus, enable reduced motion, and use Copy answer.
-- **Expected**: The transcript opens during thinking-only streaming; one open
-  Thinking disclosure updates without an empty answer bubble or duplicate
-  Working indicator. The disclosure uses the transcript surface, theme tokens,
-  a Sparkles/chevron trigger, and a left rule instead of an inset card;
-  collapsed content leaves focus traversal and reduced motion disables the
-  running marker pulse and transitions. Final answer markdown renders separately; Copy answer
-  contains no thinking text.
+- **Expected**: The transcript opens during thinking-only streaming; the latest
+  Thinking disclosure opens and updates without an empty answer bubble or
+  duplicate Working indicator. If the user collapses or expands it, that choice
+  remains authoritative through later thinking deltas and completion. The
+  disclosure uses the transcript surface, theme tokens, a Sparkles/chevron
+  trigger, and a left rule instead of an inset card; collapsed content leaves
+  focus traversal and reduced motion disables the running marker pulse and
+  transitions. Final answer markdown renders separately; Copy answer contains
+  no thinking text.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `04-ux/07-ui-design-system.md`, `04-ux/08-component-spec.md`, ADR 0018
 - **Acceptance**: C (chat and stream), Quality
@@ -6434,9 +6443,14 @@ This test plan spec is accepted when:
 ### US-UI-56 Codex transcript tool activity
 - In light and dark themes, tool calls use transparent compact activity rows,
   not elevated cards or colored success rails.
-- Consecutive calls appear inside one default-collapsed processing group. Its
-  active header shows `Processing · {elapsed}` and its completed header shows
-  `Processed for {elapsed}`, plus a localized step count.
+- Historical consecutive calls appear inside a default-collapsed processing
+  group. During a live turn, the latest group and its latest inspectable row
+  open automatically; when the turn settles, only automation-owned disclosures
+  close. A group or row touched by the user keeps its chosen state.
+- Its active header shows `Processing · {elapsed}` and a localized current
+  action/phase capsule such as `Editing`, `Thinking`, or `Waiting for model`;
+  its completed header shows `Processed for {elapsed}`, plus a localized step
+  count.
 - The row shows a semantic 15–16px icon, progressive/past-tense action,
   ellipsized monospace argument hint, quiet disclosure chevron, and localized
   running/error/denied state.

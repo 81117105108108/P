@@ -90,7 +90,8 @@ test("expanded live tool output stays local to the changed row", () => {
   assert.match(transcript, /const ToolRow = memo\(function ToolRow/);
   assert.match(transcript, /function toolRowPropsEqual\(/);
   assert.match(transcript, /if \(previous\.variant !== "topology"\) return true;/);
-  assert.match(transcript, /const \[open, setOpen\] = useState\(failed\);/);
+  assert.match(transcript, /const disclosure = useAutomaticDisclosure\(autoOpen \|\| failed\)/);
+  assert.match(transcript, /userInteractedRef/);
   assert.match(
     transcript,
     /const blocks =\s*variant !== "topology" && open && hasDetails\s*\?\s*buildToolPresentation\(/,
@@ -113,8 +114,8 @@ test("tool errors stay local to their rows instead of failing the activity group
   // from the command's exit code as well as the call's status (D227), so the
   // auto-open hangs off that derived flag.
   assert.match(transcript, /const failed = status === "error" \|\| run === "failed"/);
-  assert.match(transcript, /const \[open, setOpen\] = useState\(failed\)/);
-  assert.match(transcript, /if \(failed\) setOpen\(true\)/);
+  assert.match(transcript, /const disclosure = useAutomaticDisclosure\(autoOpen \|\| failed\)/);
+  assert.match(transcript, /if \(userInteractedRef\.current\) return/);
   assert.match(transcript, /status === "error"\s*\? t\("chat\.toolFailed"\)/);
 });
 

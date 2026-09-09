@@ -223,7 +223,7 @@ test("every Task row renders as one accessible delegation topology", () => {
   );
   assert.match(
     transcriptSource,
-    /<SubagentTopology\s+key="subagent-topology"\s+items=\{delegateItems\}\s+delegationStatuses=\{delegationStatuses\}\s+delegationTimings=\{delegationTimings\}\s*\/>/,
+    /<SubagentTopology\s+key="subagent-topology"\s+items=\{delegateItems\}\s+delegationStatuses=\{delegationStatuses\}\s+delegationTimings=\{delegationTimings\}\s+onUserInteraction=\{claimDisclosure\}\s*\/>/,
   );
   assert.match(transcriptSource, /className="subagent-topology" aria-labelledby=/);
   assert.match(transcriptSource, /className="subagent-topology-agents"/);
@@ -232,7 +232,10 @@ test("every Task row renders as one accessible delegation topology", () => {
   assert.match(transcriptSource, /className="subagent-topology-node-header"/);
   assert.match(transcriptSource, /aria-expanded=\{panelOpen\}/);
   assert.match(transcriptSource, /aria-controls=\{hasDetails \? "subagent-panel" : undefined\}/);
-  assert.match(transcriptSource, /onClick=\{\(\) => hasDetails && openSubagentPanel\(panelSelectionId\)\}/);
+  assert.match(
+    transcriptSource,
+    /onClick=\{\(\) => \{\s*if \(!hasDetails\) return;\s*onUserInteraction\?\.\(\);\s*openSubagentPanel\(panelSelectionId\);\s*\}\}/,
+  );
   assert.match(transcriptSource, /const inlineOpen = variant !== "topology" && open;/);
 });
 

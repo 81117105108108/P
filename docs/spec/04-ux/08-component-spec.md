@@ -1102,7 +1102,7 @@ storage but compose into one assistant turn until the next user message.
 | Session transition | A warm destination pane is revealed immediately with its retained content and position. If it is running or still holds a not-yet-flushed completed reply, its live renderer snapshot survives the durable revalidation read. A cold destination leaves the visible pane on its own session under a thin progress track until it commits; nothing is dimmed, hidden panes stay mounted and inert, and current stream updates are not deferred |
 | Streaming | New tokens append; auto-scroll only while pinned to bottom |
 | Turn start | Send / retry / regenerate re-pins follow mode and jumps to bottom |
-| Thinking-only streaming | Transcript opens; disclosure stays open; no empty answer bubble or duplicate Working row |
+| Thinking-only streaming | Transcript opens; the latest thinking disclosure opens unless the user has taken it over; no empty answer bubble or duplicate Working row |
 | Pre-stream working | Compact animated-dot Working row until thinking, tools, or an answer exist |
 | Pre-stream planning | Compact animated-dot Planning / Goal row in that same slot; the Composer mode chip pulses. Once tools or an answer exist, the transcript row yields so it does not sit orphaned above the composer |
 | Idle | Scrollable; no auto-scroll |
@@ -1122,7 +1122,8 @@ storage but compose into one assistant turn until the next user message.
   toolbar; Copy joins all contentful fragments in order, while Fork and
   Regenerate use the last contentful assistant message as the durable boundary.
 - Toggle Thinking disclosure: expand/collapse reasoning independently from the
-  final answer; streaming reopens it while reasoning is arriving. The expanded
+  final answer. The latest reasoning row opens while it streams and closes when
+  the turn settles only if the user has not interacted with it. The expanded
   content's left rule is itself a pointer and keyboard-focusable collapse
   control.
 - Hover code block: copy button appears
@@ -1514,22 +1515,29 @@ Lightweight inline disclosure row showing a semantic tool action, its primary
 argument hint, status, and a readable rendering of the result. It follows D071
 and is intentionally not an elevated card.
 
-Consecutive tool calls form one ChatGPT-style processing group. The group is
-collapsed by default and its header shows `Processing · 12s` while active or
-`Processed for 12s` after completion. Expanding it reveals the ordered tool
-activity rows and their nested result disclosures. The group reports duration
-and containment, not turn outcome: a failed child remains an error on its own
-ToolCallRow but never changes the group header to a terminal failure. Terminal
-agent errors remain owned by the assistant error and TurnOutcomeCard surfaces.
-Elapsed labels use compact automatically carried units: seconds below one
-minute, minutes plus seconds below one hour, and hours plus minutes (and
-seconds when non-zero) from one hour onward. Zero-value units are omitted, so
-`90m` is rendered as `1h 30m`.
+Consecutive tool calls form one ChatGPT-style processing group. Historical
+groups are collapsed by default. While the turn is active, the latest live
+group opens automatically, and only its latest activity row opens automatically
+when that row has inspectable details. When the group or turn settles, those
+automatically managed disclosures close so the answer remains the visual focus.
+A user click on a group, row, or collapse rail takes ownership of that
+choice; later stream updates and completion never reverse that choice.
+The group header shows `Processing · 12s` while active or `Processed for 12s`
+after completion, and also carries a compact current-state capsule such as
+`Editing`, `Thinking`, `Waiting for model`, or `Retrying`. Expanding it reveals
+the ordered tool activity rows and their nested result disclosures. The group
+reports duration and containment, not turn outcome: a failed child remains an
+error on its own ToolCallRow but never changes the group header to a terminal
+failure. Terminal agent errors remain owned by the assistant error and
+TurnOutcomeCard surfaces. Elapsed labels use compact automatically carried
+units: seconds below one minute, minutes plus seconds below one hour, and hours
+plus minutes (and seconds when non-zero) from one hour onward. Zero-value units
+are omitted, so `90m` is rendered as `1h 30m`.
 
 ### 9.2 Anatomy
 
 ```text
-[sparkle] Processed for 12s  3 steps        [›]
+[sparkle] Processing · 12s  [Editing]  3 steps        [›]
           ├─ [file] Read /src/foo.ts        [›]
           ├─ [search] Searched TODO  24 matches   [›]
           └─ [terminal] Ran pnpm test  exit 1  • Failed  [copy] [›]
@@ -1539,8 +1547,10 @@ seconds when non-zero) from one hour onward. Zero-value units are omitted, so
 
 - The leading Lucide icon reflects the action type: file, folder, search,
   edit, terminal, web, or generic tool.
-- The group header owns the elapsed timer and step count. It stays in the
-  transcript after completion and remains collapsed unless explicitly opened.
+- The group header owns the elapsed timer, current-state capsule, and step
+  count. It stays in the transcript after completion. Historical groups remain
+  collapsed; the latest active group opens automatically and returns to a
+  collapsed state when it settles unless the user has interacted with it.
 - The processing group spans the full available assistant column, so expanded
   result details keep a usable width even when the header or payload is short.
 - The visible label is a natural-language action (`Read`, `Ran`, `Searched`),
@@ -1551,6 +1561,9 @@ seconds when non-zero) from one hour onward. Zero-value units are omitted, so
   exit earns no chip — the row status already says so. The `truncated` chip
   follows `details.truncated` and therefore appears only when this result was
   cut short, not when a Read window of a longer file was filled (D306).
+- The current-state capsule is short, localized, and single-line; its live
+  text tells the user what the agent is doing without adding a second progress
+  card. Long paths remain in the row summary and are ellipsized.
 - The disclosure chevron is quiet until hover/focus or expansion.
 - A `run` row's head carries two more controls than the others, because its
   command lives only there (D226, §9.10): the outcome with a toned dot, and a
@@ -1602,20 +1615,24 @@ twice.
 
 | State | Header treatment | Expanded content |
 |---|---|---|
-| Running | Progressive action with readable text and a compact pulsing marker; a `run` row also shows its spinner and pulses the status dot beside `Working…` | Latest partial output (`details.output` is presented as the stdout channel) |
-| Success | Past-tense action + result chips; no green success badge, except a `run` row's dot and `Done` | Result blocks, then arguments if not already shown |
+| Running | Progressive action with readable text, a compact current-state capsule, and a pulsing marker; a `run` row also shows its spinner and pulses the status dot beside `Working…` | The latest live activity row opens automatically when it has inspectable details; older rows stay collapsed |
+| Success | Past-tense action + result chips; no green success badge, except a `run` row's dot and `Done` | Result blocks, then arguments if not already shown; automatic live disclosures close when the turn settles |
 | Error | Past-tense action + compact danger status; auto-expanded. A `run` row is in this state whenever its command exited non-zero, whatever the call reported (D227) | Error note first, then arguments |
 | Denied | Muted `Denied` status | Permission result when available |
 
 ### 9.6 Interactions
 
-- Click the row: expand/collapse the result blocks; successful rows default
-  collapsed and failed rows open automatically.
+- Click the row: expand/collapse the result blocks. The latest live row with
+  inspectable details opens automatically; historical rows default collapsed
+  and failed rows open automatically.
 - Click the processing header: expand/collapse the ordered activity list.
-  Processing groups default collapsed, including while the turn is active.
+  Historical groups default collapsed; the latest active group opens while the
+  turn is running and closes when it settles if the user has not touched it.
 - Click or keyboard-activate the left rule beside expanded thinking, tool
   details, delegated work, or processing steps: collapse that owning
-  disclosure without changing adjacent expansion state.
+  disclosure without changing adjacent expansion state. Any click on a group,
+  row, or collapse rail makes that disclosure user-owned, so automatic stream
+  transitions never reopen or close it later.
 - A failed child row remains auto-expanded and error-hued, while the containing
   group settles as `Processed for {elapsed}` even when a later tool recovered.
   Expansion uses a short height/opacity transition and keeps collapsed content
@@ -1795,11 +1812,14 @@ work-panel dock rather than expanding the transcript:
   existing brief/report/counters and nested rows; the report remains printed
   exactly once.
 - A topology that first appears while the turn is active opens once so progress
-  is visible, and does not auto-collapse when the turn settles. Reloaded history
-  remains collapsed by default. The header and every node are keyboard
-  disclosures with `aria-expanded`/`aria-controls`; status is written in text
-  and reinforced visually rather than conveyed by color alone. At narrow chat
-  widths the graph becomes a vertical flow without horizontal page overflow.
+  is visible, then closes when its activity settles if the user has not
+  interacted with the card. Reloaded history remains collapsed by default. A
+  user click on the card header or its collapse rail owns the card disclosure;
+  later lifecycle updates never reverse that choice. The header and every node
+  are keyboard disclosures with `aria-expanded`/`aria-controls`; status is
+  written in text and reinforced visually rather than conveyed by color alone.
+  At narrow chat widths the graph becomes a vertical flow without horizontal
+  page overflow.
 
 ### 9.10 A run row's command lives in its head (D226)
 

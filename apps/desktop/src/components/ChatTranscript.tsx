@@ -134,6 +134,8 @@ import { useAppStore } from "../stores/app-store";
 import type { PendingPermission } from "../lib/pending-permissions";
 import { PermissionCard } from "./PermissionCard";
 
+type ActiveAgentActivity = Exclude<AgentActivity, { phase: "starting" }>;
+
 /**
  * Copy chip. Message toolbars are glyph-only (`icon`) with the label in a
  * hover tooltip; surfaces that need a worded button (error details) pass
@@ -369,6 +371,42 @@ function ToolActionIcon({ action }: { action: ToolAction }) {
   }
 }
 
+/**
+ * Automatic disclosure is deliberately separate from user disclosure state.
+ * A running process may open its latest details and close them when it settles,
+ * but one user click takes ownership for the rest of that component's lifetime.
+ * Layout effects keep the automatic transition from moving the transcript for a
+ * painted frame.
+ */
+function useAutomaticDisclosure(automaticOpen: boolean) {
+  const [open, setOpen] = useState(automaticOpen);
+  const userInteractedRef = useRef(false);
+  const previousAutomaticOpenRef = useRef(automaticOpen);
+
+  useLayoutEffect(() => {
+    if (userInteractedRef.current) return;
+    if (previousAutomaticOpenRef.current === automaticOpen) return;
+    previousAutomaticOpenRef.current = automaticOpen;
+    setOpen(automaticOpen);
+  }, [automaticOpen]);
+
+  const claim = useCallback(() => {
+    userInteractedRef.current = true;
+  }, []);
+
+  const toggle = useCallback(() => {
+    claim();
+    setOpen((value) => !value);
+  }, [claim]);
+
+  const collapse = useCallback(() => {
+    claim();
+    setOpen(false);
+  }, [claim]);
+
+  return { open, toggle, collapse, claim };
+}
+
 /** Actions whose path/url argument makes sense to preview in the panel. */
 const PREVIEWABLE_ACTIONS = new Set<ToolAction>(["read", "write", "edit", "fetch"]);
 
@@ -544,6 +582,10 @@ type ToolRowProps = {
   delegate?: SubagentRun;
   /** Card treatment used when several Task calls form a delegation topology. */
   variant?: "default" | "topology";
+  /** Open the latest live process unless the user has taken over the disclosure. */
+  autoOpen?: boolean;
+  /** Claims the containing activity group when this row is manually used. */
+  onUserInteraction?: () => void;
   /** Live delegation statuses read from the turn's lifecycle-tool rows. */
   delegationStatuses?: ReadonlyMap<string, SubagentOutcome>;
   /** Runtime timings read from the turn's delegation lifecycle rows. */
@@ -571,6 +613,8 @@ function toolRowPropsEqual(
   if (
     previous.message !== next.message ||
     previous.variant !== next.variant ||
+    previous.autoOpen !== next.autoOpen ||
+    previous.onUserInteraction !== next.onUserInteraction ||
     !subagentRunsEqual(previous.delegate, next.delegate)
   ) {
     return false;
@@ -594,6 +638,8 @@ const ToolRow = memo(function ToolRow({
   message,
   delegate,
   variant = "default",
+  autoOpen = false,
+  onUserInteraction,
   delegationStatuses,
   delegationTimings,
 }: ToolRowProps) {
@@ -610,7 +656,16 @@ const ToolRow = memo(function ToolRow({
   // (D227). Property reads only, so a streaming row can afford it every tick.
   const run = action === "run" ? runOutcome(message) : null;
   const failed = status === "error" || run === "failed";
-  const [open, setOpen] = useState(failed);
+  const disclosure = useAutomaticDisclosure(autoOpen || failed);
+  const { open, toggle: toggleDisclosure, collapse: collapseDisclosure } = disclosure;
+  const toggleRow = useCallback(() => {
+    onUserInteraction?.();
+    toggleDisclosure();
+  }, [onUserInteraction, toggleDisclosure]);
+  const collapseRow = useCallback(() => {
+    onUserInteraction?.();
+    collapseDisclosure();
+  }, [collapseDisclosure, onUserInteraction]);
   const actionLabel = t(
     status === "running" ? TOOL_RUNNING_KEYS[action] : TOOL_ACTION_KEYS[action],
   );
@@ -718,14 +773,6 @@ const ToolRow = memo(function ToolRow({
       : "";
 
   useEffect(() => {
-    if (failed) setOpen(true);
-  }, [failed]);
-
-  useEffect(() => {
-    if (outcome === "failed") setOpen(true);
-  }, [outcome]);
-
-  useEffect(() => {
     if (outcome !== "running") return;
     setNow(Date.now());
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -757,7 +804,11 @@ const ToolRow = memo(function ToolRow({
           aria-controls={hasDetails ? "subagent-panel" : undefined}
           disabled={!hasDetails}
           title={summary || agentName || rawName}
-          onClick={() => hasDetails && openSubagentPanel(panelSelectionId)}
+          onClick={() => {
+            if (!hasDetails) return;
+            onUserInteraction?.();
+            openSubagentPanel(panelSelectionId);
+          }}
         >
           <span className="subagent-topology-avatar" aria-hidden>
             <IconBot size={15} />
@@ -814,7 +865,7 @@ const ToolRow = memo(function ToolRow({
             aria-controls={hasDetails ? detailsId : undefined}
             disabled={!hasDetails}
             title={summary || rawName}
-            onClick={() => hasDetails && setOpen((value) => !value)}
+            onClick={() => hasDetails && toggleRow()}
           >
             <span
               className={`tool-row-icon${lifecycle ? " is-subagent" : ""}`}
@@ -907,7 +958,7 @@ const ToolRow = memo(function ToolRow({
               className="tool-row-caret is-toggle"
               aria-hidden="true"
               tabIndex={-1}
-              onClick={() => setOpen((value) => !value)}
+              onClick={toggleRow}
             >
               {caret}
             </button>
@@ -923,7 +974,7 @@ const ToolRow = memo(function ToolRow({
         <div className="tool-row-body" id={detailsId}>
           <DisclosureCollapseRail
             label={t("chat.collapseDetails")}
-            onCollapse={() => setOpen(false)}
+            onCollapse={collapseRow}
           />
           <ToolDetailBlocks blocks={blocks} plain={runHead} />
         </div>
@@ -932,7 +983,7 @@ const ToolRow = memo(function ToolRow({
         <SubagentRunRows
           run={delegate}
           agentName={agentName}
-          onCollapse={() => setOpen(false)}
+          onCollapse={collapseRow}
         />
       ) : null}
     </div>
@@ -1260,10 +1311,12 @@ function SubagentTopology({
   items,
   delegationStatuses,
   delegationTimings,
+  onUserInteraction,
 }: {
   items: DelegationActivityItem[];
   delegationStatuses?: ReadonlyMap<string, SubagentOutcome>;
   delegationTimings?: ReadonlyMap<string, SubagentTiming>;
+  onUserInteraction?: () => void;
 }) {
   const { t } = useTranslation();
   const labelId = useId();
@@ -1294,6 +1347,7 @@ function SubagentTopology({
             message={item.message}
             {...(item.delegate ? { delegate: item.delegate } : {})}
             variant="topology"
+            onUserInteraction={onUserInteraction}
             {...(delegationStatuses ? { delegationStatuses } : {})}
             {...(delegationTimings ? { delegationTimings } : {})}
           />
@@ -1311,27 +1365,40 @@ function SubagentTopology({
  */
 type ActivityItem = AssistantActivityItem;
 
-function activityItemSummary(
+function activityItemStatus(
   item: ActivityItem,
   t: (key: string) => string,
 ): string {
+  if (item.kind === "thinking") return t("chat.thinking");
+  const lifecycle = lifecycleKindOf(item.message);
+  if (lifecycle) {
+    return t(
+      (item.message.toolStatus === "running"
+        ? LIFECYCLE_RUNNING_KEYS
+        : LIFECYCLE_LABEL_KEYS)[lifecycle],
+    );
+  }
+  const action = getToolAction(item.message.toolName);
+  return t(
+    item.message.toolStatus === "running"
+      ? TOOL_RUNNING_KEYS[action]
+      : TOOL_ACTION_KEYS[action],
+  );
+}
+
+function activityItemDetail(item: ActivityItem): string {
   if (item.kind === "thinking") {
-    // Latest thought line, so the collapsed header reads like a live ticker.
+    // Latest thought line, so a collapsed header reads like a live ticker.
     const lines = thinkingText(item.message)
       .split("\n")
       .map((line) => line.replace(/^#+\s*|\*\*/g, "").trim())
       .filter(Boolean);
     return lines[lines.length - 1] || "";
   }
-  const message = item.message;
-  const action = getToolAction(message.toolName);
-  const actionLabel = t(
-    message.toolStatus === "running"
-      ? TOOL_RUNNING_KEYS[action]
-      : TOOL_ACTION_KEYS[action],
-  );
-  const summary = getToolSummary(message.toolName, message.toolArgs);
-  return summary ? `${actionLabel} ${summary}` : actionLabel;
+  if (lifecycleKindOf(item.message)) {
+    return delegationRosterSummary(delegationRoster(item.message));
+  }
+  return getToolSummary(item.message.toolName, item.message.toolArgs);
 }
 
 function DisclosureCollapseRail({
@@ -1356,13 +1423,26 @@ function DisclosureCollapseRail({
 function ThinkingRow({
   message,
   streaming,
+  autoOpen = false,
+  onUserInteraction,
 }: {
   message: UiMessage;
   streaming: boolean;
+  autoOpen?: boolean;
+  onUserInteraction?: () => void;
 }) {
   const { t } = useTranslation();
   const detailsId = useId();
-  const [open, setOpen] = useState(false);
+  const { open, toggle: toggleDisclosure, collapse: collapseDisclosure } =
+    useAutomaticDisclosure(autoOpen);
+  const toggleRow = useCallback(() => {
+    onUserInteraction?.();
+    toggleDisclosure();
+  }, [onUserInteraction, toggleDisclosure]);
+  const collapseRow = useCallback(() => {
+    onUserInteraction?.();
+    collapseDisclosure();
+  }, [collapseDisclosure, onUserInteraction]);
   const text = thinkingText(message);
   const summary = text.replace(/\s+/g, " ").trim();
   return (
@@ -1372,7 +1452,7 @@ function ThinkingRow({
         aria-expanded={open}
         aria-controls={detailsId}
         aria-label={t(open ? "chat.thinkingHide" : "chat.thinkingShow")}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleRow}
       >
         <span className="tool-row-icon">
           <IconSparkles size={15} aria-hidden />
@@ -1389,7 +1469,7 @@ function ThinkingRow({
         <div className="tool-row-body" id={detailsId}>
           <DisclosureCollapseRail
             label={t("chat.thinkingHide")}
-            onCollapse={() => setOpen(false)}
+            onCollapse={collapseRow}
           />
           <div className="prose-chat thinking-prose">
             <Markdown source={text} renderDiagrams={false} />
@@ -1404,6 +1484,8 @@ type ActivityGroupProps = {
   items: ActivityItem[];
   isActive: boolean;
   endedAt?: string;
+  /** Current runtime wait phase, when the group owns the live turn tail. */
+  runtimeActivity?: ActiveAgentActivity;
   /** Delegation statuses from the entire assistant turn (cross-activity-part). */
   turnDelegationStatuses?: ReadonlyMap<string, SubagentOutcome>;
   /** Delegation timings from the entire assistant turn (cross-activity-part). */
@@ -1431,6 +1513,7 @@ function activityGroupPropsEqual(
   if (
     previous.isActive !== next.isActive ||
     previous.endedAt !== next.endedAt ||
+    previous.runtimeActivity !== next.runtimeActivity ||
     previous.items.length !== next.items.length ||
     previous.turnDelegationStatuses !== next.turnDelegationStatuses ||
     previous.turnDelegationTimings !== next.turnDelegationTimings
@@ -1446,6 +1529,7 @@ const ActivityGroup = memo(function ActivityGroup({
   items,
   isActive,
   endedAt,
+  runtimeActivity,
   turnDelegationStatuses,
   turnDelegationTimings,
 }: ActivityGroupProps) {
@@ -1473,11 +1557,15 @@ const ActivityGroup = memo(function ActivityGroup({
   // this card is not the turn's live tail while its delegates are still running.
   const topologyLive = hasSubagentTopology && subagentSummary.running > 0;
   const live = isActive || topologyLive;
-  const [open, setOpen] = useState(hasSubagentTopology && live);
+  const {
+    open,
+    toggle: toggleDisclosure,
+    collapse: collapseDisclosure,
+    claim: claimDisclosure,
+  } = useAutomaticDisclosure(live);
   const [now, setNow] = useState(Date.now);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const wasActiveRef = useRef(live);
-  const topologyAutoOpenedRef = useRef(hasSubagentTopology && live);
   const messages = items.map((item) => item.message);
   const topologyTiming = hasSubagentTopology
     ? delegationTimingBounds(delegateItems, delegationTimings)
@@ -1534,7 +1622,26 @@ const ActivityGroup = memo(function ActivityGroup({
           : // History reloads keep no end timestamp for pure-thinking groups.
             t("chat.thinking", { defaultValue: "Thinking" })
         : t("chat.processedFor", { time: elapsed });
-  const tail = isActive && !open && lastItem ? activityItemSummary(lastItem, t) : "";
+  const runtimeStatus =
+    runtimeActivity?.phase === "waiting-model"
+      ? t("chat.waitingForModel")
+      : runtimeActivity?.phase === "retrying"
+        ? t("chat.retryingModel", { attempt: runtimeActivity.attempt })
+        : runtimeActivity?.phase === "waiting-subagents"
+          ? t("chat.waitingForSubagents", {
+              count: runtimeActivity.subagentCount,
+            })
+          : "";
+  const currentStatus =
+    live && (!hasSubagentTopology || runtimeStatus)
+      ? runtimeStatus ||
+        (lastItem && lastItem.kind !== "thinking"
+          ? activityItemStatus(lastItem, t)
+          : "")
+      : "";
+  const currentDetail =
+    live && !runtimeStatus && lastItem ? activityItemDetail(lastItem) : "";
+  const tail = live && !open ? currentDetail : "";
 
   useEffect(() => {
     if (wasActiveRef.current && !live) setFinishedAt(Date.now());
@@ -1545,15 +1652,9 @@ const ActivityGroup = memo(function ActivityGroup({
     return () => window.clearInterval(id);
   }, [live]);
 
-  useEffect(() => {
-    if (!live || !hasSubagentTopology || topologyAutoOpenedRef.current) return;
-    topologyAutoOpenedRef.current = true;
-    setOpen(true);
-  }, [hasSubagentTopology, live]);
-
   const renderActivityItems = () => {
     let renderedTopology = false;
-    return items.map((item) => {
+    return items.map((item, itemIndex) => {
       if (hasSubagentTopology && isDelegationActivityItem(item)) {
         if (renderedTopology) return null;
         renderedTopology = true;
@@ -1563,6 +1664,7 @@ const ActivityGroup = memo(function ActivityGroup({
             items={delegateItems}
             delegationStatuses={delegationStatuses}
             delegationTimings={delegationTimings}
+            onUserInteraction={claimDisclosure}
           />
         );
       }
@@ -1570,6 +1672,8 @@ const ActivityGroup = memo(function ActivityGroup({
         <Fragment key={item.message.id}>
           <ToolRow
             message={item.message}
+            autoOpen={live && itemIndex === items.length - 1}
+            onUserInteraction={claimDisclosure}
             {...(item.delegate ? { delegate: item.delegate } : {})}
           />
           <ReviewChangeCard message={item.message} />
@@ -1579,6 +1683,8 @@ const ActivityGroup = memo(function ActivityGroup({
           key={`thinking-${item.message.id}`}
           message={item.message}
           streaming={isActive && item.message.status === "streaming"}
+          autoOpen={live && itemIndex === items.length - 1}
+          onUserInteraction={claimDisclosure}
         />
       );
     });
@@ -1588,15 +1694,15 @@ const ActivityGroup = memo(function ActivityGroup({
     <div
       className={`tool-activity-group ${hasSubagentTopology ? "has-subagents" : ""} ${
         open ? "open" : ""
-      } ${
-        live ? "active" : ""
+      } ${live ? "active" : ""}${
+        runtimeActivity ? ` phase-${runtimeActivity.phase}` : ""
       }`}
     >
       <button
         className="tool-activity-header"
         aria-expanded={open}
         aria-controls={detailsId}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleDisclosure}
       >
         <span className="tool-activity-icon" aria-hidden>
           {hasSubagentTopology ? (
@@ -1605,9 +1711,15 @@ const ActivityGroup = memo(function ActivityGroup({
             <IconSparkles size={14} />
           )}
         </span>
-        <span className={`tool-activity-label ${isActive ? "running" : ""}`}>
+        <span className={`tool-activity-label ${live ? "running" : ""}`}>
           {label}
         </span>
+        {currentStatus ? (
+          <span className="tool-activity-current" aria-live="polite">
+            <span className="tool-activity-current-dot" aria-hidden />
+            <span className="tool-activity-current-label">{currentStatus}</span>
+          </span>
+        ) : null}
         {hasSubagentTopology ? (
           <span className="subagent-activity-metrics">
             {t("chat.subagentCount", { count: subagentSummary.total })}
@@ -1642,7 +1754,7 @@ const ActivityGroup = memo(function ActivityGroup({
           <div className="tool-activity-body" id={detailsId}>
             <DisclosureCollapseRail
               label={t("chat.collapseDetails")}
-              onCollapse={() => setOpen(false)}
+              onCollapse={collapseDisclosure}
             />
             {renderActivityItems()}
           </div>
@@ -2034,6 +2146,7 @@ const MessageRow = memo(function MessageRow({
 type AssistantTurnProps = {
   entry: AssistantTurnEntry;
   isActive: boolean;
+  runtimeActivity?: ActiveAgentActivity;
 };
 
 function assistantTurnPropsEqual(
@@ -2042,6 +2155,7 @@ function assistantTurnPropsEqual(
 ) {
   if (
     previous.isActive !== next.isActive ||
+    previous.runtimeActivity !== next.runtimeActivity ||
     previous.entry.anchorId !== next.entry.anchorId ||
     previous.entry.parts.length !== next.entry.parts.length
   ) {
@@ -2104,13 +2218,21 @@ function TranscriptEntryView({
   entry,
   isRunning,
   isActive,
+  runtimeActivity,
 }: {
   entry: TranscriptEntry;
   isRunning: boolean;
   isActive: boolean;
+  runtimeActivity?: ActiveAgentActivity;
 }) {
   if (entry.kind === "assistant-turn") {
-    return <AssistantTurn entry={entry} isActive={isActive} />;
+    return (
+      <AssistantTurn
+        entry={entry}
+        isActive={isActive}
+        runtimeActivity={runtimeActivity}
+      />
+    );
   }
   if (entry.kind === "compaction") {
     return <CompactionRow mark={entry.mark} />;
@@ -2166,27 +2288,32 @@ const TranscriptTail = memo(function TranscriptTail({
   entry,
   isRunning,
   isActive,
+  runtimeActivity,
 }: {
   entry: TranscriptEntry;
   isRunning: boolean;
   isActive: boolean;
+  runtimeActivity?: ActiveAgentActivity;
 }) {
   return (
     <TranscriptEntryView
       entry={entry}
       isRunning={isRunning}
       isActive={isActive}
+      runtimeActivity={runtimeActivity}
     />
   );
 }, (previous, next) =>
   previous.isRunning === next.isRunning &&
   previous.isActive === next.isActive &&
+  previous.runtimeActivity === next.runtimeActivity &&
   transcriptEntryEqual(previous.entry, next.entry)
 );
 
 const AssistantTurn = memo(function AssistantTurn({
   entry,
   isActive,
+  runtimeActivity,
 }: AssistantTurnProps) {
   const { t } = useTranslation();
   const retryAssistantMessage = useAppStore((s) => s.retryAssistantMessage);
@@ -2252,6 +2379,7 @@ const AssistantTurn = memo(function AssistantTurn({
               items={part.items}
               endedAt={part.endedAt}
               isActive={isActive && index === entry.parts.length - 1}
+              runtimeActivity={runtimeActivity}
               turnDelegationStatuses={turnDelegationStatuses}
               turnDelegationTimings={turnDelegationTimings}
             />
@@ -3051,6 +3179,7 @@ export const ChatTranscript = memo(function ChatTranscript({
               entry={tailEntry}
               isRunning={isRunning}
               isActive={isRunning && tailEntry.kind === "assistant-turn"}
+              runtimeActivity={specializedActivity}
             />
           ) : null}
           <TurnOutcomeCard

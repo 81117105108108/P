@@ -870,8 +870,10 @@ query still ranks relevance first and uses recency only as a tiebreaker.
   Sparkles cue, rotating chevron, secondary text, and a subtle left rule only
   around expanded reasoning. It uses semantic theme and focus-ring tokens in
   light and dark modes; it must not introduce a separate inset card.
-- The disclosure is open while a thinking-only response is streaming and may
-  be toggled independently afterward.
+- The latest thinking disclosure opens while a thinking-only response is
+  streaming and closes when the turn settles if it was not touched. A manual
+  toggle owns the disclosure and remains effective through later deltas and
+  completion.
 - The trigger is a button with `aria-expanded`, `aria-controls`, and localized
   Show/Hide labels. Collapsed reasoning is hidden from focus and accessibility
   traversal; reduced-motion mode disables the running marker pulse and
