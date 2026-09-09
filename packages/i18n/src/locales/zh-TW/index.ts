@@ -1742,6 +1742,7 @@ export const zhTW = {
       thinking: "推理強度",
       thinkingHint: "可選，且受模型支援範圍限制。",
       thinkingInherit: "與會話一致",
+      thinkingOmit: "不傳遞",
       maxTurns: "輪次上限",
       maxTurnsHint: "用來兜住停不下來的子智慧體。1–{{max}}，留空表示不限制。",
       maxTurnsUnlimited: "不限制",

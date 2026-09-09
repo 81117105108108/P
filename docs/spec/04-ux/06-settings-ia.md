@@ -353,7 +353,8 @@ system while preserving their different data ownership:
   keeps the width.
 - The Subagents create/edit sheet pins a model with a select of the same
   configured, runnable models the Composer offers, grouped by provider, plus
-  an inherit-session option. Only model bindings explicitly marked
+  an inherit-session option. Its thinking selector offers inherit-session,
+  do-not-send, and the seven canonical levels. Only bindings explicitly marked
   `availableForSubagents` appear. A **Custom (provider/model)** option opens a
   free-text field for a model outside the list; when no delegation model is
   configured, the sheet shows that field directly with a hint to open Models.
@@ -362,6 +363,10 @@ system while preserving their different data ownership:
   `vendorKey-or-name/modelId`; generic or colliding provider aliases use a
   unique display name, then the stored provider id, to keep each provider's
   choices distinct.
+
+- The selected model-configuration thinking chip uses a solid accent fill with
+  inverted primary text in both light and dark themes, so the enabled level is
+  visually distinct from the track.
 
 - Subagents open one **New subagent / Edit subagent** sheet that
   pre-fills the same fields the runtime's `BUILTIN_SUBAGENT_DOCUMENTS` ship

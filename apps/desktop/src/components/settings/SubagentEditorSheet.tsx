@@ -6,12 +6,12 @@ import {
   MAX_SUBAGENT_MAX_TURNS,
   SUBAGENT_ASSIGNABLE_TOOLS,
   SUBAGENT_PRESETS,
-  THINKING_LEVELS,
+  SUBAGENT_THINKING_LEVELS,
   isSubagentMutatingTool,
   resolveScope,
   type ActivationScope,
   type SubagentPreset,
-  type ThinkingLevel,
+  type SubagentThinkingLevel,
   type UserSubagentRecord,
 } from "@pi-desktop/shared";
 import { useAppStore } from "../../stores/app-store";
@@ -36,7 +36,7 @@ export type SubagentDraft = {
   /** `<provider>/<model>`, or empty for "same model as this session". */
   model: string;
   /** Empty means "whatever the session uses". */
-  thinkingLevel: ThinkingLevel | "";
+  thinkingLevel: SubagentThinkingLevel | "";
   /** `0` means no limit, which is what a definition without `maxTurns` gets. */
   maxTurns: number;
   body: string;
@@ -384,16 +384,19 @@ function ModelField({
             onChange={(event) =>
               setDraft({
                 ...draft,
-                thinkingLevel: event.target.value as ThinkingLevel | "",
+                thinkingLevel: event.target.value as SubagentThinkingLevel | "",
               })
             }
           >
             <option value="">{t("extensions.subagents.thinkingInherit")}</option>
-            {THINKING_LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {level}
-              </option>
-            ))}
+            <option value="omit">{t("extensions.subagents.thinkingOmit")}</option>
+            {SUBAGENT_THINKING_LEVELS.filter((level) => level !== "omit").map(
+              (level) => (
+                <option key={level} value={level}>
+                  {level}
+                </option>
+              ),
+            )}
           </Select>
         </Field>
       </div>

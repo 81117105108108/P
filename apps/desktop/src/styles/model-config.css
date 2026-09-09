@@ -1047,9 +1047,9 @@
 
 /* The chosen level is the raised segment of the track (D297). */
 .provider-thinking-chip.selected {
-  background: var(--ds-raised);
+  background: var(--ds-accent);
   box-shadow: var(--ds-raised-shadow);
-  color: var(--ds-text-primary);
+  color: var(--ds-bg-primary);
 }
 
 .provider-thinking-chip:focus-visible {

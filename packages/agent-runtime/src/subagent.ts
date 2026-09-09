@@ -38,7 +38,7 @@ import {
   type MessageUsage,
   type SubagentDefinition,
   type SubagentRunStatus as SharedSubagentRunStatus,
-  type ThinkingLevel,
+  type SubagentThinkingLevel,
   type UiMessage,
 } from "@pi-desktop/shared";
 import { classifyAgentError } from "./agent-errors.js";
@@ -116,7 +116,7 @@ export type SubagentRunOptions = {
   /** Provider resolved by Electron main (the definition's pin, or the
    * session's provider when the definition pins nothing). */
   provider: RuntimeProviderConfig;
-  thinkingLevel: ThinkingLevel;
+  thinkingLevel: SubagentThinkingLevel;
   /** Fully composed child system prompt (see `composeSubagentSystemPrompt`). */
   systemPrompt: string;
   /** Host-backed tools, built by the session runtime so a delegate's calls
@@ -204,6 +204,18 @@ export class SubagentRun {
     this.opts = opts;
     const model = buildProviderModel(opts.provider);
     const models = createProviderModels(opts.provider, model);
+    const omitThinking = opts.thinkingLevel === "omit";
+    const agentThinkingLevel =
+      opts.thinkingLevel === "omit" ? "off" : opts.thinkingLevel;
+    // The Responses adapter's low-level stream still uses a model-level
+    // `off` mapping as its fallback. Null it only for the omit path so the
+    // provider receives no synthesized reasoning setting at all.
+    const omitThinkingModel = omitThinking
+      ? {
+          ...model,
+          thinkingLevelMap: { ...model.thinkingLevelMap, off: null },
+        }
+      : model;
     const requestKey = providerRequestKey(opts.provider);
     this.agent = new Agent({
       streamFn: (m, context, options) => {
@@ -238,7 +250,10 @@ export class SubagentRun {
           m,
           context,
           requestOptions,
-          (retryOptions) => models.streamSimple(m, context, retryOptions),
+          (retryOptions) =>
+            omitThinking
+              ? models.stream(omitThinkingModel, context, retryOptions)
+              : models.streamSimple(m, context, retryOptions),
           {
             claim: (error, phase) => this.claimProviderRetry(error, phase),
             headers: () => this.providerRetryHeaders,
@@ -253,7 +268,7 @@ export class SubagentRun {
         systemPrompt: opts.systemPrompt,
         model,
         tools: opts.tools,
-        thinkingLevel: opts.thinkingLevel,
+        thinkingLevel: agentThinkingLevel,
         messages: [],
       },
       // A delegate is a worker, not a fan-out point: its own tool calls run

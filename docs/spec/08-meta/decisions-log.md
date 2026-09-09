@@ -3947,3 +3947,14 @@ D193, and D194.
   aggregate tool row still describe the visual turn.
 - Renderer only. Host completed-turn rollups and Token Insights stay additive
   billing. See ADR 0193 and E2E-060d.
+
+## 2026-09-09 — Optional subagent thinking override and readable selected levels (D356)
+
+- The subagent editor now offers inherit-session, do-not-send, and the seven
+  canonical thinking levels. Do-not-send is stored as `thinkingLevel: omit`.
+- `omit` keeps the agent's bookkeeping state at `off` but uses the low-level
+  provider stream so no thinking override is synthesized. Existing inheritance
+  and explicit `off` remain distinct.
+- Model-configuration thinking chips use an accent/inverted-text selected state
+  in both themes so enabled levels are obvious. No storage schema or protocol
+  version change is required. See ADR 0194 and E2E-203.

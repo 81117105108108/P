@@ -8701,3 +8701,27 @@ are withdrawn with ADR 0165.
 - **Status**: Unit/wiring-covered (`model-capabilities.test.ts`,
   `apps/desktop/test/subagent-wiring.test.mjs`); full UI journey Draft (do not
   run E2E locally unless explicitly requested)
+
+#### E2E-203: Omit subagent thinking override and read selected levels in dark mode
+
+- **Preconditions**: A configured subagent model supports reasoning, and the
+  application has both light and dark themes available.
+- **Steps**: 1) Open Settings → Agent → Subagents and inspect the thinking
+  selector. 2) Confirm it contains inherit-session, do-not-send, `off`, and
+  the canonical levels. 3) Choose do-not-send, save, and confirm the document
+  contains `thinkingLevel: omit`. 4) Run the subagent through a provider with a
+  meaningful adapter default and inspect the outbound request. 5) Switch to
+  dark mode, open Settings → Model configuration, expand a model's Advanced
+  section, and select multiple thinking-level chips.
+- **Expected**: Inherit continues to use the parent level; do-not-send
+  persists and sends no provider thinking override; explicit `off` remains an
+  explicit disable. Selected thinking chips have a solid high-contrast fill
+  and readable text in both themes, and each selected level is visually
+  distinguishable from the track.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/02-agent-runtime.md`, `03-runtime/13-model-catalog-and-selection.md`,
+  `04-ux/06-settings-ia.md`, ADR 0194 / D356
+- **Acceptance**: B (model configuration) + C (chat/stream) + Quality
+- **Milestone**: M6+
+- **Status**: Unit/source-contract-covered; full UI journey Draft (do not run
+  E2E locally unless explicitly requested)

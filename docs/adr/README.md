@@ -206,3 +206,4 @@ Each ADR includes:
 | 0191 | Label both macOS release architectures | Accepted (amends 0145 / D353) |
 | 0192 | Alias a configured model and make model ids copyable | Accepted (amends D266) |
 | 0193 | Last-request occupancy in the context inspector | Accepted (amends 0047 / 0103 / 0184) |
+| 0194 | Optional subagent thinking override | Accepted for implementation |

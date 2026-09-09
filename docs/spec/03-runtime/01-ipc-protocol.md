@@ -1124,6 +1124,11 @@ written into the Markdown file.
 - `agents.remove(id)`
 - `agents.setEnabled(id, enabled)`
 
+The `thinkingLevel` field accepted by `agents.create` and `agents.update` may
+be a canonical thinking level, `omit`, or the empty string. The empty string
+clears the override; `omit` is persisted as `thinkingLevel: omit` and tells the
+runtime not to send a provider thinking override.
+
 Electron's `subagent/list` IPC channel exposes the same global-only list to
 Settings > Agent > Subagents. The runtime catalog combines these global user
 documents with its builtins; it does not scan `.pi/agents` or any project

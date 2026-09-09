@@ -89,6 +89,15 @@ test("the capability controls and default selector are styled", () => {
   assert.match(styles, /\.provider-chosen-thinking-select:focus-visible \{/);
 });
 
+test("selected thinking chips keep high contrast in both themes", () => {
+  const selectedRule = styles.match(
+    /\.provider-thinking-chip\.selected \{[\s\S]*?\n\}/,
+  )?.[0];
+  assert.ok(selectedRule);
+  assert.match(selectedRule, /background: var\(--ds-accent\)/);
+  assert.match(selectedRule, /color: var\(--ds-bg-primary\)/);
+});
+
 test("thinking levels use a compact accessible grouped control", () => {
   assert.match(
     pickerSource,

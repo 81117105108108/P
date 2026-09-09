@@ -1730,6 +1730,7 @@ export const de = {
       "thinking": "Begründung",
       "thinkingHint": "Optional und begrenzt durch das, was das Modell unterstützt.",
       "thinkingInherit": "Identisch mit der Sitzung",
+      "thinkingOmit": "Nicht senden",
       "maxTurns": "Rundenlimit",
       "maxTurnsHint": "Stoppt einen Delegaten, der nie beendet wird. 1–{{max}}, oder leer lassen, um keine Begrenzung zu erhalten.",
       "maxTurnsUnlimited": "Keine Begrenzung",

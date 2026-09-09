@@ -1730,6 +1730,7 @@ export const fr = {
       "thinking": "Raisonnement",
       "thinkingHint": "Facultatif et plafonné par ce que le modèle prend en charge.",
       "thinkingInherit": "Identique à la session",
+      "thinkingOmit": "Ne pas envoyer",
       "maxTurns": "Limite de tours",
       "maxTurnsHint": "Arrête un délégué qui ne termine jamais. 1–{{max}}, ou laissez vide pour aucune limite.",
       "maxTurnsUnlimited": "Aucune limite",

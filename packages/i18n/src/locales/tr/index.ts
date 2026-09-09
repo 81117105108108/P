@@ -1768,6 +1768,7 @@ export const tr = {
       thinking: "Akıl yürütme",
       thinkingHint: "İsteğe bağlı ve modelin desteklediğiyle sınırlı.",
       thinkingInherit: "Oturumla aynı",
+      thinkingOmit: "Gönderme",
       maxTurns: "Tur sınırı",
       maxTurnsHint: "Bitmeyen bir devri durdurur. 1–{{max}} veya sınır yoksa boş bırakın.",
       maxTurnsUnlimited: "Sınır yok",

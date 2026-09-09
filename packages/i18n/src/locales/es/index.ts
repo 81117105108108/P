@@ -1730,6 +1730,7 @@ export const es = {
       "thinking": "Razonamiento",
       "thinkingHint": "Opcional y limitado por lo que admite el modelo.",
       "thinkingInherit": "Igual que la sesión",
+      "thinkingOmit": "No enviar",
       "maxTurns": "Límite de turnos",
       "maxTurnsHint": "Detiene a un delegado que nunca termina. 1–{{max}}, o déjelo vacío para que no haya límite.",
       "maxTurnsUnlimited": "Sin límite",
