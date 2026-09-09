@@ -585,7 +585,6 @@ function AppShell() {
           kind: "task",
           title,
           body,
-          source: "task",
         })
         .catch(() => undefined);
     });

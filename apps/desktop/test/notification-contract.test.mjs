@@ -91,8 +91,8 @@ test("task and interactive native notifications keep separate visibility rules",
   assert.match(mainSource, /IPC\.event\.notificationActivated/);
   assert.match(mainSource, /mainWindow\.restore\(\)/);
   assert.match(appSource, /showNativeNotification/);
-  assert.match(appSource, /source: "task"/);
-  assert.match(storeSource, /source: "interactive"/);
+  assert.match(appSource, /kind: "task"/);
+  assert.match(storeSource, /kind: "interactive"/);
   assert.match(mainSource, /input\.kind === "interactive"/);
   assert.match(appSource, /openNotification\(id\)/);
   assert.match(
