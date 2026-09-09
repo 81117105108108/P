@@ -324,7 +324,7 @@ Warnings are non-blocking unless execution is impossible.
    image transport. Unknown/custom models therefore show the path-fallback
    status in Composer.
 4. The main process prepares pasted images as content-addressed refs. A
-   vision-capable model receives images within the 20 MiB app-side inline
+   vision-capable model receives images within the 10 MB app-side inline
    bound as transient image blocks; other cases receive a safe `@path`.
 
 ### 11.3 Settings model-add metadata

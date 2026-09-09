@@ -2412,7 +2412,7 @@ Anatomy:
   displays the leaf name, keeps the structured reference in session-scoped
   transient state, and submits it separately from visible text. Main stores
   image bytes under `attachments/<sha256>` and sends visual input only when the
-  selected models.dev model accepts images and the 20 MiB inline bound is met;
+  selected models.dev model accepts images and the 10 MB inline bound is met;
   otherwise it appends a safe `@path` fallback. Removing a chip does not delete
   scratch bytes. A text-only paste longer than `largePasteThreshold` follows
   the same bounded session bridge with generated `text/plain` UTF-8 bytes,

@@ -5342,7 +5342,7 @@ Each scenario is documented in this format:
 
 - **Preconditions**: One known non-vision model and one known vision-capable
   model; an Agent session; a normal PNG and a deterministic image just above
-  the 20 MiB inline bound.
+  the 10 MB inline bound.
 - **Steps**:
   1. Select the non-vision model, paste the normal PNG, and inspect Composer's
      removable image chip.
@@ -5396,7 +5396,7 @@ Each scenario is documented in this format:
 
 #### E2E-102f: Oversized image references do not block session startup
 
-- **Preconditions**: A project contains an image larger than the 20 MiB inline
+- **Preconditions**: A project contains an image larger than the 10 MB inline
   bound; a known vision-capable model is selected; the session has a valid
   provider and workspace.
 - **Steps**: 1. Reference the oversized image from the Composer and send a
