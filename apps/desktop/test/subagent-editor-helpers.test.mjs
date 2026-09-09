@@ -20,7 +20,7 @@ const presetSource = await readFile(
   "utf8",
 );
 
-test("applySubagentPreset copies the preset wholesale except for id/body", () => {
+test("applySubagentPreset replaces only the template-owned fields", () => {
   const m = editorSource.match(
     /export function applySubagentPreset\([\s\S]+?\n\}/,
   );
@@ -39,6 +39,23 @@ test("applySubagentPreset copies the preset wholesale except for id/body", () =>
   assert.doesNotMatch(fn, /thinkingLevel: preset/);
   assert.doesNotMatch(fn, /scope: preset/);
   assert.doesNotMatch(fn, /enabled: preset/);
+});
+
+test("resetSubagentTemplate clears a selected preset without dropping model choices", () => {
+  const m = editorSource.match(
+    /export function resetSubagentTemplate\([\s\S]+?\n\}/,
+  );
+  assert.ok(m, "resetSubagentTemplate not found");
+  const fn = m[0];
+  assert.match(fn, /name: ""/);
+  assert.match(fn, /description: ""/);
+  assert.match(fn, /tools: \[\.\.\.DEFAULT_SUBAGENT_TOOLS\]/);
+  assert.match(fn, /maxTurns: 0/);
+  assert.match(fn, /body: ""/);
+  assert.doesNotMatch(fn, /model:/);
+  assert.doesNotMatch(fn, /thinkingLevel:/);
+  assert.doesNotMatch(fn, /scope:/);
+  assert.match(editorSource, /setDraft\(resetSubagentTemplate\(draft\)\)/);
 });
 
 test("preset ids and builtin document ids agree", () => {
