@@ -251,7 +251,7 @@ wrong contract, so no artifact is written and no approval row is created.
 |---|---|
 | auth/config (`PROVIDER_SECRET_MISSING`, `MODEL_NOT_CONFIGURED`) | assistant error message with settings CTA |
 | permission denials | inline tool card state |
-| retriable provider/network | assistant error message with diagnostic details; session-scoped failed-turn recovery card provides retry |
+| retriable provider/network | assistant error message with diagnostic details and Continue; the session-scoped failed-turn recovery card is a fallback only when no structured assistant error is present |
 | internal/host unavailable | degraded banner + recovery tip |
 
 Message-bound provider failures never use a toast or floating global banner.
@@ -266,8 +266,9 @@ show bounded `phase`, `providerStatus`, `providerCode`, `providerWaitMs`,
 `streamMs`, and `retryAttempt` fields. The assistant error card offers a localized
 Continue action that resends the continuation prompt (`继续当前任务` /
 `Continue the current task`) in the same session without truncating the failed
-turn. Regenerate remains available from the session-scoped failed-turn recovery
-card rather than the assistant error card.
+turn. The session-scoped failed-turn recovery card is used only when no
+structured assistant error is present; neither failure surface offers
+Regenerate.
 
 ## 6. i18n key convention
 
