@@ -21,7 +21,11 @@ import type {
   ProposalKind,
   UiMessage,
 } from "@pi-desktop/shared";
-import { proposalKindForMode } from "@pi-desktop/shared";
+import {
+  proposalKindForMode,
+  THINKING_LEVELS,
+  type ThinkingLevel,
+} from "@pi-desktop/shared";
 import { ConversationMinimap } from "./ConversationMinimap";
 import { TurnOutcomeCard } from "./TurnOutcomeCard";
 import { ReviewChangeCard } from "./ReviewChangeCard";
@@ -558,6 +562,24 @@ function delegateModelId(message: UiMessage): string {
   return typeof modelId === "string" ? modelId.trim() : "";
 }
 
+/** Effective thinking level resolved for this delegation, from the Task result.
+ * `off` and `omit` deliberately have no visible suffix. */
+function delegateThinkingLevel(message: UiMessage): ThinkingLevel | undefined {
+  const payload = toolResultPayload(message);
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return undefined;
+  }
+  const value = (payload as { thinkingLevel?: unknown }).thinkingLevel;
+  if (
+    typeof value !== "string" ||
+    value === "off" ||
+    !THINKING_LEVELS.includes(value as ThinkingLevel)
+  ) {
+    return undefined;
+  }
+  return value as ThinkingLevel;
+}
+
 /**
  * Copies a run row's command from its head. The expanded body holds only the
  * output, so this is the one place the command can be taken from (D226).
@@ -696,6 +718,10 @@ const ToolRow = memo(function ToolRow({
       ? delegateAgentName(message, delegate)
       : "";
   const modelId = variant === "topology" ? delegateModelId(message) : "";
+  const thinkingLevel =
+    variant === "topology" ? delegateThinkingLevel(message) : undefined;
+  const thinkingLabel = thinkingLevel ? t(`thinkingLevel.${thinkingLevel}`) : "";
+  const modelLabel = [modelId, thinkingLabel].filter(Boolean).join(" ");
   // The delegate's last answer row is its report, so the body must not print
   // the same text a second time.
   const nestedReport = delegate?.items.some((item) => item.kind === "answer");
@@ -794,7 +820,7 @@ const ToolRow = memo(function ToolRow({
         renderedOpen ? "open" : ""
       } status-${run === "failed" ? "error" : status || "success"}${outcome ? ` outcome-${outcome.replaceAll("_", "-")}` : ""}`}
       role={variant === "topology" ? "listitem" : "region"}
-      aria-label={`${t("chat.toolCall")}: ${rawName}${agentName ? `, ${agentName}` : ""}${modelId ? `, ${modelId}` : ""}${statusLabel ? `, ${statusLabel}` : ""}`}
+      aria-label={`${t("chat.toolCall")}: ${rawName}${agentName ? `, ${agentName}` : ""}${modelLabel ? `, ${modelLabel}` : ""}${statusLabel ? `, ${statusLabel}` : ""}`}
     >
       {variant === "topology" ? (
         <button
@@ -802,7 +828,7 @@ const ToolRow = memo(function ToolRow({
           aria-expanded={panelOpen}
           aria-controls={hasDetails ? "subagent-panel" : undefined}
           disabled={!hasDetails}
-          title={summary || agentName || rawName}
+          title={[agentName || rawName, modelLabel, summary].filter(Boolean).join(" · ")}
           onClick={() => {
             if (!hasDetails) return;
             onUserInteraction?.();
@@ -828,9 +854,13 @@ const ToolRow = memo(function ToolRow({
               <span className="subagent-topology-node-title">
                 {agentName || t("chat.subagentUnnamed")}
               </span>
-              {modelId ? (
-                <span className="subagent-topology-node-model" title={modelId}>
-                  {modelId}
+              {modelLabel ? (
+                <span
+                  className="subagent-topology-node-model"
+                  title={modelLabel}
+                  aria-label={modelLabel}
+                >
+                  {modelLabel}
                 </span>
               ) : null}
               <span className="subagent-topology-node-status">
@@ -1161,6 +1191,9 @@ export function SubagentDetail({
   const { t } = useTranslation();
   const agentName = delegateAgentName(message, delegate);
   const modelId = delegateModelId(message);
+  const thinkingLevel = delegateThinkingLevel(message);
+  const thinkingLabel = thinkingLevel ? t(`thinkingLevel.${thinkingLevel}`) : "";
+  const modelLabel = [modelId, thinkingLabel].filter(Boolean).join(" ");
   const outcome = subagentOutcome(message, delegationStatuses);
   const payload = toolResultPayload(message);
   const payloadRecord =
@@ -1231,9 +1264,13 @@ export function SubagentDetail({
             <strong className="subagent-detail-name">
               {agentName || t("chat.subagentUnnamed")}
             </strong>
-            {modelId ? (
-              <span className="subagent-detail-model" title={modelId}>
-                {modelId}
+            {modelLabel ? (
+              <span
+                className="subagent-detail-model"
+                title={modelLabel}
+                aria-label={modelLabel}
+              >
+                {modelLabel}
               </span>
             ) : null}
           </div>

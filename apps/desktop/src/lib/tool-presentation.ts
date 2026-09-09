@@ -638,7 +638,10 @@ function resultBlocks(
         ? Object.fromEntries(
             Object.entries(details).filter(
               ([key]) =>
-                key !== "agent" && key !== "error" && key !== "modelId",
+                key !== "agent" &&
+                key !== "error" &&
+                key !== "modelId" &&
+                key !== "thinkingLevel",
             ),
           )
         : {};

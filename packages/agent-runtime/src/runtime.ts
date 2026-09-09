@@ -64,6 +64,7 @@ import type {
   Risk,
   SubagentDefinition,
   SubagentRunStatus,
+  SubagentThinkingLevel,
   ThinkingLevel,
   ToolTokenUsage,
   UiMessage,
@@ -269,6 +270,8 @@ export type DelegationStatus =
 export type DelegationRecord = {
   delegationId: string;
   agentName: string;
+  modelId: string;
+  thinkingLevel: SubagentThinkingLevel;
   status: DelegationStatus;
   startedAt: number;
   completedAt?: number;
@@ -293,6 +296,8 @@ function delegationSummary(record: DelegationRecord): Record<string, unknown> {
   return {
     delegationId: record.delegationId,
     agent: record.agentName,
+    modelId: record.modelId,
+    thinkingLevel: record.thinkingLevel,
     status: record.status,
     startedAt: record.startedAt,
     turns: record.result?.turns ?? record.turns,
@@ -2991,6 +2996,13 @@ Delegation rules:
         // immediately with a delegation id, and TaskWait converges later.
         const delegationId = randomUUID();
         const controller = new AbortController();
+        const thinkingLevel: SubagentThinkingLevel =
+          definition.thinkingLevel === "omit"
+            ? "omit"
+            : clampThinkingLevel(
+                provider,
+                definition.thinkingLevel ?? this.thinkingLevel,
+              );
         // Only TaskStop, user Stop, dispose, and a parent fatal error abort a
         // delegate (D328 / D352). The Task tool call returns immediately; tying
         // the background run to that call's signal would kill it when the parent
@@ -3003,6 +3015,8 @@ Delegation rules:
         const record: DelegationRecord = {
           delegationId,
           agentName: definition.name,
+          modelId: provider.modelId,
+          thinkingLevel,
           status: "running",
           startedAt,
           completion,
@@ -3024,13 +3038,7 @@ Delegation rules:
           parentToolCallId: toolCallId,
           task,
           provider,
-          thinkingLevel:
-            definition.thinkingLevel === "omit"
-              ? "omit"
-              : clampThinkingLevel(
-                  provider,
-                  definition.thinkingLevel ?? this.thinkingLevel,
-                ),
+          thinkingLevel,
           systemPrompt: composeSubagentSystemPrompt({
             definition,
             guidance: this.subagentGuidance(definition),
@@ -3062,6 +3070,8 @@ Delegation rules:
               });
               this.settleDelegation(record, {
                 agentName: definition.name,
+                modelId: provider.modelId,
+                thinkingLevel,
                 status: "failed",
                 report: "",
                 turns: 0,
@@ -3092,6 +3102,7 @@ Delegation rules:
             status: "running",
             startedAt,
             modelId: provider.modelId,
+            thinkingLevel,
           },
         };
       },
@@ -3445,6 +3456,8 @@ Delegation rules:
           delegationId: record.delegationId,
           agent: record.agentName,
           status: record.status,
+          modelId: record.modelId,
+          thinkingLevel: record.thinkingLevel,
           startedAt: record.startedAt,
           ...(record.completedAt ? { completedAt: record.completedAt } : {}),
           ...(record.result?.error ? { error: record.result.error } : {}),

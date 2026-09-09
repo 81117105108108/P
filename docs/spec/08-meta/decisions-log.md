@@ -4038,3 +4038,15 @@ D193, and D194.
   imports, renames, and deletes; the renderer reuses `refreshSessions()`, while
   skipped imports emit nothing and closed project tabs are not reopened. See
   E2E-216.
+
+## 2026-09-09 — Effective subagent thinking metadata (D369)
+
+- Delegation cards need the thinking level actually passed to each child run,
+  not a value re-derived from the parent or definition after the target model
+  clamps it.
+- Decision D369 / ADR 0202 adds effective `modelId` and `thinkingLevel` to the
+  immediate `Task` result, `SubagentRunResult`, and lifecycle snapshots. The
+  topology node and side-dock header show a localized non-`off` level after the
+  model name; `off`, `omit`, and unsupported reasoning remain model-only.
+  No host protocol, storage schema, provider request, or lifecycle behavior
+  changes. See E2E-219.

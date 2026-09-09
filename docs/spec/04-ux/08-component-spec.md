@@ -968,9 +968,13 @@ It does not render separate Details or Output tabs.
   a real upward gesture pauses follow and exposes the standard jump-to-latest
   control.
 - The selected delegate uses a sticky identity header: a 36px avatar with a
-  status dot, the agent name as the title, and the model as a caption. A
+  status dot, the agent name as the title, and the effective model plus a
+  concrete non-`off` thinking level as a caption (for example, `GPT-5.6-Luna
+  Max`). `off`, `omit`, and models without reasoning support add no suffix. A
   tinted status capsule and elapsed time sit on the same row, trailing the
-  identity, and never wrap onto a second line; the name ellipsizes first.
+  identity, and never wrap onto a second line; the name ellipsizes first. The
+  same caption appears on every delegation topology node, and its accessible
+  name and hover title contain the complete model/level label.
   The task is an inset grouped card
   under a **Task** section label, left-aligned and full-width, not a transcript
   bubble. The card shows at most four lines by default; longer tasks expose an

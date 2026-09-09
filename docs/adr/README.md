@@ -213,3 +213,4 @@ Each ADR includes:
 | 0198 | Name every quiet interval on the live activity row | Accepted (amends 0175 / 0186) |
 | 0200 | Host-owned plugin session import and ownership API | Accepted |
 | 0201 | Explicit plugin project ids and host-owned session refresh | Accepted |
+| 0202 | Expose effective subagent thinking metadata | Accepted |

@@ -167,15 +167,41 @@ test("a Task node shows the effective model after the subagent name", () => {
   );
   assert.match(
     transcriptSource,
-    /className="subagent-topology-node-model" title=\{modelId\}/,
+    /className="subagent-topology-node-model"[\s\S]*?title=\{modelLabel\}/,
   );
   assert.match(
     toolPresentationSource,
-    /key !== "agent" && key !== "error" && key !== "modelId"/,
+    /key !== "agent" &&[\s\S]*?key !== "error" &&[\s\S]*?key !== "modelId" &&[\s\S]*?key !== "thinkingLevel"/,
   );
   assert.match(
     messagesCss,
     /\.subagent-topology-node-model \{[^}]*font-family: var\(--font-mono\)/,
+  );
+});
+
+test("a Task node and detail header show the effective thinking level", () => {
+  assert.match(
+    runtimeSource,
+    /modelId: provider\.modelId,\s*\n\s*thinkingLevel,/,
+  );
+  assert.match(
+    runtimeSource,
+    /modelId: record\.modelId,\s*\n\s*thinkingLevel: record\.thinkingLevel,/,
+  );
+  assert.match(transcriptSource, /function delegateThinkingLevel\(message: UiMessage\)/);
+  assert.match(transcriptSource, /value === "off"/);
+  assert.match(transcriptSource, /t\(`thinkingLevel\.\$\{thinkingLevel\}`\)/);
+  assert.match(
+    transcriptSource,
+    /const modelLabel = \[modelId, thinkingLabel\]\.filter\(Boolean\)\.join\(" "\);/,
+  );
+  assert.match(
+    transcriptSource,
+    /className="subagent-topology-node-model"[\s\S]*?title=\{modelLabel\}[\s\S]*?aria-label=\{modelLabel\}/,
+  );
+  assert.match(
+    transcriptSource,
+    /className="subagent-detail-model"[\s\S]*?title=\{modelLabel\}[\s\S]*?aria-label=\{modelLabel\}/,
   );
 });
 

@@ -4976,6 +4976,7 @@ describe("DesktopAgentRuntime subagents", () => {
     expect(result.details).toMatchObject({
       agent: "reviewer",
       status: "running",
+      thinkingLevel: "omit",
     });
     expect(subagentRuns.calls[0].thinkingLevel).toBe("omit");
     await runtime.dispose();
@@ -5030,6 +5031,7 @@ describe("DesktopAgentRuntime subagents", () => {
       agent: "reviewer",
       status: "running",
       modelId: "remote-model",
+      thinkingLevel: "off",
     });
     const delegationId = (result.details as any).delegationId as string;
     expect(delegationId.length).toBeGreaterThan(0);

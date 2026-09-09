@@ -246,6 +246,18 @@ describe("SubagentRun reporting", () => {
     expect(result.report).toContain("[subagent report truncated]");
   });
 
+  it("records the effective model and thinking selection", () => {
+    const { run } = createRun({
+      provider: { ...provider, modelId: "child-model" },
+      thinkingLevel: "max",
+    });
+
+    expect(run.result("completed", "Done.")).toMatchObject({
+      modelId: "child-model",
+      thinkingLevel: "max",
+    });
+  });
+
   it("explains a truncated, aborted, or failed run in the parent's text", () => {
     const { run } = createRun();
     run.turns = 3;

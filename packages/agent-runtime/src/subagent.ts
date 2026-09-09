@@ -89,6 +89,10 @@ export type SubagentRunStatus = SharedSubagentRunStatus;
 
 export type SubagentRunResult = {
   agentName: string;
+  /** Provider/model used by this run after delegation resolution. */
+  modelId: string;
+  /** Thinking selection passed to the delegate after inheritance/clamping. */
+  thinkingLevel: SubagentThinkingLevel;
   status: SubagentRunStatus;
   /** Text handed back to the parent model. */
   report: string;
@@ -415,6 +419,8 @@ export class SubagentRun {
               ].join("\n\n");
     return {
       agentName: name,
+      modelId: this.opts.provider.modelId,
+      thinkingLevel: this.opts.thinkingLevel,
       status,
       report: boundedReport(text),
       turns: this.turns,
