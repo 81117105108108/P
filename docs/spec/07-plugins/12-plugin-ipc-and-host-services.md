@@ -127,7 +127,10 @@ plugin runtime
 
 - Create an isolated view when opening a panel
 - Pass in pluginId / theme tokens
-- Destroy the view and message subscriptions on close
+- Destroy the view and message subscriptions on close. Cleanup that needs a
+  `webContents` identity copies that id before the window is destroyed; the
+  `closed` handler must not read `webContents` on a destroyed window, or the
+  host surfaces an uncaught `TypeError: Object has been destroyed`.
 - The preload exposes `pluginBridge.getDroppedFilePath(file)` without exposing
   Node to the page. A panel may call `fs.registerDropped` with that path; the
   host consumes a sender-bound recent drop record once and issues a one-file

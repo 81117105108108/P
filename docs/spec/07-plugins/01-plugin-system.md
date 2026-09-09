@@ -219,6 +219,10 @@ are reachable there) and CPU/memory limits.
 ### 6.3 Plugin Panel UI
 - Load the plugin page in a dedicated sandboxed `BrowserWindow` and isolated
   per-plugin session partition
+- Closing a panel (capsule close, disable, uninstall, or crash teardown) must
+  not read a destroyed `BrowserWindow` or its `webContents`. The host copies
+  any contents identity needed for drop-record cleanup while the window is
+  still alive so the `closed` handler cannot raise `Object has been destroyed`.
 - Use a frameless window on macOS, Windows, and Linux. The preload reserves
   exactly a transparent 46px drag band and renders only a minimal fixed
   top-right capsule with three controls: minimize, maximize/restore, and close.

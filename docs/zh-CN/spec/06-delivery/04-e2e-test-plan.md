@@ -1161,9 +1161,9 @@ M5。
 #### E2E-024D：隔离插件面板主桥
 
 - **先决条件**：启用 `ui.panel` 的插件。
-- **步骤**： 1) 打开插件面板。 2) 调用面板桥 API（`ui.showToast`、可选的 fs/net（带授权））。
-- **预期**：面板在沙盒 window/partition 中运行；桥接调用经过许可检查；主机在面板关闭时保持稳定。
-- **链接规格**：`07-plugins/03-plugin-api.md`、`07-plugins/04-plugin-security.md`
+- **步骤**： 1) 打开插件面板。 2) 调用面板桥 API（`ui.showToast`、可选的 fs/net（带授权））。 3) 通过胶囊关闭面板，以及通过禁用或卸载插件关闭面板。
+- **预期**：面板在沙盒 window/partition 中运行；桥接调用经过许可检查；主机在面板关闭时保持稳定，主进程不得抛出 `TypeError: Object has been destroyed` 或弹出未捕获异常对话框。
+- **链接规格**：`07-plugins/01-plugin-system.md`、`07-plugins/03-plugin-api.md`、`07-plugins/04-plugin-security.md`、`07-plugins/12-plugin-ipc-and-host-services.md`
 - **验收**：G（隔离面板）
 - **状态**：已记录
 

@@ -352,8 +352,12 @@ export class PluginPanelHost {
     win.on("unmaximize", sendWindowState);
     win.webContents.on("did-finish-load", sendWindowState);
 
+    // `closed` fires after the native window is gone. Copy the contents id
+    // while the window is still alive; reading `webContents` later throws
+    // "Object has been destroyed" and surfaces an uncaught main-process dialog.
+    const webContentsId = win.webContents.id;
     win.on("closed", () => {
-      this.pendingDrops.delete(win.webContents.id);
+      this.pendingDrops.delete(webContentsId);
       this.windows.delete(request.pluginId);
     });
 

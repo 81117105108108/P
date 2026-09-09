@@ -81,6 +81,18 @@ test("plugin panels expose host-owned dropped-file authorization", () => {
   assert.match(hostSource, /DROPPED_PATH_TTL_MS/);
 });
 
+test("plugin panel close does not read destroyed webContents", () => {
+  assert.match(
+    hostSource,
+    /const webContentsId = win\.webContents\.id;\s*win\.on\("closed", \(\) => \{\s*this\.pendingDrops\.delete\(webContentsId\);/,
+  );
+  const closedHandler = hostSource.slice(
+    hostSource.indexOf('win.on("closed"'),
+    hostSource.indexOf("this.windows.set(request.pluginId, win);"),
+  );
+  assert.doesNotMatch(closedHandler, /win\.webContents/);
+});
+
 test("plugin content is offset below the strict 46px host drag band", () => {
   assert.match(preloadSource, /getComputedStyle\(body\)\.paddingTop/);
   assert.match(preloadSource, /padding-top/);
