@@ -301,6 +301,12 @@ describe("DesktopAgentRuntime configuration matching", () => {
     expect(edit.description).toContain("never old_string");
     expect(edit.description).toContain("same path concurrently");
     expect(edit.description).toContain("PUT N.=M:");
+    expect(edit.description).toContain("PUT 48.=48:");
+    expect(edit.description).toContain("followed by + rows is invalid");
+    expect(edit.description).toContain("classify the error");
+    expect(edit.parameters.properties.ops.description).toContain(
+      "PUT 48.=48:",
+    );
     expect(edit.parameters.properties).toEqual(
       expect.objectContaining({
         tag: expect.any(Object),
@@ -630,6 +636,25 @@ describe("DesktopAgentRuntime configuration matching", () => {
         }),
       }),
     );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "message_end",
+        message: expect.objectContaining({
+          error: expect.objectContaining({
+            message: expect.stringContaining(
+              "A PUT with body rows must end its header with `:`",
+            ),
+            details: expect.objectContaining({
+              recovery: expect.stringContaining("PUT 48.=48:"),
+            }),
+          }),
+        }),
+      }),
+    );
+    const visibleMessage = events.find(
+      (event: any) => event.type === "message_end" && event.message?.error,
+    )?.message?.error?.message;
+    expect(visibleMessage).not.toContain("Re-read the file");
     expect(events).toContainEqual(
       expect.objectContaining({
         type: "error",

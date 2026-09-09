@@ -7507,10 +7507,13 @@ This test plan spec is accepted when:
 - **Expected**: The second call carries the termination hint and the loop stops,
   but the turn does not merely complete: the transcript ends on an assistant
   error row with `MUTATION_RETRY_BUDGET_EXHAUSTED`, marked retriable, naming the
-  path and the next action, and the same code arrives as an error event. The turn
-  is recorded as failed rather than completed with no final message. Step 3
-  proceeds normally — the guard's counters are per prompt. Step 4 produces the
-  same row with `details.kind` of `patch-command`.
+  path and the next action, and the same code arrives as an error event. When the
+  last error is `EDIT_PARSE_FAILED`, the row's recovery hint explains the syntax
+  correction — for example, a body-bearing `PUT 48.=48` must be written as
+  `PUT 48.=48:` — and does not tell the agent to re-read solely to repair the
+  malformed payload. The turn is recorded as failed rather than completed with
+  no final message. Step 3 proceeds normally — the guard's counters are per
+  prompt. Step 4 produces the same row with `details.kind` of `patch-command`.
 - **Specs linked**: `03-runtime/18-line-anchored-edit-contract.md` §9.3,
   `03-runtime/03-tools-and-permissions.md` §4d,
   `03-runtime/08-error-codes.md` §3.3, ADR 0087

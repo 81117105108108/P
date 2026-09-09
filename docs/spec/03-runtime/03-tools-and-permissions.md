@@ -281,13 +281,18 @@ keeps only the ordering and loop-guard rules. The agent mutation workflow is:
    advertised workspace.
 2. If a dedicated worktree is outside that root, perform one guarded edit in
    that worktree with Bash and verify the resulting diff.
-3. After a failed edit or patch check, perform one fresh `Read` of the current
-   target and regenerate the change once. Once a path has spent its recovery
-   budget (18-line-anchored-edit-contract §9.3), the next failed `Edit` for that
-   path in the prompt — or a second failed shell patch command (`apply_patch`,
-   `git apply`, or `patch`) — returns a terminating tool result, so the agent
-   stops after reporting the exact mismatch. Do not hand-edit old unified-diff
-   hunk headers or continue a repair loop.
+3. Classify a failed edit before recovering. For a stale tag or unseen lines,
+   perform one fresh `Read` of the current target and regenerate the change once
+   (a complete `EDIT_LINES_UNSEEN` reveal may be retried unchanged). For a
+   deterministic syntax or range error such as `EDIT_PARSE_FAILED`, correct the
+   operation payload directly; another `Read` does not repair malformed syntax.
+   A body-bearing replacement must use a header such as `PUT 48.=48:`. Once a
+   path has spent its recovery budget (18-line-anchored-edit-contract §9.3), the
+   next failed `Edit` for that path in the prompt — or a second failed shell
+   patch command (`apply_patch`, `git apply`, or `patch`) — returns a terminating
+   tool result with an error-specific recovery hint, so the agent stops after
+   reporting the exact mismatch. Do not hand-edit old unified-diff hunk headers
+   or continue a repair loop.
 4. Keep mutations to one path sequential, even when read/search calls are
    issued in parallel.
 

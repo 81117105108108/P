@@ -232,6 +232,30 @@ const RECOVERABLE_MUTATION_ERROR_CODES = new Set([
   "EDIT_TAG_UNKNOWN",
   "EDIT_LINES_UNSEEN",
 ]);
+
+function mutationTerminationAdvice(
+  kind: "edit" | "patch-command",
+  errorCode?: string,
+): string {
+  if (kind === "patch-command") {
+    return "Use Edit on the specific lines instead of repeating a shell patch command.";
+  }
+  if (errorCode === "EDIT_PARSE_FAILED") {
+    return "Fix the Edit ops syntax and retry with a corrected payload; do not repeat the same ops. A PUT with body rows must end its header with `:`, for example `PUT 48.=48:`.";
+  }
+  if (errorCode === "EDIT_RANGE_INVALID") {
+    return "Correct the Edit range or operation overlap before retrying; re-reading is not needed unless the file changed.";
+  }
+  if (errorCode === "EDIT_NO_CHANGE") {
+    return "Send only changed body rows, or use CUT when the intended result is deletion.";
+  }
+  if (RECOVERABLE_MUTATION_ERROR_CODES.has(errorCode ?? "")) {
+    return errorCode === "EDIT_LINES_UNSEEN"
+      ? "Use the revealed lines for one unchanged retry when the reveal is complete; otherwise re-read the range and regenerate the Edit."
+      : "Re-read the live file and regenerate the Edit with the fresh tag and narrower anchors.";
+  }
+  return "Re-read the live file, regenerate a narrower Edit, and avoid repeating the same payload.";
+}
 export const TOOL_SEARCH_NAME = "ToolSearch";
 export const ASK_TOOL_NAME = "asktool";
 
@@ -1919,7 +1943,7 @@ Delegation rules:
         case "Write":
           return `Create or overwrite a file. Deliverables go into the workspace; temporary/intermediate files go into the scratch directory.${scratchPathHint}${externalPathHint}`;
         case "Edit":
-          return `Replace, insert, or delete lines in an existing file. Names positions and supplies new content only — never old_string. Required: path, tag (4 hex from the latest Read/Grep/Write/Edit), ops. Ops: PUT N.=M: replace inclusive lines N–M; PUT <N: insert before N; PUT >N: insert after N; PUT >$: append; CUT N.=M delete; REM delete the file; MV DEST rename after other ops. Body rows are + plus the final line text. No -old or context rows. Ranges name only the lines being changed. Re-ground on the tag returned by every successful write. After one failed Edit, Read the live file (or retry unchanged on a complete EDIT_LINES_UNSEEN reveal) once; do not guess. Do not edit the same path concurrently.${scratchPathHint}${externalPathHint}`;
+          return `Replace, insert, or delete lines in an existing file. Names positions and supplies new content only — never old_string. Required: path, tag (4 hex from the latest Read/Grep/Write/Edit), ops. Ops: PUT N.=M: replace inclusive lines N–M; PUT <N: insert before N; PUT >N: insert after N; PUT >$: append; CUT N.=M delete; REM delete the file; MV DEST rename after other ops. Body rows are + plus the final line text. Every PUT with body rows must include the trailing colon, for example PUT 48.=48:; PUT 48.=48 followed by + rows is invalid. A colonless PUT is only for a register paste such as PUT <1 @name. No -old or context rows. Ranges name only the lines being changed. Re-ground on the tag returned by every successful write. After one failed Edit, classify the error: Read the live file for a stale tag or unseen lines (or retry unchanged on a complete EDIT_LINES_UNSEEN reveal), but correct syntax or range errors directly; do not guess. Do not edit the same path concurrently.${scratchPathHint}${externalPathHint}`;
         case "Bash":
           return `${commandShellToolDescription(this.commandShell, this.scratchDir)} Use Edit or Write instead of apply_patch, git apply, or patch; do not retry a failed shell patch command repeatedly.`;
         case ASK_TOOL_NAME:
@@ -2004,7 +2028,7 @@ Delegation rules:
         }),
         ops: Type.String({
           description:
-            "One or more operation headers with + body rows, newline separated.",
+            "One or more operation headers with + body rows, newline separated. A PUT with body rows must end its header with `:` (for example, `PUT 48.=48:`); `PUT 48.=48` followed by + rows is invalid. A colonless PUT is only for a register paste such as `PUT <1 @name`.",
         }),
       },
       Bash: {
@@ -5541,10 +5565,17 @@ Delegation rules:
     const termination = this.pendingMutationTermination;
     if (!termination) return;
     this.pendingMutationTermination = undefined;
+    const recovery = mutationTerminationAdvice(
+      termination.kind,
+      termination.lastErrorCode,
+    );
+    const lastError = termination.lastErrorCode
+      ? ` Last error: ${termination.lastErrorCode}.`
+      : "";
     const message =
       termination.kind === "edit"
-        ? `Stopped after ${MAX_MUTATION_RECOVERY_FAILURES} failed Edit attempts on ${termination.target}. Re-read the file and edit a narrower range instead of retrying blind.`
-        : `Stopped after ${MAX_MUTATION_RECOVERY_FAILURES} failed patch commands. Use Edit on the specific lines instead of a patch pipeline.`;
+        ? `Stopped after ${MAX_MUTATION_RECOVERY_FAILURES} failed Edit attempts on ${termination.target}.${lastError} ${recovery}`
+        : `Stopped after ${MAX_MUTATION_RECOVERY_FAILURES} failed patch commands.${lastError} ${recovery}`;
     const error = {
       code: "MUTATION_RETRY_BUDGET_EXHAUSTED",
       message,
@@ -5554,6 +5585,7 @@ Delegation rules:
         ...(termination.lastErrorCode
           ? { lastErrorCode: termination.lastErrorCode }
           : {}),
+        recovery,
       },
     };
     this.terminateParentTurn();

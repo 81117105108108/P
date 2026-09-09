@@ -475,10 +475,14 @@ When the count does reach the limit the tool result carries `terminate: true`
 and the agent loop stops after that batch. Stopping there must not leave a turn
 that merely ends: the runtime finalizes the assistant row with
 `MUTATION_RETRY_BUDGET_EXHAUSTED` — retriable, `details.kind` of `edit` or
-`patch-command`, plus the last error code — and emits a matching error event, so
-the user sees that the agent stopped on purpose and keeps the continue
-affordance. A terminated turn with no message is indistinguishable from a model
-that chose to say nothing.
+`patch-command`, plus the last error code and a class-specific `details.recovery`
+hint — and emits a matching error event, so the user sees that the agent stopped
+on purpose and keeps the continue affordance. For `EDIT_PARSE_FAILED`, the hint
+corrects the operation syntax without asking for another `Read`: a `PUT` with
+body rows must end its header with `:`, for example `PUT 48.=48:`. Stale-tag and
+unseen-line failures continue to direct the model to re-read or use the complete
+reveal. A terminated turn with no message is indistinguishable from a model that
+chose to say nothing.
 
 ## 10. Drift recovery
 

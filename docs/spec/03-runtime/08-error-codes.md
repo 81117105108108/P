@@ -91,7 +91,7 @@ does not turn temporary thread pressure into a host process exit.
 | `TOOL_DENIED` | no | permission denied / mode forbidden |
 | `TOOL_TIMEOUT` | yes | tool execution timeout |
 | `TOOL_FAILED` | maybe | tool executed but failed |
-| `MUTATION_RETRY_BUDGET_EXHAUSTED` | yes | the repeat guard ended the turn after same-path `Edit` or shell patch failures; carries `details.kind` (`edit` or `patch-command`) and the last tool error code |
+| `MUTATION_RETRY_BUDGET_EXHAUSTED` | yes | the repeat guard ended the turn after same-path `Edit` or shell patch failures; carries `details.kind` (`edit` or `patch-command`), the last tool error code, and a class-specific `details.recovery` hint |
 | `PROCESS_RESOURCE_EXHAUSTED` | yes | shell process could not start because the OS temporarily exhausted process resources |
 | `SHELL_NOT_FOUND` | no | no effective platform shell is available after catalog fallback; message carries guidance |
 | `COMMAND_SHELL_CHANGED` | no | pinned shell ID or dialect changed before execution |
@@ -130,7 +130,7 @@ loses that. See
 | `EDIT_TAG_MISMATCH` | yes after a `Read` | tag does not hash the live file and drift recovery declined; carries the live tag and current content at the anchors |
 | `EDIT_TAG_UNKNOWN` | yes after a `Read` | tag is well-formed but the session recorded no such content for the path |
 | `EDIT_LINES_UNSEEN` | yes | anchors reference lines the session never displayed; carries the revealed content |
-| `EDIT_PARSE_FAILED` | no | malformed op header, body row under a colonless header, missing body, or a `-`/context row |
+| `EDIT_PARSE_FAILED` | no | malformed op header, body row under a colonless header, missing body, or a `-`/context row; the host message identifies the required syntax when possible |
 | `EDIT_RANGE_INVALID` | no | reversed range, out-of-bounds line, overlapping ops, or duplicate anchor |
 | `EDIT_BLOCK_UNRESOLVED` | no | a `N*` locator did not resolve; message names the plain-range alternative |
 | `EDIT_REGISTER_EMPTY` | no | paste from an unset register |
@@ -150,6 +150,9 @@ carries what the retry needs. The remaining codes count on first occurrence, and
 the failure that exhausts the budget surfaces as §3.3's
 `MUTATION_RETRY_BUDGET_EXHAUSTED` on the assistant row
 ([18-line-anchored-edit-contract](18-line-anchored-edit-contract.md) §9.3).
+Its `details.recovery` value distinguishes syntax correction from the fresh-read
+path, so a follow-up does not blindly re-read a file when the payload itself is
+malformed.
 
 ### 3.5 Secrets / settings
 
