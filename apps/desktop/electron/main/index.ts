@@ -249,7 +249,11 @@ import {
   writeWindowState,
 } from "./window-preferences";
 import { createPlanUiProbe } from "./plan-ui-probe";
-import { McpControlServer, mcpControlRendererEvent } from "./mcp-control";
+import {
+  createMcpControlController,
+  McpControlServer,
+  mcpControlRendererEvent,
+} from "./mcp-control";
 
 // The shared error-code union is reconciled in the shared lane. Keep desktop
 // source type-safe while that lane is temporarily staged at main.
@@ -362,6 +366,7 @@ let setWorkPanelChatWidthForWindow: ((width: number) => number) | null = null;
 let host: HostProcess | null = null;
 let sidecar: AgentSidecar | null = null;
 let mcpControl: McpControlServer | null = null;
+let desktopControl: ReturnType<typeof createMcpControlController> | null = null;
 let quitting = false;
 let shutdownComplete = false;
 let shutdownPromise: Promise<void> | null = null;
@@ -8990,6 +8995,16 @@ app.whenReady().then(async () => {
   // not race the renderer allocation just because backend startup was slow.
   prewarmPluginLauncher();
   const invokeIpc = registerIpc();
+  const control = createMcpControlController({
+    invoke: invokeIpc,
+    channels: IPC.invoke,
+    onOperationComplete: async (operation, result, args) => {
+      const event = mcpControlRendererEvent(operation, result, args);
+      if (event) sendToRenderer(IPC.event.sessionsChanged, event);
+    },
+  });
+  desktopControl = control;
+  plugins.setServices({ desktopControl: control });
   // Load the local model snapshot immediately. A changed APP_VERSION marks the
   // snapshot stale, so every release performs one bounded update without
   // blocking the first window; Settings can force the same refresh on demand.
@@ -9037,10 +9052,7 @@ app.whenReady().then(async () => {
         port: process.env.PI_DESKTOP_MCP_PORT
           ? Number(process.env.PI_DESKTOP_MCP_PORT)
           : undefined,
-        onOperationComplete: async (operation, result, args) => {
-          const event = mcpControlRendererEvent(operation, result, args);
-          if (event) sendToRenderer(IPC.event.sessionsChanged, event);
-        },
+        controller: desktopControl ?? undefined,
         log: (level, message, data) => logger.app("runtime", level, message, { data }),
       });
       await mcpControl.start();

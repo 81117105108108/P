@@ -1492,6 +1492,7 @@ export const zhCN = {
     legacyFsDowngraded: "此插件声明的是旧版文件权限，实际范围已被收窄。更新插件可恢复完整功能。",
     permissions: {
       "ui.panel": "显示插件面板",
+      "ui.microphone": "使用麦克风",
       "clipboard.read": "读取剪贴板及其历史",
       "clipboard.write": "写入剪贴板",
       notify: "显示应用内和系统通知",
@@ -1506,6 +1507,7 @@ export const zhCN = {
       "agent.tool.register": "为智能体添加工具",
       "agent.prompt.inject": "调整智能体指令",
       "agent.complete": "用你的模型发起一次补全",
+      "desktop.control": "控制桌面操作",
       "models.list": "列出已登录的模型",
       "session.read": "读取当前发给模型的对话",
       "net.fetch": "访问网络",
@@ -1520,6 +1522,7 @@ export const zhCN = {
     },
     permissionHelp: {
       "ui.panel": "允许插件在应用内显示独立面板。",
+      "ui.microphone": "允许隔离面板请求麦克风音频，不授予摄像头权限。",
       "clipboard.read": "可能读取当前剪贴板内容以及应用运行期间保留的剪贴板历史。",
       "clipboard.write": "可能覆盖当前剪贴板中的内容。",
       notify: "可显示应用内提示和尽力而为的系统通知。",
@@ -1533,6 +1536,8 @@ export const zhCN = {
       "agent.tool.register": "允许 AI 调用此插件提供的额外工具。",
       "agent.prompt.inject": "可能修改发送给智能体的指令。",
       "agent.complete": "会消耗你的模型额度发起一次补全。插件拿不到 API 密钥。",
+      "desktop.control":
+        "允许插件调用经过审查的 PI-Desktop 操作目录；破坏性操作仍需 confirm=true，插件永远拿不到 MCP bearer token。",
       "models.list": "可以看到你已登录的模型，但拿不到密钥。",
       "session.read": "可以读取当前这次工具调用所在会话发给模型的对话，包括工具结果。",
       "net.fetch": "可发起出站网络请求。",

@@ -1504,6 +1504,7 @@ export const ko = {
       "이 플러그인은 범위 기능이 생기기 전의 파일 권한을 선언했으므로 접근 범위가 줄었습니다. 전체 기능을 복원하려면 업데이트하세요.",
     permissions: {
       "ui.panel": "플러그인 패널 표시",
+      "ui.microphone": "마이크 사용",
       "clipboard.read": "클립보드와 기록 읽기",
       "clipboard.write": "클립보드에 쓰기",
       notify: "앱 내 및 네이티브 알림 표시",
@@ -1518,6 +1519,7 @@ export const ko = {
       "agent.tool.register": "에이전트 도구 추가",
       "agent.prompt.inject": "에이전트 지침 조정",
       "agent.complete": "모델로 일회성 완성 실행",
+      "desktop.control": "데스크톱 제어",
       "models.list": "인증된 모델 목록 표시",
       "session.read": "모델에 전송되는 현재 대화 읽기",
       "net.fetch": "네트워크 사용",
@@ -1532,6 +1534,7 @@ export const ko = {
     },
     permissionHelp: {
       "ui.panel": "플러그인이 앱 안에 자체 패널을 표시할 수 있습니다.",
+      "ui.microphone": "격리된 패널이 마이크 오디오를 요청할 수 있습니다. 카메라 권한은 부여하지 않습니다.",
       "clipboard.read":
         "현재 클립보드 내용과 보관된 클립보드 기록을 읽을 수 있습니다.",
       "clipboard.write": "현재 클립보드 내용을 바꿀 수 있습니다.",
@@ -1551,6 +1554,8 @@ export const ko = {
       "agent.prompt.inject": "AI 에이전트에 전송되는 지침을 변경할 수 있습니다.",
       "agent.complete":
         "모델 할당량을 사용해 일회성 완성을 실행할 수 있습니다. 플러그인은 API 키를 받지 않습니다.",
+      "desktop.control":
+        "플러그인이 검토된 PI-Desktop 제어 카탈로그를 호출할 수 있습니다. 파괴적 작업에는 여전히 confirm=true가 필요하며 MCP bearer token은 노출되지 않습니다.",
       "models.list": "로그인한 모델을 볼 수 있지만 키는 받지 않습니다.",
       "session.read":
         "현재 도구 호출이 처리 중인 대화와 도구 결과를 읽을 수 있습니다.",

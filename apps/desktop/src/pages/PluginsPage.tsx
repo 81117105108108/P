@@ -85,6 +85,7 @@ const PERMISSION_RISK: Record<string, RiskTier> = {
   "agent.prompt.inject": "high",
   "agent.tool.register": "high",
   "agent.complete": "high",
+  "desktop.control": "high",
   "session.read": "high",
   "browser.cdp": "high",
   // Reading is a tier below writing because what makes a read dangerous is
@@ -101,6 +102,7 @@ const PERMISSION_RISK: Record<string, RiskTier> = {
   "bus.publish": "medium",
   "bus.subscribe": "medium",
   "ui.panel": "low",
+  "ui.microphone": "medium",
   "ui.theme": "low",
   notify: "low",
 };

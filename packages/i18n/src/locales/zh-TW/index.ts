@@ -1492,6 +1492,7 @@ export const zhTW = {
     legacyFsDowngraded: "此外掛宣告的是舊版檔案許可權，實際範圍已被收窄。更新外掛可恢復完整功能。",
     permissions: {
       "ui.panel": "顯示外掛面板",
+      "ui.microphone": "使用麥克風",
       "clipboard.read": "讀取剪貼簿及其歷史",
       "clipboard.write": "寫入剪貼簿",
       notify: "顯示應用內和系統通知",
@@ -1506,6 +1507,7 @@ export const zhTW = {
       "agent.tool.register": "為智慧體新增工具",
       "agent.prompt.inject": "調整智慧體指令",
       "agent.complete": "用你的模型發起一次補全",
+      "desktop.control": "控制桌面操作",
       "models.list": "列出已登入的模型",
       "session.read": "讀取當前發給模型的對話",
       "net.fetch": "訪問網路",
@@ -1520,6 +1522,7 @@ export const zhTW = {
     },
     permissionHelp: {
       "ui.panel": "允許外掛在應用內顯示獨立面板。",
+      "ui.microphone": "允許隔離面板請求麥克風音訊，不授予相機權限。",
       "clipboard.read": "可能讀取當前剪貼簿內容以及應用執行期間保留的剪貼簿歷史。",
       "clipboard.write": "可能覆蓋當前剪貼簿中的內容。",
       notify: "可顯示應用內提示和盡力而為的系統通知。",
@@ -1533,6 +1536,7 @@ export const zhTW = {
       "agent.tool.register": "允許 AI 呼叫此外掛提供的額外工具。",
       "agent.prompt.inject": "可能修改傳送給智慧體的指令。",
       "agent.complete": "會消耗你的模型額度發起一次補全。外掛拿不到 API 金鑰。",
+      "desktop.control": "允許外掛呼叫經過審查的 PI-Desktop 操作目錄；破壞性操作仍需 confirm=true，外掛永遠拿不到 MCP bearer token。",
       "models.list": "可以看到你已登入的模型，但拿不到金鑰。",
       "session.read": "可以讀取當前這次工具呼叫所在會話發給模型的對話，包括工具結果。",
       "net.fetch": "可發起出站網路請求。",

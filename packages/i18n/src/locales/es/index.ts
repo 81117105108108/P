@@ -1484,6 +1484,7 @@ export const es = {
     "legacyFsDowngraded": "Este complemento declara permisos de archivos anteriores a que existieran los ámbitos, por lo que su alcance se ha reducido. Actualícelo para restaurar la función completa.",
     "permissions": {
       "ui.panel": "Mostrar un panel de complementos",
+      "ui.microphone": "Usar el micrófono",
       "clipboard.read": "Leer el portapapeles y su historial",
       "clipboard.write": "Escribir en el portapapeles",
       "notify": "Mostrar notificaciones nativas y en la aplicación",
@@ -1496,6 +1497,7 @@ export const es = {
       "agent.tool.register": "Agregar herramientas para el agente",
       "agent.prompt.inject": "Ajustar instrucciones del agente",
       "agent.complete": "Ejecutar una finalización de una sola vez con sus modelos",
+      "desktop.control": "Controlar el escritorio",
       "models.list": "Listar modelos autenticados",
       "session.read": "Leer la conversación actual enviada al modelo",
       "net.fetch": "Usar la red",
@@ -1510,6 +1512,7 @@ export const es = {
     },
     "permissionHelp": {
       "ui.panel": "Permite que el complemento muestre su propio panel dentro de la aplicación.",
+      "ui.microphone": "Permite que el panel aislado solicite audio del micrófono; no concede acceso a la cámara.",
       "clipboard.read": "Puede leer lo que esté actualmente en su portapapeles y el historial del portapapeles retenido.",
       "clipboard.write": "Puede reemplazar lo que esté actualmente en su portapapeles.",
       "notify": "Puede mostrar brindis en la aplicación y notificaciones nativas de mejor esfuerzo.",
@@ -1522,6 +1525,7 @@ export const es = {
       "agent.tool.register": "Permite que la IA llame a herramientas adicionales proporcionadas por este complemento.",
       "agent.prompt.inject": "Puede cambiar las instrucciones enviadas al agente de IA.",
       "agent.complete": "Puede gastar su cuota de modelo en una finalización única. El complemento nunca recibe sus claves API.",
+      "desktop.control": "Permite invocar el catálogo de control de PI-Desktop revisado; las operaciones destructivas siguen requiriendo confirm=true y el token bearer de MCP no se expone.",
       "models.list": "Puede ver en qué modelos se ha registrado. No recibe llaves.",
       "session.read": "Puede leer la conversación en la que está operando la llamada de herramienta actual, incluidos los resultados de la herramienta.",
       "net.fetch": "Puede realizar solicitudes de red salientes.",

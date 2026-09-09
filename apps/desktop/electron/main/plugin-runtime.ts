@@ -69,6 +69,7 @@ import { McpServerClient, type McpServerClientOptions } from "./plugin-mcp";
 import { DevPluginWatcher, type DevPluginWatcherDeps } from "./plugin-watcher";
 import { parseAllowedExternalUrl } from "./safe-open-external";
 import type { PluginAppearance } from "../shared/plugin-panel-chrome";
+import type { McpControlController, McpControlInvokeInput } from "./mcp-control";
 
 export type RegisteredCommand = {
   id: string;
@@ -133,6 +134,8 @@ export type PluginPanelRequest = {
   theme?: "light" | "dark";
   /** The plugin's egress allowlist; the panel session is confined to it. */
   netDomains?: readonly string[];
+  /** Allows the isolated panel to request microphone audio, never camera access. */
+  allowMicrophone?: boolean;
   /** Development panels show the host drag-band reminder in their chrome. */
   development?: boolean;
 };
@@ -211,6 +214,8 @@ export type PluginHostServices = {
     body?: string;
     timeoutMs?: number;
   }) => Promise<{ status: number; headers: Record<string, string>; bodyText: string }>;
+  /** The reviewed desktop operation controller shared with MCP. */
+  desktopControl?: McpControlController;
   audit?: (entry: Record<string, unknown>) => void;
   /**
    * Blocking, native consent for a file access the manifest did not declare.
@@ -316,6 +321,8 @@ const HOST_API_ALLOWLIST = new Set([
   "ui.getNotificationPermission",
   "ui.requestNotificationPermission",
   "ui.showNativeNotification",
+  "desktop.listOperations",
+  "desktop.invoke",
   "workspace.get",
   "fs.readText",
   "fs.stat",
@@ -3177,6 +3184,7 @@ export class PluginRuntime {
             height: loaded.manifest.ui?.height ?? 360,
             htmlPath,
             netDomains: this.netDomains(loaded),
+            allowMicrophone: loaded.permissions.has("ui.microphone"),
             ...(loaded.development ? { development: true } : {}),
           });
           this.services.audit?.({
@@ -3214,6 +3222,69 @@ export class PluginRuntime {
           const path = this.services.getWorkspacePath();
           if (!path) return null;
           return { path, name: path.split(/[\\/]/).filter(Boolean).at(-1) || path };
+        },
+      },
+      desktop: {
+        listOperations: async () => {
+          this.assertPermission(loaded, "desktop.control");
+          const controller = this.services.desktopControl;
+          if (!controller) {
+            throw apiError("UNSUPPORTED", "host api not available: desktop.listOperations");
+          }
+          const operations = controller.operations;
+          this.services.audit?.({
+            pluginId,
+            api: "desktop.listOperations",
+            ok: true,
+            count: operations.length,
+            ts: Date.now(),
+          });
+          return operations.map(({ id, description, risk }) => ({ id, description, risk }));
+        },
+        invoke: async (rawInput: unknown) => {
+          this.assertPermission(loaded, "desktop.control");
+          if (!rawInput || typeof rawInput !== "object" || Array.isArray(rawInput)) {
+            throw apiError("INVALID_PARAMS", "desktop.invoke input must be an object");
+          }
+          const input = rawInput as Record<string, unknown>;
+          const operation = typeof input.operation === "string" ? input.operation : "";
+          const args = input.args === undefined ? [] : input.args;
+          if (!Array.isArray(args)) {
+            throw apiError("INVALID_PARAMS", "desktop.invoke args must be an array");
+          }
+          if (!this.services.desktopControl) {
+            throw apiError("UNSUPPORTED", "host api not available: desktop.invoke");
+          }
+          const operationInfo = this.services.desktopControl.operations.find(
+            (candidate) => candidate.id === operation,
+          );
+          try {
+            const result = await this.services.desktopControl.invoke({
+              operation,
+              args,
+              confirm: input.confirm === true,
+            } satisfies McpControlInvokeInput);
+            this.services.audit?.({
+              pluginId,
+              api: "desktop.invoke",
+              operation,
+              risk: operationInfo?.risk,
+              ok: true,
+              ts: Date.now(),
+            });
+            return result;
+          } catch (error) {
+            this.services.audit?.({
+              pluginId,
+              api: "desktop.invoke",
+              operation,
+              risk: operationInfo?.risk,
+              ok: false,
+              errorCode: (error as { code?: unknown })?.code,
+              ts: Date.now(),
+            });
+            throw error;
+          }
         },
       },
       fs: {

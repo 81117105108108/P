@@ -10,6 +10,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 register(pathToFileURL(join(here, "helpers/ts-import-hooks.mjs")));
 const {
   McpControlServer,
+  createMcpControlController,
   boundMcpResult,
   createMcpControlOperations,
   isLoopbackBindHost,
@@ -18,6 +19,35 @@ const {
   stripSecretMaterial,
   tokensEqual,
 } = await import("../electron/main/mcp-control.ts");
+
+test("the plugin and MCP paths share desktop operation validation", async () => {
+  const calls = [];
+  const controller = createMcpControlController({
+    channels: {
+      projectSet: "pi-desktop/project/set",
+      sessionDelete: "pi-desktop/session/delete",
+    },
+    invoke: async (channel, args) => {
+      calls.push({ channel, args });
+      return { ok: true };
+    },
+  });
+
+  assert.deepEqual(
+    controller.operations.map((operation) => operation.id),
+    ["session/delete", "project/set"],
+  );
+  await assert.rejects(
+    () => controller.invoke({ operation: "session/delete", args: ["s1"] }),
+    (error) => error.code === "CONFIRMATION_REQUIRED",
+  );
+  await controller.invoke({ operation: "project/set", args: ["/tmp/project"] });
+  await controller.invoke({ operation: "session/delete", args: ["s1"], confirm: true });
+  assert.deepEqual(calls, [
+    { channel: "pi-desktop/project/set", args: ["/tmp/project"] },
+    { channel: "pi-desktop/session/delete", args: ["s1"] },
+  ]);
+});
 
 async function post(url, token, body, headers = {}) {
   const response = await fetch(url, {

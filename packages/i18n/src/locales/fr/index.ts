@@ -1484,6 +1484,7 @@ export const fr = {
     "legacyFsDowngraded": "Ce plugin déclare les autorisations de fichiers antérieures à l'existence des scopes, sa portée a donc été réduite. Mettez-le à jour pour restaurer toutes les fonctions.",
     "permissions": {
       "ui.panel": "Afficher un panneau de plug-in",
+      "ui.microphone": "Utiliser le microphone",
       "clipboard.read": "Lire le presse-papiers et son historique",
       "clipboard.write": "Écrire dans le presse-papiers",
       "notify": "Afficher les notifications dans l'application et natives",
@@ -1496,6 +1497,7 @@ export const fr = {
       "agent.tool.register": "Ajouter des outils pour l'agent",
       "agent.prompt.inject": "Ajuster les instructions de l'agent",
       "agent.complete": "Exécuter une complétion unique avec vos modèles",
+      "desktop.control": "Contrôler le bureau",
       "models.list": "Liste des modèles authentifiés",
       "session.read": "Lire la conversation en cours envoyée au modèle",
       "net.fetch": "Utiliser le réseau",
@@ -1510,6 +1512,7 @@ export const fr = {
     },
     "permissionHelp": {
       "ui.panel": "Permet au plugin d'afficher son propre panneau dans l'application.",
+      "ui.microphone": "Permet au panneau isolé de demander l'audio du microphone, sans accès à la caméra.",
       "clipboard.read": "Peut lire tout ce qui se trouve actuellement dans votre presse-papiers et l'historique conservé du presse-papiers.",
       "clipboard.write": "Peut remplacer tout ce qui se trouve actuellement dans votre presse-papiers.",
       "notify": "Peut afficher des toasts dans l'application et des notifications natives de meilleur effort.",
@@ -1522,6 +1525,7 @@ export const fr = {
       "agent.tool.register": "Permet à l'IA d'appeler des outils supplémentaires fournis par ce plugin.",
       "agent.prompt.inject": "Peut modifier les instructions envoyées à l'agent IA.",
       "agent.complete": "Peut dépenser votre quota de modèle pour une réalisation unique. Le plugin ne reçoit jamais vos clés API.",
+      "desktop.control": "Permet d'appeler le catalogue PI-Desktop contrôlé ; les opérations destructrices exigent toujours confirm=true et le bearer token MCP n'est pas exposé.",
       "models.list": "Peut voir pour quels modèles vous vous êtes connecté. Il ne reçoit pas de clés.",
       "session.read": "Peut lire la conversation sur laquelle l'appel d'outil actuel fonctionne, y compris les résultats de l'outil.",
       "net.fetch": "Peut effectuer des requêtes réseau sortantes.",

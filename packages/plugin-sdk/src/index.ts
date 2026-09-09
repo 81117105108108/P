@@ -507,6 +507,18 @@ export type PluginFsRange = {
   totalSize: number;
 };
 
+export type PluginDesktopOperation = {
+  id: string;
+  description: string;
+  risk: "read" | "write" | "dangerous";
+};
+
+export type PluginDesktopInvokeInput = {
+  operation: string;
+  args?: unknown[];
+  confirm?: boolean;
+};
+
 /** Classified preview returned by `fs.readPreview`. */
 export type PluginFsPreview = {
   kind: "text" | "image" | "binary" | "tooLarge";
@@ -549,6 +561,11 @@ export type PluginHostApi = {
   };
   workspace: {
     get: () => Promise<{ path: string; name: string } | null>;
+  };
+  /** Reviewed host operations shared with the local MCP control plane. */
+  desktop: {
+    listOperations: () => Promise<PluginDesktopOperation[]>;
+    invoke: (input: PluginDesktopInvokeInput) => Promise<unknown>;
   };
   /**
    * Paths are relative to the rule's root: the workspace by default, or the
@@ -694,6 +711,7 @@ export type PluginModule = {
 export const PLUGIN_PERMISSIONS = [
   "ui.panel",
   "ui.view",
+  "ui.microphone",
   "ui.theme",
   "clipboard.read",
   "clipboard.write",
@@ -704,6 +722,7 @@ export const PLUGIN_PERMISSIONS = [
   "agent.tool.register",
   "agent.prompt.inject",
   "agent.complete",
+  "desktop.control",
   "models.list",
   "project.create",
   "session.read",

@@ -1484,6 +1484,7 @@ export const de = {
     "legacyFsDowngraded": "Dieses Plugin deklariert Dateiberechtigungen von vor der Existenz von Bereichen, daher wurde seine Reichweite reduziert. Aktualisieren Sie es, um die volle Funktion wiederherzustellen.",
     "permissions": {
       "ui.panel": "Plugin-Panel anzeigen",
+      "ui.microphone": "Mikrofon verwenden",
       "clipboard.read": "Zwischenablage und Verlauf lesen",
       "clipboard.write": "In die Zwischenablage schreiben",
       "notify": "In-App- und native Benachrichtigungen anzeigen",
@@ -1496,6 +1497,7 @@ export const de = {
       "agent.tool.register": "Tools für den Agenten hinzufügen",
       "agent.prompt.inject": "Agentenanweisungen anpassen",
       "agent.complete": "One-Shot-Vervollständigung mit Ihren Modellen durchführen",
+      "desktop.control": "Desktop steuern",
       "models.list": "Authentifizierte Modelle auflisten",
       "session.read": "Aktuelle an das Modell gesendete Konversation lesen",
       "net.fetch": "Das Netzwerk nutzen",
@@ -1510,6 +1512,7 @@ export const de = {
     },
     "permissionHelp": {
       "ui.panel": "Lässt das Plugin sein eigenes Panel innerhalb der App anzeigen.",
+      "ui.microphone": "Erlaubt dem isolierten Panel, Mikrofon-Audio anzufordern; Kamerazugriff wird nicht gewährt.",
       "clipboard.read": "Kann alles lesen, was sich derzeit in Ihrer Zwischenablage und im gespeicherten Zwischenablageverlauf befindet.",
       "clipboard.write": "Ersetzt möglicherweise alles, was sich derzeit in Ihrer Zwischenablage befindet.",
       "notify": "Kann In-App-Toasts und native Best-Effort-Benachrichtigungen anzeigen.",
@@ -1522,6 +1525,7 @@ export const de = {
       "agent.tool.register": "Ermöglicht der KI, zusätzliche Tools aufzurufen, die von diesem Plugin bereitgestellt werden.",
       "agent.prompt.inject": "Kann Anweisungen ändern, die an den KI-Agenten gesendet werden.",
       "agent.complete": "Kann Ihr Modellkontingent für eine einmalige Fertigstellung ausgeben. Das Plugin erhält niemals Ihre API-Schlüssel.",
+      "desktop.control": "Erlaubt den Aufruf des geprüften PI-Desktop-Katalogs; destruktive Vorgänge benötigen weiterhin confirm=true, und das MCP-Bearer-Token wird nicht offengelegt.",
       "models.list": "Kann sehen, für welche Modelle Sie sich angemeldet haben. Es erhält keine Schlüssel.",
       "session.read": "Kann die Konversation lesen, an der der aktuelle Tool-Aufruf arbeitet, einschließlich der Tool-Ergebnisse.",
       "net.fetch": "Kann ausgehende Netzwerkanfragen stellen.",

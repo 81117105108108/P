@@ -171,6 +171,10 @@ function buildApi() {
     workspace: {
       get: () => call("workspace.get"),
     },
+    desktop: {
+      listOperations: () => call("desktop.listOperations"),
+      invoke: (input) => call("desktop.invoke", [input ?? {}]),
+    },
     fs: {
       readText: (path) => call("fs.readText", [path]),
       stat: (path, grantId) => call("fs.stat", [path, grantId]),

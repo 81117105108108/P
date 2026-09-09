@@ -25,6 +25,8 @@ export type PluginPanelOpenRequest = {
    * an unmetered outbound channel that bypasses the `net.fetch` permission.
    */
   netDomains?: readonly string[];
+  /** Allows microphone audio for plugins with the explicit ui.microphone grant. */
+  allowMicrophone?: boolean;
   /** Adds a development-only reminder for the non-clickable drag band. */
   development?: boolean;
 };
@@ -68,6 +70,7 @@ export function applyPluginEgressPolicy(
   input: {
     pluginId: string;
     netDomains?: readonly string[];
+    allowMicrophone?: boolean;
     onBlockedRequest?: PluginPanelBlockedRequest;
   },
 ): void {
@@ -92,12 +95,18 @@ export function applyPluginEgressPolicy(
     input.onBlockedRequest?.({ pluginId: input.pluginId, url: details.url });
     callback({ cancel: true });
   });
-  // A panel is a document, not a device. Nothing in this list is reachable
-  // over the bridge either, so denying wholesale costs the plugin nothing.
-  ses.setPermissionRequestHandler((_contents, _permission, callback) => {
-    callback(false);
+  // A panel is denied device access by default. The only opt-in is an
+  // audio-only media request for a plugin that declared ui.microphone.
+  ses.setPermissionRequestHandler((_contents, permission, callback, details) => {
+    const mediaTypes =
+      permission === "media" && "mediaTypes" in details ? details.mediaTypes : undefined;
+    const audioOnly =
+      Array.isArray(mediaTypes) && mediaTypes.length > 0 && mediaTypes.every((type) => type === "audio");
+    callback(input.allowMicrophone === true && audioOnly);
   });
-  ses.setPermissionCheckHandler(() => false);
+  ses.setPermissionCheckHandler((_contents, permission, _origin, details) =>
+    permission === "media" && input.allowMicrophone === true && details.mediaType === "audio",
+  );
 }
 
 /** Persisted session partition shared by a plugin's panel window and views. */
@@ -289,6 +298,7 @@ export class PluginPanelHost {
     applyPluginEgressPolicy(ses, {
       pluginId: request.pluginId,
       netDomains: request.netDomains,
+      allowMicrophone: request.allowMicrophone,
       onBlockedRequest: this.onBlockedRequest,
     });
   }

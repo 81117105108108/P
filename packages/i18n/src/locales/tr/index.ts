@@ -1504,6 +1504,7 @@ export const tr = {
       "Bu eklenti kapsamlar yokken tanımlanmış dosya izinleri bildiriyor, bu yüzden erişimi azaltıldı. Tam işlev için güncelleyin.",
     permissions: {
       "ui.panel": "Eklenti paneli göster",
+      "ui.microphone": "Mikrofonu kullan",
       "clipboard.read": "Panoyu ve geçmişini oku",
       "clipboard.write": "Panoya yaz",
       notify: "Uygulama içi ve yerel bildirimler göster",
@@ -1518,6 +1519,7 @@ export const tr = {
       "agent.tool.register": "Ajan için araç ekle",
       "agent.prompt.inject": "Ajan yönergelerini ayarla",
       "agent.complete": "Modellerinizle tek seferlik tamamlatma çalıştır",
+      "desktop.control": "Masaüstünü kontrol et",
       "models.list": "Kimliği doğrulanmış modelleri listele",
       "session.read": "Modele gönderilen geçerli konuşmayı oku",
       "net.fetch": "Ağı kullan",
@@ -1532,6 +1534,7 @@ export const tr = {
     },
     permissionHelp: {
       "ui.panel": "Eklentinin uygulama içinde kendi panelini göstermesini sağlar.",
+      "ui.microphone": "Yalıtılmış panelin mikrofon sesi istemesine izin verir; kamera erişimi vermez.",
       "clipboard.read":
         "Panonuzdaki geçerli içeriği ve saklanan pano geçmişini okuyabilir.",
       "clipboard.write": "Panonuzdaki geçerli içeriğin yerini alabilir.",
@@ -1551,6 +1554,8 @@ export const tr = {
       "agent.prompt.inject": "AI ajanına gönderilen yönergeleri değiştirebilir.",
       "agent.complete":
         "Model kotanızı tek seferlik bir tamamlatma için harcayabilir. Eklenti API anahtarlarınızı almaz.",
+      "desktop.control":
+        "Eklentinin incelenmiş PI-Desktop denetim kataloğunu çağırmasını sağlar. Yıkıcı işlemler yine confirm=true gerektirir; MCP bearer token eklentiye verilmez.",
       "models.list": "Oturum açtığınız modelleri görebilir. Anahtar almaz.",
       "session.read":
         "Geçerli araç çağrısının üzerinde çalıştığı konuşmayı, araç sonuçları dahil, okuyabilir.",

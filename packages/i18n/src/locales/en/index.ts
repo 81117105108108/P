@@ -1502,6 +1502,7 @@ export const en = {
       "This plugin declares file permissions from before scopes existed, so its reach has been reduced. Update it to restore full function.",
     permissions: {
       "ui.panel": "Show a plugin panel",
+      "ui.microphone": "Use the microphone",
       "clipboard.read": "Read the clipboard and its history",
       "clipboard.write": "Write to the clipboard",
       notify: "Show in-app and native notifications",
@@ -1516,6 +1517,7 @@ export const en = {
       "agent.tool.register": "Add tools for the agent",
       "agent.prompt.inject": "Adjust agent instructions",
       "agent.complete": "Run a one-shot completion with your models",
+      "desktop.control": "Control the desktop",
       "models.list": "List authenticated models",
       "session.read": "Read the current conversation sent to the model",
       "net.fetch": "Use the network",
@@ -1530,6 +1532,8 @@ export const en = {
     },
     permissionHelp: {
       "ui.panel": "Lets the plugin show its own panel inside the app.",
+      "ui.microphone":
+        "Lets the isolated panel request microphone audio. It does not grant camera access.",
       "clipboard.read":
         "May read whatever is currently on your clipboard and retained clipboard history.",
       "clipboard.write": "May replace whatever is currently on your clipboard.",
@@ -1549,6 +1553,8 @@ export const en = {
       "agent.prompt.inject": "Can change instructions sent to the AI agent.",
       "agent.complete":
         "Can spend your model quota on a one-shot completion. The plugin never receives your API keys.",
+      "desktop.control":
+        "Lets the plugin invoke the reviewed PI-Desktop control catalog. Destructive operations still require confirm=true; the MCP bearer token is never exposed.",
       "models.list": "Can see which models you have signed in for. It does not receive keys.",
       "session.read":
         "Can read the conversation the current tool call is operating on, including tool results.",

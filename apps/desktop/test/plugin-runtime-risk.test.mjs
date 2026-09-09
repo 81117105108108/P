@@ -29,6 +29,7 @@ test("plugin runtime exposes gated high-risk host APIs", () => {
     "fs.reveal",
     "net.fetch",
     "agent.complete",
+    "desktop.control",
     "session.read",
     "models.list",
     "shell.openExternal",
@@ -98,6 +99,10 @@ test("the plugins page shows the file scope behind a file permission", () => {
     assert.equal(typeof catalog.plugins.permissions["agent.complete"], "string");
     assert.equal(typeof catalog.plugins.permissionHelp["session.read"], "string");
     assert.equal(typeof catalog.plugins.permissions["models.list"], "string");
+    assert.equal(typeof catalog.plugins.permissions["ui.microphone"], "string");
+    assert.equal(typeof catalog.plugins.permissionHelp["ui.microphone"], "string");
+    assert.equal(typeof catalog.plugins.permissions["desktop.control"], "string");
+    assert.equal(typeof catalog.plugins.permissionHelp["desktop.control"], "string");
   }
 });
 
@@ -106,6 +111,10 @@ test("plugin panels use sandboxed isolated host windows", () => {
   assert.match(panelSrc, /sandbox:\s*true/);
   assert.match(panelSrc, /nodeIntegration:\s*false/);
   assert.match(panelSrc, /plugin-panel\.js/);
+  assert.match(panelSrc, /allowMicrophone/);
+  assert.match(runtimeSrc, /this\.assertPermission\(loaded, "desktop\.control"\)/);
+  assert.match(runtimeSrc, /desktop\.listOperations/);
+  assert.match(runtimeSrc, /desktop\.invoke/);
 });
 
 test("plugins page includes marketplace install and auto-update controls", () => {

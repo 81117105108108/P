@@ -25,6 +25,17 @@ export type McpControlOperation = {
   argumentShape: string[] | string;
 };
 
+export type McpControlInvokeInput = {
+  operation: string;
+  args?: readonly unknown[];
+  confirm?: boolean;
+};
+
+export type McpControlController = {
+  operations: readonly McpControlOperation[];
+  invoke: (input: McpControlInvokeInput) => Promise<unknown>;
+};
+
 export type McpControlConnectionInfo = {
   active: boolean;
   serverName: string;
@@ -618,10 +629,60 @@ export function mcpControlRendererEvent(
   return null;
 }
 
+/**
+ * Shared invocation gateway for MCP and first-party plugins.
+ *
+ * Keeping validation and confirmation in one controller prevents another host
+ * surface from silently drifting away from the reviewed MCP operation set.
+ */
+export function createMcpControlController(options: {
+  channels: Readonly<Record<string, string>>;
+  invoke: IpcInvoke;
+  onOperationComplete?: (
+    operation: McpControlOperation,
+    result: unknown,
+    args: readonly unknown[],
+  ) => void | Promise<void>;
+}): McpControlController {
+  const operations = createMcpControlOperations(options.channels);
+  const operationById = new Map(operations.map((operation) => [operation.id, operation]));
+  return {
+    operations,
+    invoke: async (input) => {
+      if (!input || typeof input.operation !== "string" || !input.operation.trim()) {
+        throw Object.assign(new Error("operation is required"), { code: "INVALID_PARAMS" });
+      }
+      const operation = operationById.get(input.operation);
+      if (!operation) {
+        throw Object.assign(new Error(`operation is not exposed: ${input.operation}`), {
+          code: "NOT_FOUND",
+        });
+      }
+      const args = input.args === undefined ? [] : input.args;
+      if (!Array.isArray(args)) {
+        throw Object.assign(new Error("args must be an array"), { code: "INVALID_PARAMS" });
+      }
+      if (args.length > MAX_ARGUMENT_ITEMS) {
+        throw Object.assign(new Error("too many IPC arguments"), { code: "INVALID_PARAMS" });
+      }
+      if (operation.risk === "dangerous" && input.confirm !== true) {
+        throw Object.assign(new Error(`confirm=true is required for ${operation.id}`), {
+          code: "CONFIRMATION_REQUIRED",
+        });
+      }
+      const sanitized = args.map((value) => stripSecretMaterial(value)) as unknown[];
+      const result = await options.invoke(operation.channel, sanitized);
+      await options.onOperationComplete?.(operation, result, sanitized);
+      return result;
+    },
+  };
+}
+
 export type McpControlServerOptions = {
   dataDir: string;
   invoke: IpcInvoke;
   channels: Readonly<Record<string, string>>;
+  controller?: McpControlController;
   host?: string;
   port?: number;
   version?: string;
@@ -643,12 +704,11 @@ export type McpControlServerOptions = {
  */
 export class McpControlServer {
   private readonly dataDir: string;
-  private readonly invoke: IpcInvoke;
   private readonly host: string;
   private readonly requestedPort: number;
   private readonly version: string;
-  private readonly onOperationComplete?: McpControlServerOptions["onOperationComplete"];
   private readonly log: Logger;
+  private readonly controller: McpControlController;
   private readonly operations: McpControlOperation[];
   private readonly operationById = new Map<string, McpControlOperation>();
   private readonly toolsList: McpTool[];
@@ -661,13 +721,16 @@ export class McpControlServer {
 
   constructor(options: McpControlServerOptions) {
     this.dataDir = options.dataDir;
-    this.invoke = options.invoke;
     this.host = options.host ?? DEFAULT_HOST;
     this.requestedPort = options.port ?? DEFAULT_PORT;
     this.version = options.version ?? "1";
-    this.onOperationComplete = options.onOperationComplete;
     this.log = options.log ?? (() => undefined);
-    this.operations = createMcpControlOperations(options.channels);
+    this.controller = options.controller ?? createMcpControlController({
+      channels: options.channels,
+      invoke: options.invoke,
+      onOperationComplete: options.onOperationComplete,
+    });
+    this.operations = [...this.controller.operations];
     for (const operation of this.operations) this.operationById.set(operation.id, operation);
     this.toolsList = this.buildTools();
   }
@@ -1065,7 +1128,11 @@ export class McpControlServer {
         if (operation.risk === "dangerous" && input.confirm !== true) {
           throw Object.assign(new Error(`confirm=true is required for ${operation.id}`), { code: "CONFIRMATION_REQUIRED" });
         }
-        const result = await this.invokeOperation(operation, args);
+        const result = await this.controller.invoke({
+          operation: operation.id,
+          args,
+          confirm: input.confirm === true,
+        });
         return { operation: operation.id, result };
       },
     };
@@ -1084,10 +1151,7 @@ export class McpControlServer {
   }
 
   private async invokeOperation(operation: McpControlOperation, args: readonly unknown[]): Promise<unknown> {
-    const sanitized = args.map((value) => stripSecretMaterial(value)) as unknown[];
-    const result = await this.invoke(operation.channel, sanitized);
-    await this.onOperationComplete?.(operation, result, sanitized);
-    return result;
+    return this.controller.invoke({ operation: operation.id, args, confirm: true });
   }
 
   private sessionId(request: IncomingMessage): string | null {
