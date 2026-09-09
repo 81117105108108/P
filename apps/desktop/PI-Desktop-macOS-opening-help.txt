@@ -1,11 +1,13 @@
-PI-Desktop macOS opening help
+PI-Desktop macOS first launch
 
-If macOS says “PI-Desktop is damaged and can’t be opened” for this unsigned
-build, move PI-Desktop.app to /Applications and run this command in Terminal:
+This build is unsigned. After moving PI-Desktop.app to Applications, double-click
+PI-Desktop-macOS-open.command (shown as Open PI-Desktop.command in the DMG) to
+clear Apple's quarantine flag and launch the app.
 
-xattr -cr /Applications/PI-Desktop.app
+If you prefer Terminal, run:
 
-Then open PI-Desktop again.
+xattr -r -d com.apple.quarantine /Applications/PI-Desktop.app
 
-Use this only for an app obtained from a trusted PI-Desktop source. Signed and
-notarized builds do not need this command.
+Use the helper only for an app obtained from a trusted PI-Desktop source. It
+targets only PI-Desktop in /Applications or ~/Applications and removes only the
+quarantine attribute. Signed and notarized builds do not need it.

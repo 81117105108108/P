@@ -153,27 +153,42 @@
         }
       ],
       "extraDistFiles": [
+        "PI-Desktop-macOS-open.command",
         "PI-Desktop-macOS-opening-help.txt"
       ]
     },
     "dmg": {
       "artifactName": "PI-Desktop-${version}-${arch}.${ext}",
+      "background": "build/dmg-background.png",
+      "window": {
+        "width": 720,
+        "height": 500
+      },
+      "iconSize": 96,
+      "iconTextSize": 12,
       "contents": [
         {
-          "x": 130,
-          "y": 220
+          "x": 180,
+          "y": 240
         },
         {
-          "x": 410,
-          "y": 220,
+          "x": 540,
+          "y": 240,
           "type": "link",
           "path": "/Applications"
         },
         {
-          "x": 270,
-          "y": 330,
+          "x": 250,
+          "y": 370,
           "type": "file",
-          "name": "PI-Desktop-macOS-opening-help.txt",
+          "name": "Open PI-Desktop.command",
+          "path": "PI-Desktop-macOS-open.command"
+        },
+        {
+          "x": 470,
+          "y": 370,
+          "type": "file",
+          "name": "Read me first.txt",
           "path": "PI-Desktop-macOS-opening-help.txt"
         }
       ]

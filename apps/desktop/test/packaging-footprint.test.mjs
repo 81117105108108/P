@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 const packageJson = JSON.parse(
@@ -8,6 +8,19 @@ const packageJson = JSON.parse(
 const macOpenFixNote = await readFile(
   new URL("../PI-Desktop-macOS-opening-help.txt", import.meta.url),
   "utf8",
+);
+const macOpenScript = await readFile(
+  new URL("../PI-Desktop-macOS-open.command", import.meta.url),
+  "utf8",
+);
+const macOpenScriptStat = await stat(
+  new URL("../PI-Desktop-macOS-open.command", import.meta.url),
+);
+const dmgBackground = await readFile(
+  new URL("../build/dmg-background.png", import.meta.url),
+);
+const dmgBackgroundRetina = await readFile(
+  new URL("../build/dmg-background@2x.png", import.meta.url),
 );
 const viteConfigSource = await readFile(
   new URL("../electron.vite.config.ts", import.meta.url),
@@ -193,24 +206,58 @@ test("macOS targets follow the native architecture selected by the runner", () =
   assert.doesNotMatch(packageJson.scripts["dist:mac"], /--(?:arm64|x64)/);
 });
 
-test("macOS installers include trusted-source opening guidance", () => {
+test("macOS installers include trusted-source first-launch guidance", () => {
   assert.deepEqual(packageJson.build.mac.extraDistFiles, [
+    "PI-Desktop-macOS-open.command",
     "PI-Desktop-macOS-opening-help.txt",
   ]);
+  assert.equal(packageJson.build.dmg.background, "build/dmg-background.png");
+  assert.deepEqual(packageJson.build.dmg.window, { width: 720, height: 500 });
+  assert.equal(packageJson.build.dmg.iconSize, 96);
+  assert.equal(packageJson.build.dmg.iconTextSize, 12);
   assert.deepEqual(packageJson.build.dmg.contents, [
-    { x: 130, y: 220 },
-    { x: 410, y: 220, type: "link", path: "/Applications" },
+    { x: 180, y: 240 },
+    { x: 540, y: 240, type: "link", path: "/Applications" },
     {
-      x: 270,
-      y: 330,
+      x: 250,
+      y: 370,
       type: "file",
-      name: "PI-Desktop-macOS-opening-help.txt",
+      name: "Open PI-Desktop.command",
+      path: "PI-Desktop-macOS-open.command",
+    },
+    {
+      x: 470,
+      y: 370,
+      type: "file",
+      name: "Read me first.txt",
       path: "PI-Desktop-macOS-opening-help.txt",
     },
   ]);
-  assert.match(macOpenFixNote, /xattr -cr \/Applications\/PI-Desktop\.app/);
+  assert.deepEqual([...dmgBackground.subarray(0, 8)], [
+    137, 80, 78, 71, 13, 10, 26, 10,
+  ]);
+  assert.equal(dmgBackground.readUInt32BE(16), 720);
+  assert.equal(dmgBackground.readUInt32BE(20), 500);
+  assert.deepEqual([...dmgBackgroundRetina.subarray(0, 8)], [
+    137, 80, 78, 71, 13, 10, 26, 10,
+  ]);
+  assert.equal(dmgBackgroundRetina.readUInt32BE(16), 1440);
+  assert.equal(dmgBackgroundRetina.readUInt32BE(20), 1000);
+  assert.ok(macOpenScriptStat.mode & 0o111, "opening helper must be executable");
+  assert.match(macOpenFixNote, /Open PI-Desktop\.command/);
+  assert.match(
+    macOpenFixNote,
+    /xattr -r -d com\.apple\.quarantine \/Applications\/PI-Desktop\.app/,
+  );
   assert.match(macOpenFixNote, /trusted PI-Desktop source/);
   assert.match(macOpenFixNote, /Signed and\s+notarized builds do not need/);
+  assert.match(macOpenScript, /\/Applications\/\$\{APP_BUNDLE_NAME\}/);
+  assert.match(macOpenScript, /CFBundleIdentifier/);
+  assert.match(macOpenScript, /com\.pi-desktop\.app/);
+  assert.match(macOpenScript, /\/usr\/bin\/xattr -r -d com\.apple\.quarantine/);
+  assert.match(macOpenScript, /\/usr\/bin\/open/);
+  assert.doesNotMatch(macOpenScript, /\bsudo\s+\//);
+  assert.doesNotMatch(macOpenScript, /xattr -cr/);
 });
 
 test("packaging does not include removed PTY native payload configuration", () => {
