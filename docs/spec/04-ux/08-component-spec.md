@@ -1541,9 +1541,8 @@ managed thinking disclosures close so the answer remains the visual focus. A
 user click on a group, row, or collapse rail takes ownership of that disclosure;
 later stream updates and completion never reverse that choice.
 The group header shows `Processing · 12s` while active or `Processed for 12s`
-after completion, and also carries a compact current-state capsule such as
-`Editing`, `Thinking`, `Waiting for model`, or `Retrying`. Expanding it reveals
-the ordered tool activity rows and their nested result disclosures. The group
+after completion. Expanding it reveals the ordered tool activity rows and their
+nested result disclosures. The group
 reports duration and containment, not turn outcome: a failed child remains an
 error on its own ToolCallRow but never changes the group header to a terminal
 failure. Terminal agent errors remain owned by either the assistant error or
@@ -1556,7 +1555,7 @@ seconds when non-zero) from one hour onward. Zero-value units are omitted, so
 ### 9.2 Anatomy
 
 ```text
-[sparkle] Processing · 12s  [Editing]  3 steps        [›]
+[sparkle] Processing · 12s  3 steps                 [›]
           ├─ [file] Read /src/foo.ts        [›]
           ├─ [search] Searched TODO  24 matches   [›]
           └─ [terminal] Ran pnpm test  exit 1  • Failed  [copy] [›]
@@ -1566,8 +1565,8 @@ seconds when non-zero) from one hour onward. Zero-value units are omitted, so
 
 - The leading Lucide icon reflects the action type: file, folder, search,
   edit, terminal, web, or generic tool.
-- The group header owns the elapsed timer, current-state capsule, and step
-  count. It stays in the transcript after completion. Historical groups remain
+- The group header owns the elapsed timer and step count. It stays in the
+  transcript after completion. Historical groups remain
   collapsed; the latest active group opens automatically and returns to a
   collapsed state when it settles unless the user has interacted with it.
 - Tool-call details remain collapsed by default while the group is open. The
@@ -1583,9 +1582,9 @@ seconds when non-zero) from one hour onward. Zero-value units are omitted, so
   exit earns no chip — the row status already says so. The `truncated` chip
   follows `details.truncated` and therefore appears only when this result was
   cut short, not when a Read window of a longer file was filled (D306).
-- The current-state capsule is short, localized, and single-line; its live
-  text tells the user what the agent is doing without adding a second progress
-  card. Long paths remain in the row summary and are ellipsized.
+- Live activity remains in the processing group, its latest row, or the
+  dedicated runtime indicator; no additional status capsule is rendered.
+  Long paths remain in the row summary and are ellipsized.
 - The disclosure chevron is quiet until hover/focus or expansion.
 - A `run` row's head carries two more controls than the others, because its
   command lives only there (D226, §9.10): the outcome with a toned dot, and a

@@ -682,9 +682,9 @@ may be retained while exactly one workspace supplies the visible shell context.
   automatically so the error remains local to its invocation.
 - Consecutive tool activity is wrapped in one processing group. Its header
   updates elapsed time once per second while active, freezes after the next
-  transcript message, exposes the number of contained steps, and shows the
-  latest action or runtime phase (`Editing`, `Thinking`, `Waiting for model`,
-  `Retrying`, or `Waiting for subagents`) in a compact status capsule.
+  transcript message, and exposes the number of contained steps. The latest
+  action remains in the activity rows or dedicated runtime indicator; no
+  additional status capsule is rendered.
 - While the turn is active, the latest processing group opens automatically so
   its activity list is visible, but tool-call details remain collapsed by
   default. The latest thinking row opens automatically while it streams. When
