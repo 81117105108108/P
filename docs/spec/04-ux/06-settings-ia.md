@@ -351,6 +351,12 @@ system while preserving their different data ownership:
   the width with evenly divided segments, search sits below it, and the
   actions wrap left-aligned. Group headers drop the resolved path so row copy
   keeps the width.
+- The Subagents create/edit sheet pins a model with a select of the same
+  configured, runnable models the Composer offers, grouped by provider, plus
+  an inherit-session option. It does not take a free-typed `provider/model`
+  id. A pin that is no longer configured remains visible so editing does not
+  silently drop it. The stored frontmatter value is still
+  `vendorKey-or-name/modelId`.
 
 - Subagents open one **New subagent / Edit subagent** sheet that
   pre-fills the same fields the runtime's `BUILTIN_SUBAGENT_DOCUMENTS` ship

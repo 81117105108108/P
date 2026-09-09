@@ -1,7 +1,7 @@
 /**
- * Test for splitModelPin and applySubagentPreset - these are the helpers the
- * editor relies on for preset/template application and `<provider>/<model>`
- * pin mapping (issue #60).
+ * Test for applySubagentPreset - the helper the editor relies on for
+ * preset/template application (issue #60). Model-pin mapping is covered by the
+ * dedicated subagent-models tests.
  *
  * We test by re-implementing the same logic against the source string so this
  * stays a source-contract test (no React, no Node imports of the .tsx file).
@@ -39,19 +39,6 @@ test("applySubagentPreset copies the preset wholesale except for id/body", () =>
   assert.doesNotMatch(fn, /thinkingLevel: preset/);
   assert.doesNotMatch(fn, /scope: preset/);
   assert.doesNotMatch(fn, /enabled: preset/);
-});
-
-test("splitModelPin splits only the first slash so openrouter ids survive", () => {
-  const m = editorSource.match(/export function splitModelPin\([\s\S]+?\n\}/);
-  assert.ok(m, "splitModelPin not found");
-  const fn = m[0];
-  assert.match(fn, /const slash = trimmed\.indexOf\("\/"\)/);
-  assert.match(fn, /slice\(slash \+ 1\)/);
-  // Bare ids (no slash) are treated as a model id with empty provider so the
-  // picker shows them as custom.
-  assert.match(fn, /return \{ providerId: "", modelId: trimmed \};/);
-  // Empty input returns empty halves (used as "inherit the session model").
-  assert.match(fn, /if \(!trimmed\) return \{ providerId: "", modelId: "" \};/);
 });
 
 test("preset ids and builtin document ids agree", () => {

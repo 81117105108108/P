@@ -75,6 +75,8 @@ test("common setup and marketplace copy avoid developer jargon", () => {
 test("Plan mode and Auto permission copy stay explicit in both locales", () => {
   assert.equal(english["settings.modePlan"], "Plan");
   assert.equal(chinese["settings.modePlan"], "规划");
+  assert.equal(chinese["chat.permissionAcceptEdits"], "允许编辑");
+  assert.equal(traditional["chat.permissionAcceptEdits"], "允許編輯");
   assert.equal(english["plan.approvalRegion"], "Plan approval");
   assert.equal(
     english["plan.readyAnnouncement"],

@@ -2,6 +2,13 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const koEntries: ChangelogEntry[] = [
   {
+    version: "0.14.5",
+    date: "2026-09-09",
+    highlights: [
+      "모든 macOS DMG 및 ZIP 다운로드에 기본 arm64 또는 x64 아키텍처를 명확히 표시합니다.",
+    ],
+  },
+  {
     version: "0.14.4",
     date: "2026-09-09",
     highlights: [

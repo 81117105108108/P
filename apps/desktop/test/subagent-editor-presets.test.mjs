@@ -4,8 +4,8 @@
  *  - The sheet ships a preset picker driven by `SUBAGENT_PRESETS`, so the
  *    user can start from `explorer`, `code-reviewer`, `test-runner` or
  *    `fixer` instead of an empty form.
- *  - The model field is a picker over the configured providers'
- *    `availableForSubagents` bindings, not a free-text input.
+ *  - The model field is a picker over the configured, runnable providers'
+ *    model bindings, not a free-text input.
  *
  * These tests scan the source files rather than mount React, so they verify
  * the wiring (preset ids, model filtering, custom fallback) without dragging
@@ -85,32 +85,19 @@ test("the editor applies a preset by overwriting the draft body and tools", () =
   assert.match(editorSource, /description: preset\.description/);
 });
 
-test("the editor splits a provider/model pin correctly", () => {
-  // The model picker uses splitModelPin to map the draft's `model` value back
-  // onto a configured option; the splits below mirror what the runtime
-  // resolver accepts in `BUILTIN_SUBAGENT_DOCUMENTS`.
-  assert.match(editorSource, /export function splitModelPin\(/);
-  assert.match(editorSource, /const slash = trimmed\.indexOf\("\/"\)/);
-  // An id may itself contain a slash (openrouter style), so the test must
-  // exercise that case rather than split on the last segment.
-  assert.match(editorSource, /slice\(slash \+ 1\)/);
+test("the model picker uses the configured provider catalog", () => {
+  // The picker uses the shared provider catalog and preserves an existing
+  // orphan pin instead of silently changing it to session inheritance.
+  assert.match(editorSource, /subagentModelChoices\(providers\)/);
+  assert.match(editorSource, /groupSubagentModelChoices\(modelChoices\)/);
+  assert.match(editorSource, /subagentModelOrphanPin\(draft\.model, modelChoices\)/);
 });
 
-test("the model picker filters providers by availableForSubagents", () => {
-  // The picker must not list a model that the user disabled for delegation;
-  // a model that does exist but is not flagged would silently launch and
-  // spend the wrong provider's quota (issue #60's regression risk).
-  assert.match(editorSource, /availableForSubagents/);
-  assert.match(editorSource, /function ModelField/);
-  assert.match(editorSource, /api\s*\.\s*listProviders\s*\(\s*\)/);
-});
-
-test("the model picker keeps a free-text fallback", () => {
-  // "Custom (provider/model)…" must remain reachable: a user with a hand-typed
-  // pin (or a model that has not yet been flagged for subagents) still needs
-  // an escape hatch.
-  assert.match(editorSource, /__custom__/);
-  assert.match(editorSource, /modelPickCustom/);
+test("the model picker keeps existing pins visible", () => {
+  // A model that is no longer configured remains visible as an orphan option,
+  // so editing a definition does not silently clear its model pin.
+  assert.match(editorSource, /subagentModelOrphanPin/);
+  assert.match(editorSource, /orphanModel \? \(/);
 });
 
 test("the editor styles ship with the picker", () => {

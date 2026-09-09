@@ -154,16 +154,13 @@ jobs:
         run: |
           set -euo pipefail
           package_args=(--${{ matrix.arch }})
-          if [[ "${{ matrix.platform }}" == "macos" && "${{ matrix.arch }}" == "x64" ]]; then
-            # Keep Intel downloads distinct from the arm64 assets. These
-            # target-specific patterns are passed to electron-builder so the
-            # generated updater metadata keeps the renamed asset URLs and
-            # checksums in sync.
-            package_args+=(
-              '-c.dmg.artifactName=PI-Desktop-${version}-Intel.${ext}'
-              '-c.zip.artifactName=PI-Desktop-${version}-Intel-mac.${ext}'
-            )
-          fi
+          # Keep every macOS download distinct by architecture. These
+          # target-specific patterns are passed to electron-builder so the
+          # generated updater metadata keeps the asset URLs and checksums in sync.
+          package_args+=(
+            '-c.dmg.artifactName=PI-Desktop-${version}-${{ matrix.arch }}.${ext}'
+            '-c.zip.artifactName=PI-Desktop-${version}-${{ matrix.arch }}-mac.${ext}'
+          )
           pnpm --filter @pi-desktop/desktop run dist:mac -- "${package_args[@]}"
 
       - name: Package signed and notarized macOS installer
@@ -177,12 +174,13 @@ jobs:
         run: |
           set -euo pipefail
           package_args=(--${{ matrix.arch }})
-          if [[ "${{ matrix.platform }}" == "macos" && "${{ matrix.arch }}" == "x64" ]]; then
-            package_args+=(
-              '-c.dmg.artifactName=PI-Desktop-${version}-Intel.${ext}'
-              '-c.zip.artifactName=PI-Desktop-${version}-Intel-mac.${ext}'
-            )
-          fi
+          # Keep every macOS download distinct by architecture. These
+          # target-specific patterns are passed to electron-builder so the
+          # generated updater metadata keeps the asset URLs and checksums in sync.
+          package_args+=(
+            '-c.dmg.artifactName=PI-Desktop-${version}-${{ matrix.arch }}.${ext}'
+            '-c.zip.artifactName=PI-Desktop-${version}-${{ matrix.arch }}-mac.${ext}'
+          )
           pnpm --filter @pi-desktop/desktop run dist:mac -- "${package_args[@]}" \
             -c.mac.forceCodeSigning=true \
             -c.mac.notarize=true

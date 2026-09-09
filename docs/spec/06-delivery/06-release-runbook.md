@@ -198,13 +198,14 @@ artifact upload. The per-architecture
 `latest-mac.yml` files are renamed before upload; the publish job merges them
 into one feed after downloading both artifacts.
 
-The Intel x64 package command overrides the macOS target-specific artifact
-patterns so the public assets are unambiguous: `PI-Desktop-<version>-Intel.dmg`
-and `PI-Desktop-<version>-Intel-mac.zip`. The arm64 lane keeps the generic
-`PI-Desktop-<version>.dmg` and `PI-Desktop-<version>-mac.zip` names. Because
-the patterns are applied during electron-builder execution, the generated
-`latest-mac-x64.yml` feed references the Intel asset names and their matching
-checksums.
+The macOS package commands override the target-specific artifact patterns so
+both public architectures are explicit: the arm64 lane publishes
+`PI-Desktop-<version>-arm64.dmg` and `PI-Desktop-<version>-arm64-mac.zip`, while
+the Intel x64 lane publishes `PI-Desktop-<version>-x64.dmg` and
+`PI-Desktop-<version>-x64-mac.zip`. This applies to both unsigned and signed
+macOS lanes. Because the patterns are applied during electron-builder
+execution, each generated per-architecture updater feed references its
+architecture-labelled asset names and matching checksums.
 
 Every macOS DMG and ZIP also includes
 `PI-Desktop-macOS-opening-help.txt` at the package root. It tells users how to
@@ -369,9 +370,10 @@ D126/D285.
 
 Native-runner output matrix:
 
-- macOS arm64: `PI-Desktop-<version>.dmg` and `PI-Desktop-<version>-mac.zip`
-- macOS Intel x64: `PI-Desktop-<version>-Intel.dmg` and
-  `PI-Desktop-<version>-Intel-mac.zip`
+- macOS arm64: `PI-Desktop-<version>-arm64.dmg` and
+  `PI-Desktop-<version>-arm64-mac.zip`
+- macOS Intel x64: `PI-Desktop-<version>-x64.dmg` and
+  `PI-Desktop-<version>-x64-mac.zip`
 - Windows x64: NSIS installer
 - Linux x64: AppImage and deb
 - Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`
@@ -403,5 +405,6 @@ Shell smoke on each native runner:
   `scripts/check-linux-host-glibc.mjs` and refuses a binary that needs a
   newer glibc.
 - In-app macOS delivery, rollback, staged rollout, and prerelease channel
-  policy remain open release work. Downloaded DMG and ZIP artifacts are
-  Developer ID-signed, notarized, and stapled before publication.
+  policy remain open release work. GitHub Release macOS artifacts are unsigned
+  by default; only a manual `sign_macos: true` run receives Developer ID
+  signing, notarization, and stapling before publication.

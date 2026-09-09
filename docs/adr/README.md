@@ -157,7 +157,7 @@ Each ADR includes:
 | 0141 | Make expanded sidebar width user-resizable | Accepted |
 | 0142 | Allow non-loopback HTTP MCP endpoints with explicit risk disclosure | Accepted |
 | 0144 | Allow user-configured thinking-level overrides | Accepted |
-| 0145 | Publish native macOS Intel artifacts | Accepted (amended by D353) |
+| 0145 | Publish native macOS Intel artifacts | Accepted (amended by D353 / 0191) |
 | 0146 | Assign outer and inner work-panel resize ownership by boundary | Superseded by 0151 |
 | 0147 | A2A protocol stack for subagent coordination | Superseded by 0165 |
 | 0148 | Explicitly disable application keyboard shortcuts | Accepted |
@@ -203,3 +203,4 @@ Each ADR includes:
 | 0188 | Preserve distinct credentials during model configuration import | Accepted (amends 0179 / D342) |
 | 0189 | Parent fatal error aborts leftover delegates | Accepted (amends 0166 / D328) |
 | 0190 | Host-gated large-file and dropped-file access | Accepted |
+| 0191 | Label both macOS release architectures | Accepted (amends 0145 / D353) |

@@ -117,10 +117,30 @@ test("release matrix packages both native macOS architectures", () => {
     releaseWorkflowSource,
     /name: Package installers \(\$\{\{ matrix\.dist \}\}\)[\s\S]*?if: matrix\.platform != 'macos'[\s\S]*?run: pnpm --filter @pi-desktop\/desktop run \$\{\{ matrix\.dist \}\} -- --\$\{\{ matrix\.arch \}\}/,
   );
-  assert.match(
+  const macPackageBlocks = [
+    ...releaseWorkflowSource.matchAll(
+      /- name: Package (?:unsigned|signed and notarized) macOS installer[\s\S]*?(?=\n      - name:)/g,
+    ),
+  ].map(([block]) => block);
+  assert.equal(macPackageBlocks.length, 2, "both macOS packaging lanes are present");
+  for (const artifactName of [
+    "'-c.dmg.artifactName=PI-Desktop-${version}-${{ matrix.arch }}.${ext}'",
+    "'-c.zip.artifactName=PI-Desktop-${version}-${{ matrix.arch }}-mac.${ext}'",
+  ]) {
+    assert.equal(
+      releaseWorkflowSource.split(artifactName).length - 1,
+      2,
+      `${artifactName} is applied to both macOS packaging lanes`,
+    );
+    assert.ok(
+      macPackageBlocks.every((block) => block.includes(artifactName)),
+      `${artifactName} is present in each macOS packaging lane`,
+    );
+  }
+  assert.doesNotMatch(
     releaseWorkflowSource,
-    /name: Package unsigned macOS installer[\s\S]*?if: matrix\.platform == 'macos' && inputs\.sign_macos != true[\s\S]*?CSC_IDENTITY_AUTO_DISCOVERY:\s*'false'[\s\S]*?package_args=\(--\$\{\{ matrix\.arch \}\}\)[\s\S]*?if \[\[ "\$\{\{ matrix\.platform \}\}" == "macos" && "\$\{\{ matrix\.arch \}\}" == "x64" \]\][\s\S]*?-c\.dmg\.artifactName=PI-Desktop-\$\{version\}-Intel\.\$\{ext\}[\s\S]*?-c\.zip\.artifactName=PI-Desktop-\$\{version\}-Intel-mac\.\$\{ext\}[\s\S]*?pnpm --filter @pi-desktop\/desktop run dist:mac -- "\$\{package_args\[@\]\}"/,
-    "Intel macOS artifact names are applied only to the native x64 lane",
+    /artifactName=PI-Desktop-\$\{version\}-Intel/,
+    "macOS artifact names use standard architecture labels",
   );
   assert.match(
     releaseWorkflowSource,
@@ -171,4 +191,13 @@ test("the signed local macOS lane selects the native runner architecture", () =>
   assert.match(releaseMacScriptSource, /MAC_ARCH="\$\{MAC_ARCH:-\$DEFAULT_MAC_ARCH\}"/);
   assert.match(releaseMacScriptSource, /must match the host/);
   assert.match(releaseMacScriptSource, /electron-builder --mac "--\$\{MAC_ARCH\}"/);
+  for (const artifactName of [
+    "-c.dmg.artifactName=PI-Desktop-\\${version}-${MAC_ARCH}.\\${ext}",
+    "-c.zip.artifactName=PI-Desktop-\\${version}-${MAC_ARCH}-mac.\\${ext}",
+  ]) {
+    assert.ok(
+      releaseMacScriptSource.includes(artifactName),
+      `${artifactName} is applied to the signed local macOS lane`,
+    );
+  }
 });
