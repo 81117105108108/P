@@ -165,6 +165,9 @@ function buildApi() {
       requestNotificationPermission: () => call("ui.requestNotificationPermission"),
       showNativeNotification: (input) => call("ui.showNativeNotification", [input]),
     },
+    project: {
+      create: (input) => call("project.create", [input ?? {}]),
+    },
     workspace: {
       get: () => call("workspace.get"),
     },

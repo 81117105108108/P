@@ -107,6 +107,8 @@ export type PluginSessionImportInput = {
   source: string;
   externalId: string;
   title: string;
+  /** Explicit host project created through `pi.project.create`; omitted stays unbound. */
+  projectId?: number | null;
   projectPath?: string | null;
   modelId?: string | null;
   providerId?: string | null;
@@ -140,11 +142,18 @@ export type PluginSessionBatchImportResult = {
   failed: number;
 };
 
+export type PluginProjectRecord = {
+  projectId: number;
+  path: string;
+  name: string;
+};
+
 export type PluginSessionListItem = {
   sessionId: string;
   title: string;
   source: string;
   externalId: string;
+  projectId: number | null;
   messageCount: number;
   originKind: "imported" | "created";
   bound: { workspace: boolean; model: boolean };
@@ -163,6 +172,7 @@ export type PluginSessionGetResult = {
   source: string;
   externalId: string;
   originKind: "imported" | "created";
+  projectId: number | null;
   projectPath: string | null;
   modelId: string | null;
   providerId: string | null;
@@ -534,6 +544,9 @@ export type PluginHostApi = {
       input: PluginNativeNotificationInput,
     ) => Promise<PluginNativeNotificationResult>;
   };
+  project: {
+    create: (input: { path: string }) => Promise<PluginProjectRecord>;
+  };
   workspace: {
     get: () => Promise<{ path: string; name: string } | null>;
   };
@@ -692,6 +705,7 @@ export const PLUGIN_PERMISSIONS = [
   "agent.prompt.inject",
   "agent.complete",
   "models.list",
+  "project.create",
   "session.read",
   "session.import",
   "session.read.own",

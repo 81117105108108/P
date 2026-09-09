@@ -775,6 +775,26 @@ impl Database {
         Ok(rows.next()?.map(|r| r.get(0)).transpose()?)
     }
 
+    pub fn get_project(&self, id: i64) -> Result<Option<ProjectRecord>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT id, path, name, pinned, created_at, last_opened_at
+             FROM projects
+             WHERE id = ?1",
+        )?;
+        stmt.query_row(params![id], |row| {
+            Ok(ProjectRecord {
+                id: row.get(0)?,
+                path: row.get(1)?,
+                name: row.get(2)?,
+                pinned: row.get(3)?,
+                created_at: row.get(4)?,
+                last_opened_at: row.get(5)?,
+            })
+        })
+        .optional()
+        .map_err(Into::into)
+    }
+
     pub fn list_projects(&self) -> Result<Vec<ProjectRecord>> {
         let mut stmt = self.conn.prepare_cached(
             "SELECT id, path, name, pinned, created_at, last_opened_at

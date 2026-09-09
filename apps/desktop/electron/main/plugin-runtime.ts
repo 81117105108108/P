@@ -296,6 +296,9 @@ export type PluginHostServices = {
     rename: (pluginId: string, input: Record<string, unknown>) => Promise<unknown>;
     delete: (pluginId: string, input: Record<string, unknown>) => Promise<unknown>;
   };
+  project?: {
+    create: (pluginId: string, input: Record<string, unknown>) => Promise<unknown>;
+  };
 };
 
 /** Host APIs a plugin process may reach. Anything else does not exist (spec 04 §2). */
@@ -1645,6 +1648,9 @@ export class PluginRuntime {
       case "session.import": {
         this.assertPermission(loaded, "session.import");
         const input = normalizePluginSessionInput(args[0] ?? {}, "import");
+        if (input.projectId !== undefined && input.projectId !== null) {
+          this.assertPermission(loaded, "project.create");
+        }
         const source = this.sessionSource(loaded, input.source);
         input.sourceLabel = source.label;
         if (!this.services.session?.import) {
@@ -1655,12 +1661,33 @@ export class PluginRuntime {
       case "session.importBatch": {
         this.assertPermission(loaded, "session.import");
         const input = normalizePluginSessionInput(args[0] ?? {}, "batch");
+        const items = Array.isArray(input.sessions) ? input.sessions : [];
+        if (items.some((item) => item && typeof item === "object" &&
+          (item as Record<string, unknown>).projectId !== undefined &&
+          (item as Record<string, unknown>).projectId !== null)) {
+          this.assertPermission(loaded, "project.create");
+        }
         const source = this.sessionSource(loaded, input.source);
         input.sourceLabel = source.label;
         if (!this.services.session?.importBatch) {
           throw apiError("UNSUPPORTED", "host api not available: session.importBatch");
         }
         return this.services.session.importBatch(loaded.manifest.id, input);
+      }
+      case "project.create": {
+        this.assertPermission(loaded, "project.create");
+        const input = args[0];
+        if (!input || typeof input !== "object" || Array.isArray(input)) {
+          throw apiError("INVALID_PARAMS", "project input must be an object");
+        }
+        const path = (input as Record<string, unknown>).path;
+        if (typeof path !== "string" || !path.trim() || [...path].length > 4096) {
+          throw apiError("INVALID_PARAMS", "project path must be a non-empty string");
+        }
+        if (!this.services.project?.create) {
+          throw apiError("UNSUPPORTED", "host api not available: project.create");
+        }
+        return this.services.project.create(loaded.manifest.id, { path: path.trim() });
       }
       case "session.list": {
         this.assertPermission(loaded, "session.read.own");

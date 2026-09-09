@@ -225,6 +225,7 @@ describe("PLUGIN_PERMISSIONS", () => {
       "agent.prompt.inject",
       "agent.complete",
       "models.list",
+      "project.create",
       "session.read",
       "fs.read",
       "fs.write",

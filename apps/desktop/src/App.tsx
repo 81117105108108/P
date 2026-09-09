@@ -588,6 +588,9 @@ function AppShell() {
         })
         .catch(() => undefined);
     });
+    const offSessionsChanged = api.onSessionsChanged(() => {
+      void useAppStore.getState().refreshSessions().catch(() => undefined);
+    });
     const offNotificationActivated = api.onNotificationActivated(
       ({ id, sessionId }) => {
         const store = useAppStore.getState();
@@ -710,6 +713,7 @@ function AppShell() {
       offBrowserPreview();
       offHostStatus();
       offNotificationChanged();
+      offSessionsChanged();
       offNotificationActivated();
       window.removeEventListener("keydown", onKey);
     };

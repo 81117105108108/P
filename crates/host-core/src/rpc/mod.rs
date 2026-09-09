@@ -1039,6 +1039,23 @@ async fn handle_request(
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "projects": projects }))
         }
+        "projects.create" => {
+            let path = params
+                .get("path")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "path required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let id = st
+                .db
+                .ensure_project(path, false)
+                .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
+            let project = st
+                .db
+                .get_project(id)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?
+                .ok_or_else(|| rpc_err(1000, "project disappeared after creation", "INTERNAL"))?;
+            Ok(json!({ "project": project }))
+        }
         "workspace.set" => {
             let path = params
                 .get("path")
@@ -3648,6 +3665,42 @@ mod tests {
             error.data.as_ref().and_then(|data| data.get("errorCode")),
             Some(&json!("MODEL_ALIAS_TOO_LONG"))
         );
+    }
+
+    #[tokio::test]
+    async fn project_create_returns_an_id_without_switching_workspace() {
+        let data_dir = tempfile::tempdir().unwrap();
+        let mut app_state = AppState::open(data_dir.path()).unwrap();
+        app_state.handshook = true;
+        let state = Arc::new(Mutex::new(app_state));
+        let (tx, _rx) = mpsc::unbounded_channel();
+        let path = data_dir.path().to_string_lossy().to_string();
+
+        let result = handle_request(
+            state.clone(),
+            "projects.create",
+            json!({ "path": path }),
+            tx,
+        )
+        .await
+        .unwrap();
+        let project_id = result["project"]["id"].as_i64().unwrap();
+        let canonical_path = data_dir.path().canonicalize().unwrap();
+        assert_eq!(
+            result["project"]["path"],
+            canonical_path.to_string_lossy().as_ref()
+        );
+        assert!(project_id > 0);
+
+        let workspace = handle_request(
+            state,
+            "workspace.get",
+            json!({}),
+            mpsc::unbounded_channel().0,
+        )
+        .await
+        .unwrap();
+        assert_eq!(workspace["workspace"], Value::Null);
     }
 
     #[tokio::test]
