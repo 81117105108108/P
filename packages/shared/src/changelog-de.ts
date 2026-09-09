@@ -2,6 +2,13 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const deEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.5",
+    "date": "2026-09-09",
+    "highlights": [
+      "Kennzeichnen Sie jedes macOS-DMG und jede ZIP-Datei mit der nativen arm64- oder x64-Architektur."
+    ]
+  },
+  {
     "version": "0.14.4",
     "date": "2026-09-09",
     "highlights": [

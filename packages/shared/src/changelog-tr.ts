@@ -2,6 +2,13 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const trEntries: ChangelogEntry[] = [
   {
+    "version": "0.14.5",
+    "date": "2026-09-09",
+    "highlights": [
+      "Her macOS DMG ve ZIP indirmesini yerel arm64 veya x64 mimarisiyle açıkça etiketleyin."
+    ]
+  },
+  {
     "version": "0.14.4",
     "date": "2026-09-09",
     "highlights": [

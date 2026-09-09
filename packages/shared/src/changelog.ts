@@ -29,6 +29,13 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "0.14.5",
+    date: "2026-09-09",
+    highlights: [
+      "Label every macOS DMG and ZIP with its native arm64 or x64 architecture.",
+    ],
+  },
+  {
     version: "0.14.4",
     date: "2026-09-09",
     highlights: [
@@ -720,6 +727,13 @@ const enEntries: ChangelogEntry[] = [
 
 const zhCNEntries: ChangelogEntry[] = [
   {
+    version: "0.14.5",
+    date: "2026-09-09",
+    highlights: [
+      "为每个 macOS DMG 和 ZIP 标注原生 arm64 或 x64 架构。",
+    ],
+  },
+  {
     version: "0.14.4",
     date: "2026-09-09",
     highlights: [
@@ -1409,6 +1423,13 @@ const zhCNEntries: ChangelogEntry[] = [
 ];
 
 const zhTWEntries: ChangelogEntry[] = [
+  {
+    version: "0.14.5",
+    date: "2026-09-09",
+    highlights: [
+      "為每個 macOS DMG 和 ZIP 標註原生 arm64 或 x64 架構。",
+    ],
+  },
   {
     version: "0.14.4",
     date: "2026-09-09",
