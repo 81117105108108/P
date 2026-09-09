@@ -204,6 +204,72 @@ pi.session.getLlmContext(): Promise<PluginLlmContext>
 正在飞行的工具调用会从尾部剥掉。compaction 摘要替换检查点之前的历史。
 合计内容上限 200k 字符。
 
+### 插件拥有的会话（P0/P1；需要对应权限）
+
+插件只能导入和管理归属于自身的会话。来源必须在
+`manifest.contributes.sessionSources` 中声明；主机提供本地化来源标签，并生成
+持久会话 id 与消息 id。导入会话不会绑定工作区、provider 或 model；原始值只在
+`get().history` 中返回。
+
+```ts
+type PluginSessionSourceContrib = {
+  id: string
+  label?: string | { en: string; "zh-CN": string }
+}
+
+pi.session.import(input: {
+  source: string
+  externalId: string
+  title: string
+  projectPath?: string | null
+  modelId?: string | null
+  providerId?: string | null
+  createdAt: string // RFC3339
+  updatedAt: string // >= createdAt
+  messages: Array<{
+    role: "user" | "assistant" | "tool"
+    content: string
+    createdAt: string // 会话内单调递增
+    modelId?: string
+    providerId?: string
+    toolName?: string
+    toolCallId?: string
+    toolStatus?: "success" | "error"
+    toolArgs?: unknown
+    toolResult?: unknown
+  }>
+}): Promise<{ sessionId: string; imported: boolean; skipped: boolean }>
+
+pi.session.importBatch(input: {
+  source: string
+  sessions: Array<Omit<PluginSessionImportInput, "source">>
+  mode?: "skip" | "fail"
+}): Promise<PluginSessionBatchImportResult>
+
+pi.session.list(input?: {
+  limit?: number; cursor?: string; source?: string; updatedAfter?: string
+}): Promise<PluginSessionListResult>
+pi.session.get(input: { sessionId: string }): Promise<PluginSessionGetResult>
+pi.session.listMessages(input: {
+  sessionId: string; limit?: number; cursor?: string
+  order?: "asc" | "desc"; contentLimit?: number
+}): Promise<PluginSessionMessageListResult>
+pi.session.rename(input: { sessionId: string; title: string }): Promise<{ updated: boolean }>
+pi.session.delete(input: {
+  sessionId: string; mode?: "trash" | "purge"
+}): Promise<{ deleted: boolean }>
+```
+
+导入以 `(pluginId, source, externalId)` 幂等。`skip` 批量导入逐项继续，`fail`
+批量导入在任一项失败时全部回滚。`trash` 隐藏会话但保留其转录本和来源；`purge`
+同时删除两者并允许重新导入。读取、重命名和删除均按归属限制；未声明来源返回
+`PERMISSION_DENIED`。
+
+主机限制每会话 2,000 条消息、每批 100 个会话、每条消息 512 KiB、每个工具值
+256 KiB、每个 payload 32 MiB、JSON 深度 8。每个插件每分钟最多 10 次单条导入、
+5 次批量导入和 20 次删除。写入前会移除工具 `__pi*` 与 `piDesktop.*` 对象键。
+P2/P3（创建、消息变更、绑定、批量删除、标签）不属于本次接口。
+
 ### agent.complete（需要 `agent.complete`）
 ```ts
 pi.agent.complete(input: {

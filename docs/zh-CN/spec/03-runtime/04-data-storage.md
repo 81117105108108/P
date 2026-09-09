@@ -1,4 +1,4 @@
-# 04. 数据存储（架构 v11）
+# 04. 数据存储（架构 v14）
 
 > **翻译说明：** 本页是与 [英文源规格](/spec/03-runtime/04-data-storage) 一一对应的机器辅助翻译。代码、协议字段和标识符保持原文；如翻译与英文源事实有歧义，以英文版本为准。
 
@@ -19,7 +19,7 @@
 ## 1. 目标
 
 本地优先、重启后可恢复、敏感数据隔离 — 另外，对于
-架构 v7、v8 和 v11：
+架构 v7、v8、v11 和 v14：
 
 1. **无损转录** — 存储运行时消息形状（内容块），
    不是 UI 投影； UI 形状是在 RPC 边界处导出的。
@@ -42,9 +42,9 @@
 ~/.pi-desktop/
  ├── pi.sqlite            # index database (WAL: + -wal/-shm) — host-core only
  ├── pi.sqlite.v6.bak     # archived pre-v7 database (D119 breaking reset)
- ├── pi.sqlite.v8.bak     # exact readable backup before v8→v11 destructive work
- ├── pi.sqlite.v9.bak     # exact readable backup before v9→v11 destructive work
- ├── pi.sqlite.v10.bak    # exact readable backup before v10→v11 destructive work
+ ├── pi.sqlite.v8.bak     # exact readable backup before v8→v14 destructive work
+ ├── pi.sqlite.v9.bak     # exact readable backup before v9→v14 destructive work
+ ├── pi.sqlite.v10.bak    # exact readable backup before v10→v14 destructive work
  ├── sessions/            # transcript file store (D119) — host-core only
  │    ├── <sessionId>.jsonl           # live transcript (header + messages)
  │    ├── <sessionId>.revisions.jsonl # regenerate branches, append-only
@@ -166,7 +166,7 @@ PRAGMA trusted_schema = ON;       -- required by the FTS triggers (§4.8); the D
 PRAGMA auto_vacuum = INCREMENTAL; -- set at creation, before any table
 ```
 
-- 架构版本位于 `PRAGMA user_version` (v11 = `11`) 中。 v1 `meta`
+- 架构版本位于 `PRAGMA user_version` (v14 = `14`) 中。 v1 `meta`
   桌子不见了。
 - host-core 是**单一作者**；语句使用 `prepare_cached`；每个
   多行写入在一个事务中运行。
@@ -341,6 +341,7 @@ CREATE TABLE sessions (
   permission_mode TEXT NOT NULL DEFAULT 'inherit' -- D115: inherit follows settings
                 CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto')),
   source      TEXT,                            -- import origin: claude-code | codex | opencode | pi
+  deleted_at  INTEGER,                         -- plugin trash marker; null means active
   pinned      INTEGER NOT NULL DEFAULT 0,
   last_seq    INTEGER NOT NULL DEFAULT 0,      -- message ordinal allocator
   created_at  INTEGER NOT NULL,
@@ -348,6 +349,25 @@ CREATE TABLE sessions (
 );
 CREATE INDEX idx_sessions_updated ON sessions(updated_at DESC);
 CREATE INDEX idx_sessions_project ON sessions(project_id) WHERE project_id IS NOT NULL;
+CREATE INDEX idx_sessions_deleted ON sessions(deleted_at) WHERE deleted_at IS NOT NULL;
+```
+
+插件导入增加一个由主机拥有的来源 sidecar。它与核心会话身份分离，
+每次插件读写都必须匹配创建该行的 `plugin_id`：
+
+```sql
+CREATE TABLE session_import_origins (
+  plugin_id    TEXT NOT NULL,
+  source_id    TEXT NOT NULL,
+  external_id  TEXT NOT NULL,
+  session_id   TEXT NOT NULL UNIQUE REFERENCES sessions(id) ON DELETE CASCADE,
+  source_label TEXT,
+  origin_json  TEXT,
+  created_at   INTEGER NOT NULL,
+  UNIQUE(plugin_id, source_id, external_id)
+);
+CREATE INDEX idx_session_import_origins_plugin
+  ON session_import_origins(plugin_id, source_id, created_at DESC);
 ```
 
 - `source='user'`/`kv(cache)` 是**松散引用**（无 FK），就像 `turns` 一样：
@@ -370,6 +390,12 @@ CREATE INDEX idx_sessions_project ON sessions(project_id) WHERE project_id IS NO
   状态。
 - `source` + 确定性导入 id 保持重新导入幂等性并让
   UI 徽章导入会话。
+- `deleted_at` 是插件 `trash` 操作使用的主机时间戳。软删除的插件会话
+  从普通列表和插件读取中隐藏，但其转录本和来源会一直保留到归属插件
+  执行 purge。核心会话删除会级联清理 sidecar；purge 也会移除转录文件。
+- `session_import_origins` 保存插件/来源/外部 id 幂等键，以及原始
+  `projectPath`、`modelId`、`providerId` 历史 JSON；这些值不会成为插件
+  导入会话的活动绑定。
 - `project_id` 也是该会话的工具根权限。切换
   可见工作区无法重定向正在进行或稍后的工具调用
 到另一个会话。
@@ -939,7 +965,7 @@ outbox 排空。渲染器侧的停止绝不重写已有已开始回复的转录
 - JSON 列在热路径上盲读（按原样发送到渲染器）；
   任何过滤或求和的内容都是按规则提升的列。
 
-## 7. 版本控制、v7 重置和 v8 到 v11 Plan/Goal 迁移
+## 7. 版本控制、v7 重置和 v8 到 v14 迁移
 
 - `PRAGMA user_version` 保留模式权限；未来的结构性变化
   再次添加有序的 Rust 迁移 fns，每个都在一个事务中，并带有一个
@@ -950,9 +976,9 @@ outbox 排空。渲染器侧的停止绝不重写已有已开始回复的转录
   旧文件中的会话、提供程序和设置不会保留；
   存档仍保留以供手动恢复。所有 v7 之前的迁移代码
   （v1 `settings.sqlite` 导入，v2→v6 链）被删除。
-- 全新安装直接运行完整的 v11 DDL。
+- 全新安装直接运行完整的 v14 DDL。
 - **架构 v7 首先到达 v8，然后使用受保护的路径。** v7→v8
-  迁移之后是相同的受保护的 v8→v11 迁移；架构-v9 和
+  迁移之后是相同的受保护的 v8→v14 迁移；架构-v9 和
   schema-v10 数据库采用相同的受保护路径并接收精确的可读数据
   破坏性工作之前的 `pi.sqlite.v9.bak` / `pi.sqlite.v10.bak`。
 - **v8-to-v11 是就地事务迁移。** 在迁移之前，
@@ -986,6 +1012,10 @@ outbox 排空。渲染器侧的停止绝不重写已有已开始回复的转录
   仍然可以恢复。
   旧版 `planApprovalPermissionMode` 已从应用设置 JSON 中删除
   迁移期间；所有不相关的设置保持不变。
+
+- **架构 v14 是新增迁移。** 它增加可为空的 `sessions.deleted_at`、部分
+  删除索引和 `session_import_origins`。现有会话保持活动状态且没有来源行。
+  迁移使用同一个受保护事务，并在完整性检查通过前保留 v14 之前的备份。
 
 `largePasteThreshold` 是应用设置 JSON 中的新增字段，而不是数据库 schema 字段。
 主机读取设置时会将缺失、格式错误或超出范围的值规范化为 600，设置写入则验证
@@ -1099,3 +1129,6 @@ UI投影损失
 19. 计划的或无人值守的 Plan **或 Goal** 运行在 provider/artifact/ 之前失败
     使用 `PLAN_REQUIRES_INTERACTIVE_SESSION` 进行队列工作；无背景路径
     自动批准任一类型
+20. 架构 v14 插件导入使用主机生成的会话 id；每个会话一个来源行；以
+    `(pluginId, source, externalId)` 幂等；不绑定活动项目或模型；读取和
+    变更按所有权限制，并支持先 trash、后 purge。

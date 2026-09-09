@@ -280,6 +280,10 @@ Host Main (PI-Desktop)
 - `pi.agent.unregisterTool(name)`
 - `pi.models.list()` // `models.list`
 - `pi.session.getLlmContext()` // `session.read`；仅限进行中的工具会话
+- `pi.session.import()` / `importBatch()` // `session.import`；仅限已声明来源
+- `pi.session.list()` / `get()` / `listMessages()` // `session.read.own`
+- `pi.session.rename()` // `session.update.own`
+- `pi.session.delete()` // `session.delete.own`
 - `pi.agent.complete(input)` // `agent.complete`；宿主代发一次性补全
 
 技能以声明方式贡献（`contributes.skills` + `agent.prompt.inject`），

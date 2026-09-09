@@ -248,6 +248,76 @@ session (D333 / D336). Calling this outside a tool execution fails with
 plugin's own tool is stripped from the tail. A compaction summary replaces
 pre-checkpoint history. Combined content is capped at 200k characters.
 
+### plugin-owned sessions (P0/P1; requires the matching permission)
+
+Plugins may import and manage only sessions whose origin belongs to that same
+plugin. The source must be declared in `manifest.contributes.sessionSources`;
+the host supplies the localized source label and generates the durable session
+and message ids. Imported sessions never bind a workspace, provider, or model;
+the original values are returned only in `get().history`.
+
+```ts
+type PluginSessionSourceContrib = {
+  id: string
+  label?: string | { en: string; "zh-CN": string }
+}
+
+pi.session.import(input: {
+  source: string
+  externalId: string
+  title: string
+  projectPath?: string | null
+  modelId?: string | null
+  providerId?: string | null
+  createdAt: string // strict RFC3339
+  updatedAt: string // >= createdAt
+  messages: Array<{
+    role: "user" | "assistant" | "tool"
+    content: string
+    createdAt: string // monotonic within the session
+    modelId?: string
+    providerId?: string
+    toolName?: string
+    toolCallId?: string
+    toolStatus?: "success" | "error"
+    toolArgs?: unknown
+    toolResult?: unknown
+  }>
+}): Promise<{ sessionId: string; imported: boolean; skipped: boolean }>
+
+pi.session.importBatch(input: {
+  source: string
+  sessions: Array<Omit<PluginSessionImportInput, "source">>
+  mode?: "skip" | "fail"
+}): Promise<PluginSessionBatchImportResult>
+
+pi.session.list(input?: {
+  limit?: number; cursor?: string; source?: string; updatedAfter?: string
+}): Promise<PluginSessionListResult>
+pi.session.get(input: { sessionId: string }): Promise<PluginSessionGetResult>
+pi.session.listMessages(input: {
+  sessionId: string; limit?: number; cursor?: string
+  order?: "asc" | "desc"; contentLimit?: number
+}): Promise<PluginSessionMessageListResult>
+pi.session.rename(input: { sessionId: string; title: string }): Promise<{ updated: boolean }>
+pi.session.delete(input: {
+  sessionId: string; mode?: "trash" | "purge"
+}): Promise<{ deleted: boolean }>
+```
+
+Import is idempotent on `(pluginId, source, externalId)`. `skip` batches
+continue per item; `fail` batches validate and commit atomically. `trash` hides
+the session while retaining its transcript and origin; `purge` removes both and
+allows a later re-import. Reads, rename, and delete are ownership-scoped, and
+undeclared sources fail with `PERMISSION_DENIED`.
+
+The host enforces a 2,000-message/session, 100-session/batch, 512 KiB/message,
+256 KiB/tool-value, 32 MiB/payload, and JSON-depth-8 limit. Import is limited
+to 10 calls/minute plus 5 batch calls/minute per plugin; delete is limited to
+20 calls/minute. Tool `__pi*` and `piDesktop.*` object keys are removed before
+storage. P2/P3 operations (create, message mutation, binding, batch delete,
+and tags) are intentionally not part of this contract.
+
 ### agent.complete (requires `agent.complete`)
 ```ts
 pi.agent.complete(input: {

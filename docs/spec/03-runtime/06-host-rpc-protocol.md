@@ -159,10 +159,12 @@ Rules:
    advertises `"a2a"`. A v10 host or client is rejected before the UI becomes
    interactive, so a mixed pair cannot call a missing domain.
 
-Protocol v11 is paired with host-core storage schema v13. Schema v12 had added
+Protocol v11 is paired with host-core storage schema v14. Schema v12 had added
 the A2A tables (`a2a_tasks`, `a2a_messages`, `a2a_artifacts`,
 `a2a_push_configs`) via `migrate_v11_to_v12`; `migrate_v12_to_v13` drops those
-tables, and a fresh database never creates them. The schema version is an
+tables, and v14 adds the plugin-session ownership sidecar and soft-delete
+column. A fresh database creates neither A2A tables nor unowned plugin-session
+rows. The schema version is an
 internal persistence invariant, not an additional JSON-RPC field; the
 checkpoint architecture remains host-owned.
 
@@ -325,6 +327,24 @@ to later refresh and inference; the vendor picker does not collect them.
 - `session.import` — atomically imports one converted session; a non-empty
   project path is normalized and upserted into `projects` before the session
   references it; returns `{ imported, skipped }`
+
+Plugin-owned session methods are additive to protocol v11 and are called only by
+Electron main after plugin permission and manifest-source checks:
+
+- `plugin.session.import` — import one host-owned session with an idempotency
+  key `(pluginId, source, externalId)`; the host generates ids and does not bind
+  the imported row to a project, provider, or model
+- `plugin.session.importBatch` — bounded `skip` or all-or-nothing `fail` batch
+- `plugin.session.list` / `plugin.session.get` / `plugin.session.listMessages` —
+  read only the calling plugin's active imported sessions
+- `plugin.session.rename` — rename an owned active imported session
+- `plugin.session.delete` — `trash` hides and retains the transcript; `purge`
+  removes it and permits re-import
+
+The host rejects unknown roles, non-RFC3339 or non-monotonic timestamps, and
+oversized/deep payloads. Tool values are sanitized for host-reserved keys. The
+per-plugin rolling limits are 10 single imports, 5 batch imports, and 20
+deletes per 60 seconds. P2/P3 methods are not present in protocol v11.
 
 ### Stats
 

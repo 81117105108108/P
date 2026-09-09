@@ -3947,3 +3947,18 @@ D193, and D194.
   aggregate tool row still describe the visual turn.
 - Renderer only. Host completed-turn rollups and Token Insights stay additive
   billing. See ADR 0193 and E2E-060d.
+
+## 2026-09-09 — Host-owned plugin session import and ownership API (D356)
+
+- External-history plugins need durable import/read/update/delete operations, but
+  the existing in-flight `session.getLlmContext` and core `session.import`
+  boundaries are not safe plugin ownership boundaries.
+- Decision D356 / ADR 0194 adds the P0/P1 `pi.session` methods: `import`,
+  `importBatch`, `list`, `get`, `listMessages`, `rename`, and `delete`.
+  `contributes.sessionSources` is required for every source. Host-core generates
+  ids and scopes all operations to `(pluginId, source, externalId)` ownership;
+  imports never activate project/provider/model bindings.
+- Schema v14 adds `session_import_origins` and `sessions.deleted_at`; protocol
+  v11 remains unchanged. Trash preserves the transcript for owner-only purge.
+  P2/P3 create, message mutation, binding, batch-delete, and tag APIs remain
+  deferred. See ADR 0194 and E2E-203/E2E-204.

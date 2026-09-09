@@ -6017,3 +6017,39 @@ IPC 请求无法关闭。
 - **验收**：质量
 - **里程碑**：M5
 - **状态**：静态/文档检查已覆盖（`pnpm docs:build` 与路径审计）；远程 GitHub 和浏览器旅程待验证
+
+#### E2E-203：插件会话导入与归属边界
+
+- **前置条件**：测试插件声明两个 `contributes.sessionSources`，并只获得 P0/P1
+  会话权限；第二个插件不能访问第一个插件的会话。
+- **步骤**：1）导入带外部项目/provider/model 历史以及 user、assistant、tool 消息的
+  会话。2）重复导入，确认使用同一个主机生成 id 并跳过。3）调用 list、get 和消息分页，
+  覆盖倒序与内容截断。4）尝试未声明来源、system/running 角色、无效时间戳、过大或过深
+  的工具值，以及缺少各权限的调用。5）从第二个插件重复 list/get/messages/rename/delete。
+- **预期**：Electron 在转发到主机前执行来源和权限校验；id 由 host-core 生成；原始绑定
+  只作为历史返回；消息标记为 external；主机保留的工具元数据被移除；无效输入返回稳定
+  错误码；第二个插件看不到该行及其转录本。
+- **关联规格**：`07-plugins/02-plugin-manifest-schema.md`、
+  `07-plugins/03-plugin-api.md`、`07-plugins/13-plugin-permissions-matrix.md`、
+  ADR 0194、D356
+- **验收**：安全、质量
+- **里程碑**：M6+
+- **状态**：单元/RPC/连线已覆盖；完整 UI 路径草稿（除非用户明确要求，不要在本地运行 E2E）
+
+#### E2E-204：插件批量导入与删除生命周期
+
+- **前置条件**：测试插件可调用 `session.importBatch`、rename 和 delete；host-core 使用
+  空的 v14 数据库启动。
+- **步骤**：1）运行包含有效、重复和无效项目的 `skip` 批量导入。2）运行包含一个无效或
+  冲突项目的 `fail` 批量导入，确认整个批次没有落盘。3）重命名归属会话并确认列表顺序
+  和元数据。4）trash 后确认普通核心/插件读取都不返回，再 purge 并使用相同外部 id 重新
+  导入。5）覆盖分页、payload、批量大小和导入/删除滚动频率限制。6）从 v13 数据库迁移
+  后重启，确认既有核心会话仍保持活动。
+- **预期**：skip 部分成功、fail 原子回滚；list/get/messages 仍按归属限制；trash 可由
+  归属者 purge；purge 删除转录本并允许重新导入；边界返回 `LIMIT_EXCEEDED`，滚动限制
+  返回 `RATE_LIMITED`；迁移得到 schema v14，插件历史不创建项目行。
+- **关联规格**：`03-runtime/04-data-storage.md`、`03-runtime/06-host-rpc-protocol.md`、
+  ADR 0194、D356
+- **验收**：安全、质量、恢复
+- **里程碑**：M6+
+- **状态**：主机/RPC/单元已覆盖；完整 UI 路径草稿（除非用户明确要求，不要在本地运行 E2E）
