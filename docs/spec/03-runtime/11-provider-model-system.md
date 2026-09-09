@@ -52,6 +52,7 @@ Settings / UI
 | `native` | first-class vendor integration via pi-ai | openai, anthropic, google, bedrock, mistral, etc. |
 | `openai_compatible` | any OpenAI Chat Completions/Responses compatible gateway | OpenRouter, Together, Groq, Fireworks, DeepSeek, local gateways, corporate proxies |
 | `custom` | user-defined provider based on known protocol profile | private deployments, regional gateways |
+| `local` | loopback OpenAI-compatible gateway, no key/proxy | Ollama `http://localhost:11434/v1`, LM Studio `http://localhost:1234/v1` |
 
 Protocol profiles (MVP):
 

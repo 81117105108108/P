@@ -71,7 +71,11 @@ In one sentence:
 
 **Current implementation:** the Plugins page can browse and install packages
 from the official marketplace provider. Per-plugin auto-update is opt-in and
-refuses silent permission expansion. This is not a capability-sandboxed runtime:
+refuses silent permission expansion. Bundled first-party plugins are
+`pi.files`, `pi.browser`, `pi.advisor`, plus `pi.caveman` (terse replies) and
+`pi.ponytail` (parallel sweeps); all ride `PI_DESKTOP_BUILTIN_PLUGINS_DIR`
+reconciliation with no host privileges beyond their declared permissions.
+This is not a capability-sandboxed runtime:
 plugin main processes retain raw Node built-ins, so marketplace packages are
 unrestricted user-privileged code until the planned sandbox is implemented.
 

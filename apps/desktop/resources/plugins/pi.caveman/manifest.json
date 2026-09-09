@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "pi.caveman",
+  "name": "Caveman",
+  "version": "1.0.0",
+  "description": "Ultra-compressed replies: fragments, anchors, no filler. Saves tokens while keeping technical exactness.",
+  "author": "PI-Desktop",
+  "main": "main.js",
+  "contributes": {
+    "commands": [
+      {
+        "id": "caveman",
+        "title": "Caveman: toggle terse mode",
+        "keywords": ["caveman", "terse", "tokens", "brief"],
+        "category": "Agent"
+      }
+    ],
+    "skills": ["./skills/caveman.md"]
+  },
+  "permissions": ["agent.prompt.inject"],
+  "engines": {
+    "piDesktop": ">=0.14.0"
+  }
+}

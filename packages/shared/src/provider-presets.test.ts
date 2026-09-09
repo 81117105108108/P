@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   NAMED_ENDPOINT_PRESETS,
+  isLocalEndpoint,
+  isLocalProviderPreset,
   isZhipuEndpoint,
+  matchLocalPreset,
   matchNamedPreset,
   matchZhipuPreset,
   normalizeEndpointUrl,
@@ -131,5 +134,33 @@ describe("named endpoint presets", () => {
         baseUrl: "https://opencode.ai/zen/go/v1",
       })?.id,
     ).toBe("opencode_go");
+  });
+
+  it("ships local Ollama and LM Studio presets for subagent delegates", () => {
+    expect(matchNamedPreset({ vendorKey: "ollama" })?.id).toBe("ollama");
+    expect(matchNamedPreset({ vendorKey: "lmstudio" })?.id).toBe("lmstudio");
+    expect(matchNamedPreset({ baseUrl: "http://localhost:11434/v1" })?.id).toBe(
+      "ollama",
+    );
+    expect(matchNamedPreset({ baseUrl: "http://localhost:1234/v1/" })?.id).toBe(
+      "lmstudio",
+    );
+  });
+});
+
+describe("local endpoint presets", () => {
+  it("detects loopback gateways without treating cloud as local", () => {
+    expect(isLocalEndpoint("http://localhost:11434/v1")).toBe(true);
+    expect(isLocalEndpoint("http://127.0.0.1:1234/v1")).toBe(true);
+    expect(isLocalEndpoint("https://api.openai.com/v1")).toBe(false);
+    expect(isLocalEndpoint(undefined)).toBe(false);
+  });
+
+  it("resolves local pins for easily configurable subagents", () => {
+    expect(matchLocalPreset({ vendorKey: "ollama" })?.id).toBe("ollama");
+    expect(
+      isLocalProviderPreset({ baseUrl: "http://localhost:1234/v1" }),
+    ).toBe(true);
+    expect(isLocalProviderPreset({ vendorKey: "openai" })).toBe(false);
   });
 });

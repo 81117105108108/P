@@ -505,3 +505,28 @@ export function subagentPinnedProviders(
   }
   return providers;
 }
+
+/** Vendor keys that always mean a user-local gateway (no key, no proxy). */
+export const LOCAL_SUBAGENT_VENDOR_KEYS = ["ollama", "lmstudio", "local"] as const;
+
+/** Template pin users can paste into `~/.agents/subagents/*.md` frontmatter. */
+export const LOCAL_SUBAGENT_MODEL_TEMPLATE = "ollama/<model-id>";
+
+/** True when a `vendor/model` pin addresses a local gateway. */
+export function isLocalModelPin(pin: string | undefined): boolean {
+  if (!pin) return false;
+  const slash = pin.indexOf("/");
+  if (slash < 1) return false;
+  const vendor = pin.slice(0, slash).trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return (LOCAL_SUBAGENT_VENDOR_KEYS as readonly string[]).some(
+    (key) => vendor === key.replace(/[^a-z0-9]+/g, ""),
+  );
+}
+
+/**
+ * Build a `model:` pin for a local gateway, e.g. `localSubagentPin("ollama",
+ * "qwen2.5-coder:7b")` → `"ollama/qwen2.5-coder:7b"`.
+ */
+export function localSubagentPin(vendor: string, modelId: string): string {
+  return `${vendor.trim()}/${modelId.trim()}`;
+}

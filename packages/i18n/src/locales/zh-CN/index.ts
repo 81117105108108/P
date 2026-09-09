@@ -861,6 +861,8 @@ export const zhCN = {
     presetMinimaxCnOpenai: "MiniMax（OpenAI）",
     presetKimiCoding: "Kimi 编程",
     presetXiaomi: "小米",
+    presetOllama: "Ollama（本地）",
+    presetLmstudio: "LM Studio（本地）",
     apiStyleResponses: "OpenAI Responses",
     apiStyleAnthropic: "Anthropic Messages",
     apiStyleGoogle: "Google Generative AI",

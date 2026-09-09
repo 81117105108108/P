@@ -867,6 +867,8 @@ export const ko = {
     presetMinimaxCnOpenai: "MiniMax (OpenAI)",
     presetKimiCoding: "Kimi For Coding",
     presetXiaomi: "Xiaomi",
+    presetOllama: "Ollama(로컬)",
+    presetLmstudio: "LM Studio(로컬)",
     apiStyleResponses: "OpenAI Responses",
     apiStyleAnthropic: "Anthropic Messages",
     apiStyleGoogle: "Google Generative AI",
