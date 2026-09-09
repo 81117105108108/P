@@ -174,7 +174,8 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
   focused Windows taskbar button also uses native minimize; a second click
   restores/focuses the same window, while clicking a covered window brings it
   to the front. Tray activation restores and focuses tray-hidden windows; Quit
-  remains explicit. On macOS the tray uses a transparent monochrome template
+  remains explicit and, except for automated probes, confirms with a native
+  warning before shutdown (D357). On macOS the tray uses a transparent monochrome template
   of the PI mark rather than the rounded application tile, so it remains
   readable in the menu bar.
 - Windows/Linux do not render File/Edit/View/Window/Help in the titlebar and
