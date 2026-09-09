@@ -82,6 +82,13 @@ not a restart loop: the UI names those releases instead of "Can't reach the
 local service". The Linux tag job must not use a newer runner that would raise
 the needed glibc.
 
+Windows packages target x64. The Windows host-core build uses the
+`x86_64-pc-windows-msvc` target with `target-feature=+crt-static`, so the NSIS
+package does not require a separately installed Visual C++ Redistributable to
+start its local service. Windows 11 ARM64 systems run this x64 package through
+the operating system's x64 emulation; native Windows ARM64 artifacts are not
+currently published.
+
 Supervision parameters (implemented in Electron main):
 
 - Child exit rejects all in-flight RPCs for that child immediately (no 130s timeout wait).

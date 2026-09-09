@@ -59,6 +59,10 @@ when macOS `iconutil` is available, without overwriting the canonical source.
   (`build/entitlements.mac.plist`: JIT + unsigned-executable-memory +
   library-validation disable — the standard Electron set).
 - `Resources/bin/pi-desktop-host-core` — Rust host binary (release build).
+- Windows NSIS builds include an x64 `pi-desktop-host-core.exe` statically
+  linked to the MSVC CRT, so a clean Windows x64 or Windows 11 ARM64
+  (x64-emulated) installation does not need a separate Visual C++
+  Redistributable before the local service can start.
 - `Resources/agent-runtime/` — bundled sidecar, executed with
   `ELECTRON_RUN_AS_NODE=1` (no separate Node shipped).
 - `Resources/licenses/` — notices that must remain distributable when the

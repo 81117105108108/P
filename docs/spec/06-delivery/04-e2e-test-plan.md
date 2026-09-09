@@ -8805,3 +8805,25 @@ are withdrawn with ADR 0165.
 - **Milestone**: M6+
 - **Status**: Unit/source-contract-covered; full UI journey Draft (do not run
   E2E locally unless explicitly requested)
+
+#### E2E-207: Windows host starts on a clean x64-emulated ARM64 install
+
+- **Preconditions**: A clean Windows 11 x64 or ARM64 machine/profile without a
+  separately installed Visual C++ Redistributable, Node.js, or another local
+  agent runtime; the x64 NSIS installer is available.
+- **Steps**: 1) Install PI-Desktop. 2) Launch it for the first time. 3) Wait
+  for the startup splash to yield to the main shell. 4) Inspect the runtime
+  and timing logs, then open Settings → Info.
+- **Expected**: The bundled x64 `pi-desktop-host-core.exe` starts and completes
+  `app.handshake` without `0xC0000135` (`STATUS_DLL_NOT_FOUND`), the shell does
+  not remain on “Can't reach the local service”, host status is healthy, and
+  Settings → Info reports the host version instead of `host unknown`. The
+  package uses the statically linked MSVC CRT; no separate runtime installer
+  is required. Native Windows ARM64 artifacts remain out of scope.
+- **Specs linked**: `03-runtime/07-process-model.md`,
+  `06-delivery/06-release-runbook.md`
+- **Acceptance**: A (app startup), Quality (clean-install packaging)
+- **Milestone**: M6+
+- **Status**: Source-contract-covered; clean-machine Windows x64 and ARM64
+  qualification remains runner validation (do not run E2E locally unless
+  explicitly requested)
