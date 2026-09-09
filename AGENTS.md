@@ -253,9 +253,10 @@ flow before changing application code:
    host version comparison, IPC state propagation, or renderer presentation.
 4. Run the catalog preflight before proposing an application fix:
    `node scripts/check-marketplace-catalog.mjs --url <catalog-url> --plugin <id>`.
-   Missing checksum, package URL, package size, or permissions is a release
-   data failure. Report it as such and do not make incomplete releases
-   installable merely to hide the bad catalog.
+   Missing checksum, package URL, package size, or permissions, or a catalog
+   `author` that is not a string (for example `{ name, url }` copied from a
+   plugin manifest), is a release data failure. Report it as such and do not
+   make incomplete releases installable merely to hide the bad catalog.
 5. Reproduce the exact case with a deterministic fixture, including unsorted
    versions and an incomplete version record, then add the narrowest regression
    test for the diagnosed layer.

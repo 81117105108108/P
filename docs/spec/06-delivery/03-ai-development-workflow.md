@@ -240,9 +240,10 @@ changes:
 3. Classify the failure boundary: publisher/catalog data, fetch/cache fallback,
    host version comparison, IPC propagation, or renderer presentation.
 4. Run `pnpm check:marketplace -- --url <catalog-url> --plugin <id>`. Missing
-   `shasum`, `url`, positive `sizeBytes`, or `permissions` is a release-data
-   failure, not evidence of a stale renderer. Incomplete releases remain
-   non-installable.
+   `shasum`, `url`, positive `sizeBytes`, or `permissions`, or a catalog
+   `author` that is not a string (for example `{ name, url }` copied from a
+   plugin manifest), is a release-data failure, not evidence of a stale
+   renderer. Incomplete releases remain non-installable.
 5. Reproduce with a fixture containing unsorted versions and incomplete
    metadata before changing host or renderer code.
 

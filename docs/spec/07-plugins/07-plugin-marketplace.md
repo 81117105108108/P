@@ -106,6 +106,11 @@ adds the fields below; every one of them is optional so a v1 catalog parses
 unchanged, and the client treats a missing field as "not asserted" rather than
 as a default-allow.
 
+Catalog `author` is a string in both v1 and v2. The plugin-manifest form
+`{ name, url?, email? }` is valid on `manifest.json` and invalid in
+`catalog.json`; host-core fails the whole refresh with `PLUGIN_MARKET_INVALID`
+if it receives a map there.
+
 ```jsonc
 {
   "schemaVersion": 2,
