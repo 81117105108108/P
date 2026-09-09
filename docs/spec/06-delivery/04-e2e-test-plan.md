@@ -1543,8 +1543,10 @@ Each scenario is documented in this format:
   successful tool and a failing or aborted tool.
 - **Steps**: 1) Run representative read, search, edit, and command tools. 2)
   While the turn is active, inspect the latest processing group and its latest
-  tool/thinking row. 3) Confirm the group header exposes the current action or
-  runtime phase. 4) Wait for completion and inspect the settled transcript. 5)
+  tool/thinking row. 3) Confirm the group header retains its localized
+  processing label, elapsed time, and step count while live activity remains
+  in the rows or dedicated runtime indicator. 4) Wait for completion and inspect
+  the settled transcript. 5)
   Manually expand a completed group and row, then copy its output. 6) While a
   later turn is streaming, manually collapse its active group and verify that
   new stream updates do not reopen it. 7) Click the vertical rule beside an
@@ -1554,9 +1556,8 @@ Each scenario is documented in this format:
   is visible, but tool-call details, including failed tool details, remain
   collapsed. The latest thinking step
   opens automatically while it streams; older groups and rows remain collapsed.
-  The header shows a localized current-state capsule such as Editing,
-  Thinking, Waiting for model, Retrying, or Waiting for subagents, alongside
-  elapsed time and the step count. When the turn settles, the automatic
+  The header shows its localized processing label, elapsed time, and step count
+  without an additional status capsule. When the turn settles, the automatic
   thinking disclosure closes, while a group or row touched by the user keeps
   its chosen state. Expanded calls use transparent semantic activity rows with
   an action icon, natural-language verb, monospace primary argument, and quiet

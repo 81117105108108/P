@@ -477,7 +477,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .working-indicator-mark > span,
-  .tool-activity-group.active .tool-activity-current-dot,
   .planning-state-indicator {
     animation: none;
   }
@@ -1680,69 +1679,6 @@
 .tool-activity-label {
   flex: none;
   font-weight: var(--font-weight-medium);
-}
-
-/* A compact live-status capsule keeps the group header useful while the
-   newest process is expanded: users can see Editing/Thinking/Waiting without
-   opening another surface. */
-.tool-activity-current {
-  display: inline-flex;
-  min-width: 0;
-  max-width: min(36%, 320px);
-  align-items: center;
-  gap: 5px;
-  overflow: hidden;
-  border-radius: var(--radius-full);
-  background: color-mix(in oklab, var(--ds-accent) 8%, transparent);
-  padding: 2px 7px;
-  color: var(--ds-text-secondary);
-  font-size: var(--text-xs-plus);
-  white-space: nowrap;
-}
-
-.tool-activity-current-dot {
-  width: 5px;
-  height: 5px;
-  flex: none;
-  border-radius: var(--radius-round);
-  background: var(--ds-accent);
-}
-
-.tool-activity-current-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tool-activity-group.active .tool-activity-current-dot {
-  animation: activity-marker-pulse 1s var(--motion-ease-standard) infinite;
-}
-
-.tool-activity-group.phase-waiting-model .tool-activity-current {
-  background: color-mix(in oklab, var(--ds-info) 9%, transparent);
-  color: var(--ds-info);
-}
-
-.tool-activity-group.phase-waiting-model .tool-activity-current-dot {
-  background: var(--ds-info);
-}
-
-.tool-activity-group.phase-retrying .tool-activity-current {
-  background: color-mix(in oklab, var(--ds-warning) 9%, transparent);
-  color: var(--ds-warning);
-}
-
-.tool-activity-group.phase-retrying .tool-activity-current-dot {
-  background: var(--ds-warning);
-}
-
-.tool-activity-group.phase-waiting-subagents .tool-activity-current {
-  background: color-mix(in oklab, var(--ds-purple) 9%, transparent);
-  color: var(--ds-purple);
-}
-
-.tool-activity-group.phase-waiting-subagents .tool-activity-current-dot {
-  background: var(--ds-purple);
 }
 
 .tool-activity-count {
