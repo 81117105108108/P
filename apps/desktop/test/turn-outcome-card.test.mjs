@@ -43,3 +43,11 @@ test("outcome card exposes one localized continuation action", () => {
   assert.match(styles, /\.turn-outcome-card\s*\{/);
   assert.match(styles, /\.turn-outcome-card\.failed\s*\{/);
 });
+
+test("outcome card yields to an inline assistant error", () => {
+  assert.match(
+    outcome,
+    /const hasInlineError = tail\.some\(\(message\) => Boolean\(message\.error\)\);/,
+  );
+  assert.match(outcome, /if \(hasInlineError\) return null;/);
+});

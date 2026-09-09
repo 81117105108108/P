@@ -4412,10 +4412,12 @@ Each scenario is documented in this format:
     are capped at 30 seconds and the wait is abortable.
   - Exhaustion emits one terminal `PROVIDER_RATE_LIMITED` assistant error and
     lifecycle event with `retryAttempt: 5` and `providerStatus: 429`; no sixth
-    retry occurs. The outcome card exposes one localized **Continue** action and
-    no **Regenerate** action. Activating it appends the localized continuation
-    prompt (`Continue the user's unfinished task.` / `继续用户未完成的任务`) to the
-    same session and starts the next turn without discarding the failed turn.
+    retry occurs. The structured assistant error card remains the only failure
+    surface, exposing one localized **Continue** action and no **Regenerate**
+    action; the generic TurnOutcomeCard is omitted. Activating **Continue**
+    appends the localized continuation prompt (`Continue the user's unfinished
+    task.` / `继续用户未完成的任务`) to the same session and starts the next turn
+    without discarding the failed turn.
   - The subagent uses the same five-retry budget and one visible child bubble;
     its final report is failed only after the budget is exhausted, while
     intermediate 429s never become a parent-visible error report.
@@ -6558,8 +6560,13 @@ This test plan spec is accepted when:
 - Expect the assistant error to use a restrained inline surface with a thin error rail. The localized summary, stable code, and details disclosure share one compact header; the card does not render a second bottom action row.
 - Confirm the details remain expanded on first render, keep the redacted provider response and provider/model IDs, and expose an icon-only copy control with an accessible label/tooltip. On a narrow window, the header actions wrap without horizontal overflow.
 - Expect the compact assistant error card itself to expose one localized **Continue** action beside the details disclosure. Click it and expect the app to append the localized continuation prompt (`Continue the current task` / `继续当前任务`) to the same session and start the next turn without truncating the failed turn.
-- For a terminal `PROVIDER_RATE_LIMITED` (including HTTP 429), expect the TurnOutcomeCard to expose exactly one localized **Continue** action and no **Regenerate** action.
-- Click **Continue** and expect the app to append the localized continuation prompt (`Continue the user's unfinished task.` / `继续用户未完成的任务`) to the same session and start the next turn without truncating the failed turn.
+- For a terminal `PROVIDER_RATE_LIMITED` (including HTTP 429), expect the
+  structured assistant error card to remain the only failure surface: it
+  exposes exactly one localized **Continue** action and no **Regenerate**
+  action, while the generic TurnOutcomeCard is omitted.
+- Click **Continue** and expect the app to append the localized continuation
+  prompt (`Continue the user's unfinished task.` / `继续用户未完成的任务`) to the
+  same session and start the next turn without truncating the failed turn.
 
 
 ### US-UI-61 Assistant context summary + retry (D103, D184, D244, D347)
@@ -7636,7 +7643,7 @@ This test plan spec is accepted when:
   still returns `truncated`; `maxTurns: none` is unlimited. 7) Start a
   delegate on another model, exhaust the parent HTTP 429 budget, and click
   Continue; confirm leftover delegates abort, the session is idle, Continue
-  is accepted, and the failed TurnOutcomeCard stays visible.
+  is accepted, and the failed assistant error surface stays visible.
 - **Expected**: Idle and duration watchdogs never fire. Parent idle does not
   abort delegates. Completion reports are delivered into the same durable
   turn. `TaskWait` expiry reports “Still running after Ns”, includes a

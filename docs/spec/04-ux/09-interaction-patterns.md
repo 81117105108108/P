@@ -567,16 +567,19 @@ may be retained while exactly one workspace supplies the visible shell context.
 
 ### 2.5 Turn outcome closure
 
-- A failed visible turn renders one session-scoped recovery card after the
-  transcript content. It is based on the terminal agent event, not a timeout
-  or a guessed spinner state. Completed turns do not add a success card; their
-  existing transcript and message-scoped review cards remain the completion
-  evidence.
-- Failure copy states that the existing work remains available. The card has
-  exactly one **Continue** action and no **Regenerate** action. Continue appends
-  the current locale's continuation prompt (`Continue the user's unfinished
-  task.` / `继续用户未完成的任务`) to the same session and starts a new turn without
-  truncating the failed turn or its completed work.
+- A failed visible turn without a structured assistant error renders one
+  session-scoped recovery card after the transcript content. It is based on the
+  terminal agent event, not a timeout or a guessed spinner state. If the failed
+  turn already contains a structured assistant error, that inline error card is
+  the only failure surface and the session-scoped recovery card is omitted;
+  users must not see duplicate failure summaries for one turn. Completed turns
+  do not add a success card; their existing transcript and message-scoped
+  review cards remain the completion evidence.
+- Failure copy states that the existing work remains available. The applicable
+  failure surface has exactly one **Continue** action and no **Regenerate**
+  action. Continue appends the current locale's continuation prompt (`Continue
+  the user's unfinished task.` / `继续用户未完成的任务`) to the same session and
+  starts a new turn without truncating the failed turn or its completed work.
 - Aborted turns do not render a failure card. Starting a new turn clears the
   previous card, and background-session results remain scoped until that
   session is selected.
@@ -691,8 +694,8 @@ may be retained while exactly one workspace supplies the visible shell context.
 - A failed row is invocation-local truth and remains visible immediately. The
   containing group reports processing duration only and settles as processed,
   even when a later call recovers. Terminal turn failure is derived only from
-  the terminal agent event and appears through the assistant error,
-  TurnOutcomeCard, sidebar state, and notification surfaces.
+  the terminal agent event and appears through either the assistant error or
+  TurnOutcomeCard surface, plus sidebar state and notification surfaces.
 - Expanding the processing group reveals the ordered rows; each row retains its
   own nested disclosure for output and input.
 - Activating the row reveals clamped output first and raw input second.

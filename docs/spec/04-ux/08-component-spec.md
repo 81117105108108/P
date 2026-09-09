@@ -600,13 +600,16 @@ reading surface of the workstation.
 - The transcript keeps one stable scrollbar gutter on the trailing edge. It
   never reserves a matching left gutter, so the minimap and first message do
   not leave a decorative blank strip beside the session.
-- A failed TurnOutcomeCard exposes one primary **Continue** action and no
-  regenerate action. It appends the current locale's continuation prompt to the
-  same session and starts a new turn, preserving the failed turn and completed
-  work in the transcript. Continue remains available after a terminal parent
-  error (including HTTP 429) even if leftover subagents were still running;
-  those delegates are aborted and must not leave the session `AGENT_BUSY`
-  (D352). A later `agent_end` must not hide the failed card.
+- A failed TurnOutcomeCard without a structured assistant error exposes one
+  primary **Continue** action and no regenerate action. It appends the current
+  locale's continuation prompt to the same session and starts a new turn,
+  preserving the failed turn and completed work in the transcript. When the
+  failed turn already has a structured assistant error, that inline error card
+  owns the summary, details, and **Continue** action; the TurnOutcomeCard is not
+  rendered, so the same failure is not presented twice. Continue remains
+  available after a terminal parent error (including HTTP 429) even if leftover
+  subagents were still running; those delegates are aborted and must not leave
+  the session `AGENT_BUSY` (D352).
 - Scroll behavior: auto-scroll to bottom on new message while pinned; the first
   upward manual movement pauses auto-scroll without a snap-back; send / retry /
   regenerate re-pins and positions the latest content during the layout phase,
@@ -1357,7 +1360,7 @@ Single message render — either user (plaintext) or assistant (markdown streami
 | Streaming | transparent like a completed turn — no left rail, no reserved inset, no whole-turn `--ds-tile` (D323); content grows. The tile belongs only to a subagent/delegation card (D319) |
 | Thinking streaming | disclosure open; answer bubble omitted until answer text exists |
 | Complete | transparent full-width markdown; no streaming chrome |
-| Error | compact assistant error card in transcript; localized summary and stable code share one header with the details disclosure; details still opens to redacted provider response, provider/model IDs, and copy action; the card offers a localized Continue action that resends the continuation prompt; configuration failures show Open settings, while regenerate is provided by the session-scoped failed-turn recovery card |
+| Error | compact assistant error card in transcript; localized summary and stable code share one header with the details disclosure; details still opens to redacted provider response, provider/model IDs, and copy action; the card offers a localized Continue action that resends the continuation prompt; configuration failures show Open settings. The session-scoped failed-turn recovery card is a fallback for terminal failures without a structured assistant error, so both cards never render for one turn |
 
 ### 8.4a Context compaction row
 
@@ -1521,23 +1524,23 @@ and is intentionally not an elevated card.
 Consecutive tool calls form one ChatGPT-style processing group. Historical
 groups are collapsed by default. While the turn is active, the latest live
 group opens automatically so the process list is visible. Tool-call details
-remain collapsed by default (except an error row, whose details remain visible
-for recovery); only the latest thinking row opens automatically. When the group
-or turn settles, automatically managed thinking disclosures close so the answer
-remains the visual focus. A user click on a group, row, or collapse rail takes
-ownership of that disclosure; later stream updates and completion never reverse
-that choice.
+remain collapsed by default, including failed tool calls; only the latest
+thinking row opens automatically. When the group or turn settles, automatically
+managed thinking disclosures close so the answer remains the visual focus. A
+user click on a group, row, or collapse rail takes ownership of that disclosure;
+later stream updates and completion never reverse that choice.
 The group header shows `Processing · 12s` while active or `Processed for 12s`
 after completion, and also carries a compact current-state capsule such as
 `Editing`, `Thinking`, `Waiting for model`, or `Retrying`. Expanding it reveals
 the ordered tool activity rows and their nested result disclosures. The group
 reports duration and containment, not turn outcome: a failed child remains an
 error on its own ToolCallRow but never changes the group header to a terminal
-failure. Terminal agent errors remain owned by the assistant error and
-TurnOutcomeCard surfaces. Elapsed labels use compact automatically carried
-units: seconds below one minute, minutes plus seconds below one hour, and hours
-plus minutes (and seconds when non-zero) from one hour onward. Zero-value units
-are omitted, so `90m` is rendered as `1h 30m`.
+failure. Terminal agent errors remain owned by either the assistant error or
+TurnOutcomeCard surface.
+Elapsed labels use compact automatically carried units: seconds below one
+minute, minutes plus seconds below one hour, and hours plus minutes (and
+seconds when non-zero) from one hour onward. Zero-value units are omitted, so
+`90m` is rendered as `1h 30m`.
 
 ### 9.2 Anatomy
 
