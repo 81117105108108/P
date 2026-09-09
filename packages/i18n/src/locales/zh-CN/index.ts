@@ -429,7 +429,7 @@ export const zhCN = {
     reasoningSupportedBy: "当前模型 {{model}} 支持的推理等级",
     permissionInherit: "跟随默认",
     permissionAsk: "每次询问",
-    permissionAcceptEdits: "自动接受编辑",
+    permissionAcceptEdits: "允许编辑",
     permissionAuto: "全自动",
     modePlan: "规划",
     modeGoal: "目标",

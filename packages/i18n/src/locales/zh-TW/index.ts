@@ -429,7 +429,7 @@ export const zhTW = {
     reasoningSupportedBy: "當前模型 {{model}} 支援的推理等級",
     permissionInherit: "跟隨預設",
     permissionAsk: "每次詢問",
-    permissionAcceptEdits: "自動接受編輯",
+    permissionAcceptEdits: "允許編輯",
     permissionAuto: "全自動",
     modePlan: "規劃",
     modeGoal: "目標",
