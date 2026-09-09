@@ -397,6 +397,73 @@
 .ext-tool-opt.is-on.is-mutating {
   background: color-mix(in oklab, var(--ds-warning) 16%, transparent);
 }
+/* ----------------------------------------------------------- preset picker */
+/*
+ * Issue #60: the subagent editor offers built-in templates (explorer /
+ * code-reviewer / test-runner / fixer). The chips mirror the tool-pick pills
+ * so a user who already knows the tools row recognises the picker, and the
+ * selected state uses the same accent-tint to keep "the chosen option"
+ * unambiguous at a glance.
+ */
+.ext-preset-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ext-preset-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--ds-tile-hover);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 8px);
+  color: var(--ds-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--motion-duration-fast) var(--motion-ease-out),
+    border-color var(--motion-duration-fast) var(--motion-ease-out),
+    color var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.ext-preset-chip:hover {
+  background: var(--ds-tile-deep);
+}
+
+.ext-preset-chip.is-selected {
+  background: color-mix(in oklab, var(--ds-accent) 14%, transparent);
+  border-color: color-mix(in oklab, var(--ds-accent) 50%, transparent);
+  color: var(--ds-text-primary);
+}
+
+.ext-preset-chip-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ext-preset-chip-name {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.ext-preset-chip-desc {
+  font-size: var(--text-xs);
+  color: var(--ds-text-tertiary);
+  line-height: 1.35;
+}
+
+.ext-preset-chip-cta {
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--ds-accent);
+  opacity: 0.85;
+}
+
 
 /* --------------------------------------------------------- scope control */
 
