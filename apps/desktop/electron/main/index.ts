@@ -564,7 +564,36 @@ const callPluginSessionHost = async (
   if (!host) {
     throw Object.assign(new Error("host unavailable"), { code: "UNSUPPORTED" });
   }
-  return host.call(method, { ...input, pluginId });
+  const result = await host.call(method, { ...input, pluginId });
+  const changed =
+    (method === "plugin.session.import" &&
+      (result as { imported?: unknown })?.imported === true) ||
+    (method === "plugin.session.importBatch" &&
+      Number((result as { imported?: unknown })?.imported ?? 0) > 0) ||
+    (method === "plugin.session.rename" &&
+      (result as { updated?: unknown })?.updated === true) ||
+    (method === "plugin.session.delete" &&
+      (result as { deleted?: unknown })?.deleted === true);
+  if (changed) {
+    sendToRenderer(IPC.event.sessionsChanged, { reason: method, pluginId });
+  }
+  return result;
+};
+const callPluginProjectHost = async (
+  pluginId: string,
+  input: Record<string, unknown>,
+): Promise<unknown> => {
+  if (!host) {
+    throw Object.assign(new Error("host unavailable"), { code: "UNSUPPORTED" });
+  }
+  const result = await host.call<{
+    project?: { id?: number; path?: string; name?: string };
+  }>("projects.create", { ...input, pluginId });
+  const project = result.project;
+  if (!project || typeof project.id !== "number" || !project.path || !project.name) {
+    throw Object.assign(new Error("invalid project response"), { code: "INTERNAL" });
+  }
+  return { projectId: project.id, path: project.path, name: project.name };
 };
 const plugins: PluginRuntime = new PluginRuntime({
   getWorkspacePath: () => {
@@ -708,6 +737,9 @@ const plugins: PluginRuntime = new PluginRuntime({
       callPluginSessionHost("plugin.session.importBatch", pluginId, input),
     rename: (pluginId, input) => callPluginSessionHost("plugin.session.rename", pluginId, input),
     delete: (pluginId, input) => callPluginSessionHost("plugin.session.delete", pluginId, input),
+  },
+  project: {
+    create: (pluginId, input) => callPluginProjectHost(pluginId, input),
   },
   complete: async (input): Promise<PluginCompleteResult> => {
     if (!host) {
