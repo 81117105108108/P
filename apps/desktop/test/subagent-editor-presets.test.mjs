@@ -110,4 +110,55 @@ test("the editor styles ship with the picker", () => {
   assert.match(extensionsCss, /\.ext-preset-pick/);
   assert.match(extensionsCss, /\.ext-preset-chip/);
   assert.match(extensionsCss, /\.ext-preset-chip\.is-selected/);
+  assert.match(extensionsCss, /\.ext-preset-desc/);
+  assert.match(extensionsCss, /\.ext-sheet-advanced-toggle/);
+  assert.doesNotMatch(extensionsCss, /minmax\(220px/);
+});
+
+test("hyphenated preset ids map to catalog keys instead of capitalizing the id", () => {
+  // `capitalize("code-reviewer")` produced `presetCode-reviewerName`, which is
+  // not in the catalog and rendered as a raw key. The map is the contract.
+  assert.match(editorSource, /export const SUBAGENT_PRESET_COPY/);
+  assert.match(
+    editorSource,
+    /"code-reviewer": \{ name: "presetReviewerName", desc: "presetReviewerDesc" \}/,
+  );
+  assert.match(
+    editorSource,
+    /"test-runner": \{ name: "presetTestRunnerName", desc: "presetTestRunnerDesc" \}/,
+  );
+  assert.doesNotMatch(editorSource, /capitalize\(preset\.id\)/);
+  assert.doesNotMatch(
+    editorSource,
+    /t\(`extensions\.subagents\.preset\$\{capitalize/,
+  );
+});
+
+test("the English catalog ships every mapped preset copy key", async () => {
+  const enCatalog = await readFile(
+    new URL("../../../packages/i18n/src/locales/en/index.ts", import.meta.url),
+    "utf8",
+  );
+  for (const key of [
+    "presetExplorerName",
+    "presetExplorerDesc",
+    "presetReviewerName",
+    "presetReviewerDesc",
+    "presetTestRunnerName",
+    "presetTestRunnerDesc",
+    "presetFixerName",
+    "presetFixerDesc",
+    "presetBlank",
+    "presetBlankDesc",
+  ]) {
+    assert.match(enCatalog, new RegExp(`${key}:`), `missing ${key}`);
+  }
+});
+
+test("the create sheet is a compact chip row with an Advanced disclosure", () => {
+  assert.match(editorSource, /id="subagent-preset-desc"/);
+  assert.match(editorSource, /function AdvancedFields/);
+  assert.match(editorSource, /useState\(!!editing\)/);
+  assert.doesNotMatch(editorSource, /extensions\.subagents\.presetApply/);
+  assert.doesNotMatch(editorSource, /extensions\.subagents\.sheetSubtitle/);
 });

@@ -16,7 +16,7 @@ import {
 } from "@pi-desktop/shared";
 import { useAppStore } from "../../stores/app-store";
 import { Button, Field, Input, Select, Textarea, cx } from "../ui";
-import { IconFolderOpen, IconSparkles, IconX } from "../icons";
+import { IconChevronRight, IconFolderOpen, IconX } from "../icons";
 import {
   groupSubagentModelChoices,
   subagentModelChoices,
@@ -66,8 +66,30 @@ Anything you must not do.
 `;
 }
 
-/** A "blank" starter so users who ignore the preset grid are not stuck. */
+/** A "blank" starter so users who ignore the preset chips are not stuck. */
 export const BLANK_SUBAGENT_PRESET_ID = "" as const;
+
+/**
+ * Catalog keys for each built-in preset. Hyphenated ids (`code-reviewer`)
+ * cannot be turned into keys by capitalizing the first letter — the hyphen
+ * stays in the middle of the key, which is not in the catalog.
+ */
+export const SUBAGENT_PRESET_COPY = {
+  explorer: { name: "presetExplorerName", desc: "presetExplorerDesc" },
+  "code-reviewer": { name: "presetReviewerName", desc: "presetReviewerDesc" },
+  "test-runner": { name: "presetTestRunnerName", desc: "presetTestRunnerDesc" },
+  fixer: { name: "presetFixerName", desc: "presetFixerDesc" },
+} as const satisfies Record<SubagentPreset["id"], { name: string; desc: string }>;
+
+/** Full i18n path for a preset chip, or null when `id` is blank / unknown. */
+export function subagentPresetCopyKey(
+  id: string,
+  kind: "name" | "desc",
+): string | null {
+  if (!Object.hasOwn(SUBAGENT_PRESET_COPY, id)) return null;
+  const entry = SUBAGENT_PRESET_COPY[id as keyof typeof SUBAGENT_PRESET_COPY];
+  return `extensions.subagents.${entry[kind]}`;
+}
 
 export function emptySubagentDraft(): SubagentDraft {
   return {
@@ -172,25 +194,18 @@ export function subagentDraftError(draft: SubagentDraft): string | null {
 }
 
 /**
- * One subagent preset shown as a chip in the "start from template" row.
- * Selecting one replaces the draft's name, description, tools, body and
- * maxTurns; the model and scope are left alone so the user's other choices
- * survive a reroll.
+ * One subagent preset shown as a compact name chip. Selecting it replaces the
+ * draft's name, description, tools, body and maxTurns; the model and scope
+ * are left alone so the user's other choices survive a reroll.
  */
 function PresetChip({
-  preset,
   selected,
   onSelect,
   nameLabel,
-  descriptionLabel,
-  applyLabel,
 }: {
-  preset: SubagentPreset;
   selected: boolean;
   onSelect: () => void;
   nameLabel: string;
-  descriptionLabel: string;
-  applyLabel: string;
 }) {
   return (
     <button
@@ -199,20 +214,15 @@ function PresetChip({
       aria-pressed={selected}
       onClick={onSelect}
     >
-      <span className="ext-preset-chip-head">
-        <IconSparkles size={13} />
-        <span className="ext-preset-chip-name">{nameLabel}</span>
-      </span>
-      <span className="ext-preset-chip-desc">{descriptionLabel}</span>
-      <span className="ext-preset-chip-cta">{applyLabel}</span>
+      <span className="ext-preset-chip-name">{nameLabel}</span>
     </button>
   );
 }
 
 /**
- * The "start from template" grid shown above the form when creating a new
+ * The "start from template" chip row shown above the form when creating a new
  * subagent. A blank chip sits alongside the built-ins so users who want a
- * clean slate are not forced into a preset. The grid is hidden entirely on
+ * clean slate are not forced into a preset. The row is hidden entirely on
  * edit — a draft that has already been saved owns its body.
  */
 function PresetPicker({
@@ -224,47 +234,45 @@ function PresetPicker({
 }) {
   const { t } = useTranslation();
   const blankSelected = selectedId === BLANK_SUBAGENT_PRESET_ID;
+  const descKey =
+    selectedId === BLANK_SUBAGENT_PRESET_ID
+      ? "extensions.subagents.presetBlankDesc"
+      : selectedId
+        ? subagentPresetCopyKey(selectedId, "desc")
+        : null;
   return (
     <div className="ext-field-group">
-      <div className="ext-field-label ext-field-label-row">
-        <span>{t("extensions.subagents.presetLabel")}</span>
-      </div>
-      <p className="ext-field-hint">{t("extensions.subagents.presetHint")}</p>
-      <div className="ext-preset-pick" role="group" aria-label={t("extensions.subagents.presetLabel")}>
-        {SUBAGENT_PRESETS.map((preset) => (
-          <PresetChip
-            key={preset.id}
-            preset={preset}
-            selected={selectedId === preset.id}
-            onSelect={() => onSelect(preset.id)}
-            nameLabel={t(`extensions.subagents.preset${capitalize(preset.id)}Name`)}
-            descriptionLabel={t(`extensions.subagents.preset${capitalize(preset.id)}Desc`)}
-            applyLabel={t("extensions.subagents.presetApply")}
-          />
-        ))}
+      <div className="ext-field-label">{t("extensions.subagents.presetLabel")}</div>
+      <div
+        className="ext-preset-pick"
+        role="group"
+        aria-label={t("extensions.subagents.presetLabel")}
+        aria-describedby={descKey ? "subagent-preset-desc" : undefined}
+      >
+        {SUBAGENT_PRESETS.map((preset) => {
+          const nameKey = subagentPresetCopyKey(preset.id, "name");
+          return (
+            <PresetChip
+              key={preset.id}
+              selected={selectedId === preset.id}
+              onSelect={() => onSelect(preset.id)}
+              nameLabel={nameKey ? t(nameKey) : preset.name}
+            />
+          );
+        })}
         <PresetChip
-          preset={{
-            id: BLANK_SUBAGENT_PRESET_ID as SubagentPreset["id"],
-            name: t("extensions.subagents.presetBlank"),
-            description: "",
-            tools: [...DEFAULT_SUBAGENT_TOOLS],
-            maxTurns: 0,
-            body: "",
-          }}
           selected={blankSelected}
           onSelect={() => onSelect(BLANK_SUBAGENT_PRESET_ID)}
           nameLabel={t("extensions.subagents.presetBlank")}
-          descriptionLabel={t("extensions.subagents.presetBlankDesc")}
-          applyLabel={t("extensions.subagents.presetApply")}
         />
       </div>
+      {descKey ? (
+        <p id="subagent-preset-desc" className="ext-preset-desc">
+          {t(descKey)}
+        </p>
+      ) : null}
     </div>
   );
-}
-
-function capitalize(value: string): string {
-  if (!value) return value;
-  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 /**
@@ -419,6 +427,72 @@ function ModelField({
   );
 }
 
+/** Model, thinking, turn limit and scope — secondary on create, open on edit. */
+function AdvancedFields({
+  open,
+  onToggle,
+  draft,
+  setDraft,
+  modelChoices,
+  modelGroups,
+  orphanModel,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  draft: SubagentDraft;
+  setDraft: (next: SubagentDraft) => void;
+  modelChoices: ReturnType<typeof subagentModelChoices>;
+  modelGroups: ReturnType<typeof groupSubagentModelChoices>;
+  orphanModel: string | null;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="ext-sheet-advanced">
+      <button
+        type="button"
+        className="ext-sheet-advanced-toggle"
+        aria-expanded={open}
+        aria-controls="subagent-sheet-advanced"
+        onClick={onToggle}
+      >
+        <IconChevronRight size={12} aria-hidden />
+        {t("settings.advanced")}
+      </button>
+      <div id="subagent-sheet-advanced" className="ext-sheet-advanced-body" hidden={!open}>
+        <ModelField
+          draft={draft}
+          setDraft={setDraft}
+          modelChoices={modelChoices}
+          modelGroups={modelGroups}
+          orphanModel={orphanModel}
+        />
+        <Field
+          label={t("extensions.subagents.maxTurns")}
+          hint={t("extensions.subagents.maxTurnsHint", { max: MAX_SUBAGENT_MAX_TURNS })}
+        >
+          <Input
+            type="number"
+            min={1}
+            max={MAX_SUBAGENT_MAX_TURNS}
+            placeholder={t("extensions.subagents.maxTurnsUnlimited")}
+            value={draft.maxTurns > 0 ? String(draft.maxTurns) : ""}
+            onChange={(event) =>
+              setDraft({
+                ...draft,
+                maxTurns: Number.parseInt(event.target.value, 10) || 0,
+              })
+            }
+          />
+        </Field>
+        <div className="ext-field-group">
+          <div className="ext-field-label">{t("settings.scope")}</div>
+          <ManagementScope draft={draft} setDraft={setDraft} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Create/edit sheet for one subagent definition.
  *
@@ -449,6 +523,7 @@ export function SubagentEditorSheet({
   const providers = useAppStore((state) => state.providers);
   const [nameTouched, setNameTouched] = useState(!!editing);
   const [presetId, setPresetId] = useState<string | null>(BLANK_SUBAGENT_PRESET_ID);
+  const [advancedOpen, setAdvancedOpen] = useState(!!editing);
   const errorKey = subagentDraftError(draft);
   const pristine = !editing && !draft.name.trim() && !draft.description.trim();
   const bytes = new TextEncoder().encode(draft.body).length;
@@ -527,7 +602,6 @@ export function SubagentEditorSheet({
                 ? t("extensions.subagents.editTitle")
                 : t("extensions.subagents.addTitle")}
             </h3>
-            <p className="ext-sheet-sub">{t("extensions.subagents.sheetSubtitle")}</p>
           </div>
           <button
             type="button"
@@ -546,11 +620,7 @@ export function SubagentEditorSheet({
 
           <Field
             label={t("extensions.subagents.name")}
-            hint={
-              slug
-                ? t("extensions.subagents.slugHint", { id: slug })
-                : t("extensions.subagents.nameHint")
-            }
+            hint={slug ? t("extensions.subagents.slugHint", { id: slug }) : undefined}
           >
             <Input
               value={draft.name}
@@ -563,10 +633,7 @@ export function SubagentEditorSheet({
             />
           </Field>
 
-          <Field
-            label={t("extensions.subagents.description")}
-            hint={t("extensions.subagents.descriptionHint")}
-          >
+          <Field label={t("extensions.subagents.description")}>
             <Textarea
               value={draft.description}
               rows={2}
@@ -577,7 +644,6 @@ export function SubagentEditorSheet({
 
           <div className="ext-field-group">
             <div className="ext-field-label">{t("extensions.subagents.tools")}</div>
-            <p className="ext-field-hint">{t("extensions.subagents.toolsHint")}</p>
             <div
               className="ext-tool-pick"
               role="group"
@@ -603,32 +669,10 @@ export function SubagentEditorSheet({
             </div>
             {draft.tools.some(isSubagentMutatingTool) ? (
               <p className="ext-field-hint">{t("extensions.subagents.mutatingHint")}</p>
-            ) : null}
+            ) : (
+              <p className="ext-field-hint">{t("extensions.subagents.toolsHint")}</p>
+            )}
           </div>
-
-          <ModelField
-            draft={draft}
-            setDraft={setDraft}
-            modelChoices={modelChoices}
-            modelGroups={modelGroups}
-            orphanModel={orphanModel}
-          />
-
-          <Field
-            label={t("extensions.subagents.maxTurns")}
-            hint={t("extensions.subagents.maxTurnsHint", { max: MAX_SUBAGENT_MAX_TURNS })}
-          >
-            <Input
-              type="number"
-              min={1}
-              max={MAX_SUBAGENT_MAX_TURNS}
-              placeholder={t("extensions.subagents.maxTurnsUnlimited")}
-              value={draft.maxTurns > 0 ? String(draft.maxTurns) : ""}
-              onChange={(event) =>
-                set("maxTurns", Number.parseInt(event.target.value, 10) || 0)
-              }
-            />
-          </Field>
 
           <div className="ext-field-group">
             <div className="ext-field-label ext-field-label-row">
@@ -648,11 +692,10 @@ export function SubagentEditorSheet({
                 })}
               </span>
             </div>
-            <p className="ext-field-hint">{t("extensions.subagents.bodyHint")}</p>
             <Textarea
               className="ext-skill-body"
               value={draft.body}
-              rows={12}
+              rows={8}
               spellCheck={false}
               placeholder={subagentTemplate("")}
               aria-label={t("extensions.subagents.body")}
@@ -660,12 +703,16 @@ export function SubagentEditorSheet({
             />
           </div>
 
-          <div className="ext-field-group">
-            <div className="ext-field-label">{t("settings.scope")}</div>
-            <p className="ext-field-hint">{t("settings.scopeHint")}</p>
-            <ManagementScope draft={draft} setDraft={setDraft} />
-          </div>
-</div>
+          <AdvancedFields
+            open={advancedOpen}
+            onToggle={() => setAdvancedOpen((current) => !current)}
+            draft={draft}
+            setDraft={setDraft}
+            modelChoices={modelChoices}
+            modelGroups={modelGroups}
+            orphanModel={orphanModel}
+          />
+        </div>
 
         {errorKey && !pristine ? <p className="ext-sheet-error">{t(errorKey)}</p> : null}
         <div className="ext-sheet-actions">
@@ -674,9 +721,7 @@ export function SubagentEditorSheet({
               <IconFolderOpen size={13} />
               {t("extensions.subagents.reveal")}
             </Button>
-          ) : (
-            <span className="ext-sheet-note">{t("extensions.subagents.sheetNote")}</span>
-          )}
+          ) : null}
           <div className="ext-sheet-actions-end">
             <Button variant="ghost" onClick={onClose} disabled={saving}>
               {t("common.cancel")}
