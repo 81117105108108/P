@@ -51,6 +51,7 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
 | [ADR 0192：为已配置模型设置别名并允许复制模型 id](/adr/0192-model-alias) | 别名只用于展示；配置页模型 id 可选择复制，请求仍使用真实 id |
 | [ADR 0193：上下文检查器按最后一次请求计算占用](/adr/0193-last-request-context-occupancy) | 占用、本轮合计和缓存读写取最新一条助手消息，不再把工具循环里的每次请求加总 |
 | [ADR 0194：可选的子智能体思考覆盖](/adr/0194-subagent-thinking-parameter-omission) | 子智能体可继承、显式关闭或不发送思考参数 |
+| [ADR 0195：视口固定的工作面板开关](/adr/0195-viewport-fixed-work-panel-toggle) | 非设置页右上角提供与 Cmd/Ctrl+J 等价的指针开关 |
 | [ADR 0196：在进行中重试行显示 provider 原因](/adr/0196-retry-cause-in-active-turn-status) | 悬停或聚焦重试状态行时显示错误摘要、错误码和安全的 provider 消息 |
 
 ## 什么时候看 ADR

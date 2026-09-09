@@ -3205,7 +3205,7 @@ Each scenario is documented in this format:
 - **Milestone**: M5 on Windows/Linux (release qualification)
 - **Status**: Draft
 
-#### E2E-204: Explicit quit confirms before shutdown (D357)
+#### E2E-204: Explicit quit confirms before shutdown (D363)
 
 - **Preconditions**: A normal interactive session is running (not a boot,
   supervision, or capture probe). The main window may be visible or tray-hidden.
@@ -3222,7 +3222,7 @@ Each scenario is documented in this format:
   automation never block on the warning.
 - **Specs linked**: `04-ux/08-component-spec.md`,
   `04-ux/09-interaction-patterns.md`, `08-meta/decisions-log.md` (D216, D230,
-  D357)
+  D363)
 - **Acceptance**: A (app startup), Quality
 - **Milestone**: M5
 - **Status**: Unit-covered (`close-behavior-tray.test.mjs`); native dialog

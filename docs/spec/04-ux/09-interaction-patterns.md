@@ -132,7 +132,7 @@ recency only breaks ties between equally relevant matches.
   choice. The choice is persisted, revisitable in Settings → General, and
   applied by both the close button and the close shortcut. Explicit quit
   (Cmd+Q, application-menu Quit, tray Quit) is a separate confirm step
-  (D357): Cancel leaves the app running; Confirm runs the ordered shutdown.
+  (D363): Cancel leaves the app running; Confirm runs the ordered shutdown.
   A D230 window-close Quit does not ask again. Automated boot, supervision,
   and capture probes skip the dialog. macOS keeps the
   native Dock lifecycle (close keeps the app in the Dock; activating recreates
