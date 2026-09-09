@@ -59,6 +59,7 @@ import {
 } from "../hooks/use-composer-autocomplete";
 import { ComposerAutocomplete } from "./ComposerAutocomplete";
 import { ContextUsageInspector } from "./ContextUsageInspector";
+import { TurnOutcomeCard } from "./TurnOutcomeCard";
 import { AskToolCard } from "./AskToolCard";
 import { PlanApprovalBar } from "./PlanApprovalBar";
 import {
@@ -608,10 +609,14 @@ export function Composer({
   const settings = useAppStore((s) => s.settings);
   const sessions = useAppStore((s) => s.sessions);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
+  const selectingSessionId = useAppStore((s) => s.selectingSessionId);
   const workspacePath = useAppStore((s) => s.workspace?.path ?? "");
   const providers = useAppStore((s) => s.providers);
   const providerModels = useAppStore((s) => s.providerModels);
   const liveMessages = useAppStore((s) => s.messages);
+  const latestTurnResult = useAppStore((s) =>
+    s.activeSessionId ? s.latestTurnResults[s.activeSessionId] : undefined,
+  );
   const sessionCompactions = useAppStore((s) =>
     s.activeSessionId ? s.sessionCompactions[s.activeSessionId] : undefined,
   );
@@ -2017,6 +2022,12 @@ export function Composer({
         ) : null}
         {pendingAsk ? (
           <AskToolCard request={pendingAsk} queued={queuedAsks} />
+        ) : null}
+        {!selectingSessionId ? (
+          <TurnOutcomeCard
+            messages={liveMessages}
+            result={latestTurnResult}
+          />
         ) : null}
         {queuedPrompts.length ? (
           <div

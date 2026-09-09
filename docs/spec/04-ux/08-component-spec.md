@@ -583,13 +583,14 @@ reading surface of the workstation.
 | ChatTranscript (scrollable, flex-1)  |
 |   MessageBubble (user/assistant)     |
 |   ToolCallCard                       |
-|   TurnOutcomeCard (one Continue)     |
 |   InlineReviewCard · M App.tsx +8 −2 |
 |   PermissionCard                     |
 |   ...                                |
 +--------------------------------------+
 | Composer (docked in thread view;     |
 | bottom-reserved on empty home, D204) |
+|   TurnOutcomeCard (one Continue)     |
+|   prompt input + controls            |
 +--------------------------------------+
 ```
 
@@ -601,12 +602,15 @@ reading surface of the workstation.
   never reserves a matching left gutter, so the minimap and first message do
   not leave a decorative blank strip beside the session.
 - A failed TurnOutcomeCard without a structured assistant error exposes one
-  primary **Continue** action and no regenerate action. It appends the current
+  primary **Continue** action and no regenerate action. It is rendered in the
+  active session's Composer stack directly above the input, not beside the
+  transcript processing group. It is withheld while session selection is pending,
+  so a Continue action cannot target the session being left. It appends the current
   locale's continuation prompt to the same session and starts a new turn,
-  preserving the failed turn and completed work in the transcript. When the
-  failed turn already has a structured assistant error, that inline error card
-  owns the summary, details, and **Continue** action; the TurnOutcomeCard is not
-  rendered, so the same failure is not presented twice. Continue remains
+  preserving the failed turn and completed work in the transcript. When the failed
+  turn already has a structured assistant error, that inline error card owns the
+  summary, details, and **Continue** action; the TurnOutcomeCard is not rendered,
+  so the same failure is not presented twice. Continue remains
   available after a terminal parent error (including HTTP 429) even if leftover
   subagents were still running; those delegates are aborted and must not leave
   the session `AGENT_BUSY` (D352).
@@ -648,7 +652,7 @@ reading surface of the workstation.
 | Empty | Restrained hero + optional onboarding checklist in a scrollable content region, with a bottom-reserved home composer and no starter-card or contextual quick-action layer (D111/D204/D206) |
 | Streaming | Auto-scroll follows while pinned; new tokens append |
 | Active progress | Immediately after send, before the first assistant or tool event, a compact localized `Working…` status with elapsed time appears inline. Its model and subagent elapsed labels use the carried-unit format in §9.1. It yields to concrete thinking, tool, and answer rows, while a permission card owns the approval state; no large generic progress card is rendered. A retrying row remains compact at rest; hovering or focusing it reveals an error-styled tooltip with the localized error summary, stable code/HTTP status, and bounded provider message. |
-| Turn outcome | After a failed turn, a session-scoped recovery card summarizes the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
+| Turn outcome | After a failed turn, the active session's Composer stack above the input shows one session-scoped recovery card summarizing the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
 | Session switch | A first-opened session paints at its latest record; a revisited pane paints at its own retained position. Bounded first commit and full-history expansion show the same position: no post-paint height correction may shift the visible rows, in either direction |
 | Turn start (send / retry / regenerate) | Re-pins and positions the latest content before paint, even if the user had scrolled up; the later persisted user-message event does not flash the transcript at its top, and the composer collapse / indicator layout clamps during the send never release follow mode |
 | Idle (after stream) | Auto-scroll unlocked; user can scroll freely |
@@ -667,8 +671,9 @@ reading surface of the workstation.
 - Empty-home task entry starts in the always-visible bottom composer. There is
   no starter-card or contextual quick-action layer between the hero and
   composer.
-- The failed-turn recovery card is a labelled `role="status"` region with
-  one explicit **Continue** action. It uses icon geometry plus text, never color
+- The failed-turn recovery card is a labelled `role="status"` region in the
+  active Composer stack directly above the input, with one explicit **Continue**
+  action. It uses icon geometry plus text, never color
   alone. Continue sends the current locale's continuation prompt as a new user
   turn in the same session; no Regenerate action is present. Completed turns do
   not render this card.

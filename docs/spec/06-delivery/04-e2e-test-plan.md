@@ -2935,16 +2935,19 @@ Each scenario is documented in this format:
   immediately after the change tool row. 4) Expand the inline card and verify
   its hunks. 5) Commit
   the edited file and confirm the recorded card remains, then use rollback
-  once. 6) Trigger the retriable failure. 7) Inspect the failure card, then
-  choose Retry. 8) Start another new prompt and inspect the old card.
+  once. 6) Trigger the retriable failure. 7) Inspect the failure card above the
+  Composer input, then choose Retry. 8) Start another new prompt and inspect the
+  old card.
 - **Expected**: The recovered turn keeps the failed Read visible on its own row,
   labels the containing group as processed, completes its session outcome, and
   shows no failure card. Completion uses the transcript and inline review card
   as its evidence without adding a "Task complete" card. File status, counts,
   and hunks remain on the adjacent card after commit, and guarded rollback
   restores the pre-tool state. Failure shows that existing work remains,
-  exposes Retry and Continue, and retry preserves the latest prompt. A new turn
-  clears the previous failure card; an abort creates no failure outcome copy.
+  exposes Retry and Continue above the Composer input without a duplicate card
+  beside the transcript processing group, and retry preserves the latest prompt.
+  A new turn clears the previous failure card; an abort creates no failure
+  outcome copy.
 - **Specs linked**: `04-ux/08-component-spec.md`,
   `04-ux/09-interaction-patterns.md`, `03-runtime/10-session-state-machine.md`,
   ADR 0069

@@ -49,10 +49,10 @@
   transition: width var(--chat-width-transition, var(--motion-duration-normal) var(--motion-ease-out));
 }
 
-/* Asktool uses the same decision surface as Plan and Goal approval. Its
- * transcript card width is intentionally widened here to align with the
- * composer stack instead of leaving an inset panel above the input. */
-.composer-stack > .asktool-card {
+/* Decision and recovery cards share the composer stack width and sit
+ * directly above the input rather than duplicating content in the transcript. */
+.composer-stack > .asktool-card,
+.composer-stack > .turn-outcome-card {
   width: 100%;
   margin: 0 0 8px;
 }

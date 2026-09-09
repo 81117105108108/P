@@ -22,7 +22,6 @@ import type {
 } from "@pi-desktop/shared";
 import { proposalKindForMode } from "@pi-desktop/shared";
 import { ConversationMinimap } from "./ConversationMinimap";
-import { TurnOutcomeCard } from "./TurnOutcomeCard";
 import { ReviewChangeCard } from "./ReviewChangeCard";
 import { Markdown, useCopy } from "./Markdown";
 import { ToolChips, ToolDetailBlocks } from "./ToolDetails";
@@ -2494,9 +2493,6 @@ export const ChatTranscript = memo(function ChatTranscript({
   paneVisible?: boolean;
 }) {
   const { t } = useTranslation();
-  const latestTurnResult = useAppStore((state) =>
-    sessionId ? state.latestTurnResults[sessionId] : undefined,
-  );
   const approvalPending = useAppStore((state) =>
     Boolean(
       sessionId && state.pendingPlans[sessionId]?.status === "pending",
@@ -3179,10 +3175,6 @@ export const ChatTranscript = memo(function ChatTranscript({
               runtimeActivity={specializedActivity}
             />
           ) : null}
-          <TurnOutcomeCard
-            messages={messages}
-            result={latestTurnResult}
-          />
           {pendingPermission ? (
             <PermissionCard
               key={pendingPermission.requestId}
