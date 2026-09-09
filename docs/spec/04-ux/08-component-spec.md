@@ -2839,12 +2839,16 @@ compatibility remains owned by pi-ai.
    fixed-position searchable multi-select model picker with free-form custom
    model entry and a compact configuration list. Each selected model is a
    scannable row with its ID, source, capabilities, and token limits; the row
-   expands in place to expose an optional alias, context window, max output,
-   seven thinking-level chips, and a constrained default-thinking select. The
-   thinking label and optional catalog hint sit above one compact,
-   keyboard-operable grouped control; its options wrap only when the pane is
-   narrow. The first row starts expanded and additional rows start collapsed so
-   large model sets do not become a wall of repeated forms.
+   expands in place to a compact sheet: optional alias (hint as a title
+   tooltip), context window and max output as a two-column numeric pair
+   without native spinners, seven thinking-level chips, a constrained
+   default-thinking select on the thinking label row, and one wrapping row
+   for attachment and delegation checkboxes. The thinking label, optional
+   catalog hint, and default selector sit above one compact, keyboard-operable
+   grouped control that spans the pane; its seven options share the width
+   equally and wrap only when the pane is narrow. The first row starts
+   expanded and additional rows start collapsed so large model sets do not
+   become a wall of repeated forms.
 5. **Provider cards** — avatar initials, badges (default / secret state), host + first model, Test / Make default / Delete
 
 ### 19.3 States

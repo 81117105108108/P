@@ -8000,8 +8000,12 @@ This test plan spec is accepted when:
   explicitly. PDF input records the capability without changing transport: the PDF
   stays a bounded file reference the model reads with its file tools. Each
   capability is one checkbox with a short label and no per-row explanatory copy.
-  A configured model absent from live discovery still shows its published
-  capabilities rather than reading as undescribed.
+  The Advanced body is a compact sheet: the alias hint is a title tooltip, limit
+  fields hide native spinners, thinking chips span the pane with the default
+  selector on the label row, and attachment plus delegation checkboxes share one
+  wrapping row. The first chosen row starts expanded. A configured model absent
+  from live discovery still shows its published capabilities rather than reading
+  as undescribed.
 - **Specs linked**: `03-runtime/11-provider-model-system.md` §6.2,
   `03-runtime/12-provider-config-schema.md`, `04-ux/08-component-spec.md` §19
 - **Acceptance**: B (model config), Quality
