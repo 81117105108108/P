@@ -433,6 +433,8 @@ UI 可能会显示层级提示，但默认情况下不得硬阻止未知模型�
 
 这是**通用逃生舱**，保证超出本机集成的市场覆盖范围。
 
+目录条目还可以额外固定模型级 wire API（例如 `api: "openai-responses"`）。存在时它优先于 provider 级 `apiStyle`，因此 `opencode_go` 下的 responses-only 模型会走 Responses adapter 而非 Chat Completions；没有模型级固定时保持 provider 级风格不变。
+
 ## 17. 多提供商产品规则
 
 1. 允许多个提供商具有相同的供应商密钥（例如两个 OpenRouter 帐户）。

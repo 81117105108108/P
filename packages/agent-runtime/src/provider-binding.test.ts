@@ -291,7 +291,7 @@ describe("buildProviderModel model-level wire API", () => {
     input: ["text", "image"],
     contextWindow: 1048576,
     maxTokens: 131072,
-    compat: { sessionAffinityFormat: "openai-nosession" },
+    compat: { supportsStrictMode: true },
   };
   const responsesCatalogProvider: RuntimeProviderConfig = {
     ...keyedProvider,
@@ -310,7 +310,7 @@ describe("buildProviderModel model-level wire API", () => {
     const model = buildProviderModel(responsesCatalogProvider) as any;
     expect(model.api).toBe("openai-responses");
     expect(model.baseUrl).toBe("https://opencode.ai/zen/go/v1");
-    expect(model.compat).toMatchObject({ sessionAffinityFormat: "openai-nosession" });
+    expect(model.compat).toMatchObject({ supportsStrictMode: true });
   });
 
   it("keeps the provider-wide style when the catalog pins no wire API", () => {
@@ -325,6 +325,27 @@ describe("buildProviderModel model-level wire API", () => {
         input: ["text"],
         contextWindow: 1000000,
         maxTokens: 384000,
+      },
+    }) as any;
+    expect(model.api).toBe("openai-completions");
+  });
+
+  it("leaves the same model on completions under other providers (issue #105)", () => {
+    const model = buildProviderModel({
+      ...responsesCatalogProvider,
+      id: "llmgateway",
+      name: "LLM Gateway",
+      vendorKey: "llmgateway",
+      baseUrl: "https://llmgateway.example/v1",
+      apiStyle: "chat_completions",
+      modelConfig: {
+        source: "models.dev",
+        name: "Muse Spark 1.3 Contributor",
+        baseUrl: "https://llmgateway.example/v1",
+        reasoning: true,
+        input: ["text", "image"],
+        contextWindow: 1048576,
+        maxTokens: 131072,
       },
     }) as any;
     expect(model.api).toBe("openai-completions");

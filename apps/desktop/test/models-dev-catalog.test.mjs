@@ -216,7 +216,7 @@ test("models.dev records retain all published model parameters and modalities", 
 });
 
 test("models.dev parsing keeps the per-model wire API with a responses-only fallback", () => {
-  const [provider] = parseModelsDevCatalog({
+  const [provider, llmGateway] = parseModelsDevCatalog({
     "opencode-go": {
       name: "OpenCode Go",
       api: "https://opencode.ai/zen/go/v1",
@@ -226,11 +226,19 @@ test("models.dev parsing keeps the per-model wire API with a responses-only fall
         "custom-responses": { id: "custom-responses", api: "openai-responses" },
       },
     },
+    "llmgateway": {
+      name: "LLM Gateway",
+      models: {
+        "muse-spark-1.3-contributor": { id: "muse-spark-1.3-contributor" },
+      },
+    },
   });
   const byId = Object.fromEntries(provider.models.map((model) => [model.modelId, model]));
   assert.equal(byId["muse-spark-1.3-contributor"].modelApi, "openai-responses");
   assert.equal(byId["deepseek-v4-flash"].modelApi, undefined);
   assert.equal(byId["custom-responses"].modelApi, "openai-responses");
+  const gatewayMuse = llmGateway.models.find((model) => model.modelId === "muse-spark-1.3-contributor");
+  assert.equal(gatewayMuse.modelApi, undefined);
   const config = modelConfigFromModelsDev(
     byId["muse-spark-1.3-contributor"],
     "https://opencode.ai/zen/go/v1",

@@ -581,6 +581,12 @@ including reasoning-model routes. A resolved model record may explicitly set
 `compat.supportsDeveloperRole: true` when its endpoint is known to accept that
 role; this override is model-scoped and does not change other providers.
 
+A catalog entry may additionally pin a model-level wire API (for example,
+`api: "openai-responses"`). When present it wins over the provider-wide
+`apiStyle`, so responses-only models under an `opencode_go` provider are sent
+through the Responses adapter instead of Chat Completions. Without a
+model-level pin the provider-wide style applies unchanged.
+
 This is the **universal escape hatch** guaranteeing market coverage beyond native integrations.
 
 ## 17. Multi-provider product rules

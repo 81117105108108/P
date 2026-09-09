@@ -402,7 +402,14 @@ function modelFromRaw(
   const limit = parseLimit(raw.limit);
   const experimental = publishedExperimental(raw.experimental);
   const providerMetadata = publishedMetadata(raw.provider);
-  const modelApi = nonEmptyString(raw.api) ?? (RESPONSES_ONLY_MODEL_IDS.has(modelId.toLowerCase()) ? "openai-responses" : undefined);
+  // Scoped to opencode-go on purpose: the same model ids exist under other
+  // providers (e.g. meta, llmgateway) where the completions path is correct
+  // and must not be rerouted (see #105).
+  const modelApi =
+    nonEmptyString(raw.api) ??
+    (providerKey === "opencode-go" && RESPONSES_ONLY_MODEL_IDS.has(modelId.toLowerCase())
+      ? "openai-responses"
+      : undefined);
   const displayName = nonEmptyString(raw.name) ?? modelId;
   const inputPublished = modalityResult.inputPublished;
   const outputPublished = modalityResult.outputPublished;
