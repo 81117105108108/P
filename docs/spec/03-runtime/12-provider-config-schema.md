@@ -87,6 +87,7 @@ Tables (canonical DDL in [04-data-storage](04-data-storage.md) §4.3–4.4, §4.
         "required": ["id", "contextWindow", "maxTokens", "thinkingLevels", "defaultThinkingLevel"],
         "properties": {
           "id": { "type": "string", "minLength": 1 },
+          "alias": { "type": "string", "maxLength": 60 },
           "contextWindow": { "type": "integer", "minimum": 1 },
           "maxTokens": { "type": "integer", "minimum": 1 },
           "thinkingLevels": {
@@ -109,6 +110,13 @@ Tables (canonical DDL in [04-data-storage](04-data-storage.md) §4.3–4.4, §4.
   }
 }
 ```
+
+`models[].alias` is an optional display label (ADR 0192). `models[].id`
+remains the identity sent to the provider and the alias is never used for
+provider or model resolution; UI naming and clearing rules are specified in
+[04-ux/08-component-spec](../04-ux/08-component-spec.md). Host-core trims the
+alias, drops a blank one, and enforces the 60-character limit by rejecting an
+over-long alias with `MODEL_ALIAS_TOO_LONG`.
 
 `compatibility.supportsReasoning` and
 `compatibility.supportedThinkingLevels` remain readable for stored-record and

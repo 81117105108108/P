@@ -2785,12 +2785,12 @@ compatibility remains owned by pi-ai.
    fixed-position searchable multi-select model picker with free-form custom
    model entry and a compact configuration list. Each selected model is a
    scannable row with its ID, source, capabilities, and token limits; the row
-   expands in place to expose context window, max output, seven thinking-level
-   chips, and a constrained default-thinking select. The thinking label and
-   optional catalog hint sit above one compact, keyboard-operable grouped
-   control; its options wrap only when the pane is narrow. The first row starts
-   expanded and additional rows start collapsed so large model sets do not
-   become a wall of repeated forms.
+   expands in place to expose an optional alias, context window, max output,
+   seven thinking-level chips, and a constrained default-thinking select. The
+   thinking label and optional catalog hint sit above one compact,
+   keyboard-operable grouped control; its options wrap only when the pane is
+   narrow. The first row starts expanded and additional rows start collapsed so
+   large model sets do not become a wall of repeated forms.
 5. **Provider cards** — avatar initials, badges (default / secret state), host + first model, Test / Make default / Delete
 
 ### 19.3 States
@@ -2824,6 +2824,13 @@ compatibility remains owned by pi-ai.
   top-level option list, selects it, and applies 128,000 context / 8,192 max
   output / no thinking defaults. Removing its selection does not delete the
   custom option.
+- Model IDs and names are selectable text inside the otherwise non-selectable
+  shell. A click that carries a text selection does not toggle the row
+  checkbox, so drag-to-copy and click-to-toggle coexist (ADR 0192).
+- The alias is a display label only: a non-empty alias names the model in the
+  composer chip and the picker, while the configuration row and the transcript
+  badge keep the real ID. Clearing the field restores the catalog's published
+  display name.
 - Save creates or updates the provider with `models: ModelBinding[]`, stores
   the secret, sets the first configured model as the legacy/default model for
   older consumers, and refreshes the list

@@ -286,7 +286,25 @@ export function ModelSelectionPanes({
       <ul className="provider-models-list">
         {visibleRows.map((row) => (
           <li className="provider-models-row" key={row.id}>
-            <label className="provider-models-row-label">
+            <label
+              className="provider-models-row-label"
+              onClick={(event) => {
+                // Keyboard activation reports detail 0 and is not a click that
+                // carries a text selection, so it must keep toggling.
+                if (event.detail === 0) return;
+                // A drag-selection inside this row is a copy gesture, not a toggle.
+                const selection = window.getSelection();
+                const row = event.currentTarget;
+                if (
+                  selection &&
+                  !selection.isCollapsed &&
+                  row.contains(selection.anchorNode) &&
+                  row.contains(selection.focusNode)
+                ) {
+                  event.preventDefault();
+                }
+              }}
+            >
               <input
                 type="checkbox"
                 className="provider-models-check"
@@ -297,7 +315,7 @@ export function ModelSelectionPanes({
                 autoCapitalize="off"
                 onChange={() => toggleModel(row)}
               />
-              <span className="provider-models-row-copy">
+              <span className="provider-models-row-copy selectable">
                 <span className="provider-models-row-id font-mono">{row.id}</span>
                 {row.displayName && row.displayName !== row.id ? (
                   <span className="provider-models-row-name">{row.displayName}</span>
@@ -409,7 +427,12 @@ export function ModelSelectionPanes({
               return (
                 <li className="provider-chosen-row" key={binding.id}>
                   <div className="provider-chosen-row-head">
-                    <span className="provider-chosen-row-id font-mono">{binding.id}</span>
+                    <span className="provider-chosen-row-id font-mono selectable">
+                      {binding.id}
+                    </span>
+                    {binding.alias?.trim() ? (
+                      <span className="provider-chosen-row-alias">{binding.alias.trim()}</span>
+                    ) : null}
                     <span className="provider-chosen-row-limits">
                       {formatTokenCount(binding.contextWindow)} ·{" "}
                       {formatTokenCount(binding.maxTokens)}
@@ -445,6 +468,25 @@ export function ModelSelectionPanes({
                     className="provider-chosen-row-body"
                     hidden={expandedModelId !== binding.id}
                   >
+                    <Field
+                      label={t("settings.modelAlias")}
+                      hint={t("settings.modelAliasHint")}
+                    >
+                      <Input
+                        value={binding.alias ?? ""}
+                        placeholder={t("settings.modelAliasPlaceholder")}
+                        spellCheck={false}
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        onChange={(event) =>
+                          updateBinding(binding.id, {
+                            // Host-core caps the alias at 60 Unicode scalars, so
+                            // clamp by code point rather than UTF-16 unit.
+                            alias: [...event.target.value].slice(0, 60).join(""),
+                          })
+                        }
+                      />
+                    </Field>
                     <div className="provider-chosen-limits">
                       <Field label={t("settings.contextWindow")}>
                         <Input

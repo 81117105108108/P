@@ -204,3 +204,4 @@ Each ADR includes:
 | 0189 | Parent fatal error aborts leftover delegates | Accepted (amends 0166 / D328) |
 | 0190 | Host-gated large-file and dropped-file access | Accepted |
 | 0191 | Label both macOS release architectures | Accepted (amends 0145 / D353) |
+| 0192 | Alias a configured model and make model ids copyable | Accepted (amends D266) |

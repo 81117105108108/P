@@ -26,11 +26,18 @@ export function composerModelsForProvider(
   provider: ConfiguredProvider,
   discovered: readonly ModelInfo[] | undefined,
 ): ModelInfo[] {
+  /** A configured alias renames the row wherever the composer names a model. */
+  const aliasById = new Map<string, string>();
+  for (const binding of provider.models ?? []) {
+    const id = binding.id.trim();
+    const alias = binding.alias?.trim();
+    if (id && alias) aliasById.set(id, alias);
+  }
   return configuredModelIds(provider).map((modelId) => {
     const metadata = (discovered ?? []).find((model) =>
       modelIdsMatch(model.modelId, modelId),
     );
-    return metadata
+    const row: ModelInfo = metadata
       ? { ...metadata, modelId, providerId: provider.id }
       : {
           modelId,
@@ -39,6 +46,8 @@ export function composerModelsForProvider(
           capabilities: ["text"],
           source: "user" as const,
         };
+    const alias = aliasById.get(modelId);
+    return alias ? { ...row, displayName: alias } : row;
   });
 }
 
