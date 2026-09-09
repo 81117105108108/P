@@ -19,6 +19,9 @@ No PI-Desktop account. No mandatory relay. No editor lock-in.
 [![License](https://img.shields.io/github/license/vastsa/PI-Desktop)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platform-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-4c8dd8)
 
+<a href="https://trendshift.io/repositories/178787?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-178787" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/178787" alt="vastsa/PI-Desktop | Trendshift" width="250" height="55"/></a>
+<a href="https://www.producthunt.com/products/pi-desktop?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-pi-desktop" target="_blank" rel="noopener noreferrer"><img alt="PI-Desktop - Your local-first desktop workspace for AI coding agents | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1245457&amp;theme=dark&amp;t=1788955688339"/></a>
+
 **[Download PI-Desktop](https://github.com/vastsa/PI-Desktop/releases/latest)** ·
 [Documentation](https://pi-docs.aiuo.net/) ·
 [Screenshots](docs/guide/screenshots.md) ·
@@ -288,10 +291,10 @@ Download the latest build from **[GitHub Releases](https://github.com/vastsa/PI-
 | -------- | ------------- | -------------------- |
 | macOS    | Apple Silicon | `.dmg` / `.zip`      |
 | macOS    | Intel         | `.dmg` / `.zip`      |
-| Windows  | x64           | NSIS installer       |
+| Windows  | x64           | NSIS installer / portable exe |
 | Linux    | x64           | `.AppImage` / `.deb` / `.rpm` / `.asar` |
 
-Packaged builds can check GitHub Releases for updates and surface new versions inside the application. The Linux `.asar` asset is available for repackaging with a system Electron; launch it with `electron PI-Desktop-<version>-linux-x64.asar` after adding the native host and packaged resources required by the target distribution.
+Packaged builds can check GitHub Releases for updates and surface new versions inside the application. Windows NSIS and Linux AppImage can download and install in-app; macOS, Linux deb/rpm, and the Windows portable exe open the releases page. The Linux `.asar` asset is available for repackaging with a system Electron; launch it with `electron PI-Desktop-<version>-linux-x64.asar` after adding the native host and packaged resources required by the target distribution.
 
 ### Linux
 

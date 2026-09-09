@@ -13,6 +13,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type {
   AgentActivity,
+  AgentActivityAgent,
   ContextCompactionMark,
   MessageAttachment,
   MessageUsage,
@@ -22,6 +23,7 @@ import type {
 } from "@pi-desktop/shared";
 import { proposalKindForMode } from "@pi-desktop/shared";
 import { ConversationMinimap } from "./ConversationMinimap";
+import { TurnOutcomeCard } from "./TurnOutcomeCard";
 import { ReviewChangeCard } from "./ReviewChangeCard";
 import { Markdown, useCopy } from "./Markdown";
 import { ToolChips, ToolDetailBlocks } from "./ToolDetails";
@@ -133,7 +135,7 @@ import { useAppStore } from "../stores/app-store";
 import type { PendingPermission } from "../lib/pending-permissions";
 import { PermissionCard } from "./PermissionCard";
 
-type ActiveAgentActivity = Exclude<AgentActivity, { phase: "starting" }>;
+type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 /**
  * Copy chip. Message toolbars are glyph-only (`icon`) with the label in a
@@ -1456,12 +1458,64 @@ function ThinkingRow({
   );
 }
 
+function waitingSubagentActionLabel(
+  agent: AgentActivityAgent,
+  t: Translate,
+): string {
+  if (agent.lastPhase === "thinking") return t("chat.thinking");
+  if (agent.lastPhase === "waiting-model") return t("chat.waitingForModel");
+  if (agent.lastToolName) {
+    return t(TOOL_RUNNING_KEYS[getToolAction(agent.lastToolName)]);
+  }
+  return "";
+}
+
+function waitingSubagentsLabel(
+  activity: Extract<AgentActivity, { phase: "waiting-subagents" }>,
+  t: Translate,
+): string {
+  const agents = activity.agents ?? [];
+  if (agents.length === 1) {
+    const action = waitingSubagentActionLabel(agents[0], t);
+    const named = t("chat.waitingForSubagentNamed", { name: agents[0].name });
+    return action ? `${named} · ${action}` : named;
+  }
+  const base = t("chat.waitingForSubagents", { count: activity.subagentCount });
+  if (agents.length === 0) return base;
+  const details = agents
+    .map((agent) => {
+      const action = waitingSubagentActionLabel(agent, t);
+      return action ? `${agent.name} ${action}` : agent.name;
+    })
+    .join(", ");
+  return `${base} · ${details}`;
+}
+
+function runActivityLabel(activity: AgentActivity, t: Translate): string {
+  switch (activity.phase) {
+    case "starting":
+      return t("chat.startingTurn");
+    case "waiting-model":
+      return t("chat.waitingForModel");
+    case "preparing":
+      return t("chat.preparingNextRequest");
+    case "compacting":
+      return t("chat.compactingContext");
+    case "recovering":
+      return t("chat.recoveringTurn");
+    case "retrying":
+      return t("chat.retryingModel", { attempt: activity.attempt });
+    case "waiting-subagents":
+      return waitingSubagentsLabel(activity, t);
+  }
+}
+
 type ActivityGroupProps = {
   items: ActivityItem[];
   isActive: boolean;
   endedAt?: string;
   /** Current runtime wait phase, when the group owns the live turn tail. */
-  runtimeActivity?: ActiveAgentActivity;
+  runtimeActivity?: AgentActivity;
   /** Delegation statuses from the entire assistant turn (cross-activity-part). */
   turnDelegationStatuses?: ReadonlyMap<string, SubagentOutcome>;
   /** Delegation timings from the entire assistant turn (cross-activity-part). */
@@ -1598,16 +1652,9 @@ const ActivityGroup = memo(function ActivityGroup({
           : // History reloads keep no end timestamp for pure-thinking groups.
             t("chat.thinking", { defaultValue: "Thinking" })
         : t("chat.processedFor", { time: elapsed });
-  const runtimeStatus =
-    runtimeActivity?.phase === "waiting-model"
-      ? t("chat.waitingForModel")
-      : runtimeActivity?.phase === "retrying"
-        ? t("chat.retryingModel", { attempt: runtimeActivity.attempt })
-        : runtimeActivity?.phase === "waiting-subagents"
-          ? t("chat.waitingForSubagents", {
-              count: runtimeActivity.subagentCount,
-            })
-          : "";
+  const runtimeStatus = runtimeActivity
+    ? runActivityLabel(runtimeActivity, t as Translate)
+    : "";
   const currentDetail =
     live && !runtimeStatus && lastItem ? activityItemDetail(lastItem) : "";
   const tail = live && !open ? currentDetail : "";
@@ -1764,9 +1811,7 @@ function WorkingIndicator({ startedAt }: { startedAt?: number } = {}) {
   );
 }
 
-type VisibleAgentActivity = Exclude<AgentActivity, { phase: "starting" }>;
-
-function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) {
+function RunActivityIndicator({ activity }: { activity: AgentActivity }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now);
   const retryErrorDetailsId = useId();
@@ -1780,14 +1825,7 @@ function RunActivityIndicator({ activity }: { activity: VisibleAgentActivity }) 
   const elapsed = formatToolDuration(
     Math.max(0, Math.floor((now - activity.since) / 1000)),
   );
-  const label =
-    activity.phase === "waiting-model"
-      ? t("chat.waitingForModel")
-      : activity.phase === "retrying"
-        ? t("chat.retryingModel", { attempt: activity.attempt })
-        : t("chat.waitingForSubagents", {
-            count: activity.subagentCount,
-          });
+  const label = runActivityLabel(activity, t as Translate);
   const retryError = activity.phase === "retrying" ? activity.error : undefined;
   const retryErrorSummary = retryError
     ? (() => {
@@ -2108,7 +2146,7 @@ const MessageRow = memo(function MessageRow({
 type AssistantTurnProps = {
   entry: AssistantTurnEntry;
   isActive: boolean;
-  runtimeActivity?: ActiveAgentActivity;
+  runtimeActivity?: AgentActivity;
 };
 
 function assistantTurnPropsEqual(
@@ -2185,7 +2223,7 @@ function TranscriptEntryView({
   entry: TranscriptEntry;
   isRunning: boolean;
   isActive: boolean;
-  runtimeActivity?: ActiveAgentActivity;
+  runtimeActivity?: AgentActivity;
 }) {
   if (entry.kind === "assistant-turn") {
     return (
@@ -2255,7 +2293,7 @@ const TranscriptTail = memo(function TranscriptTail({
   entry: TranscriptEntry;
   isRunning: boolean;
   isActive: boolean;
-  runtimeActivity?: ActiveAgentActivity;
+  runtimeActivity?: AgentActivity;
 }) {
   return (
     <TranscriptEntryView
@@ -2461,6 +2499,9 @@ export const ChatTranscript = memo(function ChatTranscript({
   paneVisible?: boolean;
 }) {
   const { t } = useTranslation();
+  const latestTurnResult = useAppStore((state) =>
+    sessionId ? state.latestTurnResults[sessionId] : undefined,
+  );
   const approvalPending = useAppStore((state) =>
     Boolean(
       sessionId && state.pendingPlans[sessionId]?.status === "pending",
@@ -3053,10 +3094,7 @@ export const ChatTranscript = memo(function ChatTranscript({
     lastTurnPart?.kind === "message" &&
     lastTurnPart.message.status === "streaming" &&
     Boolean((lastTurnPart.message.content || "").trim());
-  const specializedActivity =
-    agentActivity && agentActivity.phase !== "starting"
-      ? agentActivity
-      : undefined;
+  const specializedActivity = agentActivity;
   const hasSpecializedActivity = specializedActivity !== undefined;
   const showRunActivity =
     isRunning &&
@@ -3143,6 +3181,10 @@ export const ChatTranscript = memo(function ChatTranscript({
               runtimeActivity={specializedActivity}
             />
           ) : null}
+          <TurnOutcomeCard
+            messages={messages}
+            result={latestTurnResult}
+          />
           {pendingPermission ? (
             <PermissionCard
               key={pendingPermission.requestId}
@@ -3154,15 +3196,7 @@ export const ChatTranscript = memo(function ChatTranscript({
             <RunActivityIndicator activity={specializedActivity} />
           ) : null}
           {showPlanning ? <PlanningIndicator kind={planningKind} /> : null}
-          {showWorking ? (
-            <WorkingIndicator
-              startedAt={
-                agentActivity?.phase === "starting"
-                  ? agentActivity.since
-                  : undefined
-              }
-            />
-          ) : null}
+          {showWorking ? <WorkingIndicator /> : null}
         </div>
       </div>
       {veilPhase !== "off" ? (

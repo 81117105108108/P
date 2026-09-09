@@ -1,8 +1,9 @@
-# ADR 0186: Show provider retry causes in the active-turn status
+# ADR 0196: Show provider retry causes in the active-turn status
 
 - Status: Accepted
 - Date: 2026-09-08
-- Related: ADR 0175, D349, US-UI-60d
+- Related: ADR 0175, D358, US-UI-60d
+- Note: First filed as ADR 0186, then 0195; 0186 is session titles and 0195 is the work-panel toggle.
 
 ## Context
 

@@ -501,7 +501,7 @@ first block repeats the local identity with the same glyph and two-line text,
 followed by a divider and compact Settings / Logs / Theme rows.
 
 Toolbar rows are 46px. macOS places traffic lights at `{x:16,y:16}` and keeps
-the expanded sidebar's Search and Collapse sidebar icon buttons right-aligned
+the expanded sidebar's Collapse sidebar icon button right-aligned
 in that same row. The macOS row omits the sidebar logo/title, reserves `76px`
 on the left for native chrome in windowed mode, and reclaims that padding in
 fullscreen. Windows/Linux keep the identity and sidebar actions in their first

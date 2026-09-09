@@ -355,12 +355,31 @@ Electron 将每个主机 `plans.changed` 通知原封不动地转发到
 ### 5.5 getStatus
 
 ```ts
+type AgentActivityAgent = {
+  name: string;
+  lastPhase?: "waiting-model" | "thinking" | "tool";
+  lastToolName?: string;
+};
+
+type AgentActivity =
+ | { phase: "starting"; since: number }
+ | { phase: "waiting-model"; since: number }
+ | { phase: "preparing"; since: number }
+ | { phase: "compacting"; since: number;
+     reason: "manual" | "threshold" | "overflow" }
+ | { phase: "recovering"; since: number }
+ | { phase: "retrying"; since: number; attempt: number;
+     retryDelayMs?: number; error?: AgentActivityError }
+ | { phase: "waiting-subagents"; since: number; subagentCount: number;
+     agents?: AgentActivityAgent[] };
+
 type AgentStatus = {
  sessionId: string;
  isRunning: boolean;
  currentTurnId?: string;
  modelId?: string;
  pendingToolConfirmations: number;
+ activity?: AgentActivity;
 };
 ```
 
@@ -1009,6 +1028,10 @@ ASCII slug：frontmatter `name` 能 slugify 时用它，否则 `SKILL.md` 用技
 - `agents.read(id)` → `{ subagent, body }`
 - `agents.remove(id)`
 - `agents.setEnabled(id, enabled)`
+
+`agents.create` 和 `agents.update` 接受的 `thinkingLevel` 可以是规范思考档位、
+`omit` 或空字符串。空字符串清除覆盖；`omit` 持久化为
+`thinkingLevel: omit`，告诉运行时不要发送提供商思考覆盖。
 
 Electron 的 `subagent/list` IPC 通道向设置 > 智能体 > 子代理暴露同一份全局
 列表。运行时目录把这些全局用户文档与内置定义合并；不会扫描 `.pi/agents`

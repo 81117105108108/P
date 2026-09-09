@@ -202,14 +202,17 @@ artifact upload. The per-architecture
 `latest-mac.yml` files are renamed before upload; the publish job merges them
 into one feed after downloading both artifacts.
 
-The macOS package commands override the target-specific artifact patterns so
-both public architectures are explicit: the arm64 lane publishes
-`PI-Desktop-<version>-arm64.dmg` and `PI-Desktop-<version>-arm64-mac.zip`, while
-the Intel x64 lane publishes `PI-Desktop-<version>-x64.dmg` and
-`PI-Desktop-<version>-x64-mac.zip`. This applies to both unsigned and signed
-macOS lanes. Because the patterns are applied during electron-builder
-execution, each generated per-architecture updater feed references its
-architecture-labelled asset names and matching checksums.
+The shared electron-builder configuration applies the architecture-labelled
+pattern at the macOS platform level for ZIPs and overrides it at the DMG target
+level. Both public architectures are therefore explicit: the arm64 lane
+publishes `PI-Desktop-<version>-arm64.dmg` and
+`PI-Desktop-<version>-arm64-mac.zip`, while the Intel x64 lane publishes
+`PI-Desktop-<version>-x64.dmg` and `PI-Desktop-<version>-x64-mac.zip`. This
+applies to both unsigned and signed macOS lanes, including local release builds,
+and ensures each generated updater feed references its architecture-labelled
+asset names and matching checksums. Before upload, each macOS runner requires
+exactly one architecture-labelled DMG and ZIP (including blockmaps) and rejects
+any unlabelled or wrong-architecture macOS artifact.
 
 Every macOS DMG and ZIP also includes
 `PI-Desktop-macOS-opening-help.txt` at the package root. It tells users how to
@@ -231,6 +234,29 @@ assembles the GitHub Release. The Linux runner also copies
 `PI-Desktop-<version>-linux-x64.asar` asset before upload. This preserves the
 exact archive used by the Linux installers for downstream repackaging with a
 system Electron.
+
+### 4.4 CNB mirror trigger
+
+After `softprops/action-gh-release` publishes or updates a GitHub Release,
+`.github/workflows/mirror-to-cnb.yml` starts the CNB pipeline at
+`aixk/Pi-Desktop`. GitHub Release remains the canonical artifact source; CNB
+is a copy of the same tag for users who pull from
+https://cnb.cool/aixk/Pi-Desktop.
+
+The job:
+
+- runs only on `vastsa/PI-Desktop`
+- fires on `release` `published` / `edited`, and on `workflow_dispatch` with
+  an explicit tag such as `v0.14.6`
+- sends event `api_trigger_mirror` and `MIRROR_TAGS` set to that tag
+- uses repository secret `CNB_MIRROR_TOKEN` (already configured) and fails
+  closed if the secret is empty
+- builds the JSON body with `jq` so a missing tag cannot produce an empty
+  `MIRROR_TAGS` value on a manual run
+
+Re-running the workflow for the same tag is safe if the CNB pipeline is
+idempotent. It does not rebuild desktop artifacts and does not change
+electron-updater feeds.
 
 ## 5. Verification gates
 
@@ -378,9 +404,16 @@ Native-runner output matrix:
   `PI-Desktop-<version>-arm64-mac.zip`
 - macOS Intel x64: `PI-Desktop-<version>-x64.dmg` and
   `PI-Desktop-<version>-x64-mac.zip`
-- Windows x64: NSIS installer
+- Windows x64: NSIS installer `PI-Desktop-Setup-<version>.exe` and portable
+  exe `PI-Desktop-Portable-<version>.exe`
 - Linux x64: AppImage, deb, and rpm
 - Linux x64 system Electron asset: `PI-Desktop-<version>-linux-x64.asar`
+
+The portable Windows target does not write `latest.yml`. Packaged portable
+runs use notify-and-link delivery (`PORTABLE_EXECUTABLE_FILE`); NSIS keeps
+the in-app download and quit-and-install lane. Data stays in the existing
+application data directory. Portable requests user execution level, so launch
+does not require administrator rights.
 
 RPM targets pass `_build_id_links none` to FPM. Bundled Electron binaries live
 under `/opt/PI-Desktop`; omitting global `/usr/lib/.build-id` links prevents
@@ -407,7 +440,8 @@ Shell smoke on each native runner:
 
 ## 7. Known limitations
 
-- macOS and Linux deb/rpm remain notify-and-link update modes.
+- macOS, Linux deb/rpm, and the Windows portable exe remain notify-and-link
+  update modes.
 - Linux x64 packages are built on Ubuntu 22.04 so host-core needs glibc 2.35
   or newer (Ubuntu 22.04, Debian 12, Fedora 36+). The tag job runs
   `scripts/check-linux-host-glibc.mjs` and refuses a binary that needs a

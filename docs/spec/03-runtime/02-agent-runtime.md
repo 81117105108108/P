@@ -92,7 +92,7 @@ No host RPC or storage schema change is required.
    does not call this path until the current session reaches `agent_end`
 6. validate structured attachments at Electron main's session-bound path
    boundary, persist image bytes by SHA-256, and retain only attachment refs in
-   the durable user message. Only an image that is within the 20 MiB inline
+   the durable user message. Only an image that is within the 10 MB inline
    bound for a vision model is read into memory; larger images use streamed
    hashing/copying and the existing safe path fallback
 7. snapshot the effective shell ID and dialect for the turn
@@ -112,13 +112,16 @@ No host RPC or storage schema change is required.
 12. finalize and persist successful answer/thinking blocks independently
 
 While an active turn has no new transcript row, the runtime emits a normalized
-`status` event with one of the following explanations: `waiting-model` while a
-provider request is waiting for its first assistant event, `retrying` during a
-bounded provider backoff, and `waiting-subagents` while the parent is waiting
-for delegated work. The renderer keeps the phase scoped to the session and
-clears it when assistant or tool activity starts, or when the turn terminates.
-This is observability only; it does not add a second agent loop or a
-completion percentage.
+`status` event that names the quiet interval: `starting` for the prompt
+handoff, `waiting-model` while a provider request waits for its first assistant
+event, `preparing` after a tool batch and before the next request,
+`compacting` during a context checkpoint, `recovering` during a silent-turn
+re-run, `retrying` during a bounded provider backoff, and `waiting-subagents`
+while the parent waits for delegated work (including each running target's
+latest coarse child action). The renderer keeps the phase scoped to the session
+and clears it when assistant or tool activity starts, or when the turn
+terminates. This is observability only; it does not add a second agent loop or
+a completion percentage.
 
 The runtime constructs exactly one pi `Agent` per durable session. Plan does
 not select a second model, planner service, permission implementation, or
@@ -510,7 +513,7 @@ criterion-by-criterion report of what was met and the evidence observed.
   gets a synthesized call-only assistant carrier so call/result pairs stay
   well-formed for every provider API.
 - Vision runtimes hydrate persisted image refs only from the session-bound
-  attachment, scratch, and project roots. Images within the 20 MiB inline
+  attachment, scratch, and project roots. Images within the 10 MB inline
   safety bound become transient pi-ai image blocks; oversized or unavailable
   images become safe `@path` fallbacks. Oversized history hydration copies
   files without first loading their contents into memory. Base64 is never

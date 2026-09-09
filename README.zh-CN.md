@@ -19,6 +19,9 @@
 [![License](https://img.shields.io/github/license/vastsa/PI-Desktop)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platform-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-4c8dd8)
 
+<a href="https://trendshift.io/repositories/178787?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-178787" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/178787" alt="vastsa/PI-Desktop | Trendshift" width="250" height="55"/></a>
+<a href="https://www.producthunt.com/products/pi-desktop?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-pi-desktop" target="_blank" rel="noopener noreferrer"><img alt="PI-Desktop - Your local-first desktop workspace for AI coding agents | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1245457&amp;theme=dark&amp;t=1788955688339"/></a>
+
 **[下载 PI-Desktop](https://github.com/vastsa/PI-Desktop/releases/latest)** ·
 [文档](https://pi-docs.aiuo.net/) ·
 [界面截图](docs/zh-CN/guide/screenshots.md) ·
@@ -288,10 +291,10 @@ PI-Desktop 是 **本地优先**，不是“永远不碰网络”。
 | -------- | ------------- | -------------------- |
 | macOS | Apple Silicon | `.dmg` / `.zip` |
 | macOS | Intel | `.dmg` / `.zip` |
-| Windows | x64 | NSIS 安装程序 |
+| Windows | x64 | NSIS 安装程序 / 免安装便携版 |
 | Linux | x64 | `.AppImage` / `.deb` / `.rpm` / `.asar` |
 
-打包版本会检查 GitHub Releases 上的更新，并在应用内提示新版本。Linux `.asar` 文件用于配合系统 Electron 重新打包；补齐目标发行版所需的原生 host 和资源后，可运行 `electron PI-Desktop-<version>-linux-x64.asar` 启动。
+打包版本会检查 GitHub Releases 上的更新，并在应用内提示新版本。Windows NSIS 和 Linux AppImage 可以在应用内下载并安装；macOS、Linux deb/rpm 和 Windows 免安装便携版会打开发布页。Linux `.asar` 文件用于配合系统 Electron 重新打包；补齐目标发行版所需的原生 host 和资源后，可运行 `electron PI-Desktop-<version>-linux-x64.asar` 启动。
 
 ### Linux
 

@@ -135,8 +135,10 @@ replace an artifact.
   releases page, but never downloads or installs it in-app. Enabling a signed
   macOS in-app channel requires a later explicit decision and qualification.
 - D126 tag releases publish Windows NSIS and Linux AppImage installers with
-  their update manifests, plus Linux deb/rpm packages. The NSIS and AppImage
-  artifacts activate the existing in-app lanes. macOS tag artifacts
+  their update manifests, plus Linux deb/rpm packages and a Windows portable
+  exe. The NSIS and AppImage artifacts activate the existing in-app lanes.
+  The portable exe uses notify-and-link delivery and does not write
+  `latest.yml`. macOS tag artifacts
   are Developer ID-signed, notarized, and stapled before upload; rollback and
   staged-rollout qualification remain release follow-ups.
 - The client carries no GitHub token. A private or otherwise unreachable feed

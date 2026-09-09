@@ -179,12 +179,14 @@ macOS 矩阵使用 arm64 的 `macos-15` 和 Intel x64 的
 `pi-desktop-host-core`。每个架构的 `latest-mac.yml` 会在上传前重命名，
 发布作业下载两个工件后再合并为一个更新源。
 
-macOS 打包命令会覆盖目标专用的工件命名模板，让两个公开架构都明确可见：
-arm64 通道发布 `PI-Desktop-<version>-arm64.dmg` 和
-`PI-Desktop-<version>-arm64-mac.zip`，Intel x64 通道发布
-`PI-Desktop-<version>-x64.dmg` 和 `PI-Desktop-<version>-x64-mac.zip`。
-这同时适用于未签名和已签名的 macOS 通道。命名模板在 electron-builder
-打包时生效，因此每个按架构生成的更新源都会引用带架构后缀的工件名及其匹配校验和。
+共享的 electron-builder 配置在 macOS 平台级别为 ZIP 应用带架构后缀的命名模板，
+并在 DMG 目标级别覆盖该模板。两个公开架构都会明确可见：arm64 通道发布
+`PI-Desktop-<version>-arm64.dmg` 和 `PI-Desktop-<version>-arm64-mac.zip`，
+Intel x64 通道发布 `PI-Desktop-<version>-x64.dmg` 和
+`PI-Desktop-<version>-x64-mac.zip`。这同时适用于未签名、已签名和本地 macOS
+通道，并确保每个按架构生成的更新源都会引用带架构后缀的工件名及其匹配校验和。
+上传前，每个 macOS 运行器必须恰好生成一个带架构后缀的 DMG 和 ZIP（包括
+blockmap），任何无后缀或架构错误的 macOS 工件都会使发布失败。
 
 每个 macOS DMG 和 ZIP 的安装包根目录还会包含
 `PI-Desktop-macOS-opening-help.txt`。如果 macOS 对可信的未签名应用提示应用已损坏，
@@ -207,6 +209,25 @@ DMG、ZIP、NSIS、AppImage、deb、rpm、块图和更新程序提要输出已
 压缩或压缩不敏感。因此，工作流程会上传它们的
 发布作业之前压缩级别为零的临时操作工件
 组装 GitHub 版本。
+
+### 4.4 CNB 镜像触发
+
+`softprops/action-gh-release` 发布或更新 GitHub Release 之后，
+`.github/workflows/mirror-to-cnb.yml` 会启动 `aixk/Pi-Desktop` 上的 CNB
+流水线。GitHub Release 仍是权威产物源；CNB 只是同一标签的副本，供从
+https://cnb.cool/aixk/Pi-Desktop 拉取的用户使用。
+
+该作业：
+
+- 仅在 `vastsa/PI-Desktop` 上运行
+- 在 `release` 的 `published` / `edited` 时触发，也可通过
+  `workflow_dispatch` 传入明确标签（例如 `v0.14.6`）
+- 发送事件 `api_trigger_mirror`，并把 `MIRROR_TAGS` 设为该标签
+- 使用仓库密钥 `CNB_MIRROR_TOKEN`（已配置）；密钥为空时失败退出
+- 用 `jq` 构造 JSON，避免手动运行时标签缺失导致空的 `MIRROR_TAGS`
+
+若 CNB 流水线幂等，对同一标签重跑是安全的。它不会重新构建桌面产物，
+也不会改写 electron-updater 更新源。
 
 ## 5. 验证门
 
@@ -347,9 +368,14 @@ Native-runner 输出矩阵：
   `PI-Desktop-<version>-arm64-mac.zip`
 - macOS Intel x64：`PI-Desktop-<version>-x64.dmg` 和
   `PI-Desktop-<version>-x64-mac.zip`
-- Windows x64：NSIS 安装程序
+- Windows x64：NSIS 安装程序 `PI-Desktop-Setup-<version>.exe` 和便携版
+  exe `PI-Desktop-Portable-<version>.exe`
 - Linux x64：AppImage、deb 和 rpm
 - Linux x64 系统 Electron 产物：`PI-Desktop-<version>-linux-x64.asar`
+
+便携版 Windows 目标不会写入 `latest.yml`。已打包的便携版运行使用通知加链接
+交付（`PORTABLE_EXECUTABLE_FILE`）；NSIS 仍走应用内下载并在退出时安装。
+数据仍在现有应用数据目录。便携版请求 user 执行级别，因此启动不需要管理员权限。
 
 RPM 目标会向 FPM 传入 `_build_id_links none`。捆绑的 Electron 二进制文件位于
 `/opt/PI-Desktop` 下；省略全局 `/usr/lib/.build-id` 链接，可以避免与其他捆绑相同
@@ -375,7 +401,7 @@ electron PI-Desktop-<version>-linux-x64.asar
 
 ## 7. 已知限制
 
-- macOS 和 Linux deb/rpm 仍保持通知和链接更新模式。
+- macOS、Linux deb/rpm 和 Windows 便携版 exe 仍保持通知和链接更新模式。
 - Linux x64 包在 Ubuntu 22.04 上构建，因此 host-core 需要 glibc 2.35 或更高
   版本（Ubuntu 22.04、Debian 12、Fedora 36+）。标签作业运行
   `scripts/check-linux-host-glibc.mjs`，拒绝需要更新 glibc 的二进制文件。

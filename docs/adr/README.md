@@ -209,3 +209,7 @@ Each ADR includes:
 | 0194 | Optional subagent thinking override | Accepted for implementation |
 | 0195 | Host-owned plugin session import and ownership API | Accepted |
 | 0196 | Explicit plugin project ids and host-owned session refresh | Accepted |
+| 0195 | Viewport-fixed work panel toggle | Accepted (amends 0068 / 0085) |
+| 0196 | Show provider retry causes in the active-turn status | Accepted (amends 0175) |
+| 0197 | Publish a Windows portable executable | Accepted (amends 0022 / D126) |
+| 0198 | Name every quiet interval on the live activity row | Accepted (amends 0175 / 0186) |

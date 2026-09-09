@@ -152,6 +152,7 @@ reveal 不并入任何行，必须重新读取。
 | 代码 | 可重审的 | 意义 |
 |---|---|---|
 | `PROVIDER_SECRET_MISSING` | 不 | 启用的提供程序需要 API 密钥 |
+| `MODEL_ALIAS_TOO_LONG` | 不 | 已配置模型别名超过 60 个 Unicode 字符 |
 | `SECRET_STORE_UNAVAILABLE` | 也许 | 操作系统安全存储不可用（保留） |
 | `SETTINGS_INVALID` | 不 | 设置有效负载无效（保留） |
 

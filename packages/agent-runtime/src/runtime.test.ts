@@ -1266,7 +1266,15 @@ describe("DesktopAgentRuntime live activity", () => {
     const runtime = createRuntime({ onEvent });
     const setActivity = (runtime as any).setAgentActivity.bind(runtime);
 
+    setActivity({ phase: "starting", since: 50 });
     setActivity({ phase: "waiting-model", since: 100 });
+    setActivity({ phase: "preparing", since: 150 });
+    setActivity({
+      phase: "compacting",
+      since: 180,
+      reason: "threshold",
+    });
+    setActivity({ phase: "recovering", since: 190 });
     setActivity({
       phase: "retrying",
       since: 200,
@@ -1282,6 +1290,10 @@ describe("DesktopAgentRuntime live activity", () => {
       phase: "waiting-subagents",
       since: 300,
       subagentCount: 2,
+      agents: [
+        { name: "explorer", lastPhase: "tool", lastToolName: "Read" },
+        { name: "fixer", lastPhase: "thinking" },
+      ],
     });
 
     const statuses = onEvent.mock.calls
@@ -1289,7 +1301,11 @@ describe("DesktopAgentRuntime live activity", () => {
       .filter((event) => event.type === "status")
       .map((event) => event.status.activity);
     expect(statuses).toEqual([
+      { phase: "starting", since: 50 },
       { phase: "waiting-model", since: 100 },
+      { phase: "preparing", since: 150 },
+      { phase: "compacting", since: 180, reason: "threshold" },
+      { phase: "recovering", since: 190 },
       {
         phase: "retrying",
         since: 200,
@@ -1301,16 +1317,123 @@ describe("DesktopAgentRuntime live activity", () => {
           providerStatus: 429,
         },
       },
-      { phase: "waiting-subagents", since: 300, subagentCount: 2 },
+      {
+        phase: "waiting-subagents",
+        since: 300,
+        subagentCount: 2,
+        agents: [
+          { name: "explorer", lastPhase: "tool", lastToolName: "Read" },
+          { name: "fixer", lastPhase: "thinking" },
+        ],
+      },
     ]);
     expect(runtime.getStatus().activity).toEqual({
       phase: "waiting-subagents",
       since: 300,
       subagentCount: 2,
+      agents: [
+        { name: "explorer", lastPhase: "tool", lastToolName: "Read" },
+        { name: "fixer", lastPhase: "thinking" },
+      ],
     });
 
     (runtime as any).clearAgentActivity();
     expect(runtime.getStatus().activity).toBeUndefined();
+    await runtime.dispose();
+  });
+
+  it("refreshes waiting-subagents with the child tool currently running", async () => {
+    const onEvent = vi.fn();
+    const runtime = createRuntime({ onEvent });
+    const record = {
+      delegationId: "explorer-id",
+      agentName: "explorer",
+      status: "running",
+      startedAt: 1,
+      completion: Promise.resolve(),
+      resolveCompletion: () => {},
+      abort: () => {},
+      stopRequested: false,
+      turns: 0,
+      toolCalls: 0,
+      lastActivityAt: 1,
+      lastPhase: "waiting-model",
+      startedEpoch: 1,
+    };
+    (runtime as any).delegations.set(record.delegationId, record);
+    (runtime as any).beginDelegationWait([record]);
+    expect(runtime.getStatus().activity).toEqual({
+      phase: "waiting-subagents",
+      since: expect.any(Number),
+      subagentCount: 1,
+      agents: [{ name: "explorer", lastPhase: "waiting-model" }],
+    });
+
+    (runtime as any).noteDelegationActivity(record, {
+      sessionId: "s",
+      ts: 1,
+      event: {
+        type: "tool_start",
+        toolCallId: "t1",
+        toolName: "Read",
+        args: { path: "a.ts" },
+      },
+    });
+    expect(runtime.getStatus().activity).toMatchObject({
+      phase: "waiting-subagents",
+      subagentCount: 1,
+      agents: [
+        { name: "explorer", lastPhase: "tool", lastToolName: "Read" },
+      ],
+    });
+
+    (runtime as any).noteDelegationActivity(record, {
+      sessionId: "s",
+      ts: 2,
+      event: {
+        type: "message_update",
+        message: {
+          id: "m1",
+          role: "assistant",
+          content: "",
+          thinking: "scan",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          status: "streaming",
+        },
+        deltaThinking: "scan",
+      },
+    });
+    expect(runtime.getStatus().activity).toMatchObject({
+      agents: [
+        { name: "explorer", lastPhase: "thinking", lastToolName: "Read" },
+      ],
+    });
+
+    const statusCount = onEvent.mock.calls.filter(
+      ([envelope]) => (envelope as any).event?.type === "status",
+    ).length;
+    (runtime as any).noteDelegationActivity(record, {
+      sessionId: "s",
+      ts: 3,
+      event: {
+        type: "message_update",
+        message: {
+          id: "m1",
+          role: "assistant",
+          content: "",
+          thinking: "scan more",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          status: "streaming",
+        },
+        deltaThinking: " more",
+      },
+    });
+    expect(
+      onEvent.mock.calls.filter(
+        ([envelope]) => (envelope as any).event?.type === "status",
+      ).length,
+    ).toBe(statusCount);
+
     await runtime.dispose();
   });
 });

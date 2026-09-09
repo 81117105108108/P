@@ -48,7 +48,7 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
 
 ### 1.4 Interactions
 
-- Sidebar toggle: keyboard shortcut + icon button beside Search in the expanded
+- Sidebar toggle: keyboard shortcut + icon button in the expanded
   sidebar header; the button moves to the main titlebar while collapsed. The
   collapse and expand use a mounted-then-animated dock transition (entrance
   `sidebar-in`, exit `sidebar-out` keyframes) that mirrors the work-panel dock:
@@ -62,11 +62,11 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
   The 8px edge hit area stays transparent when the sidebar body is hovered;
   direct handle hover reveals only a centered compact marker, while focus and
   active dragging use the accent marker without changing layout.
-- Work panel collapse: sole control lives in the session pane titlebar top-right
-  while the panel is open, with its outer edge flush against the divider
-  between the session pane and work panel so the work-panel content header is
-  not occupied. Opening and collapsing change only the shell's internal flex
-  allocation; the native window bounds stay unchanged.
+- Work panel collapse: the sole control is the viewport-fixed toggle in the
+  window's top-right corner, available on every non-Settings route whether the
+  panel is open or closed. It does not sit in the work-panel content header.
+  Opening and collapsing change only the shell's internal flex allocation; the
+  native window bounds stay unchanged.
 - Work panel resize: its inner left-edge handle changes the committed panel
   width in the renderer, so dragging left gives the panel more internal space
   and dragging right returns space to MainChat (§5.4)
@@ -131,9 +131,9 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
 
 | Platform | Top-level chrome | Application menu |
 |---|---|---|
-| macOS | Native inset traffic lights at `{x:16,y:16}`; expanded sidebar Search and Collapse controls share the row at right, with no logo/title; open work-panel collapse sits in the session pane top-right | System menu: PI-Desktop, File, Edit, View, Window, Help |
-| Windows | Frameless 46px titlebar; sidebar actions at left, open work-panel collapse in session pane top-right ahead of minimize/maximize/close | None inside the window |
-| Linux | Frameless 46px titlebar; sidebar actions at left, open work-panel collapse in session pane top-right ahead of minimize/maximize/close | None inside the window |
+| macOS | Native inset traffic lights at `{x:16,y:16}`; expanded sidebar Collapse control at right, with no logo/title; work-panel toggle is viewport-fixed at the window's top-right | System menu: PI-Desktop, File, Edit, View, Window, Help |
+| Windows | Frameless 46px titlebar; sidebar actions at left; work-panel toggle then minimize/maximize/close stay viewport-fixed at the window's top-right | None inside the window |
+| Linux | Frameless 46px titlebar; sidebar actions at left; work-panel toggle then minimize/maximize/close stay viewport-fixed at the window's top-right | None inside the window |
 
 - macOS enables the native Electron `vibrancy: "sidebar"` source-list material
   with `visualEffectState: "followWindow"` and a transparent window backing
@@ -174,7 +174,8 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
   focused Windows taskbar button also uses native minimize; a second click
   restores/focuses the same window, while clicking a covered window brings it
   to the front. Tray activation restores and focuses tray-hidden windows; Quit
-  remains explicit. On macOS the tray uses a transparent monochrome template
+  remains explicit and, except for automated probes, confirms with a native
+  warning before shutdown (D363). On macOS the tray uses a transparent monochrome template
   of the PI mark rather than the rounded application tile, so it remains
   readable in the menu bar.
 - Windows/Linux do not render File/Edit/View/Window/Help in the titlebar and
@@ -213,7 +214,10 @@ palette / application menu, not the top bar.)
 
 (Icons described functionally; actual render uses Lucide SVGs. The `[☰ Sidebar]`
 toggle renders **only when the sidebar is collapsed**; when the sidebar is
-expanded it owns that control, so the top bar does not duplicate it.)
+expanded it owns that control, so the top bar does not duplicate it. The
+`[🔍 Search]` control is the chrome search entry; the expanded sidebar header
+does not duplicate it. Keyboard shortcuts and the application menu remain
+available.)
 
 The conversation top bar renders for the chat route only; Pull requests, Scheduled,
 Plugins, and Settings keep the frameless drag band. It owns the task title and
@@ -232,7 +236,10 @@ combined model × reasoning selection (§11).
   `no-drag` on interactive controls; macOS reserves the left ~76px for traffic
   lights (only when the sidebar is collapsed), Windows/Linux reserve the right
   120px for native window controls (112px hit targets plus an 8px visual
-  buffer from adjacent work-panel actions)
+  buffer). The conversation titlebar also reserves the 28px work-panel toggle
+  while the panel is closed. While the panel is open, that 120px band plus the
+  toggle overlay the panel header instead, and the header pads to keep
+  resource close reachable (D357).
 - Title cluster (task title) flexes and shows at most the first 10 Unicode
   characters plus an ellipsis; the full title remains in the native tooltip.
   The right cluster (action icons) is `flex: 0 0 auto`
@@ -246,9 +253,11 @@ combined model × reasoning selection (§11).
 - Shell consistency: the chat topbar, non-chat drag band, Settings drag band,
   sidebar header, work-panel header, and native window-control band all use
   `--ds-toolbar-height`. Windows/Linux keep the same `--ds-window-controls-width`
-  reservation so the right boundary and native controls stay aligned when the
-  route or work panel changes; the control band continues the titlebar's
-  `border-subtle` bottom rule and uses the same token for its leading divider.
+  for the viewport-fixed control band; when the work panel opens, that
+  reservation moves from the conversation titlebar onto the panel header so the
+  controls do not travel with MainPane (D357). The control band continues the
+  titlebar's `border-subtle` bottom rule and uses the same token for its
+  leading divider.
 - Band reservation is platform-independent (D269). The band is opaque and
   absolutely positioned, so scrolling route content passes underneath it on
   every platform, macOS included. Every route surface that starts its own
@@ -310,8 +319,8 @@ their hit areas remain in the layout so revealing them does not shift labels.
 ```text
 Expanded (~275px, D034/D070):
 +---------------------------+
-| [lights]          [⌕][◧] |  macOS
-| [π] PI-Desktop    [⌕][◧] |  Windows/Linux
+| [lights]             [◧] |  macOS
+| [π] PI-Desktop       [◧] |  Windows/Linux
 | SESSIONS         [msg+][↕]|
 |   • Path-less session   ↕|
 | PROJECTS            [dir+]|
@@ -411,15 +420,16 @@ visually distinct from list content.
 - The footer action group stays on the left and the build/version chip stays
   right-aligned; clicking the chip checks for updates or opens the available
   release in Settings
-- Click Search or Collapse sidebar at the right of the header row to
-  open global search or collapse the sidebar respectively
+- Click Collapse sidebar at the right of the header row to collapse the sidebar.
+  Global search opens from the conversation topbar, shortcuts, and application
+  menu; the expanded sidebar header does not host a search control
 - Drag the expanded sidebar's right edge to adjust its width. The main pane
   reflows continuously, the press position remains anchored, and the final
   width is saved on release. Focus the edge handle and use ArrowLeft/Right,
   Home, or End for keyboard resizing; Escape cancels an active pointer resize.
-- While the work panel is open, click the session-pane top-right panel collapse
-  control to hide the panel without deleting tabs; the work-panel header keeps
-  only dynamic tabs
+- Click the viewport-fixed work-panel toggle to reveal or hide the panel
+  without deleting tabs; the work-panel header keeps only dynamic tabs and
+  the active-resource close control
 - Click the `Projects` heading folder-plus action: open the project picker and
   retain the selected project
 - Right-click the `Projects` heading or empty project-list chrome: open a
@@ -451,9 +461,10 @@ visually distinct from list content.
   conversation rows read as one dense navigation list rather than detached
   cards. Directory `+` and overflow actions remain hidden until hover or
   keyboard focus, without changing the directory label's position.
-- Sidebar toggle: expanded-header icon beside Search + keyboard shortcut; the
-  collapsed main titlebar retains an Expand sidebar icon; when the work panel is
-  open, the session-pane top-right hosts the sole panel collapse control
+- Sidebar toggle: expanded-header icon + keyboard shortcut; the
+  collapsed main titlebar retains an Expand sidebar icon; the work-panel
+  toggle stays viewport-fixed in the window's top-right corner on every
+  non-Settings route
 - Click the local profile trigger: open or close the identity menu containing
   Settings, Logs, and Theme
 - Click the footer bell: open or close the durable notification inbox
@@ -521,14 +532,15 @@ visually distinct from list content.
   present; click, keyboard, and focus behavior remain unchanged.
 - The expanded sidebar brand is a localized button with a 20px logo and the
   shell name on Windows/Linux; pointer or keyboard activation navigates to the
-  chat home. macOS hides this brand and right-aligns Search then Collapse
-  sidebar in the same 46px row as the native traffic lights. Fullscreen keeps
-  the brand hidden while reclaiming the native-chrome padding.
+  chat home. macOS hides this brand and right-aligns Collapse sidebar in the
+  same 46px row as the native traffic lights. Fullscreen keeps the brand hidden
+  while reclaiming the native-chrome padding.
 
 ### 3.8 MVP constraints
 
-- Expanded sidebar search filters the visible session tree in place; the
-  collapsed rail continues to use the global command palette
+- Global search opens from the conversation topbar, keyboard shortcuts, and
+  the application menu; the expanded sidebar header does not host a search
+  control
 - No drag-to-reorder contract; `manual` is a persisted compatibility value
 - Project tabs do not create another host workspace or a second main pane
 
@@ -583,14 +595,13 @@ reading surface of the workstation.
 | ChatTranscript (scrollable, flex-1)  |
 |   MessageBubble (user/assistant)     |
 |   ToolCallCard                       |
+|   TurnOutcomeCard (one Continue)     |
 |   InlineReviewCard · M App.tsx +8 −2 |
 |   PermissionCard                     |
 |   ...                                |
 +--------------------------------------+
 | Composer (docked in thread view;     |
 | bottom-reserved on empty home, D204) |
-|   TurnOutcomeCard (one Continue)     |
-|   prompt input + controls            |
 +--------------------------------------+
 ```
 
@@ -602,15 +613,12 @@ reading surface of the workstation.
   never reserves a matching left gutter, so the minimap and first message do
   not leave a decorative blank strip beside the session.
 - A failed TurnOutcomeCard without a structured assistant error exposes one
-  primary **Continue** action and no regenerate action. It is rendered in the
-  active session's Composer stack directly above the input, not beside the
-  transcript processing group. It is withheld while session selection is pending,
-  so a Continue action cannot target the session being left. It appends the current
+  primary **Continue** action and no regenerate action. It appends the current
   locale's continuation prompt to the same session and starts a new turn,
-  preserving the failed turn and completed work in the transcript. When the failed
-  turn already has a structured assistant error, that inline error card owns the
-  summary, details, and **Continue** action; the TurnOutcomeCard is not rendered,
-  so the same failure is not presented twice. Continue remains
+  preserving the failed turn and completed work in the transcript. When the
+  failed turn already has a structured assistant error, that inline error card
+  owns the summary, details, and **Continue** action; the TurnOutcomeCard is not
+  rendered, so the same failure is not presented twice. Continue remains
   available after a terminal parent error (including HTTP 429) even if leftover
   subagents were still running; those delegates are aborted and must not leave
   the session `AGENT_BUSY` (D352).
@@ -651,8 +659,8 @@ reading surface of the workstation.
 |---|---|
 | Empty | Restrained hero + optional onboarding checklist in a scrollable content region, with a bottom-reserved home composer and no starter-card or contextual quick-action layer (D111/D204/D206) |
 | Streaming | Auto-scroll follows while pinned; new tokens append |
-| Active progress | Immediately after send, before the first assistant or tool event, a compact localized `Working…` status with elapsed time appears inline. Its model and subagent elapsed labels use the carried-unit format in §9.1. It yields to concrete thinking, tool, and answer rows, while a permission card owns the approval state; no large generic progress card is rendered. A retrying row remains compact at rest; hovering or focusing it reveals an error-styled tooltip with the localized error summary, stable code/HTTP status, and bounded provider message. |
-| Turn outcome | After a failed turn, the active session's Composer stack above the input shows one session-scoped recovery card summarizing the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
+| Active progress | Immediately after send, before the first assistant or tool event, a compact localized `Working…` status with elapsed time appears inline. Its model and subagent elapsed labels use the carried-unit format in §9.1. When the runtime names a quiet interval, that same row identifies starting, waiting for the model, preparing the next request, compacting context, recovering an empty response, retrying, or waiting for delegated work (with each running subagent's latest coarse action). It yields to concrete thinking, tool, and answer rows, while a permission card owns the approval state; no large generic progress card is rendered. A retrying row remains compact at rest; hovering or focusing it reveals an error-styled tooltip with the localized error summary, stable code/HTTP status, and bounded provider message. |
+| Turn outcome | After a failed turn, a session-scoped recovery card summarizes the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
 | Session switch | A first-opened session paints at its latest record; a revisited pane paints at its own retained position. Bounded first commit and full-history expansion show the same position: no post-paint height correction may shift the visible rows, in either direction |
 | Turn start (send / retry / regenerate) | Re-pins and positions the latest content before paint, even if the user had scrolled up; the later persisted user-message event does not flash the transcript at its top, and the composer collapse / indicator layout clamps during the send never release follow mode |
 | Idle (after stream) | Auto-scroll unlocked; user can scroll freely |
@@ -671,9 +679,8 @@ reading surface of the workstation.
 - Empty-home task entry starts in the always-visible bottom composer. There is
   no starter-card or contextual quick-action layer between the hero and
   composer.
-- The failed-turn recovery card is a labelled `role="status"` region in the
-  active Composer stack directly above the input, with one explicit **Continue**
-  action. It uses icon geometry plus text, never color
+- The failed-turn recovery card is a labelled `role="status"` region with
+  one explicit **Continue** action. It uses icon geometry plus text, never color
   alone. Continue sends the current locale's continuation prompt as a new user
   turn in the same session; no Regenerate action is present. Completed turns do
   not render this card.
@@ -761,9 +768,9 @@ copy — followed by the same plugin views the header menu lists, as plain rows:
 - The 46px header follows a "context left, actions right" model: the unified
   context trigger anchors the left and shows the active tool icon and ellipsized
   label; a right action cluster is pinned to the right edge behind a thin
-  divider, so the close / collapse controls never shift with the label length.
-  The gap between the two remains a window-drag region. The collapse control
-  uses a right chevron so it reads as "push the panel away", not "open a panel"
+  divider, so the close control never shifts with the label length.
+  The gap between the two remains a window-drag region. Panel collapse is the
+  viewport-fixed shell toggle, not a header chevron
 - Active tabs, file-tree rows, diff headers, and the resize handle ease hover
   fills with `--motion-duration-fast` / `--motion-ease-out`
 - Browser URL and empty-tool chrome share the light inset field treatment used
@@ -812,8 +819,8 @@ workflow while rendering entirely inside the plugin's isolated page:
 
 | State | Behavior |
 |---|---|
-| Closed (default) | Not rendered; startup has no retained tabs. `Cmd/Ctrl + J` reveals the active session's panel context without creating a tab. Inline review cards remain available in the transcript because they are message-scoped and do not require the work panel. |
-| Open | Docked flex row right of the main pane; opened by an artifact or `Cmd/Ctrl + J` at a fixed committed width of 244–720px (default 280px). `Cmd/Ctrl + J` again collapses it, retaining the session context. Its flex allocation eases from zero to the committed width so MainChat reflows continuously inside the unchanged client area. |
+| Closed (default) | Not rendered; startup has no retained tabs. The viewport-fixed toggle or `Cmd/Ctrl + J` reveals the active session's panel context without creating a tab. Inline review cards remain available in the transcript because they are message-scoped and do not require the work panel. |
+| Open | Docked flex row right of the main pane; opened by an artifact, the viewport-fixed toggle, or `Cmd/Ctrl + J` at a fixed committed width of 244–720px (default 280px). The toggle or `Cmd/Ctrl + J` again collapses it, retaining the session context. Its flex allocation eases from zero to the committed width so MainChat reflows continuously inside the unchanged client area. |
 | Multiple artifacts | The current-resource header keeps one readable label at the panel minimum; its bounded menu lists the tools first and then the transcript-opened resources in first-open order, with full-path tooltips and independent close controls |
 | Session switch | The destination session's retained open state, tabs, active tab, and Browser resource replace the previous session's panel context atomically; neither context is deleted |
 | Resizing | The inner left divider follows anchored pointer delta or keyboard input for the panel target; pointer changes are frame-coalesced and committed in the renderer. Escape, pointer cancellation, or lost capture restores the prior panel width. Native window edges resize only the fixed application window. |
@@ -830,10 +837,11 @@ workflow while rendering entirely inside the plugin's isolated page:
   events carry `sessionId`, and the renderer retains that session's preview
   path/URL as its Browser resource. Successful workspace Write/Edit artifacts
   create/activate Review in the originating session.
-  `Cmd/Ctrl + J` toggles the active session's retained panel context: it
-  reveals the panel without creating a resource and collapses the visible panel
-  without deleting one. With no active session it does nothing. The shortcut is
-  ignored while Settings is the active page.
+  The viewport-fixed toggle and `Cmd/Ctrl + J` both toggle the active session's
+  retained panel context: they reveal the panel without creating a resource and
+  collapse the visible panel without deleting one. With no active session the
+  toggle is disabled and the shortcut does nothing. Both are ignored while
+  Settings is the active page.
   Background artifacts may update that retained context but never reveal it,
   resize the window, or change visible selection/focus. The transcript does
   not create a global Review changes launcher: each successful workspace
@@ -878,9 +886,9 @@ workflow while rendering entirely inside the plugin's isolated page:
   directly. Arrow keys, Home, End, and Escape operate the menu; opening the menu
   hides the native Browser preview until it closes.
 - Tab close: closing an active tab selects its right neighbor, then its left;
-  closing the last tab hides the panel. The panel-level collapse control lives
-  in the session pane top-right (not the work-panel content header) and hides the
-  panel without deleting the runtime tab set; a later artifact reopens it.
+  closing the last tab hides the panel. The panel-level collapse control is the
+  viewport-fixed shell toggle (not in the work-panel content header) and hides
+  the panel without deleting the runtime tab set; a later artifact reopens it.
 - Context change: selecting another session atomically projects that session's
   retained `{open, tabs, activeTabId, browserResource}` state. The previous
   session's context remains in renderer memory and is restored when selected
@@ -922,8 +930,8 @@ workflow while rendering entirely inside the plugin's isolated page:
   `aria-orientation="vertical"`, a localized label, dynamic
   `aria-valuemin` / `aria-valuemax` / `aria-valuenow`, visible focus, and
   Arrow/Home/End keyboard control. Escape cancels an active pointer gesture.
-- Every resource close and the sole session-pane panel collapse button expose
-  localized names
+- Every resource close and the viewport-fixed panel toggle expose localized
+  names. The toggle uses `aria-pressed` for open versus closed.
 
 ### 5.6 MVP constraints
 
@@ -1638,7 +1646,7 @@ twice.
 
 | State | Header treatment | Expanded content |
 |---|---|---|
-| Running | Progressive action with readable text, a compact current-state capsule, and a pulsing marker; a `run` row also shows its spinner and pulses the status dot beside `Working…` | The latest thinking row opens automatically while it streams; tool-call details stay collapsed |
+| Running | Progressive action with readable text and a pulsing marker; a `run` row also shows its spinner and pulses the status dot beside `Working…` | The latest thinking row opens automatically while it streams; tool-call details stay collapsed |
 | Success | Past-tense action + result chips; no green success badge, except a `run` row's dot and `Done` | Result blocks, then arguments if not already shown; automatic thinking disclosures close when the turn settles |
 | Error | Past-tense action + compact danger status; details remain collapsed by default and open only on user request. A `run` row is in this state whenever its command exited non-zero, whatever the call reported (D227) | Error note first, then arguments |
 | Denied | Muted `Denied` status | Permission result when available |
@@ -2109,6 +2117,8 @@ reasoning-level control.
   `.composer-toolbar` spacing, minimum heights, theme surfaces, and controls.
   Only the parent placement and the localized placeholder copy differ between
   the empty home and a recorded conversation.
+- Empty draft height: `.composer-input` uses `min-height: 3lh`, so an idle
+  composer shows three lines of input before it grows with the draft.
 - Scroll stability: The thread scrollport reserves one stable trailing gutter,
   so the transcript does not shift when overflow appears while the minimap
   does not create a matching blank strip on the left.
@@ -2332,7 +2342,7 @@ reasoning-level control.
   There are no visual previews in MVP.
 - No voice input
 
-### 11.8 Slash commands, @ file references, and clipboard files (D123–D125, D197, D209, D262, D331, ADR 0024, ADR 0059, ADR 0070, ADR 0131)
+### 11.8 Slash commands, @ file references, and clipboard files (D123–D125, D197, D209, D262, D362, ADR 0024, ADR 0059, ADR 0070, ADR 0131)
 
 The composer owns an inline autocomplete menu — one component serving two
 modes. Focus never leaves the textarea (D125).
@@ -2370,7 +2380,7 @@ Anatomy:
   at the caret — the same sentinel-backed chip as a pasted file — whose
   canonical value is the original `entry.path`; the menu closes and that Enter
   does not send. Accepting a directory keeps the literal path in the draft so
-  completion can continue. Entries come from `fs/index` (D124, D209, D331). A
+  completion can continue. Entries come from `fs/index` (D124, D209, D362). A
   truncation footnote appears when the index is capped; without a workspace the
   menu shows an "open a project" empty state.
 - Accepting commands and directories inserts text (`/name ` / `@dir/`);
@@ -2405,7 +2415,7 @@ Anatomy:
   displays the leaf name, keeps the structured reference in session-scoped
   transient state, and submits it separately from visible text. Main stores
   image bytes under `attachments/<sha256>` and sends visual input only when the
-  selected models.dev model accepts images and the 20 MiB inline bound is met;
+  selected models.dev model accepts images and the 10 MB inline bound is met;
   otherwise it appends a safe `@path` fallback. Removing a chip does not delete
   scratch bytes. A text-only paste longer than `largePasteThreshold` follows
   the same bounded session bridge with generated `text/plain` UTF-8 bytes,

@@ -45,6 +45,7 @@ import {
 import { StartupSplash } from "./components/StartupSplash";
 import { cx } from "./components/ui";
 import {
+  IconPanel,
   IconNewSession,
   IconSidebar,
 } from "./components/icons";
@@ -272,6 +273,32 @@ function AppShell() {
   useEffect(() => {
     workPanelExitingRef.current = workPanelExiting;
   }, [workPanelExiting]);
+
+  const togglePresentedWorkPanel = useCallback(() => {
+    const store = useAppStore.getState();
+    if (workPanelExitingRef.current) {
+      store.openWorkPanel();
+      return;
+    }
+    // Close a visible subagent dock through the same path as Cmd/Ctrl+J.
+    if (store.subagentPanel) {
+      store.toggleWorkPanel();
+      return;
+    }
+    // Prefer the visible presentation over a briefly stale session projection:
+    // a second click on the same button must always collapse a panel the user
+    // can currently see instead of routing through openWorkPanel again.
+    if (store.workPanelOpen || presentedWorkPanelRef.current) {
+      store.collapseWorkPanel();
+      if (presentedWorkPanelRef.current && !workPanelExitingRef.current) {
+        workPanelExitGeneration.current += 1;
+        workPanelExitingRef.current = true;
+        setWorkPanelExiting(true);
+      }
+      return;
+    }
+    store.openWorkPanel();
+  }, []);
 
   const finishWorkPanelExit = useCallback((generation: number) => {
     if (generation !== workPanelExitGeneration.current) return;
@@ -558,7 +585,6 @@ function AppShell() {
           kind: "task",
           title,
           body,
-          source: "task",
         })
         .catch(() => undefined);
     });
@@ -1838,7 +1864,6 @@ function AppShell() {
             <Sidebar
               className={sidebarExiting ? "is-exiting" : undefined}
               onAnimationEnd={handleSidebarAnimationEnd}
-              onOpenSearch={() => setSearchOpen(true)}
               onToggleSidebar={toggleSidebar}
               sidebarToggleShortcut={sidebarToggleShortcut}
               sidebarWidth={sidebarWidth}
@@ -1930,16 +1955,20 @@ function AppShell() {
               }
               subagentPanel={subagentPanelOpen ? subagentPanel : null}
               onCloseSubagentPanel={closeSubagentPanel}
-              onCollapse={() => {
-                if (subagentPanelOpen) {
-                  closeSubagentPanel();
-                  useAppStore.getState().collapseWorkPanel();
-                  return;
-                }
-                useAppStore.getState().collapseWorkPanel();
-              }}
             />
           )}
+
+          <button
+            type="button"
+            className="app-work-panel-toggle no-drag"
+            title={t("nav.toggleWorkPanel")}
+            aria-label={t("nav.toggleWorkPanel")}
+            aria-pressed={workPanelOpen || presentedWorkPanelOpen}
+            disabled={!activeSessionId && !presentedWorkPanelOpen && !workPanelExiting}
+            onClick={togglePresentedWorkPanel}
+          >
+            <IconPanel size={15} />
+          </button>
 
           <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
           <ToastHost />

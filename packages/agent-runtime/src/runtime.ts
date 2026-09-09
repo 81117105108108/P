@@ -41,6 +41,8 @@ import {
 import { DEFAULT_COMMAND_TIMEOUT_MS, OAUTH_AUTH_KIND } from "@pi-desktop/shared";
 import type {
   AgentActivity,
+  AgentActivityAgent,
+  AgentActivityAgentPhase,
   AgentActivityError,
   AgentEventEnvelope,
   AgentStatus,
@@ -280,6 +282,7 @@ export type DelegationRecord = {
   turns: number;
   toolCalls: number;
   lastToolName?: string;
+  lastPhase?: AgentActivityAgentPhase;
   lastActivityAt: number;
   /** `prompt()` / `executeApprovedPlan()` generation that started this run.
    * Resume-after-idle only waits for the current turn's delegates (D352). */
@@ -303,6 +306,38 @@ function delegationSummary(record: DelegationRecord): Record<string, unknown> {
 function elapsedSeconds(record: DelegationRecord, now = Date.now()): number {
   const end = record.completedAt ?? now;
   return Math.max(1, Math.round((end - record.startedAt) / 1000));
+}
+
+function agentActivityEqual(
+  left?: AgentActivity,
+  right?: AgentActivity,
+): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function waitingSubagentSnapshot(
+  record: DelegationRecord,
+): AgentActivityAgent {
+  return {
+    name: record.agentName,
+    ...(record.lastPhase ? { lastPhase: record.lastPhase } : {}),
+    ...(record.lastToolName ? { lastToolName: record.lastToolName } : {}),
+  };
+}
+
+function waitingSubagentsActivity(
+  targets: DelegationRecord[],
+  since: number,
+): Extract<AgentActivity, { phase: "waiting-subagents" }> {
+  const running = targets.filter((record) => record.status === "running");
+  return {
+    phase: "waiting-subagents",
+    since,
+    subagentCount: running.length,
+    ...(running.length > 0
+      ? { agents: running.map(waitingSubagentSnapshot) }
+      : {}),
+  };
 }
 
 function formatDelegationHeartbeat(record: DelegationRecord): string {
@@ -1231,6 +1266,8 @@ export class DesktopAgentRuntime {
   private requestStartedAt?: number;
   private streamStartedAt?: number;
   private agentActivity?: AgentActivity;
+  /** Targets of the in-flight parent wait; live snapshots refresh this set. */
+  private delegationWaitTargets?: DelegationRecord[];
   private providerResponseStatus?: number;
   private providerRetryHeaders?: Record<string, string>;
   private pendingProviderRetry?: ReturnType<typeof classifyAgentError>;
@@ -2968,6 +3005,7 @@ Delegation rules:
           turns: 0,
           toolCalls: 0,
           lastActivityAt: startedAt,
+          lastPhase: "waiting-model",
           startedEpoch: this.turnEpoch,
         };
         this.delegations.set(delegationId, record);
@@ -3102,6 +3140,7 @@ Delegation rules:
       errorCode: result.error?.code,
     });
     record.resolveCompletion();
+    this.refreshDelegationWait();
     this.pruneFinishedDelegations();
   }
 
@@ -3149,6 +3188,7 @@ Delegation rules:
   private terminateParentTurn(): void {
     this.turnHadError = true;
     this.abortRunningDelegations();
+    this.delegationWaitTargets = undefined;
     this.clearAgentActivity();
   }
 
@@ -3169,11 +3209,80 @@ Delegation rules:
     const event = envelope.event;
     if (event.type === "turn_start") {
       record.turns += 1;
+      this.touchDelegationPhase(record, "waiting-model");
       return;
     }
     if (event.type === "tool_start") {
       record.toolCalls += 1;
-      record.lastToolName = event.toolName;
+      this.touchDelegationPhase(record, "tool", event.toolName);
+      return;
+    }
+    if (event.type === "tool_end") {
+      this.touchDelegationPhase(record, "waiting-model");
+      return;
+    }
+    if (
+      (event.type === "message_start" || event.type === "message_update") &&
+      event.message.role === "assistant"
+    ) {
+      const thinking = Boolean(
+        event.message.thinking?.trim() ||
+          (event.type === "message_update" && event.deltaThinking),
+      );
+      const text = Boolean(
+        event.message.content?.trim() ||
+          (event.type === "message_update" && event.deltaText),
+      );
+      if (thinking && !text) this.touchDelegationPhase(record, "thinking");
+    }
+  }
+
+  private touchDelegationPhase(
+    record: DelegationRecord,
+    phase: AgentActivityAgentPhase,
+    toolName?: string,
+  ): void {
+    const nextTool = toolName ?? record.lastToolName;
+    if (record.lastPhase === phase && record.lastToolName === nextTool) return;
+    record.lastPhase = phase;
+    if (toolName) record.lastToolName = toolName;
+    this.refreshDelegationWait();
+  }
+
+  private beginDelegationWait(targets: DelegationRecord[]): void {
+    const running = targets.filter((record) => record.status === "running");
+    if (running.length === 0) return;
+    this.delegationWaitTargets = targets;
+    const since =
+      this.agentActivity?.phase === "waiting-subagents"
+        ? this.agentActivity.since
+        : Date.now();
+    this.setAgentActivity(waitingSubagentsActivity(targets, since));
+  }
+
+  private refreshDelegationWait(): void {
+    if (
+      !this.delegationWaitTargets ||
+      this.agentActivity?.phase !== "waiting-subagents"
+    ) {
+      return;
+    }
+    const running = this.delegationWaitTargets.filter(
+      (record) => record.status === "running",
+    );
+    if (running.length === 0) return;
+    this.setAgentActivity(
+      waitingSubagentsActivity(
+        this.delegationWaitTargets,
+        this.agentActivity.since,
+      ),
+    );
+  }
+
+  private endDelegationWait(): void {
+    this.delegationWaitTargets = undefined;
+    if (this.agentActivity?.phase === "waiting-subagents") {
+      this.clearAgentActivity();
     }
   }
 
@@ -3197,12 +3306,9 @@ Delegation rules:
       this.currentTurnDelegations().length > 0
     ) {
       const targets = this.currentTurnDelegations();
-      this.setAgentActivity({
-        phase: "waiting-subagents",
-        since: Date.now(),
-        subagentCount: targets.length,
-      });
+      this.beginDelegationWait(targets);
       await this.waitForDelegations(targets, targets.length, null);
+      this.endDelegationWait();
       if (
         this.disposed ||
         this.runCancelled ||
@@ -3316,18 +3422,18 @@ Delegation rules:
             ? targets.length
             : Math.min(Math.max(minCompleted, 1), targets.length);
         const deadline = Date.now() + timeoutSeconds * 1000;
-        this.setAgentActivity({
-          phase: "waiting-subagents",
-          since: Date.now(),
-          subagentCount: targets.length,
-        });
-        const timedOut = await this.waitForDelegations(
-          targets,
-          targetCompleted,
-          deadline,
-          signal,
-        );
-        this.clearAgentActivity();
+        this.beginDelegationWait(targets);
+        let timedOut = false;
+        try {
+          timedOut = await this.waitForDelegations(
+            targets,
+            targetCompleted,
+            deadline,
+            signal,
+          );
+        } finally {
+          this.endDelegationWait();
+        }
         const results = targets.map((record) => ({
           delegationId: record.delegationId,
           agent: record.agentName,
@@ -3831,6 +3937,7 @@ Delegation rules:
   }
 
   private setAgentActivity(activity: AgentActivity): void {
+    if (agentActivityEqual(this.agentActivity, activity)) return;
     this.agentActivity = activity;
     this.emit({ type: "status", status: this.getStatus() });
   }
@@ -4037,6 +4144,7 @@ Delegation rules:
     this.agent.state.systemPrompt = promptWithNudge;
     this.silentTurnRerunInProgress = true;
     this.requestStartedAt = Date.now();
+    this.setAgentActivity({ phase: "recovering", since: Date.now() });
     try {
       if (this.disposed) throw new Error("runtime disposed");
       await this.agent.continue();
@@ -4384,11 +4492,24 @@ Delegation rules:
   ): Promise<boolean> {
     if (this.compactionInProgress) return false;
     this.compactionInProgress = true;
+    const previous = this.agentActivity;
+    this.setAgentActivity({
+      phase: "compacting",
+      since: Date.now(),
+      reason,
+    });
     try {
       return await this.performCompaction(reason, willRetry, retentionMode);
     } finally {
       this.compactionAbort = undefined;
       this.compactionInProgress = false;
+      if (this.agentActivity?.phase === "compacting") {
+        if (previous && previous.phase !== "compacting") {
+          this.setAgentActivity(previous);
+        } else {
+          this.clearAgentActivity();
+        }
+      }
     }
   }
 
@@ -4935,11 +5056,15 @@ Delegation rules:
         errorCode: "AGENT_BUSY",
       });
     }
-    const ok = await this.runCompaction("manual", false);
-    if (!ok) {
-      throw Object.assign(new Error("context compaction failed"), {
-        errorCode: "CONTEXT_COMPACTION_FAILED",
-      });
+    try {
+      const ok = await this.runCompaction("manual", false);
+      if (!ok) {
+        throw Object.assign(new Error("context compaction failed"), {
+          errorCode: "CONTEXT_COMPACTION_FAILED",
+        });
+      }
+    } finally {
+      if (this.agentActivity?.phase === "compacting") this.clearAgentActivity();
     }
   }
 
@@ -5321,6 +5446,14 @@ Delegation rules:
           const endedAt = Date.now();
           const activeTool = this.activeToolCalls.get(event.toolCallId);
           this.activeToolCalls.delete(event.toolCallId);
+          if (
+            this.activeToolCalls.size === 0 &&
+            !this.disposed &&
+            !this.runCancelled &&
+            this.agentActivity?.phase !== "waiting-subagents"
+          ) {
+            this.setAgentActivity({ phase: "preparing", since: Date.now() });
+          }
           const toolUsage = activeTool
             ? estimateToolTokenUsage(
                 this.model,
@@ -5700,6 +5833,7 @@ Delegation rules:
     this.runCancelled = true;
     this.resolvePendingAskTools();
     this.abortRunningDelegations();
+    this.delegationWaitTargets = undefined;
     this.pathInstructionClaims.clear();
     this.failedHostToolCalls.clear();
     this.mutationFailureCounts.clear();

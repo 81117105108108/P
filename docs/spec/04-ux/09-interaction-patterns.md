@@ -93,10 +93,11 @@ recency only breaks ties between equally relevant matches.
   platform text-editing, zoom, fullscreen, hide, and quit behavior.
 - Windows/Linux render no application menu in the window. Their frameless
   titlebar keeps sidebar actions at the left edge and native window controls at
-  the conversation pane's right edge. While the work panel is open, the
-  controls remain in the conversation pane and the panel header uses its full
-  width for resource actions; its collapse control no longer sits ahead of the
-  window controls. Destination history has no visible back/forward
+  the conversation pane's right edge while the work panel is closed. While the
+  work panel is open, those controls stay viewport-fixed at the window's right
+  edge over the panel header, which reserves the control band plus the
+  work-panel toggle so resource close remains reachable. The sole panel
+  collapse control is that viewport-fixed toggle. Destination history has no visible back/forward
   controls and remains available through the renderer shortcuts. The first
   transcript row starts below the 46px titlebar control band so user and
   assistant content cannot overlap the minimize, maximize/restore, or close
@@ -129,7 +130,11 @@ recency only breaks ties between equally relevant matches.
   click restores the window; `quit` exits the app. Close behavior never creates
   or destroys the tray — D216 owns it, so the icon is resident under either
   choice. The choice is persisted, revisitable in Settings → General, and
-  applied by both the close button and the close shortcut. macOS keeps the
+  applied by both the close button and the close shortcut. Explicit quit
+  (Cmd+Q, application-menu Quit, tray Quit) is a separate confirm step
+  (D363): Cancel leaves the app running; Confirm runs the ordered shutdown.
+  A D230 window-close Quit does not ask again. Automated boot, supervision,
+  and capture probes skip the dialog. macOS keeps the
   native Dock lifecycle (close keeps the app in the Dock; activating recreates
   the window). The bounds watchdog never restores a minimized or tray-hidden
   window.
@@ -388,11 +393,11 @@ may be retained while exactly one workspace supplies the visible shell context.
 
 ### 1.8 Work panel entry and resources (D128, D142, D154, D173, D179, D207, D221)
 
-- The shell starts without a visible work panel. `Cmd/Ctrl + J` toggles the
-  active session's panel: it reveals the retained context without creating a
-  resource tab, and collapses the visible panel through the same path as the
-  header collapse control, retaining tabs, active resource, and committed
-  width. It is a no-op without an active session or while Settings is the
+- The shell starts without a visible work panel. The viewport-fixed toggle and
+  `Cmd/Ctrl + J` both toggle the active session's panel: they reveal the
+  retained context without creating a resource tab, and collapse the visible
+  panel without deleting tabs, retaining tabs, active resource, and committed
+  width. They are a no-op without an active session or while Settings is the
   active page. The panel's context trigger can then create Browser or an
   in-scope plugin view.
 - An artifact trigger atomically creates or reuses its resource, activates it,
@@ -418,9 +423,8 @@ may be retained while exactly one workspace supplies the visible shell context.
   of replacing it, so Browser keeps its URL and Files its selection (D173).
 - Every resource can be closed from the menu, and the active resource has
   a direct header close control. Closing the active resource selects the right
-  neighbor, then the left; closing the final tab hides the panel. The separate
-  panel collapse control in the session pane top-right hides the panel without
-  deleting tabs.
+  neighbor, then the left; closing the final tab hides the panel. The
+  viewport-fixed panel toggle hides the panel without deleting tabs.
 - On every platform, opening and collapsing the visible panel change only the
   internal flex allocation; native window bounds remain unchanged. The inner
   divider updates the renderer-owned panel target between 244px and 720px,
@@ -467,7 +471,8 @@ may be retained while exactly one workspace supplies the visible shell context.
 - Settings → Info and application-menu checks share one typed update state.
   Manual checks expose up-to-date or error feedback; automatic failures do not
   open a toast or ambient banner.
-- Manual delivery (`darwin` and non-AppImage Linux) stops at `available` and
+- Manual delivery (`darwin`, non-AppImage Linux, and Windows portable runs
+  with `PORTABLE_EXECUTABLE_FILE`) stops at `available` and
   offers the fixed GitHub Releases page. In-app delivery (Windows NSIS and
   Linux AppImage readiness builds) automatically advances through
   `downloading` to the stable `downloaded` state.
@@ -515,10 +520,12 @@ may be retained while exactly one workspace supplies the visible shell context.
 - Cursor indicator: subtle pulsing accent dot or line at the end of streaming content
 - Before the first assistant or tool event, the active turn shows one compact
   localized `Working…` status with elapsed time. When the runtime reports a
-  quiet interval, that same row identifies whether the turn is waiting for the
-  model, retrying a provider request, or waiting for delegated work. It is
-  replaced by concrete thinking/tool/answer feedback or the inline permission
-  card as soon as one of those states exists.
+  quiet interval, that same row names the wait: starting, waiting for the
+  model, preparing the next request, compacting context, recovering an empty
+  response, retrying a provider request, or waiting for delegated work (with
+  each running subagent's latest coarse action). It is replaced by concrete
+  thinking/tool/answer feedback or the inline permission card as soon as one of
+  those states exists.
 - When stream completes: cursor indicator replaced by success state (2s fade)
 
 ### 2.2 Auto-scroll
@@ -555,9 +562,10 @@ may be retained while exactly one workspace supplies the visible shell context.
 - An active turn keeps the lower transcript surface clear. Streamed assistant
   and tool rows remain inline with the transcript; no generic understanding,
   working, or checking card is rendered underneath them. A compact runtime
-  status row is the only exception, and appears only when it explains a
-  provider retry or a delegated-work wait that has no transcript row of its
-  own.
+  status row is the only exception, and appears only when it explains a quiet
+  interval that has no transcript row of its own: a provider wait or retry,
+  context compaction, silent-turn recovery, the gap before the next request,
+  or a delegated-work wait.
 - A permission card remains visible only when the agent is blocked on an
   explicit approval. It is an actionable interruption, not a progress status
   card.
@@ -945,7 +953,7 @@ When drag/drop is implemented, these patterns should apply:
 - Cancel drag with Escape
 - Drag feedback: opacity 0.5 on source, accent outline on target
 
-## 8a. Composer autocomplete and clipboard files (D123–D125, D197, D209, D262, D331, ADR 0131)
+## 8a. Composer autocomplete and clipboard files (D123–D125, D197, D209, D262, D362, ADR 0131)
 
 ### 8a.1 Triggers
 

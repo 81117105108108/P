@@ -138,8 +138,9 @@ CDP 插件工具在 Plan 中仍被拒绝）。 Bash 在 Plan 中仍然可用：�
   发布页面，但从未在应用程序中下载或安装它。启用签名
   macOS 应用内渠道需要稍后的明确决策和资格。
 - D126 标签版本发布 Windows NSIS 和 Linux AppImage 安装程序及其
-  更新清单，以及 Linux deb/rpm 包。NSIS 和 AppImage 工件激活现有应用内
-  通道。平台签约、回滚和分阶段推出资格仍处于发布后续阶段。
+  更新清单，以及 Linux deb/rpm 包和 Windows 便携版 exe。NSIS 和 AppImage
+  工件激活现有应用内通道。便携版 exe 使用通知加链接交付，并且不写入
+  `latest.yml`。平台签约、回滚和分阶段推出资格仍处于发布后续阶段。
 - 客户端不携带 GitHub 令牌。私人或其他无法访问的提要
   关闭失败；自动故障保持在环境状态，显式检查会暴露
   错误。

@@ -78,11 +78,40 @@
       }
     },
     "defaultModelId": { "type": "string" },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "contextWindow", "maxTokens", "thinkingLevels", "defaultThinkingLevel"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "alias": { "type": "string", "maxLength": 60 },
+          "contextWindow": { "type": "integer", "minimum": 1 },
+          "maxTokens": { "type": "integer", "minimum": 1 },
+          "thinkingLevels": {
+            "type": "array",
+            "items": { "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"] },
+            "uniqueItems": true
+          },
+          "defaultThinkingLevel": {
+            "type": ["string", "null"],
+            "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max", null]
+          },
+          "supportsImages": { "type": ["boolean", "null"] },
+          "supportsDocuments": { "type": ["boolean", "null"] },
+          "availableForSubagents": { "type": "boolean", "default": false }
+        }
+      }
+    },
     "createdAt": { "type": "string" },
     "updatedAt": { "type": "string" }
   }
 }
 ```
+
+`models[].alias` 是可选展示标签（ADR 0192）。`models[].id` 仍是发给提供商的
+身份，别名从不用于提供商或模型解析。host-core 会修剪别名、丢弃空白值，
+并在超过 60 个 Unicode 字符时以 `MODEL_ALIAS_TOO_LONG` 拒绝。
 
 `compatibility.supportsReasoning` 和
 `compatibility.supportedThinkingLevels` 对于存储的记录保持可读状态
@@ -147,7 +176,9 @@ API 密钥；自定义端点在常见路径上并排显示 API 密钥与接口�
 Together、Fireworks、OpenCode Go、Z.AI。
 
 国内：DeepSeek、通义千问、月之暗面、智谱 / Coding Plan、硅基流动、火山方舟、
-MiniMax、Kimi 编程。
+MiniMax（`anthropic_messages`，`https://api.minimaxi.com/anthropic/v1`）、
+MiniMax (OpenAI)（`chat_completions`，`https://api.minimaxi.com/v1`，别名
+`minimax-openai` / `minimax-compatible`）、Kimi 编程。
 
 智谱 / Z.AI 的 Completions 请求仍使用 `thinkingFormat: "zai"` 与
 `zaiToolStream: true`。

@@ -230,6 +230,28 @@ Each scenario is documented in this format:
 - **Status**: Workflow script/unit-covered; clean-machine journey required for
   each release (do not run E2E locally unless explicitly requested)
 
+#### E2E-212: GitHub Release starts the CNB mirror pipeline
+
+- **Preconditions**: Repository secret `CNB_MIRROR_TOKEN` is configured on
+  `vastsa/PI-Desktop`; the CNB pipeline at `aixk/Pi-Desktop` listens for
+  `api_trigger_mirror`; a GitHub Release tag such as `vX.Y.Z` exists with
+  uploaded artifacts.
+- **Steps**: 1) Publish or edit that GitHub Release, or dispatch
+  `mirror-to-cnb.yml` with the same tag. 2) Inspect the Actions log for the
+  resolved tag and the POST to `api.cnb.cool`. 3) Confirm the CNB pipeline
+  starts with `MIRROR_TAGS` equal to that tag.
+- **Expected**: The job runs only on `vastsa/PI-Desktop`. Manual dispatch
+  without a `vX.Y.Z` tag fails before calling CNB. A missing
+  `CNB_MIRROR_TOKEN` fails closed. The JSON body is built with `jq` (not
+  YAML string interpolation). GitHub Release artifacts and updater feeds are
+  unchanged; CNB is a mirror of the same tag.
+- **Specs linked**: `06-delivery/06-release-runbook.md`
+- **Acceptance**: Quality (release mirroring)
+- **Milestone**: M6+
+- **Status**: Source-contract covered (`ci-workflow.test.mjs`); live CNB
+  start remains operator validation (do not run E2E locally unless
+  explicitly requested)
+
 ### Boot & Healthcheck
 
 #### E2E-001: App launches and shows main window
@@ -355,7 +377,7 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Unit-covered (form and discovery contracts); rendered UI scenario Draft
 
-#### E2E-005D: OpenCode Go requests carry a stable session header
+#### E2E-205: OpenCode Go requests carry a stable session header
 
 - **Preconditions**: An OpenCode Go provider is configured; a deterministic
   fixture or capture proxy records outbound HTTP headers. A second generic
@@ -415,7 +437,7 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Unit-covered (including the #30 GLM gateway regression); deterministic provider fixture pending
 
-#### E2E-005E: Anthropic Messages endpoint with a `/v1` base URL
+#### E2E-206: Anthropic Messages endpoint with a `/v1` base URL
 
 - **Preconditions**: A deterministic Anthropic Messages fixture exposes
   `GET /v1/models` and `POST /v1/messages`; the configured custom endpoint ends
@@ -709,14 +731,17 @@ Each scenario is documented in this format:
   event. 2) Observe the transcript status row. 3) Release a retryable failure
   and inspect the row during backoff. 4) Start a delegated task and wait for
   the parent to converge on it. 5) Release the fixture and let the turn end.
-- **Expected**: The status row says `Waiting for model`, `Retrying model
-  request`, or `Waiting for subagents` with a monotonic elapsed time matching
-  the active phase. It uses the same compact inline treatment as `Working…`,
-  never adds a duplicate progress card, and clears when assistant output or a
-  terminal event arrives. The Stop action remains available throughout.
+- **Expected**: The status row names the quiet interval — `Starting…`,
+  `Waiting for model`, `Preparing next request…`, `Compacting context…`,
+  `Recovering empty response…`, `Retrying model request`, or `Waiting for`
+  a named subagent with its latest coarse action — with a monotonic elapsed
+  time matching the active phase. A multi-subagent wait lists each running
+  target. It uses the same compact inline treatment as `Working…`, never adds
+  a duplicate progress card, and clears when assistant output or a terminal
+  event arrives. The Stop action remains available throughout.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `03-runtime/02-agent-runtime.md`, `04-ux/09-interaction-patterns.md`,
-  ADR 0175
+  ADR 0175, ADR 0198
 - **Acceptance**: C (chat stream), Quality (feedback and accessibility)
 - **Milestone**: M5
 - **Status**: Draft (deterministic fixture pending)
@@ -823,7 +848,7 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Source-level regression covered; full visual scenario Draft
 
-#### E2E-011g: Open large and long sessions through bounded transcript windows
+#### E2E-207: Open large and long sessions through bounded transcript windows
 
 - **Preconditions**: A session contains a message with at least 50 MB of text
   or tool output and enough additional messages to span several transcript
@@ -2510,8 +2535,10 @@ Each scenario is documented in this format:
 
 - **Preconditions**: App running with any workspace state.
 - **Steps**: 1) Relaunch and inspect the titlebar and application menu; confirm
-  the panel starts closed. Press Cmd/Ctrl+J and inspect the empty panel title
-  and context menu, then press it again to confirm the shortcut collapses the
+  the panel starts closed and a viewport-fixed work-panel toggle is present
+  (disabled with no session). Press Cmd/Ctrl+J or click the toggle and inspect
+  the empty panel title and context menu, then press/click again to confirm it
+  collapses the
   panel and no tab is created or deleted; a third press must restore the same
   context. 2) Open two distinct file artifacts, the same first file again,
   a URL preview, and a completed Bash row. 3) Open the header's unified
@@ -2525,7 +2552,7 @@ Each scenario is documented in this format:
   neighbor, press Escape and confirm focus returns to the trigger, then close the
   active item from the header. Confirm the right action cluster stays at the
   header's right edge for both the shortest and longest labels. 4) Close active middle and edge items
-  and verify neighbor selection. 5) Use the sole session-pane collapse control and
+  and verify neighbor selection. 5) Use the viewport-fixed work-panel toggle and
   trigger another artifact. 6) In session A, leave the panel open with multiple
   tabs and a Browser resource; switch to session B, create a different tab set,
   then switch repeatedly between A and B and select a project without an active
@@ -2545,8 +2572,10 @@ Each scenario is documented in this format:
   work-area geometry. 12) Send valid and malformed reservation payloads,
   including positive values, and confirm the compatibility seam never changes
   native bounds. 13) Relaunch.
-- **Expected**: Startup shows no panel, welcome chooser, fixed tool buttons, or
-  titlebar/menu launcher. Cmd/Ctrl+J opens the active session's panel at its
+- **Expected**: Startup shows no panel, welcome chooser, or fixed tool buttons.
+  A viewport-fixed toggle in the window's top-right corner is the pointer
+  equivalent of Cmd/Ctrl+J; there is still no application-menu launcher.
+  Cmd/Ctrl+J opens the active session's panel at its
   committed width without creating a resource tab and collapses it again on the
   next press while retaining that context,
   and the shortcut does nothing without an active session or while Settings is
@@ -2570,7 +2599,7 @@ Each scenario is documented in this format:
   preserves its Browser URL. The right action cluster stays pinned to the
   header's right edge regardless of label length. Opening the menu temporarily
   hides the native Browser preview so it is never occluded. The sole collapse
-  control sits in the session pane top-right rather than the content header.
+  control is the viewport-fixed toggle rather than a content-header chevron.
   Active close selects the right neighbor then left; closing the last tab hides
   the panel. Collapse retains runtime tabs but hides the panel until another
   artifact reopens it. Width clamps to the fixed `244px–720px` range and
@@ -2596,7 +2625,8 @@ Each scenario is documented in this format:
   longer exists.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`, `04-ux/01-ui-ia.md`,
   `04-ux/07-ui-design-system.md`, `04-ux/08-component-spec.md`,
-  `04-ux/09-interaction-patterns.md`, ADR 0068, ADR 0151, D207, D292
+  `04-ux/09-interaction-patterns.md`, ADR 0068, ADR 0151, ADR 0195, D207, D292,
+  D357
 - **Acceptance**: F (persistence), Quality
 - **Milestone**: M5
 - **Status**: Unit-covered (`work-panel-resize.test.mjs`,
@@ -2915,8 +2945,10 @@ Each scenario is documented in this format:
 - **Expected**: No generic Understanding, Working, Checking, or completion
   card appears below the transcript while the turn is active. Assistant and
   tool rows remain inline; a compact runtime status row may appear only when it
-  explains a provider wait/retry or delegated-work wait with no transcript row
-  of its own. Only an actual permission request renders an actionable card.
+  explains a quiet interval with no transcript row of its own (provider
+  wait/retry, compaction, silent-turn recovery, the gap before the next
+  request, or a delegated-work wait). Only an actual permission request renders
+  an actionable card.
   Background activity never changes the visible session, transcript, composer
   focus, or project.
 - **Specs linked**: `04-ux/08-component-spec.md`,
@@ -2936,19 +2968,16 @@ Each scenario is documented in this format:
   immediately after the change tool row. 4) Expand the inline card and verify
   its hunks. 5) Commit
   the edited file and confirm the recorded card remains, then use rollback
-  once. 6) Trigger the retriable failure. 7) Inspect the failure card above the
-  Composer input, then choose Retry. 8) Start another new prompt and inspect the
-  old card.
+  once. 6) Trigger the retriable failure. 7) Inspect the failure card, then
+  choose Retry. 8) Start another new prompt and inspect the old card.
 - **Expected**: The recovered turn keeps the failed Read visible on its own row,
   labels the containing group as processed, completes its session outcome, and
   shows no failure card. Completion uses the transcript and inline review card
   as its evidence without adding a "Task complete" card. File status, counts,
   and hunks remain on the adjacent card after commit, and guarded rollback
   restores the pre-tool state. Failure shows that existing work remains,
-  exposes Retry and Continue above the Composer input without a duplicate card
-  beside the transcript processing group, and retry preserves the latest prompt.
-  A new turn clears the previous failure card; an abort creates no failure
-  outcome copy.
+  exposes Retry and Continue, and retry preserves the latest prompt. A new turn
+  clears the previous failure card; an abort creates no failure outcome copy.
 - **Specs linked**: `04-ux/08-component-spec.md`,
   `04-ux/09-interaction-patterns.md`, `03-runtime/10-session-state-machine.md`,
   ADR 0069
@@ -3106,8 +3135,9 @@ Each scenario is documented in this format:
   commands, and acknowledge renderer readiness after the replacement loads.
   Verify one window and one delivery per command. 4) On Windows/Linux, repeat
   from the main chat, Settings, and an open work panel. With the work panel
-  open, confirm the panel collapse button is flush with the main-pane right
-  divider and does not retain the 120px outer-window control clearance. In the
+  open, confirm the viewport-fixed toggle and native window controls stay at
+  the window's right edge over the panel header, and that resource close
+  remains clickable to their left. In the
   main chat, send a first user message and confirm its full bubble starts below
   the 46px titlebar control band. Open the Extensions page and confirm its header
   actions, then the detail sheet's close button, also start below that band and
@@ -3125,9 +3155,10 @@ Each scenario is documented in this format:
   macOS follows native menu conventions and accelerators.
   Windows/Linux show no application menu inside the window; navigation and
   right-side controls do not collide with drag regions, keyboard shortcuts
-  remain operational, and no work-panel launcher is present. The open-panel
-  collapse button touches the main-pane right divider without an inset or a
-  duplicate native-control gap. Check for Updates
+  remain operational, and a viewport-fixed work-panel toggle is present on
+  non-Settings routes (not an application-menu command). While the panel is
+  open the native control band and that toggle overlay the panel header; the
+  header pads so resource close stays clickable. Check for Updates
   invokes the allowlisted update command from the macOS system menu and the
   Settings surface and shows the resulting up-to-date state. Replacement-window
   commands wait for renderer readiness without
@@ -3149,7 +3180,7 @@ Each scenario is documented in this format:
   `04-ux/01-ui-ia.md`, `04-ux/02-i18n-english-first.md`,
   `04-ux/07-ui-design-system.md`, `04-ux/08-component-spec.md`,
   `04-ux/09-interaction-patterns.md`, `06-delivery/06-release-runbook.md`,
-  `08-meta/decisions-log.md` (D118, D121, D129)
+  `08-meta/decisions-log.md` (D118, D121, D129, D357)
 - **Acceptance**: A (app startup), Quality
 - **Milestone**: M5 on macOS; post-MVP release qualification on Windows/Linux
 - **Status**: Unit-covered (`window-menu.test.mjs`,
@@ -3201,6 +3232,29 @@ Each scenario is documented in this format:
 - **Milestone**: M5 on Windows/Linux (release qualification)
 - **Status**: Draft
 
+#### E2E-204: Explicit quit confirms before shutdown (D363)
+
+- **Preconditions**: A normal interactive session is running (not a boot,
+  supervision, or capture probe). The main window may be visible or tray-hidden.
+- **Steps**: 1) Choose Quit from the tray menu, or press Cmd+Q / the
+  application-menu Quit item. 2) Cancel the native warning and confirm the
+  window, tray, host-core, and sidecar remain. 3) Repeat and confirm Quit;
+  confirm the ordered shutdown runs. 4) On Windows/Linux with close behavior
+  unset, close the window and choose Quit on the D230 dialog; confirm no
+  second warning. 5) Launch with `PI_DESKTOP_BOOT_PROBE=1` (and the
+  supervision/capture equivalents) and confirm `app.quit()` exits without a
+  dialog.
+- **Expected**: Accidental explicit quit is cancellable. A user who already
+  chose Quit on the close-behavior dialog is not asked again. Probes used by
+  automation never block on the warning.
+- **Specs linked**: `04-ux/08-component-spec.md`,
+  `04-ux/09-interaction-patterns.md`, `08-meta/decisions-log.md` (D216, D230,
+  D363)
+- **Acceptance**: A (app startup), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`close-behavior-tray.test.mjs`); native dialog
+  journey Draft (do not run E2E locally unless explicitly requested)
+
 #### E2E-067A: Prerelease install discovers newer stable release (D120)
 
 - **Preconditions**: Packaged build whose embedded version is a prerelease such
@@ -3211,7 +3265,9 @@ Each scenario is documented in this format:
   Settings → Info.
 - **Expected**: Update state reports `available` (manual platforms) or
   advances through in-app download for Windows NSIS / Linux AppImage with
-  `availableVersion` equal to the newer stable tag. The client must not report
+  `availableVersion` equal to the newer stable tag. A Windows portable run
+  (`PORTABLE_EXECUTABLE_FILE`) stays on the manual notify-and-link path and
+  must not download or run the NSIS installer. The client must not report
   up-to-date merely because no newer release shares the same `rc` prerelease
   channel.
 - **Specs linked**: `04-ux/09-interaction-patterns.md`,
@@ -3538,19 +3594,20 @@ Each scenario is documented in this format:
 - **Preconditions**: PI-Desktop is open with the expanded sidebar and a chat
   session is active.
 - **Steps**: 1) Open Extensions on macOS windowed mode. 2) Inspect the expanded
-  sidebar titlebar. 3) Confirm no PI-Desktop logo/title is visible and Search
-  then Collapse sidebar appear at the right of the traffic lights. 4) Enter
+  sidebar titlebar. 3) Confirm no PI-Desktop logo/title is visible and Collapse
+  sidebar appears at the right of the traffic lights. 4) Enter
   fullscreen and inspect the same row. 5) On Windows/Linux, confirm the brand
   remains visible; activate it with a pointer, then with keyboard focus and
   Enter/Space.
 - **Expected**: macOS uses one 46px row with native lights at left, a usable
-  drag region, and separate accessible Search and Collapse buttons at right;
-  the Logo/Home brand is absent in both windowed and fullscreen modes.
+  drag region, and an accessible Collapse button at right; the Logo/Home brand
+  is absent in both windowed and fullscreen modes. Global search stays on the
+  conversation topbar, shortcuts, and application menu, not the sidebar header.
   Windows/Linux render the canonical 20px logo beside the 15px shell name; the
   complete brand has a localized Home accessible name, visible hover/focus
   feedback, and returns the main pane to chat without clearing the active
-  conversation or workspace. Collapse remains immediately after Search. The
-  logo itself is theme-aware: light mode shows `src/assets/brand/logo-light.png`,
+  conversation or workspace. The logo itself is theme-aware: light mode shows
+  `src/assets/brand/logo-light.png`,
   dark mode shows `src/assets/brand/logo-dark.png`, swapping live with
   `data-theme` (no reload).
 - **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/07-ui-design-system.md`,
@@ -3586,7 +3643,7 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (`sidebar-collapse-animation.test.mjs`); rendered
   interaction scenario Draft
 
-#### E2E-118: Collapsed sidebar tightens the centered chat content band
+#### E2E-208: Collapsed sidebar tightens the centered chat content band
 
 - **Preconditions**: PI-Desktop is open with an active chat session at a
   viewport wide enough for the expanded 760–768px chat content band; reduced
@@ -4220,7 +4277,8 @@ Each scenario is documented in this format:
   3. On each macOS package, run `file` (or `lipo -info`) against the app
      executable and `Resources/bin/pi-desktop-host-core`; confirm arm64 and
      x86_64 packages contain only their declared architecture and that the
-     Rust host matches the Electron app. Confirm the arm64 assets use
+     Rust host matches the Electron app. Confirm the shared
+     `apps/desktop/package.json` macOS configuration produces arm64 assets named
      `PI-Desktop-X.Y.Z-arm64.dmg` and `PI-Desktop-X.Y.Z-arm64-mac.zip`, while
      the Intel assets use `PI-Desktop-X.Y.Z-x64.dmg` and
      `PI-Desktop-X.Y.Z-x64-mac.zip`; confirm the release directory has both
@@ -4245,8 +4303,9 @@ Each scenario is documented in this format:
   Chromium locale packs. The release output contains both native macOS
   architectures, DMG/ZIP artifacts, and one merged updater feed. Each macOS
   DMG and ZIP carries its standard `-arm64` or `-x64` architecture marker, and
-  the per-architecture updater metadata points to those names without
-  collisions. Renderer dependencies
+  no generic macOS DMG, ZIP, or blockmap remains in the release output. The
+  per-architecture updater metadata points to those names without collisions.
+  Renderer dependencies
   exist through Vite output rather than duplicate raw
   `node_modules`; dependency source maps, tests, examples, declarations,
   a second agent-runtime tree, and reliably excludable non-target native assets
@@ -5257,7 +5316,7 @@ Each scenario is documented in this format:
     the agent can read both selected files normally.
 - **Specs linked**: `04-ux/08-component-spec.md` §11.8,
   `04-ux/09-interaction-patterns.md` §8a, `03-runtime/01-ipc-protocol.md` §13c,
-  `08-meta/decisions-log.md` (D124, D209, D331), ADR 0024, ADR 0070
+  `08-meta/decisions-log.md` (D124, D209, D362), ADR 0024, ADR 0070
 - **Acceptance**: C (conversation & stream), Quality
 - **Milestone**: M5
 - **Status**: Unit-covered
@@ -5335,7 +5394,7 @@ Each scenario is documented in this format:
 
 - **Preconditions**: One known non-vision model and one known vision-capable
   model; an Agent session; a normal PNG and a deterministic image just above
-  the 20 MiB inline bound.
+  the 10 MB inline bound.
 - **Steps**:
   1. Select the non-vision model, paste the normal PNG, and inspect Composer's
      removable image chip.
@@ -5389,7 +5448,7 @@ Each scenario is documented in this format:
 
 #### E2E-102f: Oversized image references do not block session startup
 
-- **Preconditions**: A project contains an image larger than the 20 MiB inline
+- **Preconditions**: A project contains an image larger than the 10 MB inline
   bound; a known vision-capable model is selected; the session has a valid
   provider and workspace.
 - **Steps**: 1. Reference the oversized image from the Composer and send a
@@ -5958,26 +6017,26 @@ Each scenario is documented in this format:
 
 | Acceptance | Scenarios |
 |---|---|
-| A — App startup | E2E-001, E2E-002, E2E-003, E2E-004, E2E-067, E2E-076, E2E-079, E2E-092, E2E-097, E2E-143, E2E-150, E2E-168 |
-| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-197, E2E-005G, E2E-005J, E2E-199, E2E-201 |
-| C — Conversation & stream | E2E-008, E2E-008a, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-031, E2E-040, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-059a, E2E-060c, E2E-060d, E2E-061, E2E-061a, E2E-062, E2E-064, E2E-065, E2E-068, E2E-071, E2E-073, E2E-074, E2E-075, E2E-081, E2E-083, E2E-084, E2E-086, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-106, E2E-109, E2E-111, E2E-114, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-121, E2E-AGENTS-001, E2E-142, E2E-144, E2E-145, E2E-146, E2E-147, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-161, E2E-162, E2E-166, E2E-172, E2E-173, E2E-174, E2E-177, E2E-178, E2E-179, E2E-180, E2E-182, E2E-183, E2E-187, E2E-198, E2E-199 |
+| A — App startup | E2E-001, E2E-002, E2E-003, E2E-004, E2E-067, E2E-076, E2E-079, E2E-092, E2E-097, E2E-143, E2E-150, E2E-168, E2E-204 |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066, E2E-080, E2E-082, E2E-102c, E2E-102d, E2E-102e, E2E-151, E2E-154, E2E-163, E2E-166, E2E-172, E2E-174, E2E-197, E2E-005G, E2E-005J, E2E-199, E2E-201, E2E-202, E2E-203, E2E-205, E2E-206, E2E-209 |
+| C — Conversation & stream | E2E-008, E2E-008a, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-031, E2E-040, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-059a, E2E-060c, E2E-060d, E2E-061, E2E-061a, E2E-062, E2E-064, E2E-065, E2E-068, E2E-071, E2E-073, E2E-074, E2E-075, E2E-081, E2E-083, E2E-084, E2E-086, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-106, E2E-109, E2E-111, E2E-114, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-121, E2E-AGENTS-001, E2E-142, E2E-144, E2E-145, E2E-146, E2E-147, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-161, E2E-162, E2E-166, E2E-172, E2E-173, E2E-174, E2E-177, E2E-178, E2E-179, E2E-180, E2E-182, E2E-183, E2E-187, E2E-198, E2E-199, E2E-202, E2E-203, E2E-207, E2E-208 |
 | D — Workspace | E2E-012, E2E-013, E2E-022B, E2E-024I, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060, E2E-068, E2E-075, E2E-078, E2E-153, E2E-158, E2E-182, E2E-187 |
 | E — Tools & permissions | E2E-008a, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-024I, E2E-024K, E2E-040, E2E-049, E2E-074, E2E-093, E2E-097, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102d, E2E-102e, E2E-102g, E2E-103, E2E-105, E2E-106, E2E-107, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-119, E2E-121, E2E-122, E2E-142, E2E-145, E2E-147, E2E-155, E2E-158, E2E-166, E2E-181 |
 | F — Persistence | E2E-020, E2E-021, E2E-021a, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062, E2E-064, E2E-066, E2E-068, E2E-071, E2E-072, E2E-073, E2E-082, E2E-084, E2E-096, E2E-098, E2E-102, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-103, E2E-AGENTS-001, E2E-061a, E2E-073a, E2E-104, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-118, E2E-119, E2E-120, E2E-121, E2E-123, E2E-142, E2E-146, E2E-148, E2E-151, E2E-158, E2E-160, E2E-168, E2E-171, E2E-177, E2E-178, E2E-183, E2E-186, E2E-005J |
 | G — Plugins | E2E-022, E2E-022A, E2E-022B, E2E-022C, E2E-023, E2E-024, E2E-024B, E2E-024C, E2E-024D, E2E-024E, E2E-024W, E2E-024F, E2E-024G, E2E-024H, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M, E2E-024N, E2E-024O, E2E-024P, E2E-025, E2E-026, E2E-105, E2E-117, E2E-120, E2E-122, E2E-123, E2E-024Q, E2E-148, E2E-152, E2E-153 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042, E2E-096, E2E-098, E2E-104, E2E-107, E2E-108, E2E-109, E2E-110, E2E-113, E2E-115, E2E-116, E2E-118, E2E-121, E2E-146, E2E-155, E2E-159, E2E-176, E2E-194, E2E-195 |
 | Security | E2E-028, E2E-029, E2E-030, E2E-024J, E2E-024K, E2E-024M, E2E-049, E2E-068, E2E-086, E2E-102c, E2E-102d, E2E-102e, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-113, E2E-115, E2E-116, E2E-117, E2E-119, E2E-121, E2E-122, E2E-123, E2E-142, E2E-148, E2E-151, E2E-153, E2E-158, E2E-187, E2E-196c, E2E-196b, E2E-196 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-024O, E2E-059a, E2E-060b, E2E-060c, E2E-060d, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-196, E2E-201 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-024O, E2E-059a, E2E-060b, E2E-060c, E2E-060d, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-196, E2E-201, E2E-204, E2E-202, E2E-203, E2E-205, E2E-206, E2E-207, E2E-208, E2E-209, E2E-210 |
 
 | Milestone | Scenarios |
 |---|---|
 | M1 | E2E-001, E2E-002, E2E-003, E2E-028, E2E-029 |
-| M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-020, E2E-021, E2E-021a, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-144, E2E-005J, E2E-201 |
+| M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-020, E2E-021, E2E-021a, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-144, E2E-005J, E2E-201, E2E-202, E2E-207, E2E-206 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-008a, E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-AGENTS-001, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-094, E2E-095, E2E-143, E2E-145, E2E-146, E2E-147, E2E-177, E2E-178, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195 |
+| M5 | E2E-008a, E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-AGENTS-001, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-094, E2E-095, E2E-143, E2E-145, E2E-146, E2E-147, E2E-177, E2E-178, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-204, E2E-208 |
 | M6 | E2E-104, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-103, E2E-172 |
-| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200 |
+| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-202, E2E-203, E2E-205, E2E-209, E2E-210, E2E-212 |
 | Post-MVP | E2E-022A, E2E-022B, E2E-022C, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M (plugin roadmap R2/R3/R6) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
@@ -6106,7 +6165,7 @@ This test plan spec is accepted when:
   icons, current-project identity, thread titles, and composer controls must remain
   readable dark-on-light (≥4.5:1). Never white/translucent text on the light
   sidebar.
-- The macOS traffic-light row keeps Search and Collapse sidebar readable at the
+- The macOS traffic-light row keeps Collapse sidebar readable at the
   right on light chrome without rendering the Logo/Home brand.
 
 ### US-UI-14 Semantic chrome tokens
@@ -6132,7 +6191,7 @@ This test plan spec is accepted when:
 - Clicking the build/version chip checks for updates when current, or opens
   Settings → Info when an actionable update is available.
 - Traffic lights sit at Codex `{x:16,y:16}` with a 46px toolbar; the expanded
-  macOS sidebar places Search plus Collapse sidebar at the right in that same
+  macOS sidebar places Collapse sidebar at the right in that same
   row, with no Logo/Home brand or back/forward buttons.
 
 ### US-UI-17 PI-Desktop home hero logo
@@ -6516,10 +6575,10 @@ This test plan spec is accepted when:
   one-item create menu that opens the same project picker as the folder-plus
   action.
 - Expect project and session lists to scroll inside the sidebar body without
-  clipping behind the footer; sidebar Search/Collapse remain in the sidebar
-  header. When the work panel is open, expect its sole collapse control in the
-  session pane top-right rather than the work-panel content header, flush against
-  the divider at the main pane's right edge.
+  clipping behind the footer; sidebar Collapse remains in the sidebar
+  header. When the work panel is open, expect its sole collapse control to be
+  the viewport-fixed toggle in the window's top-right corner rather than a
+  chevron in the work-panel content header.
 - Collapse A by clicking its directory label, expand it from the chevron area,
   then activate B and return to A. Only A's child rows collapse; project `+`
   and overflow actions do not toggle it; the
@@ -8561,7 +8620,7 @@ are withdrawn with ADR 0165.
 - **Status**: Unit-covered (`packages/shared/src/errors.test.ts`); full UI
   journey not applicable
 
-#### E2E-192: Import copies model configuration from local agent stores
+#### E2E-209: Import copies model configuration from local agent stores
 
 - **Preconditions**: At least one supported local config exists among
   `~/.claude/settings.json`, `~/.codex/config.toml` `[model_providers.*]`,
@@ -8597,7 +8656,7 @@ are withdrawn with ADR 0165.
   `apps/desktop/test/model-config-import.test.mjs`); full UI journey Draft
   (do not run E2E locally unless explicitly requested)
 
-#### E2E-193: Documentation screenshots resolve from GitHub and VitePress
+#### E2E-210: Documentation screenshots resolve from GitHub and VitePress
 
 - **Preconditions**: The repository contains the gallery assets under
   `docs/public/screenshots/app/`; documentation dependencies are installed.
@@ -8826,4 +8885,30 @@ are withdrawn with ADR 0165.
 - **Milestone**: M6+
 - **Status**: Source-contract-covered; clean-machine Windows x64 and ARM64
   qualification remains runner validation (do not run E2E locally unless
+  explicitly requested)
+
+#### E2E-211: Windows portable exe launches without an installer (D364)
+
+- **Preconditions**: A Windows x64 tag or `dist:win` package has produced both
+  `PI-Desktop-Setup-<version>.exe` and `PI-Desktop-Portable-<version>.exe` from
+  the shared electron-builder config; a clean user profile is available; the
+  account is a standard user without administrator elevation.
+- **Steps**: 1) Inspect the release directory and `latest.yml`. 2) Launch the
+  portable exe without running the NSIS installer. 3) Confirm the process
+  environment includes `PORTABLE_EXECUTABLE_FILE`. 4) Invoke Check for Updates.
+  5) Confirm Settings → Info offers the releases page rather than Restart to
+  update. 6) Quit and relaunch the same portable file.
+- **Expected**: Both Windows artifacts are space-free and uploaded. `latest.yml`
+  points at the NSIS installer only. The portable exe starts without a setup
+  wizard or administrator prompt, uses the existing application data directory,
+  and reports update mode `manual`. An available update does not download or
+  run `PI-Desktop-Setup-<version>.exe`. Relaunch restores sessions from that
+  same profile.
+- **Specs linked**: `01-product/01-product-scope.md`,
+  `06-delivery/06-release-runbook.md`, `03-runtime/07-process-model.md`,
+  ADR 0197 / D364
+- **Acceptance**: Quality (release packaging)
+- **Milestone**: M6+
+- **Status**: Unit/source-contract covered (`auto-update.test.mjs`); native
+  Windows launch remains runner validation (do not run E2E locally unless
   explicitly requested)
