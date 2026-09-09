@@ -78,11 +78,40 @@
       }
     },
     "defaultModelId": { "type": "string" },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "contextWindow", "maxTokens", "thinkingLevels", "defaultThinkingLevel"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "alias": { "type": "string", "maxLength": 60 },
+          "contextWindow": { "type": "integer", "minimum": 1 },
+          "maxTokens": { "type": "integer", "minimum": 1 },
+          "thinkingLevels": {
+            "type": "array",
+            "items": { "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"] },
+            "uniqueItems": true
+          },
+          "defaultThinkingLevel": {
+            "type": ["string", "null"],
+            "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max", null]
+          },
+          "supportsImages": { "type": ["boolean", "null"] },
+          "supportsDocuments": { "type": ["boolean", "null"] },
+          "availableForSubagents": { "type": "boolean", "default": false }
+        }
+      }
+    },
     "createdAt": { "type": "string" },
     "updatedAt": { "type": "string" }
   }
 }
 ```
+
+`models[].alias` 是可选展示标签（ADR 0192）。`models[].id` 仍是发给提供商的
+身份，别名从不用于提供商或模型解析。host-core 会修剪别名、丢弃空白值，
+并在超过 60 个 Unicode 字符时以 `MODEL_ALIAS_TOO_LONG` 拒绝。
 
 `compatibility.supportsReasoning` 和
 `compatibility.supportedThinkingLevels` 对于存储的记录保持可读状态
