@@ -395,7 +395,8 @@ CREATE INDEX idx_session_import_origins_plugin
   执行 purge。核心会话删除会级联清理 sidecar；purge 也会移除转录文件。
 - `session_import_origins` 保存插件/来源/外部 id 幂等键，以及原始
   `projectPath`、`modelId`、`providerId` 历史 JSON；这些值不会成为插件
-  导入会话的活动绑定。
+  导入会话的活动绑定。插件可以显式提供宿主创建的 `projectId`；只有该 id
+  会成为活动 `project_id`，历史字段保持不变。
 - `project_id` 也是该会话的工具根权限。切换
   可见工作区无法重定向正在进行或稍后的工具调用
 到另一个会话。
@@ -1130,5 +1131,6 @@ UI投影损失
     使用 `PLAN_REQUIRES_INTERACTIVE_SESSION` 进行队列工作；无背景路径
     自动批准任一类型
 20. 架构 v14 插件导入使用主机生成的会话 id；每个会话一个来源行；以
-    `(pluginId, source, externalId)` 幂等；不绑定活动项目或模型；读取和
-    变更按所有权限制，并支持先 trash、后 purge。
+    `(pluginId, source, externalId)` 幂等；除非显式提供宿主创建的
+    `projectId`，否则不绑定项目或模型；读取和变更按所有权限制，并支持先
+    trash、后 purge。

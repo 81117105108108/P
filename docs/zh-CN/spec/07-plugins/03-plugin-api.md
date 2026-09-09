@@ -95,6 +95,22 @@ type PluginNotificationPermission = "granted" | "denied" | "unknown" | "unsuppor
 不报告结果。本机交付是尽力而为：操作系统策略可能会抑制
 横幅而不更改持久任务通知收件箱。
 
+### 项目（需要 `project.create`）
+
+```ts
+pi.project.create(input: { path: string }): Promise<{
+  projectId: number
+  path: string
+  name: string
+}>
+```
+
+该方法创建或复用宿主持久项目记录，但不会切换当前工作区。返回的
+`projectId` 可以显式传给 `pi.session.import()` 或
+`pi.session.importBatch()` 的单项。插件传入项目 id 时必须持有
+`project.create`；省略 `projectId` 的导入会保持未绑定，`projectPath` 只是历史来源
+元数据，本身不会创建项目。
+
 ### 工作区/fs
 ```ts
 pi.workspace.get(): Promise<{ path: string; name: string } | null>
@@ -208,8 +224,8 @@ pi.session.getLlmContext(): Promise<PluginLlmContext>
 
 插件只能导入和管理归属于自身的会话。来源必须在
 `manifest.contributes.sessionSources` 中声明；主机提供本地化来源标签，并生成
-持久会话 id 与消息 id。导入会话不会绑定工作区、provider 或 model；原始值只在
-`get().history` 中返回。
+持久会话 id 与消息 id。导入会话不会绑定工作区、provider 或 model；只有调用方显式
+提供已有的 `projectId` 时才会绑定项目；原始导入值仍在 `get().history` 中返回。
 
 ```ts
 type PluginSessionSourceContrib = {
@@ -221,6 +237,7 @@ pi.session.import(input: {
   source: string
   externalId: string
   title: string
+  projectId?: number | null // 来自 pi.project.create；省略即未绑定
   projectPath?: string | null
   modelId?: string | null
   providerId?: string | null
@@ -265,10 +282,19 @@ pi.session.delete(input: {
 同时删除两者并允许重新导入。读取、重命名和删除均按归属限制；未声明来源返回
 `PERMISSION_DENIED`。
 
+当会话显式绑定项目时，`projectId` 和 `bound.workspace` 报告该绑定，
+`get().projectPath` 解析为绑定项目的当前路径；原始导入的 `projectPath` 保留在
+`get().history` 中。
+
+导入、重命名或删除成功后，Electron main 会为这次变更发送一次宿主拥有的
+`sessionsChanged` 事件。渲染器沿用现有的 `refreshSessions()` 权威列表刷新链，
+Projects 页面也会据此刷新持久项目索引；插件不需要、也不应自行发送侧栏事件。
+通过该 API 创建的项目不会自动打开为侧栏项目标签，以保留现有的已关闭项目行为。
+
 主机限制每会话 2,000 条消息、每批 100 个会话、每条消息 512 KiB、每个工具值
 256 KiB、每个 payload 32 MiB、JSON 深度 8。每个插件每分钟最多 10 次单条导入、
 5 次批量导入和 20 次删除。写入前会移除工具 `__pi*` 与 `piDesktop.*` 对象键。
-P2/P3（创建、消息变更、绑定、批量删除、标签）不属于本次接口。
+P2/P3（会话创建、消息变更、任意重新绑定、provider/model 绑定、批量删除、标签）不属于本次接口。
 
 ### agent.complete（需要 `agent.complete`）
 ```ts

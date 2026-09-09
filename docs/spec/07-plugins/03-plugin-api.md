@@ -97,6 +97,23 @@ not expose a cross-platform read-only notification permission API, so
 not report a result. Native delivery is best-effort: an OS policy may suppress
 the banner without changing the durable task notification inbox.
 
+### project (requires `project.create`)
+
+```ts
+pi.project.create(input: { path: string }): Promise<{
+  projectId: number
+  path: string
+  name: string
+}>
+```
+
+This creates or reuses a durable host project record without changing the
+active workspace. The returned `projectId` may be passed explicitly to
+`pi.session.import()` or an item in `pi.session.importBatch()`. The plugin must
+hold `project.create` when it supplies a project id. Omitting `projectId` keeps
+the imported session unbound; `projectPath` remains historical source metadata
+and never creates a project by itself.
+
 ### workspace / fs
 ```ts
 pi.workspace.get(): Promise<{ path: string; name: string } | null>
@@ -254,7 +271,8 @@ Plugins may import and manage only sessions whose origin belongs to that same
 plugin. The source must be declared in `manifest.contributes.sessionSources`;
 the host supplies the localized source label and generates the durable session
 and message ids. Imported sessions never bind a workspace, provider, or model;
-the original values are returned only in `get().history`.
+they bind a project only when the caller supplies an existing `projectId`. The
+original import values remain available in `get().history`.
 
 ```ts
 type PluginSessionSourceContrib = {
@@ -266,6 +284,7 @@ pi.session.import(input: {
   source: string
   externalId: string
   title: string
+  projectId?: number | null // explicit id from pi.project.create; omitted is unbound
   projectPath?: string | null
   modelId?: string | null
   providerId?: string | null
@@ -311,12 +330,25 @@ the session while retaining its transcript and origin; `purge` removes both and
 allows a later re-import. Reads, rename, and delete are ownership-scoped, and
 undeclared sources fail with `PERMISSION_DENIED`.
 
+When a session has an explicit project binding, `projectId` and
+`bound.workspace` report that binding, and `get().projectPath` resolves the
+bound project's current path. The original import `projectPath` remains in
+`get().history`.
+
+After a successful import, rename, or delete, Electron main emits one
+host-owned `sessionsChanged` event for the affected mutation. The renderer
+refreshes its authoritative session list and the Projects page refreshes its
+durable project index from that list. Plugins do not emit or coordinate this
+event themselves. A project created through this API is not automatically
+opened as a sidebar tab, preserving the existing closed-project behavior.
+
 The host enforces a 2,000-message/session, 100-session/batch, 512 KiB/message,
 256 KiB/tool-value, 32 MiB/payload, and JSON-depth-8 limit. Import is limited
 to 10 calls/minute plus 5 batch calls/minute per plugin; delete is limited to
 20 calls/minute. Tool `__pi*` and `piDesktop.*` object keys are removed before
-storage. P2/P3 operations (create, message mutation, binding, batch delete,
-and tags) are intentionally not part of this contract.
+storage. P2/P3 operations (session create, message mutation, arbitrary re-binding,
+provider/model binding, batch delete, and tags) are intentionally not part of
+this contract.
 
 ### agent.complete (requires `agent.complete`)
 ```ts
