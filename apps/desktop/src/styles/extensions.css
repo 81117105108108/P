@@ -447,14 +447,14 @@
 }
 
 .ext-preset-chip-name {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   font-size: var(--text-sm);
 }
 
 .ext-preset-chip-desc {
   font-size: var(--text-xs);
   color: var(--ds-text-tertiary);
-  line-height: 1.35;
+  line-height: var(--leading-compact-plus);
 }
 
 .ext-preset-chip-cta {
