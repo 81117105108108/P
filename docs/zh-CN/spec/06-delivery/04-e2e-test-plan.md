@@ -3293,6 +3293,24 @@ IPC 请求无法关闭。
 - **里程碑**：M6+
 - **状态**：工作流脚本/单元已覆盖；每次发布仍需在干净机器上验证（除非明确要求，不要在本地运行 E2E）
 
+#### E2E-212：GitHub Release 启动 CNB 镜像流水线
+
+- **前提条件**：`vastsa/PI-Desktop` 已配置仓库密钥 `CNB_MIRROR_TOKEN`；
+  `aixk/Pi-Desktop` 上的 CNB 流水线监听 `api_trigger_mirror`；已有带上传
+  工件的 GitHub Release 标签（例如 `vX.Y.Z`）。
+- **步骤**：1) 发布或编辑该 GitHub Release，或对 `mirror-to-cnb.yml` 传入
+  同一标签手动运行。2) 检查 Actions 日志中的解析标签以及对
+  `api.cnb.cool` 的 POST。3) 确认 CNB 流水线以该标签作为 `MIRROR_TAGS` 启动。
+- **预期**：作业仅在 `vastsa/PI-Desktop` 上运行。没有 `vX.Y.Z` 标签的手动
+  运行会在调用 CNB 之前失败。缺少 `CNB_MIRROR_TOKEN` 时失败退出。JSON
+  请求体由 `jq` 构造（不是 YAML 字符串插值）。GitHub Release 工件和更新源
+  不变；CNB 只是同一标签的镜像。
+- **链接规格**：`06-delivery/06-release-runbook.md`
+- **验收**：质量（发布镜像）
+- **里程碑**：M6+
+- **状态**：源合同已覆盖（`ci-workflow.test.mjs`）；实际启动 CNB 仍为操作
+  验证（除非明确要求，否则不要在本地跑 E2E）
+
 #### E2E-092：打包的运行时是独立的，没有重复的依赖项
 
 - **先决条件**：本机 macOS arm64 和 Intel x64、Windows x64 及 Linux x64
@@ -4507,7 +4525,7 @@ IPC 请求无法关闭。
 | M4 | E2E-022、E2E-023、E2E-024、E2E-025、E2E-026、E2E-030、E2E-038 |
 | M5 | E2E-008a、E2E-032、E2E-033、E2E-034、E2E-039、E2E-043、E2E-044、E2E-045、E2E-046、E2E-047、E2E-048、E2E-048A、E2E-049、E2E-050、 E2E-051、E2E-052、E2E-053、E2E-054、E2E-055、E2E-056、E2E-057、E2E-058、E2E-059、E2E-060、E2E-061、E2E-062、E2E-063、E2E-064、 E2E-065、E2E-066、E2E-067、E2E-068、E2E-069、E2E-070、E2E-071、E2E-072、E2E-073、E2E-074、E2E-075、E2E-076、E2E-077、E2E-078、 E2E-079、E2E-080、E2E-081、E2E-082、E2E-083、E2E-084、E2E-085、E2E-086、E2E-092、E2E-093、E2E-096、E2E-097、E2E-098、E2E-099、 E2E-100、E2E-101、E2E-102、E2E-102a、E2E-102b、E2E-AGENTS-001、E2E-059a、E2E-060b、E2E-060c、E2E-061a、E2E-073a、E2E-094、E2E-095、E2E-143、E2E-145、E2E-146、E2E-147、E2E-194、E2E-195、E2E-204 |
 | M6 | E2E-104、E2E-105、E2E-106、E2E-107、E2E-108、E2E-109、E2E-110、E2E-111、E2E-112、E2E-113、E2E-114、E2E-115、E2E-116、E2E-117、 E2E-118、E2E-119、E2E-120、E2E-103 |
-| M6+ | E2E-121、E2E-122、E2E-123、E2E-142、E2E-148、E2E-150、E2E-151、E2E-168、E2E-199、E2E-200、E2E-202、E2E-203、E2E-209、E2E-211 |
+| M6+ | E2E-121、E2E-122、E2E-123、E2E-142、E2E-148、E2E-150、E2E-151、E2E-168、E2E-199、E2E-200、E2E-202、E2E-203、E2E-209、E2E-211、E2E-212 |
 | 后MVP | E2E-022A、E2E-022B、E2E-022C、E2E-024I、E2E-024J、E2E-024K、E2E-024L、E2E-024M（插件路线图 R2/R3/R6） |
 
 `US-UI-*` 视觉场景（§UI shell 视觉场景）追踪到

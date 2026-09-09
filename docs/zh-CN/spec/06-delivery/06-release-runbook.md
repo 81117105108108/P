@@ -207,6 +207,25 @@ DMG、ZIP、NSIS、AppImage、deb、rpm、块图和更新程序提要输出已
 发布作业之前压缩级别为零的临时操作工件
 组装 GitHub 版本。
 
+### 4.4 CNB 镜像触发
+
+`softprops/action-gh-release` 发布或更新 GitHub Release 之后，
+`.github/workflows/mirror-to-cnb.yml` 会启动 `aixk/Pi-Desktop` 上的 CNB
+流水线。GitHub Release 仍是权威产物源；CNB 只是同一标签的副本，供从
+https://cnb.cool/aixk/Pi-Desktop 拉取的用户使用。
+
+该作业：
+
+- 仅在 `vastsa/PI-Desktop` 上运行
+- 在 `release` 的 `published` / `edited` 时触发，也可通过
+  `workflow_dispatch` 传入明确标签（例如 `v0.14.6`）
+- 发送事件 `api_trigger_mirror`，并把 `MIRROR_TAGS` 设为该标签
+- 使用仓库密钥 `CNB_MIRROR_TOKEN`（已配置）；密钥为空时失败退出
+- 用 `jq` 构造 JSON，避免手动运行时标签缺失导致空的 `MIRROR_TAGS`
+
+若 CNB 流水线幂等，对同一标签重跑是安全的。它不会重新构建桌面产物，
+也不会改写 electron-updater 更新源。
+
 ## 5. 验证门
 
 对于默认未签名的 macOS 通道，不要将工件视为通过 Gatekeeper 资格验证；

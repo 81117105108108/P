@@ -231,6 +231,29 @@ assembles the GitHub Release. The Linux runner also copies
 exact archive used by the Linux installers for downstream repackaging with a
 system Electron.
 
+### 4.4 CNB mirror trigger
+
+After `softprops/action-gh-release` publishes or updates a GitHub Release,
+`.github/workflows/mirror-to-cnb.yml` starts the CNB pipeline at
+`aixk/Pi-Desktop`. GitHub Release remains the canonical artifact source; CNB
+is a copy of the same tag for users who pull from
+https://cnb.cool/aixk/Pi-Desktop.
+
+The job:
+
+- runs only on `vastsa/PI-Desktop`
+- fires on `release` `published` / `edited`, and on `workflow_dispatch` with
+  an explicit tag such as `v0.14.6`
+- sends event `api_trigger_mirror` and `MIRROR_TAGS` set to that tag
+- uses repository secret `CNB_MIRROR_TOKEN` (already configured) and fails
+  closed if the secret is empty
+- builds the JSON body with `jq` so a missing tag cannot produce an empty
+  `MIRROR_TAGS` value on a manual run
+
+Re-running the workflow for the same tag is safe if the CNB pipeline is
+idempotent. It does not rebuild desktop artifacts and does not change
+electron-updater feeds.
+
 ## 5. Verification gates
 
 For the default unsigned macOS lane, do not treat macOS artifacts as

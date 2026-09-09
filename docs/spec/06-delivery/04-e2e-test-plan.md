@@ -230,6 +230,28 @@ Each scenario is documented in this format:
 - **Status**: Workflow script/unit-covered; clean-machine journey required for
   each release (do not run E2E locally unless explicitly requested)
 
+#### E2E-212: GitHub Release starts the CNB mirror pipeline
+
+- **Preconditions**: Repository secret `CNB_MIRROR_TOKEN` is configured on
+  `vastsa/PI-Desktop`; the CNB pipeline at `aixk/Pi-Desktop` listens for
+  `api_trigger_mirror`; a GitHub Release tag such as `vX.Y.Z` exists with
+  uploaded artifacts.
+- **Steps**: 1) Publish or edit that GitHub Release, or dispatch
+  `mirror-to-cnb.yml` with the same tag. 2) Inspect the Actions log for the
+  resolved tag and the POST to `api.cnb.cool`. 3) Confirm the CNB pipeline
+  starts with `MIRROR_TAGS` equal to that tag.
+- **Expected**: The job runs only on `vastsa/PI-Desktop`. Manual dispatch
+  without a `vX.Y.Z` tag fails before calling CNB. A missing
+  `CNB_MIRROR_TOKEN` fails closed. The JSON body is built with `jq` (not
+  YAML string interpolation). GitHub Release artifacts and updater feeds are
+  unchanged; CNB is a mirror of the same tag.
+- **Specs linked**: `06-delivery/06-release-runbook.md`
+- **Acceptance**: Quality (release mirroring)
+- **Milestone**: M6+
+- **Status**: Source-contract covered (`ci-workflow.test.mjs`); live CNB
+  start remains operator validation (do not run E2E locally unless
+  explicitly requested)
+
 ### Boot & Healthcheck
 
 #### E2E-001: App launches and shows main window
@@ -6014,7 +6036,7 @@ Each scenario is documented in this format:
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
 | M5 | E2E-008a, E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-AGENTS-001, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-094, E2E-095, E2E-143, E2E-145, E2E-146, E2E-147, E2E-177, E2E-178, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-204, E2E-208 |
 | M6 | E2E-104, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-103, E2E-172 |
-| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-202, E2E-203, E2E-205, E2E-209, E2E-210 |
+| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-202, E2E-203, E2E-205, E2E-209, E2E-210, E2E-212 |
 | Post-MVP | E2E-022A, E2E-022B, E2E-022C, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M (plugin roadmap R2/R3/R6) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
