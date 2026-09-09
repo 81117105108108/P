@@ -112,13 +112,16 @@ No host RPC or storage schema change is required.
 12. finalize and persist successful answer/thinking blocks independently
 
 While an active turn has no new transcript row, the runtime emits a normalized
-`status` event with one of the following explanations: `waiting-model` while a
-provider request is waiting for its first assistant event, `retrying` during a
-bounded provider backoff, and `waiting-subagents` while the parent is waiting
-for delegated work. The renderer keeps the phase scoped to the session and
-clears it when assistant or tool activity starts, or when the turn terminates.
-This is observability only; it does not add a second agent loop or a
-completion percentage.
+`status` event that names the quiet interval: `starting` for the prompt
+handoff, `waiting-model` while a provider request waits for its first assistant
+event, `preparing` after a tool batch and before the next request,
+`compacting` during a context checkpoint, `recovering` during a silent-turn
+re-run, `retrying` during a bounded provider backoff, and `waiting-subagents`
+while the parent waits for delegated work (including each running target's
+latest coarse child action). The renderer keeps the phase scoped to the session
+and clears it when assistant or tool activity starts, or when the turn
+terminates. This is observability only; it does not add a second agent loop or
+a completion percentage.
 
 The runtime constructs exactly one pi `Agent` per durable session. Plan does
 not select a second model, planner service, permission implementation, or

@@ -267,20 +267,32 @@
 
 /* Runtime-owned quiet phases explain why no new transcript row is arriving.
    Keep them as the same lightweight status row, not a second progress card. */
-.run-activity-indicator[data-phase="waiting-model"] {
+.run-activity-indicator[data-phase="waiting-model"],
+.run-activity-indicator[data-phase="starting"],
+.run-activity-indicator[data-phase="preparing"],
+.run-activity-indicator[data-phase="compacting"] {
   color: var(--ds-info);
 }
 
 .run-activity-indicator[data-phase="waiting-model"]
+  .working-indicator-mark > span,
+.run-activity-indicator[data-phase="starting"]
+  .working-indicator-mark > span,
+.run-activity-indicator[data-phase="preparing"]
+  .working-indicator-mark > span,
+.run-activity-indicator[data-phase="compacting"]
   .working-indicator-mark > span {
   background: var(--ds-info);
 }
 
-.run-activity-indicator[data-phase="retrying"] {
+.run-activity-indicator[data-phase="retrying"],
+.run-activity-indicator[data-phase="recovering"] {
   color: var(--ds-warning);
 }
 
-.run-activity-indicator[data-phase="retrying"] .working-indicator-mark > span {
+.run-activity-indicator[data-phase="retrying"] .working-indicator-mark > span,
+.run-activity-indicator[data-phase="recovering"]
+  .working-indicator-mark > span {
   background: var(--ds-warning);
 }
 
@@ -293,8 +305,16 @@
   background: var(--ds-purple);
 }
 
+.run-activity-indicator {
+  min-width: 0;
+}
+
 .run-activity-indicator .working-indicator-label {
+  min-width: 0;
+  overflow: hidden;
   color: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .run-activity-retry-reason {

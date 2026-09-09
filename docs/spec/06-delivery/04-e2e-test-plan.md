@@ -709,14 +709,17 @@ Each scenario is documented in this format:
   event. 2) Observe the transcript status row. 3) Release a retryable failure
   and inspect the row during backoff. 4) Start a delegated task and wait for
   the parent to converge on it. 5) Release the fixture and let the turn end.
-- **Expected**: The status row says `Waiting for model`, `Retrying model
-  request`, or `Waiting for subagents` with a monotonic elapsed time matching
-  the active phase. It uses the same compact inline treatment as `Working…`,
-  never adds a duplicate progress card, and clears when assistant output or a
-  terminal event arrives. The Stop action remains available throughout.
+- **Expected**: The status row names the quiet interval — `Starting…`,
+  `Waiting for model`, `Preparing next request…`, `Compacting context…`,
+  `Recovering empty response…`, `Retrying model request`, or `Waiting for`
+  a named subagent with its latest coarse action — with a monotonic elapsed
+  time matching the active phase. A multi-subagent wait lists each running
+  target. It uses the same compact inline treatment as `Working…`, never adds
+  a duplicate progress card, and clears when assistant output or a terminal
+  event arrives. The Stop action remains available throughout.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `03-runtime/02-agent-runtime.md`, `04-ux/09-interaction-patterns.md`,
-  ADR 0175
+  ADR 0175, ADR 0198
 - **Acceptance**: C (chat stream), Quality (feedback and accessibility)
 - **Milestone**: M5
 - **Status**: Draft (deterministic fixture pending)
@@ -2920,8 +2923,10 @@ Each scenario is documented in this format:
 - **Expected**: No generic Understanding, Working, Checking, or completion
   card appears below the transcript while the turn is active. Assistant and
   tool rows remain inline; a compact runtime status row may appear only when it
-  explains a provider wait/retry or delegated-work wait with no transcript row
-  of its own. Only an actual permission request renders an actionable card.
+  explains a quiet interval with no transcript row of its own (provider
+  wait/retry, compaction, silent-turn recovery, the gap before the next
+  request, or a delegated-work wait). Only an actual permission request renders
+  an actionable card.
   Background activity never changes the visible session, transcript, composer
   focus, or project.
 - **Specs linked**: `04-ux/08-component-spec.md`,

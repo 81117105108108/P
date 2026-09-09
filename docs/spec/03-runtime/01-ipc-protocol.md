@@ -384,11 +384,23 @@ request-changes action.
 ### 5.5 getStatus
 
 ```ts
+type AgentActivityAgent = {
+  name: string;
+  lastPhase?: "waiting-model" | "thinking" | "tool";
+  lastToolName?: string;
+};
+
 type AgentActivity =
  | { phase: "starting"; since: number }
  | { phase: "waiting-model"; since: number }
- | { phase: "retrying"; since: number; attempt: number; retryDelayMs?: number }
- | { phase: "waiting-subagents"; since: number; subagentCount: number };
+ | { phase: "preparing"; since: number }
+ | { phase: "compacting"; since: number;
+     reason: "manual" | "threshold" | "overflow" }
+ | { phase: "recovering"; since: number }
+ | { phase: "retrying"; since: number; attempt: number;
+     retryDelayMs?: number; error?: AgentActivityError }
+ | { phase: "waiting-subagents"; since: number; subagentCount: number;
+     agents?: AgentActivityAgent[] };
 
 type AgentStatus = {
  sessionId: string;
@@ -449,14 +461,18 @@ type AgentEvent =
 > `packages/agent-runtime` is responsible for mapping pi events to this model.
 
 `status` events include an optional runtime-owned `activity` phase while a turn
-is active. `waiting-model` marks the interval after the runtime has started a
-provider request and before the first assistant event arrives; `retrying` marks
-an abortable provider backoff and includes the retry attempt; and
-`waiting-subagents` marks a parent turn waiting for delegated work. The
-renderer keeps this status per session and renders it as a compact inline row.
-The phase is cleared when assistant or tool activity starts, or when the turn
-reaches a terminal event. These phases explain quiet intervals; they do not
-replace message/tool lifecycle events or imply a percentage of completion.
+is active. `starting` is the prompt handoff; `waiting-model` is the interval
+after a provider request is issued and before the first assistant event;
+`preparing` is the gap after a tool batch and before the next provider request;
+`compacting` is an in-progress context checkpoint (threshold, overflow, or
+manual); `recovering` is the silent-turn re-run; `retrying` is an abortable
+provider backoff; and `waiting-subagents` is a parent wait on delegated work,
+with a live running count and each target's latest coarse child action (waiting
+for the model, thinking, or the current tool). The renderer keeps this status
+per session and renders it as a compact inline row. The phase is cleared when
+assistant or tool activity starts, or when the turn reaches a terminal event.
+These phases explain quiet intervals; they do not replace message/tool
+lifecycle events or imply a percentage of completion.
 
 `planning_state` is the agent-runtime's local planning projection. Its optional
 proposal and execution fields mirror the shared `PlanningStateEvent` shape

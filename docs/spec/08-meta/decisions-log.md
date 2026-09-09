@@ -3994,3 +3994,18 @@ D193, and D194.
   in-app download and quit-and-install. Data stays in the existing application
   data directory. Portable requests user execution level.
 - See ADR 0197 and E2E-211.
+
+## 2026-09-09 — Name every quiet interval on the live activity row (D365)
+
+- ADR 0175 named only `waiting-model`, `retrying`, and `waiting-subagents`.
+  Compaction, silent-turn recovery, the post-tool gap before the next request,
+  and `starting` still looked like a stuck generic wait. A parent wait on
+  delegates also omitted what those delegates were doing.
+- Decision D365 amends D338 / ADR 0175: `AgentActivity` adds `preparing`,
+  `compacting`, and `recovering`; `starting` is shown as its own label; and
+  `waiting-subagents` carries a live running snapshot (`name`, `lastPhase`,
+  `lastToolName`) that updates on child tool/thinking changes, not on every
+  token. The row stays one compact inline status and does not restore an
+  activity-group capsule.
+- See ADR 0198, `03-runtime/01-ipc-protocol.md`, `03-runtime/02-agent-runtime.md`,
+  `04-ux/09-interaction-patterns.md`, and E2E-008c / E2E-094.

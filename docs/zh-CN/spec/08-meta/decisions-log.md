@@ -2872,3 +2872,18 @@ D193 和 D194。
   仍走应用内下载并在退出时安装。数据仍在现有应用数据目录。便携版请求
   user 执行级别。
 - 参见 ADR 0197 与 E2E-211。
+
+## 2026-09-09 —— 为每个安静间隔命名活动行（D365）
+
+- ADR 0175 只命名了 `waiting-model`、`retrying` 和 `waiting-subagents`。
+  压缩上下文、空回复补救、工具结束后到下一次请求之间的空隙，以及
+  `starting`，仍然看起来像卡住的泛化等待。父级等待委托时也不说明
+  那些 Subagent 正在做什么。
+- 决策 D365 修订 D338 / ADR 0175：`AgentActivity` 增加 `preparing`、
+  `compacting`、`recovering`；`starting` 用自己的标签展示；
+  `waiting-subagents` 带上仍在运行目标的实时快照（`name`、`lastPhase`、
+  `lastToolName`），只在子级工具/思考变化时更新，而不是每个 token。
+  该行仍是一条紧凑的内联状态，不恢复活动组上的状态胶囊。
+- 参见 ADR 0198、`03-runtime/01-ipc-protocol.md`、
+  `03-runtime/02-agent-runtime.md`、`04-ux/09-interaction-patterns.md`，
+  以及 E2E-008c / E2E-094。

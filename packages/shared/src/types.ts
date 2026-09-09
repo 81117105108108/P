@@ -538,10 +538,26 @@ export type AgentActivityError = {
   providerStatus?: number;
 };
 
+/** Coarse child-agent action shown while the parent waits on delegates. */
+export type AgentActivityAgentPhase = "waiting-model" | "thinking" | "tool";
+
+export type AgentActivityAgent = {
+  name: string;
+  lastPhase?: AgentActivityAgentPhase;
+  lastToolName?: string;
+};
+
 /** The runtime phase that explains a quiet interval in an active turn. */
 export type AgentActivity =
   | { phase: "starting"; since: number }
   | { phase: "waiting-model"; since: number }
+  | { phase: "preparing"; since: number }
+  | {
+      phase: "compacting";
+      since: number;
+      reason: ContextCompactionReason;
+    }
+  | { phase: "recovering"; since: number }
   | {
       phase: "retrying";
       since: number;
@@ -553,6 +569,8 @@ export type AgentActivity =
       phase: "waiting-subagents";
       since: number;
       subagentCount: number;
+      /** Running targets, in wait order, with the latest coarse child action. */
+      agents?: AgentActivityAgent[];
     };
 
 export type AgentPromptRequest = {

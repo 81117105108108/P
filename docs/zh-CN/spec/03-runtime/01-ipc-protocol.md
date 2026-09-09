@@ -355,12 +355,31 @@ Electron 将每个主机 `plans.changed` 通知原封不动地转发到
 ### 5.5 getStatus
 
 ```ts
+type AgentActivityAgent = {
+  name: string;
+  lastPhase?: "waiting-model" | "thinking" | "tool";
+  lastToolName?: string;
+};
+
+type AgentActivity =
+ | { phase: "starting"; since: number }
+ | { phase: "waiting-model"; since: number }
+ | { phase: "preparing"; since: number }
+ | { phase: "compacting"; since: number;
+     reason: "manual" | "threshold" | "overflow" }
+ | { phase: "recovering"; since: number }
+ | { phase: "retrying"; since: number; attempt: number;
+     retryDelayMs?: number; error?: AgentActivityError }
+ | { phase: "waiting-subagents"; since: number; subagentCount: number;
+     agents?: AgentActivityAgent[] };
+
 type AgentStatus = {
  sessionId: string;
  isRunning: boolean;
  currentTurnId?: string;
  modelId?: string;
  pendingToolConfirmations: number;
+ activity?: AgentActivity;
 };
 ```
 
