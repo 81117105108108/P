@@ -132,6 +132,18 @@ export function applySubagentPreset(draft: SubagentDraft, preset: SubagentPreset
   };
 }
 
+/** Clear the template-owned fields while preserving the user's model choices. */
+export function resetSubagentTemplate(draft: SubagentDraft): SubagentDraft {
+  return {
+    ...draft,
+    name: "",
+    description: "",
+    tools: [...DEFAULT_SUBAGENT_TOOLS],
+    maxTurns: 0,
+    body: "",
+  };
+}
+
 /** Returns an i18n key for the first problem, or null when the draft can save. */
 export function subagentDraftError(draft: SubagentDraft): string | null {
   if (!draft.name.trim()) return "extensions.subagents.errorName";
@@ -287,6 +299,123 @@ function ManagementScope({
   );
 }
 
+const CUSTOM_SUBAGENT_MODEL_VALUE = "__custom__";
+
+/** Model and thinking controls for a subagent definition. */
+function ModelField({
+  draft,
+  setDraft,
+  modelChoices,
+  modelGroups,
+  orphanModel,
+}: {
+  draft: SubagentDraft;
+  setDraft: (next: SubagentDraft) => void;
+  modelChoices: ReturnType<typeof subagentModelChoices>;
+  modelGroups: ReturnType<typeof groupSubagentModelChoices>;
+  orphanModel: string | null;
+}) {
+  const { t } = useTranslation();
+  const [customModel, setCustomModel] = useState(false);
+  const modelValue = customModel
+    ? CUSTOM_SUBAGENT_MODEL_VALUE
+    : subagentModelSelectValue(draft.model, modelChoices);
+
+  return (
+    <>
+      <div className="ext-field-pair">
+        <Field
+          label={t("extensions.subagents.model")}
+          hint={
+            modelChoices.length > 0
+              ? t("extensions.subagents.modelHint")
+              : t("extensions.subagents.modelPickEmpty")
+          }
+        >
+          {modelChoices.length === 0 ? (
+            <Input
+              value={draft.model}
+              placeholder={t("extensions.subagents.modelPickPlaceholder")}
+              aria-label={t("extensions.subagents.model")}
+              onChange={(event) =>
+                setDraft({ ...draft, model: event.target.value })
+              }
+            />
+          ) : (
+            <Select
+              value={modelValue}
+              aria-label={t("extensions.subagents.model")}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === CUSTOM_SUBAGENT_MODEL_VALUE) {
+                  setCustomModel(true);
+                  setDraft({ ...draft, model: "" });
+                } else {
+                  setCustomModel(false);
+                  setDraft({ ...draft, model: value });
+                }
+              }}
+            >
+              <option value="">{t("extensions.subagents.modelInherit")}</option>
+              {modelGroups.map((group) => (
+                <optgroup key={group.providerId} label={group.providerName}>
+                  {group.choices.map((choice) => (
+                    <option key={choice.value} value={choice.value}>
+                      {choice.modelId}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              {orphanModel ? (
+                <option value={orphanModel}>{orphanModel}</option>
+              ) : null}
+              <option value={CUSTOM_SUBAGENT_MODEL_VALUE}>
+                {t("extensions.subagents.modelPickCustom")}
+              </option>
+            </Select>
+          )}
+        </Field>
+        <Field
+          label={t("extensions.subagents.thinking")}
+          hint={t("extensions.subagents.thinkingHint")}
+        >
+          <Select
+            value={draft.thinkingLevel}
+            onChange={(event) =>
+              setDraft({
+                ...draft,
+                thinkingLevel: event.target.value as ThinkingLevel | "",
+              })
+            }
+          >
+            <option value="">{t("extensions.subagents.thinkingInherit")}</option>
+            {THINKING_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {level}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      {modelChoices.length > 0 && customModel ? (
+        <Field
+          label={t("extensions.subagents.modelPickCustom")}
+          hint={t("extensions.subagents.modelPickCustomHint")}
+        >
+          <Input
+            value={draft.model}
+            placeholder={t("extensions.subagents.modelPickPlaceholder")}
+            aria-label={t("extensions.subagents.modelPickCustom")}
+            onChange={(event) =>
+              setDraft({ ...draft, model: event.target.value })
+            }
+          />
+        </Field>
+      ) : null}
+    </>
+  );
+}
+
 /**
  * Create/edit sheet for one subagent definition.
  *
@@ -326,7 +455,6 @@ export function SubagentEditorSheet({
     () => groupSubagentModelChoices(modelChoices),
     [modelChoices],
   );
-  const modelValue = subagentModelSelectValue(draft.model, modelChoices);
   const orphanModel = subagentModelOrphanPin(draft.model, modelChoices);
 
   useEffect(() => {
@@ -364,7 +492,11 @@ export function SubagentEditorSheet({
 
   const applyPreset = (nextId: string) => {
     setPresetId(nextId);
-    if (!nextId || nextId === BLANK_SUBAGENT_PRESET_ID) return;
+    if (!nextId || nextId === BLANK_SUBAGENT_PRESET_ID) {
+      setDraft(resetSubagentTemplate(draft));
+      setNameTouched(false);
+      return;
+    }
     const preset = SUBAGENT_PRESETS.find((candidate) => candidate.id === nextId);
     if (!preset) return;
     setDraft(applySubagentPreset(draft, preset));
@@ -471,50 +603,13 @@ export function SubagentEditorSheet({
             ) : null}
           </div>
 
-          <div className="ext-field-pair">
-            <Field
-              label={t("extensions.subagents.model")}
-              hint={t("extensions.subagents.modelHint")}
-            >
-              <Select
-                value={modelValue}
-                aria-label={t("extensions.subagents.model")}
-                onChange={(event) => set("model", event.target.value)}
-              >
-                <option value="">{t("extensions.subagents.modelInherit")}</option>
-                {modelGroups.map((group) => (
-                  <optgroup key={group.providerId} label={group.providerName}>
-                    {group.choices.map((choice) => (
-                      <option key={choice.value} value={choice.value}>
-                        {choice.modelId}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-                {orphanModel ? (
-                  <option value={orphanModel}>{orphanModel}</option>
-                ) : null}
-              </Select>
-            </Field>
-            <Field
-              label={t("extensions.subagents.thinking")}
-              hint={t("extensions.subagents.thinkingHint")}
-            >
-              <Select
-                value={draft.thinkingLevel}
-                onChange={(event) =>
-                  set("thinkingLevel", event.target.value as ThinkingLevel | "")
-                }
-              >
-                <option value="">{t("extensions.subagents.thinkingInherit")}</option>
-                {THINKING_LEVELS.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
+          <ModelField
+            draft={draft}
+            setDraft={setDraft}
+            modelChoices={modelChoices}
+            modelGroups={modelGroups}
+            orphanModel={orphanModel}
+          />
 
           <Field
             label={t("extensions.subagents.maxTurns")}

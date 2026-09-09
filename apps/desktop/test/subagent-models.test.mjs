@@ -1,7 +1,8 @@
 /**
- * The subagent editor pins a model from the configured, runnable list rather
- * than a free-typed `provider/model` string. These tests pin that mapping so a
- * later edit cannot silently put the text field back or drop an existing pin.
+ * The subagent editor pins a model from the configured, runnable, explicitly
+ * delegated list. These tests pin that mapping so a later edit cannot silently
+ * expose an opted-out model, put the custom field back, or drop an existing
+ * pin.
  */
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -21,12 +22,13 @@ const {
   subagentModelSelectValue,
 } = await import("../src/components/settings/subagent-models.ts");
 
-const binding = (id) => ({
+const binding = (id, availableForSubagents = true) => ({
   id,
   contextWindow: 128_000,
   maxTokens: 8_192,
   thinkingLevels: [],
   defaultThinkingLevel: null,
+  availableForSubagents,
 });
 
 const provider = (over = {}) => ({
@@ -84,6 +86,25 @@ test("the sheet lists configured models from enabled, credentialed providers", (
   assert.deepEqual(
     choices.map((choice) => choice.value),
     ["anthropic/claude-haiku-4-5", "anthropic/claude-sonnet-4-6", "My Gateway/local-model"],
+  );
+});
+
+test("the sheet only lists bindings explicitly enabled for subagents", () => {
+  const choices = subagentModelChoices([
+    provider({
+      models: [
+        binding("claude-haiku-4-5", true),
+        binding("claude-sonnet-4-6", false),
+        {
+          ...binding("claude-opus-4-6"),
+          availableForSubagents: undefined,
+        },
+      ],
+    }),
+  ]);
+  assert.deepEqual(
+    choices.map((choice) => choice.modelId),
+    ["claude-haiku-4-5"],
   );
 });
 
@@ -201,7 +222,7 @@ test("a pin that is no longer configured stays selectable", () => {
   assert.equal(subagentModelOrphanPin("openai/gpt-5", choices), "openai/gpt-5");
 });
 
-test("the editor model field is a select of configured models, not a text input", async () => {
+test("the editor model field offers configured, custom, and empty-list paths", async () => {
   const source = await readFile(
     new URL("../src/components/settings/SubagentEditorSheet.tsx", import.meta.url),
     "utf8",
@@ -213,7 +234,10 @@ test("the editor model field is a select of configured models, not a text input"
   assert.match(modelField, /<Select/);
   assert.match(modelField, /<optgroup/);
   assert.match(modelField, /extensions\.subagents\.modelInherit/);
+  assert.match(modelField, /extensions\.subagents\.modelPickCustom/);
+  assert.match(modelField, /extensions\.subagents\.modelPickEmpty/);
   assert.match(source, /subagentModelChoices\(providers\)/);
-  assert.doesNotMatch(modelField, /<Input/);
-  assert.doesNotMatch(modelField, /modelPlaceholder/);
+  assert.match(source, /CUSTOM_SUBAGENT_MODEL_VALUE/);
+  assert.match(source, /extensions\.subagents\.modelPickCustomHint/);
+  assert.match(source, /resetSubagentTemplate\(draft\)/);
 });

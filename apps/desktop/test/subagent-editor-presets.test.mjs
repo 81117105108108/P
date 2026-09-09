@@ -5,7 +5,7 @@
  *    user can start from `explorer`, `code-reviewer`, `test-runner` or
  *    `fixer` instead of an empty form.
  *  - The model field is a picker over the configured, runnable providers'
- *    model bindings, not a free-text input.
+ *    model bindings, with an explicit custom-model path.
  *
  * These tests scan the source files rather than mount React, so they verify
  * the wiring (preset ids, model filtering, custom fallback) without dragging
@@ -98,6 +98,12 @@ test("the model picker keeps existing pins visible", () => {
   // so editing a definition does not silently clear its model pin.
   assert.match(editorSource, /subagentModelOrphanPin/);
   assert.match(editorSource, /orphanModel \? \(/);
+});
+
+test("the model picker keeps custom ids available without exposing opted-out bindings", () => {
+  assert.match(editorSource, /CUSTOM_SUBAGENT_MODEL_VALUE/);
+  assert.match(editorSource, /extensions\.subagents\.modelPickCustom/);
+  assert.match(editorSource, /extensions\.subagents\.modelPickCustomHint/);
 });
 
 test("the editor styles ship with the picker", () => {
