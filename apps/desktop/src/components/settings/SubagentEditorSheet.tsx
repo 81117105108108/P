@@ -1,19 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DEFAULT_SUBAGENT_TOOLS,
   GLOBAL_SCOPE,
   MAX_SUBAGENT_MAX_TURNS,
   SUBAGENT_ASSIGNABLE_TOOLS,
+  SUBAGENT_PRESETS,
   THINKING_LEVELS,
   isSubagentMutatingTool,
   resolveScope,
   type ActivationScope,
+  type ProviderPublic,
+  type SubagentPreset,
   type ThinkingLevel,
   type UserSubagentRecord,
 } from "@pi-desktop/shared";
+import { api } from "../../lib/api";
 import { Button, Field, Input, Select, Textarea, cx } from "../ui";
-import { IconFolderOpen, IconX } from "../icons";
+import { IconFolderOpen, IconSparkles, IconX } from "../icons";
 
 /** Hard cap host-core enforces on a definition document. */
 export const MAX_SUBAGENT_BYTES = 32 * 1024;
@@ -56,6 +60,9 @@ final message, not your steps.
 Anything you must not do.
 `;
 }
+
+/** A "blank" starter so users who ignore the preset grid are not stuck. */
+export const BLANK_SUBAGENT_PRESET_ID = "" as const;
 
 export function emptySubagentDraft(): SubagentDraft {
   return {
@@ -103,6 +110,40 @@ export function subagentSlug(value: string): string {
   return slug.slice(0, 40).replace(/-+$/, "");
 }
 
+/**
+ * Apply a built-in preset to a draft. Tool grants are replaced wholesale so a
+ * preset that drops `Bash` truly drops it; `maxTurns` keeps its "0 means
+ * unlimited" convention. Body and description are overwritten — these are the
+ * values that make the preset worth picking.
+ */
+export function applySubagentPreset(draft: SubagentDraft, preset: SubagentPreset): SubagentDraft {
+  return {
+    ...draft,
+    name: preset.name,
+    description: preset.description,
+    tools: [...preset.tools],
+    maxTurns: preset.maxTurns,
+    body: preset.body,
+  };
+}
+
+/**
+ * Split a `<provider>/<model>` pin into its halves. `openrouter` style ids may
+ * themselves include a slash, so the model side is "everything after the first
+ * slash" rather than "the last segment". A bare value with no slash is kept as
+ * a model id with an empty provider for the picker to show as "custom".
+ */
+export function splitModelPin(value: string): { providerId: string; modelId: string } {
+  const trimmed = value.trim();
+  if (!trimmed) return { providerId: "", modelId: "" };
+  const slash = trimmed.indexOf("/");
+  if (slash <= 0) return { providerId: "", modelId: trimmed };
+  return {
+    providerId: trimmed.slice(0, slash),
+    modelId: trimmed.slice(slash + 1),
+  };
+}
+
 /** Returns an i18n key for the first problem, or null when the draft can save. */
 export function subagentDraftError(draft: SubagentDraft): string | null {
   if (!draft.name.trim()) return "extensions.subagents.errorName";
@@ -128,6 +169,276 @@ export function subagentDraftError(draft: SubagentDraft): string | null {
     return "extensions.subagents.errorTooBig";
   }
   return null;
+}
+
+/**
+ * One subagent preset shown as a chip in the "start from template" row.
+ * Selecting one replaces the draft's name, description, tools, body and
+ * maxTurns; the model and scope are left alone so the user's other choices
+ * survive a reroll.
+ */
+function PresetChip({
+  preset,
+  selected,
+  onSelect,
+  nameLabel,
+  descriptionLabel,
+  applyLabel,
+}: {
+  preset: SubagentPreset;
+  selected: boolean;
+  onSelect: () => void;
+  nameLabel: string;
+  descriptionLabel: string;
+  applyLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={cx("ext-preset-chip", selected && "is-selected")}
+      aria-pressed={selected}
+      onClick={onSelect}
+    >
+      <span className="ext-preset-chip-head">
+        <IconSparkles size={13} />
+        <span className="ext-preset-chip-name">{nameLabel}</span>
+      </span>
+      <span className="ext-preset-chip-desc">{descriptionLabel}</span>
+      <span className="ext-preset-chip-cta">{applyLabel}</span>
+    </button>
+  );
+}
+
+/**
+ * The "start from template" grid shown above the form when creating a new
+ * subagent. A blank chip sits alongside the built-ins so users who want a
+ * clean slate are not forced into a preset. The grid is hidden entirely on
+ * edit — a draft that has already been saved owns its body.
+ */
+function PresetPicker({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string | null;
+  onSelect: (presetId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const blankSelected = selectedId === BLANK_SUBAGENT_PRESET_ID;
+  return (
+    <div className="ext-field-group">
+      <div className="ext-field-label ext-field-label-row">
+        <span>{t("extensions.subagents.presetLabel")}</span>
+      </div>
+      <p className="ext-field-hint">{t("extensions.subagents.presetHint")}</p>
+      <div className="ext-preset-pick" role="group" aria-label={t("extensions.subagents.presetLabel")}>
+        {SUBAGENT_PRESETS.map((preset) => (
+          <PresetChip
+            key={preset.id}
+            preset={preset}
+            selected={selectedId === preset.id}
+            onSelect={() => onSelect(preset.id)}
+            nameLabel={t(`extensions.subagents.preset${capitalize(preset.id)}Name`)}
+            descriptionLabel={t(`extensions.subagents.preset${capitalize(preset.id)}Desc`)}
+            applyLabel={t("extensions.subagents.presetApply")}
+          />
+        ))}
+        <PresetChip
+          preset={{
+            id: BLANK_SUBAGENT_PRESET_ID as SubagentPreset["id"],
+            name: t("extensions.subagents.presetBlank"),
+            description: "",
+            tools: [...DEFAULT_SUBAGENT_TOOLS],
+            maxTurns: 0,
+            body: "",
+          }}
+          selected={blankSelected}
+          onSelect={() => onSelect(BLANK_SUBAGENT_PRESET_ID)}
+          nameLabel={t("extensions.subagents.presetBlank")}
+          descriptionLabel={t("extensions.subagents.presetBlankDesc")}
+          applyLabel={t("extensions.subagents.presetApply")}
+        />
+      </div>
+    </div>
+  );
+}
+
+function capitalize(value: string): string {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/**
+ * Model picker for a subagent draft.
+ *
+ * Three modes, in shadowing order:
+ *  - "inherit": the picker is empty and the delegate uses the session model.
+ *  - "configured": the picker lists the providers whose models are flagged
+ *    `availableForSubagents` in Settings, grouped by provider. Choosing one
+ *    writes the draft's `model` field as `<providerId>/<modelId>`.
+ *  - "custom": a free-form input that accepts any `provider/model` string.
+ *    Custom is reachable both as a top-level "Custom..." entry (so users with
+ *    one configured provider can still pin a different model) and as the
+ *    fallback when no providers are configured at all.
+ *
+ * The draft's `model` field is the source of truth; this component only maps
+ * it back to a picker state when the user opens the sheet.
+ */
+function ModelField({
+  draft,
+  setDraft,
+  providers,
+  loading,
+}: {
+  draft: SubagentDraft;
+  setDraft: (next: SubagentDraft) => void;
+  providers: readonly ProviderPublic[];
+  loading: boolean;
+}) {
+  const { t } = useTranslation();
+  const split = splitModelPin(draft.model);
+  // A custom id is anything the picker cannot represent: empty provider (bare
+  // model id), an unknown provider, or a model id not flagged for subagents.
+  const options = useMemo(() => {
+    const flat: { provider: ProviderPublic; binding: ProviderPublic["models"][number] }[] = [];
+    for (const provider of providers) {
+      for (const binding of provider.models) {
+        if (binding.availableForSubagents) {
+          flat.push({ provider, binding });
+        }
+      }
+    }
+    flat.sort((a, b) => {
+      const providerOrder = a.provider.name.localeCompare(b.provider.name);
+      if (providerOrder !== 0) return providerOrder;
+      return a.binding.id.localeCompare(b.binding.id);
+    });
+    return flat;
+  }, [providers]);
+
+  const matched = useMemo(() => {
+    if (!split.providerId || !split.modelId) return null;
+    return options.find(
+      (option) =>
+        option.provider.id === split.providerId &&
+        option.binding.id === split.modelId,
+    );
+  }, [options, split.providerId, split.modelId]);
+
+  const mode: "inherit" | "configured" | "custom" = !draft.model.trim()
+    ? "inherit"
+    : matched
+      ? "configured"
+      : "custom";
+
+  const setMode = (next: "inherit" | "configured" | "custom") => {
+    if (next === "inherit") setDraft({ ...draft, model: "" });
+    else if (next === "custom") setDraft({ ...draft, model: "" });
+  };
+
+  const pickConfigured = (providerId: string, modelId: string) => {
+    setDraft({ ...draft, model: `${providerId}/${modelId}` });
+  };
+
+  if (options.length === 0 && !loading) {
+    // No provider offers a model for subagents yet. Keep a single text input so
+    // the user is not stuck; the empty hint directs them to Models.
+    return (
+      <Field
+        label={t("extensions.subagents.model")}
+        hint={
+          loading
+            ? t("extensions.subagents.modelPickHint")
+            : t("extensions.subagents.modelPickEmpty")
+        }
+      >
+        <Input
+          value={draft.model}
+          placeholder={t("extensions.subagents.modelPlaceholder")}
+          onChange={(event) => setDraft({ ...draft, model: event.target.value })}
+        />
+      </Field>
+    );
+  }
+
+  // Custom value rendered as an Input so the user can finish typing it; once it
+  // matches a configured option the parent draft moves to "configured" mode.
+  const showCustom = mode === "custom";
+
+  return (
+    <>
+      <div className="ext-field-pair">
+      <Field
+        label={t("extensions.subagents.model")}
+        hint={t("extensions.subagents.modelPickHint")}
+      >
+        <Select
+          value={
+            mode === "inherit"
+              ? "__inherit__"
+              : mode === "custom"
+                ? "__custom__"
+                : `${split.providerId}/${split.modelId}`
+          }
+          onChange={(event) => {
+            const value = event.target.value;
+            if (value === "__inherit__") {
+              setMode("inherit");
+            } else if (value === "__custom__") {
+              setMode("custom");
+            } else {
+              const [providerId, modelId] = value.split("/", 2);
+              pickConfigured(providerId, modelId);
+            }
+          }}
+        >
+          <option value="__inherit__">{t("extensions.subagents.modelInherit")}</option>
+          {options.map((option) => (
+            <option
+              key={`${option.provider.id}/${option.binding.id}`}
+              value={`${option.provider.id}/${option.binding.id}`}
+            >
+              {t("extensions.subagents.modelPickGroup", {
+                provider: option.provider.name,
+              })}{" "}
+— {option.binding.id}
+            </option>
+          ))}
+          <option value="__custom__">{t("extensions.subagents.modelPickCustom")}</option>
+        </Select>
+      </Field>
+      <Field
+        label={t("extensions.subagents.thinking")}
+        hint={t("extensions.subagents.thinkingHint")}
+      >
+        <Select
+          value={draft.thinkingLevel}
+          onChange={(event) =>
+            setDraft({ ...draft, thinkingLevel: event.target.value as ThinkingLevel | "" })
+          }
+        >
+          <option value="">{t("extensions.subagents.thinkingInherit")}</option>
+          {THINKING_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
+        </Select>
+      </Field>
+    </div>
+      {showCustom ? (
+        <Field
+          label={t("extensions.subagents.modelPickCustom")}
+          hint={t("extensions.subagents.modelPickCustomHint")}
+        >
+          <Input
+            value={draft.model}
+            placeholder={t("extensions.subagents.modelPlaceholder")}
+            onChange={(event) => setDraft({ ...draft, model: event.target.value })}
+          />
+        </Field>
+      ) : null}
+    </>
+  );
 }
 
 /**
@@ -190,6 +501,9 @@ export function SubagentEditorSheet({
 }) {
   const { t } = useTranslation();
   const [nameTouched, setNameTouched] = useState(!!editing);
+  const [presetId, setPresetId] = useState<string | null>(BLANK_SUBAGENT_PRESET_ID);
+  const [providers, setProviders] = useState<ProviderPublic[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(true);
   const errorKey = subagentDraftError(draft);
   const pristine = !editing && !draft.name.trim() && !draft.description.trim();
   const bytes = new TextEncoder().encode(draft.body).length;
@@ -202,6 +516,31 @@ export function SubagentEditorSheet({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [saving, onClose]);
+
+  // Pull the configured providers once. The picker only needs the
+  // availability flag, but reading the full list keeps the cache warm for the
+  // rest of the page; a failure here falls back to a free-text input.
+  useEffect(() => {
+    let cancelled = false;
+    setProvidersLoading(true);
+    api
+      .listProviders()
+      .then((result) => {
+        if (cancelled) return;
+        setProviders(result.providers ?? []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setProviders([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setProvidersLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const set = <K extends keyof SubagentDraft>(key: K, value: SubagentDraft[K]) =>
     setDraft({ ...draft, [key]: value });
@@ -227,6 +566,15 @@ export function SubagentEditorSheet({
           )
         : draft.tools.filter((candidate) => candidate !== tool),
     );
+
+  const applyPreset = (nextId: string) => {
+    setPresetId(nextId);
+    if (!nextId || nextId === BLANK_SUBAGENT_PRESET_ID) return;
+    const preset = SUBAGENT_PRESETS.find((candidate) => candidate.id === nextId);
+    if (!preset) return;
+    setDraft(applySubagentPreset(draft, preset));
+    setNameTouched(true);
+  };
 
   return (
     <div
@@ -262,6 +610,10 @@ export function SubagentEditorSheet({
         </div>
 
         <div className="ext-sheet-body">
+          {!editing ? (
+            <PresetPicker selectedId={presetId} onSelect={applyPreset} />
+          ) : null}
+
           <Field
             label={t("extensions.subagents.name")}
             hint={
@@ -324,36 +676,12 @@ export function SubagentEditorSheet({
             ) : null}
           </div>
 
-          <div className="ext-field-pair">
-            <Field
-              label={t("extensions.subagents.model")}
-              hint={t("extensions.subagents.modelHint")}
-            >
-              <Input
-                value={draft.model}
-                placeholder={t("extensions.subagents.modelPlaceholder")}
-                onChange={(event) => set("model", event.target.value)}
-              />
-            </Field>
-            <Field
-              label={t("extensions.subagents.thinking")}
-              hint={t("extensions.subagents.thinkingHint")}
-            >
-              <Select
-                value={draft.thinkingLevel}
-                onChange={(event) =>
-                  set("thinkingLevel", event.target.value as ThinkingLevel | "")
-                }
-              >
-                <option value="">{t("extensions.subagents.thinkingInherit")}</option>
-                {THINKING_LEVELS.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
+          <ModelField
+            draft={draft}
+            setDraft={setDraft}
+            providers={providers}
+            loading={providersLoading}
+          />
 
           <Field
             label={t("extensions.subagents.maxTurns")}
