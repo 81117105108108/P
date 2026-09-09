@@ -22,6 +22,7 @@ test("active turns show immediate and phase-specific feedback without a progress
   assert.match(transcript, /className="working-indicator-label"/);
   assert.match(transcript, /function RunActivityIndicator\(/);
   assert.match(transcript, /data-testid="run-activity-indicator"/);
+  assert.doesNotMatch(transcript, /tool-activity-current|currentStatus|activityItemStatus/);
   assert.match(transcript, /waiting-model/);
   assert.match(transcript, /waitingForSubagents/);
   assert.match(transcript, /retryingModel/);
@@ -60,6 +61,7 @@ test("active turns show immediate and phase-specific feedback without a progress
   assert.match(transcript, /<PermissionCard/);
   assert.doesNotMatch(store, /AgentProgress|agentProgress|updateAgentProgress/);
   assert.match(messagesStyles, /\.working-indicator\s*\{/);
+  assert.doesNotMatch(messagesStyles, /\.tool-activity-current/);
   assert.match(messagesStyles, /\.working-indicator-mark\s*\{/);
   assert.match(messagesStyles, /\.run-activity-indicator\[data-phase="waiting-model"\]/);
   assert.match(messagesStyles, /\.run-activity-indicator\[data-phase="retrying"\]/);

@@ -583,13 +583,14 @@ reading surface of the workstation.
 | ChatTranscript (scrollable, flex-1)  |
 |   MessageBubble (user/assistant)     |
 |   ToolCallCard                       |
-|   TurnOutcomeCard (one Continue)     |
 |   InlineReviewCard · M App.tsx +8 −2 |
 |   PermissionCard                     |
 |   ...                                |
 +--------------------------------------+
 | Composer (docked in thread view;     |
 | bottom-reserved on empty home, D204) |
+|   TurnOutcomeCard (one Continue)     |
+|   prompt input + controls            |
 +--------------------------------------+
 ```
 
@@ -601,12 +602,15 @@ reading surface of the workstation.
   never reserves a matching left gutter, so the minimap and first message do
   not leave a decorative blank strip beside the session.
 - A failed TurnOutcomeCard without a structured assistant error exposes one
-  primary **Continue** action and no regenerate action. It appends the current
+  primary **Continue** action and no regenerate action. It is rendered in the
+  active session's Composer stack directly above the input, not beside the
+  transcript processing group. It is withheld while session selection is pending,
+  so a Continue action cannot target the session being left. It appends the current
   locale's continuation prompt to the same session and starts a new turn,
-  preserving the failed turn and completed work in the transcript. When the
-  failed turn already has a structured assistant error, that inline error card
-  owns the summary, details, and **Continue** action; the TurnOutcomeCard is not
-  rendered, so the same failure is not presented twice. Continue remains
+  preserving the failed turn and completed work in the transcript. When the failed
+  turn already has a structured assistant error, that inline error card owns the
+  summary, details, and **Continue** action; the TurnOutcomeCard is not rendered,
+  so the same failure is not presented twice. Continue remains
   available after a terminal parent error (including HTTP 429) even if leftover
   subagents were still running; those delegates are aborted and must not leave
   the session `AGENT_BUSY` (D352).
@@ -648,7 +652,7 @@ reading surface of the workstation.
 | Empty | Restrained hero + optional onboarding checklist in a scrollable content region, with a bottom-reserved home composer and no starter-card or contextual quick-action layer (D111/D204/D206) |
 | Streaming | Auto-scroll follows while pinned; new tokens append |
 | Active progress | Immediately after send, before the first assistant or tool event, a compact localized `Working…` status with elapsed time appears inline. Its model and subagent elapsed labels use the carried-unit format in §9.1. It yields to concrete thinking, tool, and answer rows, while a permission card owns the approval state; no large generic progress card is rendered. A retrying row remains compact at rest; hovering or focusing it reveals an error-styled tooltip with the localized error summary, stable code/HTTP status, and bounded provider message. |
-| Turn outcome | After a failed turn, a session-scoped recovery card summarizes the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
+| Turn outcome | After a failed turn, the active session's Composer stack above the input shows one session-scoped recovery card summarizing the interruption and tool evidence. Completed turns use the existing transcript and message-scoped InlineReviewCard without an extra success card; failed turns can continue through one localized prompt without losing the transcript. |
 | Session switch | A first-opened session paints at its latest record; a revisited pane paints at its own retained position. Bounded first commit and full-history expansion show the same position: no post-paint height correction may shift the visible rows, in either direction |
 | Turn start (send / retry / regenerate) | Re-pins and positions the latest content before paint, even if the user had scrolled up; the later persisted user-message event does not flash the transcript at its top, and the composer collapse / indicator layout clamps during the send never release follow mode |
 | Idle (after stream) | Auto-scroll unlocked; user can scroll freely |
@@ -667,8 +671,9 @@ reading surface of the workstation.
 - Empty-home task entry starts in the always-visible bottom composer. There is
   no starter-card or contextual quick-action layer between the hero and
   composer.
-- The failed-turn recovery card is a labelled `role="status"` region with
-  one explicit **Continue** action. It uses icon geometry plus text, never color
+- The failed-turn recovery card is a labelled `role="status"` region in the
+  active Composer stack directly above the input, with one explicit **Continue**
+  action. It uses icon geometry plus text, never color
   alone. Continue sends the current locale's continuation prompt as a new user
   turn in the same session; no Regenerate action is present. Completed turns do
   not render this card.
@@ -1279,9 +1284,11 @@ Single message render — either user (plaintext) or assistant (markdown streami
   background or outer border. Its Sparkles/chevron trigger uses secondary text,
   and the expanded markdown is indented by a subtle theme-token left rule. It
   is never concatenated into answer markdown.
-- Hover actions: quiet icon-only action chips under the bubble — Copy always;
-  Fork and Regenerate on completed assistant turns; Edit and Delete on user
-  turns. Assistant rows expose neither Delete nor Edit. Chips render the glyph
+- Hover actions: quiet icon-only action chips under the bubble — Copy on idle
+  assistant turns; Fork and Regenerate on completed assistant turns; Edit and
+  Delete on user turns. A streaming assistant turn omits its Copy action until
+  the response settles. Assistant rows expose neither Delete nor Edit. Chips
+  render the glyph
   alone: the label is carried by `aria-label` plus a themed hover/focus
   tooltip 8px above the chip (compact raised shadow, not the composer glow),
   never as visible caption text (D137). Right-aligned
@@ -1536,9 +1543,8 @@ managed thinking disclosures close so the answer remains the visual focus. A
 user click on a group, row, or collapse rail takes ownership of that disclosure;
 later stream updates and completion never reverse that choice.
 The group header shows `Processing · 12s` while active or `Processed for 12s`
-after completion, and also carries a compact current-state capsule such as
-`Editing`, `Thinking`, `Waiting for model`, or `Retrying`. Expanding it reveals
-the ordered tool activity rows and their nested result disclosures. The group
+after completion. Expanding it reveals the ordered tool activity rows and their
+nested result disclosures. The group
 reports duration and containment, not turn outcome: a failed child remains an
 error on its own ToolCallRow but never changes the group header to a terminal
 failure. Terminal agent errors remain owned by either the assistant error or
@@ -1551,7 +1557,7 @@ seconds when non-zero) from one hour onward. Zero-value units are omitted, so
 ### 9.2 Anatomy
 
 ```text
-[sparkle] Processing · 12s  [Editing]  3 steps        [›]
+[sparkle] Processing · 12s  3 steps                 [›]
           ├─ [file] Read /src/foo.ts        [›]
           ├─ [search] Searched TODO  24 matches   [›]
           └─ [terminal] Ran pnpm test  exit 1  • Failed  [copy] [›]
@@ -1561,8 +1567,8 @@ seconds when non-zero) from one hour onward. Zero-value units are omitted, so
 
 - The leading Lucide icon reflects the action type: file, folder, search,
   edit, terminal, web, or generic tool.
-- The group header owns the elapsed timer, current-state capsule, and step
-  count. It stays in the transcript after completion. Historical groups remain
+- The group header owns the elapsed timer and step count. It stays in the
+  transcript after completion. Historical groups remain
   collapsed; the latest active group opens automatically and returns to a
   collapsed state when it settles unless the user has interacted with it.
 - Tool-call details remain collapsed by default while the group is open. The
@@ -1578,9 +1584,9 @@ seconds when non-zero) from one hour onward. Zero-value units are omitted, so
   exit earns no chip — the row status already says so. The `truncated` chip
   follows `details.truncated` and therefore appears only when this result was
   cut short, not when a Read window of a longer file was filled (D306).
-- The current-state capsule is short, localized, and single-line; its live
-  text tells the user what the agent is doing without adding a second progress
-  card. Long paths remain in the row summary and are ellipsized.
+- Live activity remains in the processing group, its latest row, or the
+  dedicated runtime indicator; no additional status capsule is rendered.
+  Long paths remain in the row summary and are ellipsized.
 - The disclosure chevron is quiet until hover/focus or expansion.
 - A `run` row's head carries two more controls than the others, because its
   command lives only there (D226, §9.10): the outcome with a toned dot, and a

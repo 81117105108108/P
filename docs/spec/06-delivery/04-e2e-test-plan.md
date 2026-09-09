@@ -1543,8 +1543,10 @@ Each scenario is documented in this format:
   successful tool and a failing or aborted tool.
 - **Steps**: 1) Run representative read, search, edit, and command tools. 2)
   While the turn is active, inspect the latest processing group and its latest
-  tool/thinking row. 3) Confirm the group header exposes the current action or
-  runtime phase. 4) Wait for completion and inspect the settled transcript. 5)
+  tool/thinking row. 3) Confirm the group header retains its localized
+  processing label, elapsed time, and step count while live activity remains
+  in the rows or dedicated runtime indicator. 4) Wait for completion and inspect
+  the settled transcript. 5)
   Manually expand a completed group and row, then copy its output. 6) While a
   later turn is streaming, manually collapse its active group and verify that
   new stream updates do not reopen it. 7) Click the vertical rule beside an
@@ -1554,9 +1556,8 @@ Each scenario is documented in this format:
   is visible, but tool-call details, including failed tool details, remain
   collapsed. The latest thinking step
   opens automatically while it streams; older groups and rows remain collapsed.
-  The header shows a localized current-state capsule such as Editing,
-  Thinking, Waiting for model, Retrying, or Waiting for subagents, alongside
-  elapsed time and the step count. When the turn settles, the automatic
+  The header shows its localized processing label, elapsed time, and step count
+  without an additional status capsule. When the turn settles, the automatic
   thinking disclosure closes, while a group or row touched by the user keeps
   its chosen state. Expanded calls use transparent semantic activity rows with
   an action icon, natural-language verb, monospace primary argument, and quiet
@@ -2935,16 +2936,19 @@ Each scenario is documented in this format:
   immediately after the change tool row. 4) Expand the inline card and verify
   its hunks. 5) Commit
   the edited file and confirm the recorded card remains, then use rollback
-  once. 6) Trigger the retriable failure. 7) Inspect the failure card, then
-  choose Retry. 8) Start another new prompt and inspect the old card.
+  once. 6) Trigger the retriable failure. 7) Inspect the failure card above the
+  Composer input, then choose Retry. 8) Start another new prompt and inspect the
+  old card.
 - **Expected**: The recovered turn keeps the failed Read visible on its own row,
   labels the containing group as processed, completes its session outcome, and
   shows no failure card. Completion uses the transcript and inline review card
   as its evidence without adding a "Task complete" card. File status, counts,
   and hunks remain on the adjacent card after commit, and guarded rollback
   restores the pre-tool state. Failure shows that existing work remains,
-  exposes Retry and Continue, and retry preserves the latest prompt. A new turn
-  clears the previous failure card; an abort creates no failure outcome copy.
+  exposes Retry and Continue above the Composer input without a duplicate card
+  beside the transcript processing group, and retry preserves the latest prompt.
+  A new turn clears the previous failure card; an abort creates no failure
+  outcome copy.
 - **Specs linked**: `04-ux/08-component-spec.md`,
   `04-ux/09-interaction-patterns.md`, `03-runtime/10-session-state-machine.md`,
   ADR 0069
@@ -3505,14 +3509,16 @@ Each scenario is documented in this format:
   the text, and retry with Cmd/Ctrl+Enter. 5) After the new answer completes,
   use the `current / total` pager to return to the original exchange and
   forward again. 6) Reload the session. 7) Choose Edit on the slash-command
-  turn and inspect the seeded text. 8) Try Edit while a turn is running.
+  turn and inspect the seeded text. 8) Start another response and inspect its
+  assistant toolbar while it is streaming and after it completes. 9) Try Edit
+  while a turn is running.
 - **Expected**: Every toolbar chip shows its glyph only, with the label
   appearing as a fully visible tooltip 8px above the chip on hover and on
-  keyboard focus (#74); no chip renders caption text. The tooltip uses the
-  compact raised shadow rather than the composer glow so its surface stays
-  visually separate from `--ds-bg-hover`. The assistant toolbar offers Copy,
-  Fork, Regenerate; the user toolbar offers the pager (when variants exist),
-  Copy, Edit, Delete. Edit replaces the prompt bubble with a wider inline
+  keyboard focus (#74); no chip renders caption text. While an assistant
+  response is streaming, its toolbar omits Copy; after the response settles,
+  the assistant toolbar offers Copy, Fork, Regenerate. The user toolbar offers
+  the pager (when variants exist), Copy, Edit, Delete. Edit replaces the prompt
+  bubble with a wider inline
   textarea with Retry and Cancel controls; Escape or Cancel restores the
   bubble unchanged. Retry truncates the transcript from that prompt and
   streams a new answer whether or not the text changed, leaving a
