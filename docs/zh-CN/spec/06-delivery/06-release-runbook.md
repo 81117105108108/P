@@ -58,6 +58,9 @@ PNG 通过 `BrandLogo`。 PNG 是规范的；
   (`build/entitlements.mac.plist`: JIT + 无符号可执行内存 +
   库验证禁用 — 标准 Electron 设置）。
 - `Resources/bin/pi-desktop-host-core` — Rust 主机二进制文件（发布版本）。
+- Windows NSIS 构建包含静态链接 MSVC CRT 的 x64
+  `pi-desktop-host-core.exe`，因此全新的 Windows x64 或 Windows 11 ARM64
+  （x64 模拟）安装无需在本地服务启动前单独安装 Visual C++ Redistributable。
 - `Resources/agent-runtime/` — 捆绑的 sidecar，执行
   `ELECTRON_RUN_AS_NODE=1`（未发货单独的 Node）。
 - `Resources/licenses/` — 通知必须在以下情况下保持可分发：

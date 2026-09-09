@@ -69,6 +69,12 @@ Linux 打包的 host-core 在 Ubuntu 22.04 上构建，需要 glibc 2.35 或更�
 重启循环：界面会列出这些发行版，而不是只显示“无法连接本地服务”。Linux 标签
 作业不得换用会抬高所需 glibc 的更新 runner。
 
+Windows 安装包目标为 x64。Windows host-core 使用
+`x86_64-pc-windows-msvc` 目标和 `target-feature=+crt-static` 构建，因此 NSIS
+安装包无需在启动本地服务前单独安装 Visual C++ Redistributable。Windows 11 ARM64
+系统通过操作系统的 x64 模拟运行该 x64 安装包；目前不发布原生 Windows ARM64
+工件。
+
 监管参数（在Electron main中实现）：
 
 - 子进程退出立即拒绝该子进程的所有正在进行的 RPC（无 130 秒超时等待）。
