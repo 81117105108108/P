@@ -9079,12 +9079,12 @@ are withdrawn with ADR 0165.
   confirm delegation resolves loopback binding. 3) Run Semble top-k 5, then
   `sg` structural search, then `search_graph`/`trace_path`; confirm
   `ToolSearch` activates one MCP tool per turn. 4) Confirm `pi.caveman` and
-  `pi.ponytail` load from `resources/plugins` with zero permissions and their
+  `pi.ponytail` load from `resources/plugins` with `agent.prompt.inject` only and their
   skills load on demand via `Skill`. 5) Switch model mid-sweep; confirm
   context stays bounded (window 200, panes 3).
 - **Expected**: Local pins resolve without secret/proxy; cloud fallback
   untouched; MCP router order semble → sg → graph holds; skill bodies never
-  ship up front; bundled plugins need no grants; inference cost drops on
+  ship up front; bundled plugins need no grants beyond prompt injection; inference cost drops on
   sweeps with no quality regression on judgments.
 - **Specs linked**: `03-runtime/11-provider-model-system.md`,
   `03-runtime/02-agent-runtime.md` §5f, `07-plugins/01-plugin-system.md`,
@@ -9092,6 +9092,30 @@ are withdrawn with ADR 0165.
 - **Acceptance**: C, G (plugins), Quality
 - **Status**: Unit-covered (`provider-presets`, `subagent-definition`,
   `bundled-mcp`, `core-loop`); full Electron journey deferred by policy
+
+#### E2E-234: Core-loop cost and robustness policy
+
+- **Preconditions**: Clean profile with one cloud provider and one loopback
+  local preset. Fixture repo with `.rs`/`.ts` sources and tests.
+- **Steps**: 1) Activate an MCP tool via `ToolSearch`, start a new turn, and
+  confirm the tool stays warm (no TOOL_NOT_FOUND) within K=3 turns. 2) Edit a
+  source file without running tests; attempt completion and confirm one
+  synthetic verification turn names the command. 3) Spawn a mutating delegate;
+  confirm it targets `.pi/worktrees/task-<id>` and merges back after review.
+  4) Run two identical prompts; confirm the static prefix is byte-identical
+  (cache-hit eligible) with dynamic hydrations in the suffix. 5) Trigger
+  compaction on a history with large Read/Bash outputs; confirm stubs carry
+  checksums/tails before any summarizer call. 6) Run a triage sweep with no
+  local model and no small-model choice; confirm it falls back to the current
+  chat model.
+- **Expected**: No redundant ToolSearch turns; unverified patches never close
+  silently; delegates never dirty the primary checkout; cache prefixes stay
+  stable; history shrinks 40–60% free; cheap work never invents a model.
+- **Specs linked**: `03-runtime/02-agent-runtime.md` §7.1, `03-runtime/11-provider-model-system.md`,
+  ADR 0208
+- **Acceptance**: C, E (tools), Quality
+- **Status**: Unit-covered (`mcp-suite`, `skills-agents`, `cost-policy`,
+  `ipc-transport`); full Electron journey deferred by policy
 
 ## Remote Agent Control target scenarios (post-MVP)
 

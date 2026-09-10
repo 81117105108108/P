@@ -139,6 +139,15 @@ Any vendor not listed but reachable by:
 - custom headers
 - custom auth scheme
 
+### Tiered task routing and thinking budgets (ADR 0208)
+
+Cheap background work (ToolSearch matching, session titles, compaction
+summaries, commit/PR summaries, triage sweeps) defaults to a small model:
+configured local model → user-chosen small provider model → current chat
+model. Frontier models stay for implement/refactor/debug/plan/synthesis.
+Exploratory delegates budget ≤1,024 thinking tokens; Plan/synthesis reserves
+8,192–16,384 (`shared/model-routing`, `shared/thinking-budgets`).
+
 ## 6. Model support policy
 
 ### 6.1 No hard model allowlist ceiling
