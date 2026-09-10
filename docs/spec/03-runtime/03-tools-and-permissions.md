@@ -39,6 +39,13 @@ Let the agent get things done, but stay under control by default.
 | `Edit` | high | Modify files through line-anchored ops against a verified `tag` ([18](18-line-anchored-edit-contract.md)) |
 | `Bash` | high | Execute commands |
 | `asktool` | low | Ask one or more user questions and return the submitted answers as tool output |
+| `ReadRange` | low | Frame-safe windowed read (200-line default, 2000 max) for large files |
+| `AstGrep` | low | `$NAME` structural search; use when text search is noisy |
+| `AstRewrite` | high | Hash-anchored structural edit with recovery and syntax guard |
+| `LspDiagnostics/GotoDef/References/Hover` | low | Supervised LSP queries; honest unavailable errors with install hints |
+| `IsoCreate/IsoDiff/IsoDiscard` | high/low/high | CoW task snapshots, numstat diffs, cleanup |
+| `RulesGet` | low | Rendered rule hierarchy for a path |
+| `PtyCheck` | low | Classify output text for interactive prompts |
 
 > Names may be fine-tuned during implementation, but semantics stay consistent.
 

@@ -14,7 +14,8 @@ It does **not** replace pi. It provides safe host capabilities to:
 
 1. Workspace path canonicalization, boundary checks, and permission-gated
    explicit outside paths
-2. Builtin tool execution (Read/Glob/Grep/Write/Edit/Bash)
+2. Builtin tool execution (Read/Glob/Grep/Write/Edit/Bash plus native
+   ReadRange/AstGrep/AstRewrite/Lsp*/Iso*/RulesGet/PtyCheck, ADR 0209)
 3. Authoritative durable session-mode and tool-policy evaluation
 4. Permission policy evaluation, including Plan/Goal Bash prompts
 5. Immutable `.pi/plan/*.md` and `.pi/goal/*.md` artifact writer,
@@ -121,6 +122,25 @@ notification.list
 8. Secrets never returned to renderer logs
 9. Crash in plugin, shell, or approval path fails closed and does not grant or
    replay execution
+
+## 6a. Native engine modules (ADR 0209)
+
+- `cache::fs_cache`: mtime-keyed file cache (content, line offsets, SHA256).
+- `ast::{grep,patch}`: `$NAME` structural search; hash-anchored edits with
+  enclosing-item recovery and delimiter-balance rejection. Tree-sitter
+  grammars slot behind the same API later.
+- `lsp::{client,handlers}` + supervisor: stdio framing, request builders,
+  binary discovery (rust-analyzer, vtsls, pyright, gopls), supervised
+  one-shot queries with diagnostics capture; long-lived multiplexing later.
+- `iso::{cow,worktree}`: reflink snapshots with copy fallback (destination
+  skipped), git worktree fallback, numstat diff summaries.
+- `pty`: ANSI prompt detector (sudo/ssh/shell/question) + supervised piped
+  runner with timeouts; true PTY allocation (`portable-pty`) later.
+- `rules::discovery`: `.cursorrules`/`.clinerules`/`AGENTS.md`/`CLAUDE.md`
+  hierarchy plus `.pi/rules/*.md`, nearest-first with ceiling support.
+
+Read-only natives join the Plan allowlist; mutating natives (`AstRewrite`,
+`IsoCreate`, `IsoDiscard`) stay Agent-only with high risk.
 
 ## 7. Packaging
 
