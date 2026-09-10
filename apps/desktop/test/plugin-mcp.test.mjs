@@ -458,3 +458,191 @@ test("mcp clients are closed when the plugin goes away", () => {
   assert.match(clear, /client\.close\(\)/);
   assert.match(clear, /this\.mcpClients\.delete\(pluginId\)/);
 });
+
+async function startLegacySseServer(t) {
+  let sseRes = null;
+  const posts = [];
+  const server = createServer((req, res) => {
+    if (req.method === "GET" && req.url === "/sse") {
+      res.writeHead(200, {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+      });
+      res.write(`event: endpoint\ndata: /messages?sid=7\n\n`);
+      sseRes = res;
+      return;
+    }
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => {
+      const message = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+      posts.push({ url: req.url, message });
+      const reply = (result) => ({
+        jsonrpc: "2.0",
+        id: message.id,
+        result,
+      });
+      if (message.method === "initialize") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify(reply({ protocolVersion: "2025-06-18", capabilities: {} })));
+        return;
+      }
+      if (message.method === "notifications/initialized") {
+        res.writeHead(202).end();
+        return;
+      }
+      if (message.method === "tools/list") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify(reply({ tools: [{ name: "sse-echo" }] })));
+        return;
+      }
+      // tools/call answers 202 and pushes the result on the GET stream,
+      // proving the legacy split-channel path end to end.
+      res.writeHead(202).end();
+      sseRes?.write(
+        `event: message\ndata: ${JSON.stringify(reply({ content: [{ type: "text", text: "via-stream" }] }))}\n\n`,
+      );
+    });
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const dispose = async () => {
+    // End the held event stream first: server.close() waits for it.
+    try {
+      sseRes?.end();
+    } catch {
+      // Already gone with the client abort.
+    }
+    await new Promise((resolve) => server.close(resolve));
+  };
+  return { url: `http://127.0.0.1:${server.address().port}/sse`, posts, dispose };
+}
+
+test("a legacy sse server handshakes over GET and answers on the stream", async (t) => {
+  const { url, posts, dispose } = await startLegacySseServer(t);
+  const client = new McpServerClient({
+    pluginId: "com.example.legacy",
+    rootPath: mkdtempSync(join(tmpdir(), "pi-mcp-sse-")),
+    server: { id: "legacy", transport: "sse", url },
+    values: {},
+    connectTimeoutMs: 5_000,
+    callTimeoutMs: 5_000,
+  });
+  t.after(async () => {
+    client.close();
+    await dispose();
+  });
+
+  const tools = await client.connect();
+  assert.deepEqual(tools.map((tool) => tool.name), ["sse-echo"]);
+  const result = await client.callTool("sse-echo", {});
+  assert.equal(describeMcpContent(result.content), "via-stream");
+  assert.ok(
+    posts.every((post) => post.url.startsWith("/messages")),
+    "posts ride the adopted endpoint url",
+  );
+});
+
+test("mcp oauth rotates the bearer once on 401 and retries", async (t) => {
+  const seen = [];
+  const server = createServer((req, res) => {
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => {
+      if (req.url === "/token") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({ access_token: "new-bearer", refresh_token: "r2", expires_in: 3600 }),
+        );
+        return;
+      }
+      const message = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+      seen.push({ auth: req.headers.authorization, method: message.method });
+      if (req.headers.authorization !== "Bearer new-bearer") {
+        res.writeHead(401).end("unauthorized");
+        return;
+      }
+      const answer = (result) => {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ jsonrpc: "2.0", id: message.id, result }));
+      };
+      if (message.method === "initialize") return answer({ protocolVersion: "2025-06-18", capabilities: {} });
+      if (message.method === "notifications/initialized") {
+        res.writeHead(202).end();
+        return;
+      }
+      if (message.method === "tools/list") return answer({ tools: [{ name: "guarded" }] });
+      return answer({ content: [{ type: "text", text: "guarded-ok" }] });
+    });
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const stored = {};
+  let reads = 0;
+  const { McpOAuthVault, secretRefForMcpOauth, beginMcpOAuth } = await import(
+    "../electron/main/mcp-oauth.ts"
+  );
+  assert.equal(secretRefForMcpOauth("notion"), "secret:mcp:notion:oauth");
+  const begin = await beginMcpOAuth({
+    authorizeEndpoint: `${base}/authorize`,
+    tokenEndpoint: `${base}/token`,
+    clientId: "pi-desktop",
+    redirectUri: "http://127.0.0.1/callback",
+    scope: "read",
+  });
+  assert.match(begin.url, /code_challenge=S256|code_challenge_method=S256/);
+  assert.match(begin.url, /response_type=code/);
+
+  const vault = new McpOAuthVault(
+    "notion",
+    {
+      authorizeEndpoint: `${base}/authorize`,
+      tokenEndpoint: `${base}/token`,
+      clientId: "pi-desktop",
+      redirectUri: "http://127.0.0.1/callback",
+    },
+    {
+      // No grant on the handshake read: the first request 401s, the retry
+      // read finds the refresh token and rotates. This proves refresh-once
+      // recovery instead of proactive rotation.
+      get: async (ref) => {
+        reads += 1;
+        if (ref !== secretRefForMcpOauth("notion") || reads < 2) return undefined;
+        return "refresh-1";
+      },
+      set: async (ref, value) => {
+        stored[ref] = value;
+      },
+      delete: async (ref) => {
+        delete stored[ref];
+      },
+    },
+  );
+  const client = new McpServerClient({
+    pluginId: "com.example.oauth",
+    rootPath: mkdtempSync(join(tmpdir(), "pi-mcp-oauth-")),
+    server: { id: "notion", transport: "http", url: `${base}/mcp` },
+    values: {},
+    oauth: vault,
+    connectTimeoutMs: 5_000,
+    callTimeoutMs: 5_000,
+  });
+  t.after(() => client.close());
+
+  // The stale (absent) bearer 401s once, the vault rotates, the retry wins.
+  const tools = await client.connect();
+  assert.deepEqual(tools.map((tool) => tool.name), ["guarded"]);
+  const result = await client.callTool("guarded", {});
+  assert.equal(describeMcpContent(result.content), "guarded-ok");
+  assert.ok(
+    seen.length > 0 && seen[0].auth === undefined,
+    "first request goes out unauthenticated and takes the 401",
+  );
+  assert.ok(
+    seen.some((entry) => entry.auth === "Bearer new-bearer"),
+    "retried request carries the rotated bearer",
+  );
+  assert.equal(stored[secretRefForMcpOauth("notion")], "r2");
+});

@@ -115,6 +115,12 @@ pub fn secret_ref_for_provider_oauth(provider_id: &str) -> String {
     format!("secret:provider:{provider_id}:oauth")
 }
 
+/// Where a remote MCP server's OAuth refresh token lives. Separate namespace
+/// so MCP grants can never collide with provider credentials.
+pub fn secret_ref_for_mcp_oauth(server_id: &str) -> String {
+    format!("secret:mcp:{server_id}:oauth")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,5 +223,20 @@ mod tests {
         store.delete(&oauth).expect("delete oauth");
         assert!(!store.has(&oauth));
         assert!(store.has(&api_key));
+    }
+
+    #[test]
+    fn mcp_oauth_refs_live_in_their_own_namespace() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = SecretStore::open(dir.path()).expect("open store");
+        let mcp = secret_ref_for_mcp_oauth("notion");
+        assert_eq!(mcp, "secret:mcp:notion:oauth");
+        store.set(&mcp, "refresh-123").expect("set");
+        assert_eq!(
+            store.get(&mcp).expect("get"),
+            Some("refresh-123".to_string()),
+        );
+        // Same id in the provider namespace is a different secret.
+        assert!(!store.has(&secret_ref_for_provider_oauth("notion")));
     }
 }

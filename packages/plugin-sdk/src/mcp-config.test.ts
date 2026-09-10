@@ -85,6 +85,21 @@ describe("validateMcpServer (http)", () => {
   });
 });
 
+describe("validateMcpServer (sse)", () => {
+  it("accepts legacy sse endpoints like http ones", () => {
+    expect(
+      validateMcpServer({ id: "a", transport: "sse", url: "https://example.com/sse" }).ok,
+    ).toBe(true);
+  });
+
+  it("rejects stdio-only fields and bad urls", () => {
+    expect(error({ id: "a", transport: "sse", url: "https://x", command: "y" })).toMatch(
+      /must not set command/,
+    );
+    expect(error({ id: "a", transport: "sse", url: "file:///x" })).toMatch(/http or https/);
+  });
+});
+
 describe("validateMcpServer (shape)", () => {
   it("rejects bad ids and transports", () => {
     expect(error({ id: "9bad", transport: "stdio", command: "x" })).toMatch(/id must match/);

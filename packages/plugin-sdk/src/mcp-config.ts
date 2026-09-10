@@ -55,8 +55,9 @@ function checkRefRecord(
  * Validate one `contributes.mcpServers` entry.
  *
  * stdio servers may only name a bare executable or a plugin-relative one, and
- * remote servers may use either HTTP or HTTPS; callers should warn about
- * non-loopback HTTP because its requests are not encrypted.
+ * remote servers (`http` streamable or legacy `sse`) may use either HTTP or
+ * HTTPS; callers should warn about non-loopback HTTP because its requests are
+ * not encrypted.
  */
 export function validateMcpServer(raw: unknown): McpValidationResult {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -66,8 +67,8 @@ export function validateMcpServer(raw: unknown): McpValidationResult {
   if (typeof server.id !== "string" || !MCP_SERVER_ID.test(server.id)) {
     return { ok: false, error: "mcp server id must match [a-zA-Z][a-zA-Z0-9_-]{0,63}" };
   }
-  if (server.transport !== "stdio" && server.transport !== "http") {
-    return { ok: false, error: `mcp server "${server.id}" transport must be "stdio" or "http"` };
+  if (server.transport !== "stdio" && server.transport !== "http" && server.transport !== "sse") {
+    return { ok: false, error: `mcp server "${server.id}" transport must be "stdio", "http", or "sse"` };
   }
   const label = `mcp server "${server.id}"`;
 

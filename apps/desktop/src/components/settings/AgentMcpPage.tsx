@@ -269,7 +269,7 @@ export function AgentMcpPage() {
         server.label,
         server.id,
         server.description,
-        server.transport === "http" ? server.url : server.command,
+        server.transport !== "stdio" ? server.url : server.command,
       );
     return {
       global: globalServers.filter(match),
@@ -326,12 +326,12 @@ export function AgentMcpPage() {
     return (
       <CapabilityRow
         key={key}
-        glyph={server.transport === "http" ? <IconServer size={16} /> : <IconTerminal size={16} />}
+        glyph={server.transport !== "stdio" ? <IconServer size={16} /> : <IconTerminal size={16} />}
         glyphState={status?.state}
         name={name}
         off={!server.enabled}
         menuOpen={menuFor === key}
-        command={server.transport === "http" ? server.url : server.command}
+        command={server.transport !== "stdio" ? server.url : server.command}
         badges={
           <>
             <span className="agent-capability-badge is-level">
@@ -340,7 +340,7 @@ export function AgentMcpPage() {
                 : t("settings.capabilityFilterProject")}
             </span>
             <span className="agent-capability-badge">
-              {server.transport === "http"
+              {server.transport !== "stdio"
                 ? t("settings.transportHttp")
                 : t("settings.transportStdio")}
             </span>

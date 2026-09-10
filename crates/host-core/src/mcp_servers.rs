@@ -350,16 +350,16 @@ impl McpServerRegistry {
                     bail!("MCP_INVALID: a stdio server must not set url or headers");
                 }
             }
-            "http" => {
+            "http" | "sse" => {
                 let url = config
                     .url
                     .as_deref()
                     .filter(|value| !value.trim().is_empty())
-                    .ok_or_else(|| anyhow::anyhow!("MCP_INVALID: an http server requires url"))?;
+                    .ok_or_else(|| anyhow::anyhow!("MCP_INVALID: a remote server requires url"))?;
                 check_len("url", url)?;
                 check_url(url)?;
                 if config.command.is_some() || !config.args.is_empty() || !config.env.is_empty() {
-                    bail!("MCP_INVALID: an http server must not set command, args or env");
+                    bail!("MCP_INVALID: a remote server must not set command, args or env");
                 }
                 if config.headers.len() > MAX_HEADERS {
                     bail!("MCP_INVALID: at most {MAX_HEADERS} headers");
@@ -371,7 +371,7 @@ impl McpServerRegistry {
                     check_len("headers", value)?;
                 }
             }
-            _ => bail!("MCP_INVALID: transport must be \"stdio\" or \"http\""),
+            _ => bail!("MCP_INVALID: transport must be \"stdio\", \"http\", or \"sse\""),
         }
         Ok(())
     }

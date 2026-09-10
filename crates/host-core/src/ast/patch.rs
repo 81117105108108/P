@@ -126,11 +126,22 @@ fn balance_delta(text: &str) -> i64 {
 
 /// Apply `req` against `current` text. Pure: no filesystem access.
 pub fn apply_hash_edit_text(current: &str, req: &HashEditRequest) -> Result<PatchOutcome, PatchError> {
+    apply_hash_edit_text_with_lang(current, req, None)
+}
+
+/// Like [`apply_hash_edit_text`] with a Tree-sitter syntax verdict when `lang`
+/// is known: an edit that introduces *new* parse errors is rejected with the
+/// offending line; otherwise the bracket-balance fallback applies.
+pub fn apply_hash_edit_text_with_lang(
+    current: &str,
+    req: &HashEditRequest,
+    lang: Option<crate::ast::treesitter::TsLanguage>,
+) -> Result<PatchOutcome, PatchError> {
     if sha_hex(&req.expected_context) != req.anchor_hash {
         return Err(PatchError::AnchorNotFound);
     }
     if let Some(offset) = current.find(&req.expected_context) {
-        return splice(current, offset, &req.expected_context, &req.replacement, false);
+        return splice(current, offset, &req.expected_context, &req.replacement, false, lang);
     }
     // Stale-anchor recovery: find the enclosing item of the expected block,
     // then the same signature in the current text, and re-anchor when the
@@ -147,11 +158,63 @@ pub fn apply_hash_edit_text(current: &str, req: &HashEditRequest) -> Result<Patc
                 .map(|(i, _)| item_pos + i)
                 .collect();
             if candidates.len() == 1 {
-                return splice(current, candidates[0], first_line, &req.replacement, true);
+                return splice(current, candidates[0], first_line, &req.replacement, true, lang);
             }
         }
     }
+    // Grammar-scoped recovery: same signature via real definitions.
+    if let Some(lang) = lang {
+        if let Some((offset, needle_len)) = ts_recover(current, req, lang) {
+            let needle = &current[offset..offset + needle_len];
+            return splice(current, offset, needle, &req.replacement, true, Some(lang));
+        }
+    }
     Err(PatchError::AnchorNotFound)
+}
+
+/// Definition-scoped recovery with a real parse: locate the definition whose
+/// label matches the expected block's signature, then require a unique
+/// first-line hit inside that definition's byte range.
+fn ts_recover(
+    current: &str,
+    req: &HashEditRequest,
+    lang: crate::ast::treesitter::TsLanguage,
+) -> Option<(usize, usize)> {
+    use crate::ast::treesitter as ts;
+    let tree = ts::parse(lang, current)?;
+    let first_line = req.expected_context.lines().next().unwrap_or("").trim();
+    if first_line.is_empty() {
+        return None;
+    }
+    let sig = enclosing_item(&req.expected_context, req.expected_context.len())
+        .map(|(_, l)| l)
+        .unwrap_or_default();
+    let sig_key = sig.split_whitespace().nth(1).unwrap_or("").trim_matches(|c| c == '(' || c == '{');
+    if sig_key.is_empty() {
+        return None;
+    }
+    let defs = ts::find_nodes(&tree, current, sig_key, 8);
+    let def = defs.iter().find(|d| d.label.contains(sig_key))?;
+    let start = line_offset(current, def.start_line)?;
+    let end = line_offset(current, def.end_line.saturating_add(1)).unwrap_or(current.len());
+    let body = current.get(start..end)?;
+    let hits: Vec<usize> = body.match_indices(first_line).map(|(i, _)| start + i).collect();
+    if hits.len() == 1 {
+        Some((hits[0], first_line.len()))
+    } else {
+        None
+    }
+}
+
+fn line_offset(text: &str, line: usize) -> Option<usize> {
+    let mut at = 0usize;
+    for (n, part) in text.split_inclusive('\n').enumerate() {
+        if n == line {
+            return Some(at);
+        }
+        at += part.len();
+    }
+    (line == text.lines().count()).then_some(text.len())
 }
 
 fn splice(
@@ -160,12 +223,15 @@ fn splice(
     needle: &str,
     replacement: &str,
     recovered: bool,
+    lang: Option<crate::ast::treesitter::TsLanguage>,
 ) -> Result<PatchOutcome, PatchError> {
     let mut next = String::with_capacity(current.len() + replacement.len());
     next.push_str(&current[..offset]);
     next.push_str(replacement);
     next.push_str(&current[offset + needle.len()..]);
-    if balance_delta(&next) != balance_delta(current) {
+    if let Some(lang) = lang {
+        ts_guard(current, &next, lang)?;
+    } else if balance_delta(&next) != balance_delta(current) {
         return Err(PatchError::SyntaxRejected {
             detail: "delimiter balance changed; edit would break syntax".into(),
         });
@@ -177,11 +243,35 @@ fn splice(
     })
 }
 
+/// Tree-sitter verdict: reject only when the edit introduces *new* parse
+/// errors. Editing an already-broken file is allowed (matches the bracket
+/// fallback's leniency); breaking a clean file is not.
+fn ts_guard(
+    current: &str,
+    next: &str,
+    lang: crate::ast::treesitter::TsLanguage,
+) -> Result<(), PatchError> {
+    use crate::ast::treesitter as ts;
+    let before_clean = ts::parse(lang, current).map(|t| ts::is_clean(&t)).unwrap_or(true);
+    let next_tree = ts::parse(lang, next).ok_or_else(|| PatchError::SyntaxRejected {
+        detail: "could not parse edited file".into(),
+    })?;
+    if !ts::is_clean(&next_tree) && before_clean {
+        let line = ts::first_error_line(&next_tree, next).unwrap_or(0) + 1;
+        return Err(PatchError::SyntaxRejected {
+            detail: format!("edit introduces syntax error at line {line}"),
+        });
+    }
+    Ok(())
+}
+
 /// Load, apply, and write back. Returns the outcome plus new file hash.
 pub fn apply_hash_edit_file(req: &HashEditRequest) -> Result<(PatchOutcome, String), PatchError> {
+    use crate::ast::treesitter::TsLanguage;
     let current =
         std::fs::read_to_string(&req.file_path).map_err(|e| PatchError::Io(e.to_string()))?;
-    let outcome = apply_hash_edit_text(&current, req)?;
+    let lang = TsLanguage::for_path(&req.file_path);
+    let outcome = apply_hash_edit_text_with_lang(&current, req, lang)?;
     let mut next = String::with_capacity(current.len() + req.replacement.len());
     // Recompute the splice against the file (same inputs => same offsets).
     let needle = if outcome.recovered {
@@ -254,5 +344,31 @@ mod tests {
             apply_hash_edit_text(current, &r),
             Err(PatchError::AnchorNotFound)
         );
+    }
+
+    #[test]
+    fn tree_sitter_rejects_new_syntax_errors_with_line() {
+        use crate::ast::treesitter::TsLanguage;
+        let current = "fn a() {\n    ok();\n}\n";
+        let r = req("    ok();\n", "    broken(();\n");
+        let err = apply_hash_edit_text_with_lang(current, &r, Some(TsLanguage::Rust))
+            .expect_err("must reject");
+        assert!(matches!(err, PatchError::SyntaxRejected { .. }));
+        assert!(err.to_string().contains("line"));
+    }
+
+    #[test]
+    fn tree_sitter_recovers_through_real_definitions() {
+        use crate::ast::treesitter::TsLanguage;
+        let current = "// header\nfn resolve_query() {\n    old();  \n}\n";
+        let stale = HashEditRequest {
+            file_path: std::path::PathBuf::from("x.rs"),
+            anchor_hash: sha_hex("fn resolve_query() {\n    old();\n"),
+            expected_context: "fn resolve_query() {\n    old();\n".into(),
+            replacement: "fn resolve_query() {\n    new();\n".into(),
+        };
+        let out = apply_hash_edit_text_with_lang(current, &stale, Some(TsLanguage::Rust))
+            .expect("recover");
+        assert!(out.recovered);
     }
 }

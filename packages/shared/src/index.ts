@@ -32,6 +32,7 @@ export * from "./thinking-budgets.js";
 export * from "./compaction-pass.js";
 export * from "./speculative.js";
 export * from "./inspect-ui.js";
+export * from "./skill-harness.js";
 export * from "./model-catalog.js";
 export * from "./github-feedback.js";
 export * from "./network-proxy.js";

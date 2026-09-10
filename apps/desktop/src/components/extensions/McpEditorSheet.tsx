@@ -128,10 +128,10 @@ export function draftToInput(
     enabled: draft.enabled,
     scope: draft.scope,
   };
-  if (draft.transport === "http") {
+  if (draft.transport !== "stdio") {
     return {
       ...base,
-      transport: "http",
+      transport: draft.transport,
       url: draft.url.trim(),
       headers: pairsToRecord(draft.headers),
     };
@@ -289,11 +289,17 @@ export function McpEditorSheet({
         labelKey: "extensions.mcp.transportHttp",
         hintKey: "extensions.mcp.transportHttpHint",
       },
+      {
+        id: "sse",
+        icon: <IconServer size={14} />,
+        labelKey: "extensions.mcp.transportSse",
+        hintKey: "extensions.mcp.transportSseHint",
+      },
     ],
     [],
   );
   const insecureHttp =
-    draft.transport === "http" && isNonLoopbackHttpMcpUrl(draft.url.trim());
+    draft.transport !== "stdio" && isNonLoopbackHttpMcpUrl(draft.url.trim());
 
   return (
     <div

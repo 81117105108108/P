@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { check } from "./check.js";
 import { pack } from "./pack.js";
 import { publish } from "./publish.js";
+import { skillTest } from "./skill-test.js";
 import { TEMPLATE_NAMES, isTemplateName, scaffold } from "./templates.js";
 
 const USAGE = `pi-plugin — PI-Desktop plugin development commands
@@ -12,6 +13,7 @@ Usage:
   pi-plugin check <dir>
   pi-plugin pack <dir> [--out <dir>]
   pi-plugin publish <dir> [--out <dir>] [--ref <ref>] [--channel stable|beta] [--allow-dirty]
+  pi-plugin skill-test --skill <skill.md> --goldens <goldens.json> [--threshold <0-1>]
 
 Templates:
 ${TEMPLATE_NAMES.map((name) => `  ${name}`).join("\n")}
@@ -157,6 +159,46 @@ async function runPublish(flags: Flags): Promise<number> {
   }
 }
 
+/**
+ * Static skill evaluation: gates prompt tweaks on golden questions before
+ * the plugin ships. No model call — trigger overlap plus taught vocabulary.
+ */
+async function runSkillTest(flags: Flags): Promise<number> {
+  const skill = flags.options.skill;
+  const goldens = flags.options.goldens;
+  if (!skill || !goldens) {
+    process.stderr.write("pi-plugin skill-test needs --skill <skill.md> --goldens <goldens.json>\n\n");
+    process.stderr.write(USAGE);
+    return 2;
+  }
+  try {
+    const threshold = flags.options.threshold ? Number(flags.options.threshold) : undefined;
+    const report = await skillTest({
+      skillPath: resolve(skill),
+      goldensPath: resolve(goldens),
+      ...(threshold !== undefined && Number.isFinite(threshold) ? { threshold } : {}),
+    });
+    for (const golden of report.goldens) {
+      const mark = golden.pass ? "pass" : "FAIL";
+      process.stdout.write(
+        `${mark}  trigger=${golden.trigger.toFixed(2)}  ${golden.question}\n`,
+      );
+      for (const missing of golden.missing) {
+        process.stdout.write(`      missing phrase: ${missing}\n`);
+      }
+    }
+    if (!report.ok) {
+      process.stderr.write(`\nskill-test failed for ${report.name}\n`);
+      return 1;
+    }
+    process.stdout.write(`\nOK ${report.name} — ${report.goldens.length} golden(s)\n`);
+    return 0;
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 1;
+  }
+}
+
 async function main(): Promise<number> {
   const [command, ...rest] = process.argv.slice(2);
   const flags = parseArgs(rest);
@@ -170,6 +212,8 @@ async function main(): Promise<number> {
       return runPack(flags);
     case "publish":
       return runPublish(flags);
+    case "skill-test":
+      return runSkillTest(flags);
     case undefined:
     case "help":
     case "--help":

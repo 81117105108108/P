@@ -143,12 +143,12 @@ type PluginSkillContrib = {
 type PluginMcpServerContrib = {
  id: string; // ^[a-zA-Z][a-zA-Z0-9_-]{0,63}$
  label?: string;
- transport: "stdio" | "http";
+ transport: "stdio" | "http" | "sse"; // "http" is streamable; "sse" is the legacy GET+POST pair
  // stdio only
  command?: string; // bare PATH name, or plugin-relative executable
  args?: string[];
  env?: Record<string, string | { setting: string }>;
- // remote HTTP transport
+ // remote transports (http/sse)
  url?: string; // absolute http(s) endpoint; HTTP may target a trusted LAN host
  headers?: Record<string, string | { setting: string }>;
 };
@@ -408,6 +408,12 @@ MVP may implement only:
  "transport": "http",
  "url": "https://mcp.example.com/issues",
  "headers": { "Authorization": { "setting": "issuesAuth" } }
+ },
+ {
+ "id": "legacy-docs",
+ "transport": "sse",
+ "url": "https://mcp.example.com/sse",
+ "headers": { "Authorization": { "setting": "docsAuth" } }
  }
  ],
  "services": [{ "id": "watcher", "label": "Repo watcher" }],
