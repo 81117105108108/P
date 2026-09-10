@@ -5,6 +5,9 @@
 - Deciders: PI-Desktop core
 - Related: ADR 0048, ADR 0061, ADR 0062, ADR 0089, ADR 0104, ADR 0207, ADR 0208
 
+> ADR 0211 supersedes enclosing-item stale recovery: AstRewrite now requires
+> a unique exact whole block. Drift fails closed; no fuzzy recovery is enabled.
+
 ## Context
 
 Terminal-first competitors win on native speed: in-process AST rewriting,

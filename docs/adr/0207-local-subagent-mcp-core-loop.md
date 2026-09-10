@@ -5,6 +5,11 @@
 - Deciders: PI-Desktop core
 - Related: ADR 0062, ADR 0089, ADR 0104, ADR 0174, ADR 0203
 
+> Safety correction: ADR 0211 supersedes the plugin capability and local
+> setup claims below. The plugins are first-party skill-only guidance with
+> `agent.prompt.inject`, not upstream integrations or command-driven modes.
+> Local-Scout requires explicit configuration; local routing is not automatic.
+
 ## Context
 
 Cloud tokens dominate cost. Broad sweeps (grep/glob triage, first-pass

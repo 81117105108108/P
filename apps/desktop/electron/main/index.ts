@@ -1532,7 +1532,7 @@ async function resolveAgentRuntimeLaunch(
   // short-lived request auth instead (see `provider.resolveAuth`), so the
   // launch payload deliberately carries no credential at all.
   const isVendorAccount = provider.authKind === OAUTH_AUTH_KIND;
-  const secret = isVendorAccount
+  const secret = isVendorAccount || provider.authKind === "none"
     ? { value: undefined }
     : await host.call<{ value?: string }>("providers.getSecret", {
         id: provider.id,

@@ -52,7 +52,7 @@ Settings / UI
 | `native` | first-class vendor integration via pi-ai | openai, anthropic, google, bedrock, mistral, etc. |
 | `openai_compatible` | any OpenAI Chat Completions/Responses compatible gateway | OpenRouter, Together, Groq, Fireworks, DeepSeek, local gateways, corporate proxies |
 | `custom` | user-defined provider based on known protocol profile | private deployments, regional gateways |
-| `local` | loopback OpenAI-compatible gateway, no key/proxy | Ollama `http://localhost:11434/v1`, LM Studio `http://localhost:1234/v1` |
+| `openai_compatible` with `authKind: none` | local preset; no API key required | Ollama `http://localhost:11434/v1`, LM Studio `http://localhost:1234/v1` |
 
 Protocol profiles (MVP):
 
@@ -658,7 +658,30 @@ This is the **universal escape hatch** guaranteeing market coverage beyond nativ
 - [ ] At least one local provider path (Ollama or LM Studio style) documented and testable
 - [ ] No product hard-limit like “only 3 vendors / 10 models”
 
-## 20. Non-goals (MVP)
+## 20. Local setup and delegation (ADR 0211)
+
+The Ollama and LM Studio named presets declare `authKind: none` and
+`chat_completions`. Setup hides the key field, permits discovery without a
+key, and persists no-auth on create and update. Reopening an older incorrectly
+key-authenticated local preset and saving repairs that row; there is no
+automatic migration. Switching services clears the unsaved key. Local
+discovery does not reuse the prior provider's stored credentials. No-auth
+session/subagent launch does not read or forward an old stored key; this does
+not delete that key or promise an absent Authorization header (pi-ai uses a
+non-secret placeholder for no-auth transports).
+
+In the Subagent editor, Local-Scout fills Read/Glob/Grep, 40 turns, concise
+search guidance and `ollama/<model-id>`, then opens Advanced. Save rejects the
+placeholder. Select a configured model enabled for subagent use, or provide
+an explicit `ollama/<id>` or `lmstudio/<id>` pin. The four runtime builtins
+remain unchanged. Saved user documents pass through the existing registry,
+definition parser and provider resolver; an unavailable or ambiguous pin
+does not inherit the parent model. Users must install/start the server and
+model themselves; the preset does not guarantee tool-call support, automatic
+delegation or zero cost. A custom endpoint's auth behavior is not inferred
+from a local-looking name.
+
+## 21. Non-goals (MVP)
 
 - Building our own full provider SDK ecosystem
 - Guaranteeing identical tool/vision quality across all vendors

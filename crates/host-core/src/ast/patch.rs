@@ -1,10 +1,9 @@
-//! Content-hash anchored patching with stale-anchor recovery.
+//! Content-hash anchored patching with fail-closed stale anchors.
 //!
 //! `HashEditRequest` carries the SHA256 of the block the agent saw. Exact
-//! hash hit applies directly. On drift (line moves, whitespace), recovery
-//! searches the enclosing `fn`/`class`/item signature and re-anchors when the
-//! subtree shape still matches. A bracket-balance guard rejects edits that
-//! would break syntax, returning an AST-diagnostic error instead.
+//! hash hit applies only when the entire nonempty block is unique. Moved
+//! blocks still match; content drift requires a fresh read, never a fuzzy
+//! first-line replacement. A syntax guard runs before writing.
 
 use sha2::{Digest, Sha256};
 
@@ -34,7 +33,7 @@ pub struct PatchOutcome {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PatchError {
-    /// The block is gone and no enclosing item matches.
+    /// The hash is invalid or the block is empty, absent, or ambiguous.
     AnchorNotFound,
     /// The edit would unbalance delimiters.
     SyntaxRejected { detail: String },
@@ -47,7 +46,7 @@ impl std::fmt::Display for PatchError {
         match self {
             PatchError::AnchorNotFound => write!(
                 f,
-                "AST_DIAGNOSTIC: anchor block not found and no enclosing item matches; re-read the file"
+                "AST_DIAGNOSTIC: expected a nonempty unique exact anchor with a valid hash; re-read the file"
             ),
             PatchError::SyntaxRejected { detail } => {
                 write!(f, "AST_DIAGNOSTIC: edit rejected ({detail})")
@@ -67,24 +66,14 @@ pub fn sha_hex(text: &str) -> String {
 
 /// First line trimmed to 80 chars — the anchor label shown to the agent.
 fn label_of(block: &str) -> String {
-    block.lines().next().unwrap_or("").trim().chars().take(80).collect()
-}
-
-/// Enclosing-item signature above `pos`: walks up for `fn|class|struct|enum|\
-/// impl|trait|mod|def|function` beginnings and returns (line_idx, label).
-fn enclosing_item(text: &str, pos: usize) -> Option<(usize, String)> {
-    let upto = text.get(..pos.min(text.len())).unwrap_or("");
-    let lines: Vec<&str> = upto.lines().collect();
-    for (i, line) in lines.iter().enumerate().rev() {
-        let t = line.trim_start();
-        for kw in ["fn ", "class ", "struct ", "enum ", "impl ", "trait ", "mod ", "def ", "function "] {
-            if t.starts_with(kw) {
-                let label = t.chars().take(80).collect::<String>();
-                return Some((i, label));
-            }
-        }
-    }
-    None
+    block
+        .lines()
+        .next()
+        .unwrap_or("")
+        .trim()
+        .chars()
+        .take(80)
+        .collect()
 }
 
 /// Net delimiter balance for `()[]{}`, ignoring string/char/comment content
@@ -125,96 +114,39 @@ fn balance_delta(text: &str) -> i64 {
 }
 
 /// Apply `req` against `current` text. Pure: no filesystem access.
-pub fn apply_hash_edit_text(current: &str, req: &HashEditRequest) -> Result<PatchOutcome, PatchError> {
+pub fn apply_hash_edit_text(
+    current: &str,
+    req: &HashEditRequest,
+) -> Result<PatchOutcome, PatchError> {
     apply_hash_edit_text_with_lang(current, req, None)
 }
 
 /// Like [`apply_hash_edit_text`] with a Tree-sitter syntax verdict when `lang`
-/// is known: an edit that introduces *new* parse errors is rejected with the
-/// offending line; otherwise the bracket-balance fallback applies.
+/// is known: the edited file must parse cleanly. Otherwise the heuristic
+/// bracket-balance fallback applies; it is not a full syntax validator.
 pub fn apply_hash_edit_text_with_lang(
     current: &str,
     req: &HashEditRequest,
     lang: Option<crate::ast::treesitter::TsLanguage>,
 ) -> Result<PatchOutcome, PatchError> {
-    if sha_hex(&req.expected_context) != req.anchor_hash {
+    if req.expected_context.trim().is_empty() || sha_hex(&req.expected_context) != req.anchor_hash {
         return Err(PatchError::AnchorNotFound);
     }
     if let Some(offset) = current.find(&req.expected_context) {
-        return splice(current, offset, &req.expected_context, &req.replacement, false, lang);
-    }
-    // Stale-anchor recovery: find the enclosing item of the expected block,
-    // then the same signature in the current text, and re-anchor when the
-    // item body still contains a unique fuzzy match of the block's first line.
-    let first_line = req.expected_context.lines().next().unwrap_or("").trim();
-    let sig = enclosing_item(&req.expected_context, req.expected_context.len())
-        .map(|(_, l)| l)
-        .unwrap_or_default();
-    if !sig.is_empty() && !first_line.is_empty() {
-        if let Some(item_pos) = current.find(sig.trim()) {
-            let body = &current[item_pos..];
-            let candidates: Vec<usize> = body
-                .match_indices(first_line)
-                .map(|(i, _)| item_pos + i)
-                .collect();
-            if candidates.len() == 1 {
-                return splice(current, candidates[0], first_line, &req.replacement, true, lang);
-            }
+        // rfind also catches overlapping occurrences (e.g. "aa" in "aaa").
+        if current.rfind(&req.expected_context) != Some(offset) {
+            return Err(PatchError::AnchorNotFound);
         }
-    }
-    // Grammar-scoped recovery: same signature via real definitions.
-    if let Some(lang) = lang {
-        if let Some((offset, needle_len)) = ts_recover(current, req, lang) {
-            let needle = &current[offset..offset + needle_len];
-            return splice(current, offset, needle, &req.replacement, true, Some(lang));
-        }
+        return splice(
+            current,
+            offset,
+            &req.expected_context,
+            &req.replacement,
+            false,
+            lang,
+        );
     }
     Err(PatchError::AnchorNotFound)
-}
-
-/// Definition-scoped recovery with a real parse: locate the definition whose
-/// label matches the expected block's signature, then require a unique
-/// first-line hit inside that definition's byte range.
-fn ts_recover(
-    current: &str,
-    req: &HashEditRequest,
-    lang: crate::ast::treesitter::TsLanguage,
-) -> Option<(usize, usize)> {
-    use crate::ast::treesitter as ts;
-    let tree = ts::parse(lang, current)?;
-    let first_line = req.expected_context.lines().next().unwrap_or("").trim();
-    if first_line.is_empty() {
-        return None;
-    }
-    let sig = enclosing_item(&req.expected_context, req.expected_context.len())
-        .map(|(_, l)| l)
-        .unwrap_or_default();
-    let sig_key = sig.split_whitespace().nth(1).unwrap_or("").trim_matches(|c| c == '(' || c == '{');
-    if sig_key.is_empty() {
-        return None;
-    }
-    let defs = ts::find_nodes(&tree, current, sig_key, 8);
-    let def = defs.iter().find(|d| d.label.contains(sig_key))?;
-    let start = line_offset(current, def.start_line)?;
-    let end = line_offset(current, def.end_line.saturating_add(1)).unwrap_or(current.len());
-    let body = current.get(start..end)?;
-    let hits: Vec<usize> = body.match_indices(first_line).map(|(i, _)| start + i).collect();
-    if hits.len() == 1 {
-        Some((hits[0], first_line.len()))
-    } else {
-        None
-    }
-}
-
-fn line_offset(text: &str, line: usize) -> Option<usize> {
-    let mut at = 0usize;
-    for (n, part) in text.split_inclusive('\n').enumerate() {
-        if n == line {
-            return Some(at);
-        }
-        at += part.len();
-    }
-    (line == text.lines().count()).then_some(text.len())
 }
 
 fn splice(
@@ -243,23 +175,21 @@ fn splice(
     })
 }
 
-/// Tree-sitter verdict: reject only when the edit introduces *new* parse
-/// errors. Editing an already-broken file is allowed (matches the bracket
-/// fallback's leniency); breaking a clean file is not.
+/// Require a clean result, including when the original file is broken.
+/// Existing errors must not mask a syntax regression elsewhere.
 fn ts_guard(
-    current: &str,
+    _current: &str,
     next: &str,
     lang: crate::ast::treesitter::TsLanguage,
 ) -> Result<(), PatchError> {
     use crate::ast::treesitter as ts;
-    let before_clean = ts::parse(lang, current).map(|t| ts::is_clean(&t)).unwrap_or(true);
     let next_tree = ts::parse(lang, next).ok_or_else(|| PatchError::SyntaxRejected {
         detail: "could not parse edited file".into(),
     })?;
-    if !ts::is_clean(&next_tree) && before_clean {
+    if !ts::is_clean(&next_tree) {
         let line = ts::first_error_line(&next_tree, next).unwrap_or(0) + 1;
         return Err(PatchError::SyntaxRejected {
-            detail: format!("edit introduces syntax error at line {line}"),
+            detail: format!("edited file has syntax error at line {line}"),
         });
     }
     Ok(())
@@ -273,12 +203,7 @@ pub fn apply_hash_edit_file(req: &HashEditRequest) -> Result<(PatchOutcome, Stri
     let lang = TsLanguage::for_path(&req.file_path);
     let outcome = apply_hash_edit_text_with_lang(&current, req, lang)?;
     let mut next = String::with_capacity(current.len() + req.replacement.len());
-    // Recompute the splice against the file (same inputs => same offsets).
-    let needle = if outcome.recovered {
-        req.expected_context.lines().next().unwrap_or("").trim()
-    } else {
-        req.expected_context.as_str()
-    };
+    let needle = req.expected_context.as_str();
     let offset = outcome.offset;
     next.push_str(&current[..offset]);
     next.push_str(&req.replacement);
@@ -310,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn stale_anchor_recovers_inside_moved_item() {
+    fn stale_anchor_fails_closed_inside_moved_item() {
         // Agent saw the item at offset 0; a header line landed above it and
         // trailing whitespace drifted the body, so the exact block is gone.
         let current = "// header added\nfn resolve_query() {\n    old();  \n}\n";
@@ -320,9 +245,10 @@ mod tests {
             expected_context: "fn resolve_query() {\n    old();\n".into(),
             replacement: "fn resolve_query() {\n    new();\n".into(),
         };
-        let out = apply_hash_edit_text(current, &stale).expect("recover");
-        assert!(out.recovered);
-        assert!(out.anchor_label.contains("fn resolve_query"));
+        assert_eq!(
+            apply_hash_edit_text(current, &stale),
+            Err(PatchError::AnchorNotFound)
+        );
     }
 
     #[test]
@@ -358,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn tree_sitter_recovers_through_real_definitions() {
+    fn tree_sitter_does_not_recover_from_signature_alone() {
         use crate::ast::treesitter::TsLanguage;
         let current = "// header\nfn resolve_query() {\n    old();  \n}\n";
         let stale = HashEditRequest {
@@ -367,8 +293,63 @@ mod tests {
             expected_context: "fn resolve_query() {\n    old();\n".into(),
             replacement: "fn resolve_query() {\n    new();\n".into(),
         };
-        let out = apply_hash_edit_text_with_lang(current, &stale, Some(TsLanguage::Rust))
-            .expect("recover");
-        assert!(out.recovered);
+        assert_eq!(
+            apply_hash_edit_text_with_lang(current, &stale, Some(TsLanguage::Rust)),
+            Err(PatchError::AnchorNotFound)
+        );
+    }
+
+    #[test]
+    fn file_edits_require_unique_whole_blocks_and_preserve_rejected_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("edit.rs");
+        let current = "// moved\nfn a() {\n    old();\n}\nfn b() {}\n";
+        std::fs::write(&path, current).unwrap();
+        let mut r = req("fn a() {\n    old();\n}", "fn a() {\n    new();\n}");
+        r.file_path = path.clone();
+        let (out, hash) = apply_hash_edit_file(&r).unwrap();
+        let expected = "// moved\nfn a() {\n    new();\n}\nfn b() {}\n";
+        assert!(!out.recovered);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), expected);
+        assert_eq!(hash, sha_hex(expected));
+
+        for (text, context) in [
+            (current, ""),
+            (current, "  "),
+            ("fn a() { old(); old(); }", "old();"),
+            ("// aaa\nfn a() {}", "aa"),
+            (current, "fn a() {\n old();\n}"),
+            (
+                "fn a() { changed(); }\nfn a() { changed(); }",
+                "fn a() { old(); }",
+            ),
+        ] {
+            std::fs::write(&path, text).unwrap();
+            let mut r = req(context, "fn replacement() {}");
+            r.file_path = path.clone();
+            assert_eq!(apply_hash_edit_file(&r), Err(PatchError::AnchorNotFound));
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), text);
+        }
+    }
+
+    #[test]
+    fn syntax_guard_does_not_allow_existing_errors_to_mask_regressions() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("edit.rs");
+        for text in ["fn a() { old(); }", "fn broken( {}\nfn a() { old(); }"] {
+            std::fs::write(&path, text).unwrap();
+            let mut r = req("old();", "let = ;");
+            r.file_path = path.clone();
+            assert!(matches!(
+                apply_hash_edit_file(&r),
+                Err(PatchError::SyntaxRejected { .. })
+            ));
+            assert_eq!(std::fs::read_to_string(&path).unwrap(), text);
+        }
+        std::fs::write(&path, "fn broken( {}").unwrap();
+        let mut r = req("fn broken( {}", "fn repaired() {}");
+        r.file_path = path.clone();
+        apply_hash_edit_file(&r).unwrap();
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "fn repaired() {}");
     }
 }

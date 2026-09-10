@@ -79,7 +79,7 @@ export const SUBAGENT_PRESET_COPY = {
   "code-reviewer": { name: "presetReviewerName", desc: "presetReviewerDesc" },
   "test-runner": { name: "presetTestRunnerName", desc: "presetTestRunnerDesc" },
   fixer: { name: "presetFixerName", desc: "presetFixerDesc" },
-} as const satisfies Record<SubagentPreset["id"], { name: string; desc: string }>;
+} as const satisfies Partial<Record<SubagentPreset["id"], { name: string; desc: string }>>;
 
 /** Full i18n path for a preset chip, or null when `id` is blank / unknown. */
 export function subagentPresetCopyKey(
@@ -141,7 +141,8 @@ export function subagentSlug(value: string): string {
  * Apply a built-in preset to a draft. Tool grants are replaced wholesale so a
  * preset that drops `Bash` truly drops it; `maxTurns` keeps its "0 means
  * unlimited" convention. Body and description are overwritten — these are the
- * values that make the preset worth picking.
+ * values that make the preset worth picking. A local template also sets an
+ * explicit model placeholder instead of inheriting the session's cloud model.
  */
 export function applySubagentPreset(draft: SubagentDraft, preset: SubagentPreset): SubagentDraft {
   return {
@@ -151,6 +152,7 @@ export function applySubagentPreset(draft: SubagentDraft, preset: SubagentPreset
     tools: [...preset.tools],
     maxTurns: preset.maxTurns,
     body: preset.body,
+    model: preset.model ?? draft.model,
   };
 }
 
@@ -174,7 +176,7 @@ export function subagentDraftError(draft: SubagentDraft): string | null {
   if (draft.tools.length === 0) return "extensions.subagents.errorTools";
   // `provider/model` is the only shape main can resolve; a bare model id has no
   // provider to look up, so it would be dropped with a diagnostic nobody reads.
-  if (draft.model.trim() && !/^[^/\s]+\/.+$/.test(draft.model.trim())) {
+  if (draft.model.includes("<model-id>") || (draft.model.trim() && !/^[^/\s]+\/.+$/.test(draft.model.trim()))) {
     return "extensions.subagents.errorModel";
   }
   // 0 is the cleared state, not an invalid one: a definition may leave the turn
@@ -196,7 +198,7 @@ export function subagentDraftError(draft: SubagentDraft): string | null {
 /**
  * One subagent preset shown as a compact name chip. Selecting it replaces the
  * draft's name, description, tools, body and maxTurns; the model and scope
- * are left alone so the user's other choices survive a reroll.
+ * are left alone unless the template explicitly requires a model pin.
  */
 function PresetChip({
   selected,
@@ -578,6 +580,7 @@ export function SubagentEditorSheet({
     const preset = SUBAGENT_PRESETS.find((candidate) => candidate.id === nextId);
     if (!preset) return;
     setDraft(applySubagentPreset(draft, preset));
+    if (preset.model) setAdvancedOpen(true);
     setNameTouched(true);
   };
 

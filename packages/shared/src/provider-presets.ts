@@ -13,6 +13,8 @@ export type NamedEndpointPreset = {
   name: string;
   baseUrl: string;
   apiStyle: CatalogApiStyle;
+  /** Omitted for key-authenticated services. */
+  authKind?: "none";
   /** i18n key under `settings`. */
   labelKey: string;
   aliases?: readonly string[];
@@ -240,6 +242,7 @@ export const NAMED_ENDPOINT_PRESETS: readonly NamedEndpointPreset[] = [
   },
   {
     id: "ollama",
+    authKind: "none",
     vendorKey: "ollama",
     name: "Ollama (local)",
     baseUrl: LOCAL_OLLAMA_BASE_URL,
@@ -249,6 +252,7 @@ export const NAMED_ENDPOINT_PRESETS: readonly NamedEndpointPreset[] = [
   },
   {
     id: "lmstudio",
+    authKind: "none",
     vendorKey: "lmstudio",
     name: "LM Studio (local)",
     baseUrl: LOCAL_LMSTUDIO_BASE_URL,

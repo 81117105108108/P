@@ -32,10 +32,11 @@ test("applySubagentPreset replaces only the template-owned fields", () => {
   assert.match(fn, /tools: \[\.\.\.preset\.tools\]/);
   assert.match(fn, /maxTurns: preset\.maxTurns/);
   assert.match(fn, /body: preset\.body/);
-  // The preset does NOT overwrite: id (slug), model, thinkingLevel, scope,
+  // Most presets preserve the model; the local template requires an explicit pin.
+  assert.match(fn, /model: preset\.model \?\? draft\.model/);
+  // The preset does NOT overwrite: id (slug), thinkingLevel, scope,
   // enabled — these survive a reroll.
   assert.doesNotMatch(fn, /id: preset/);
-  assert.doesNotMatch(fn, /model: preset/);
   assert.doesNotMatch(fn, /thinkingLevel: preset/);
   assert.doesNotMatch(fn, /scope: preset/);
   assert.doesNotMatch(fn, /enabled: preset/);

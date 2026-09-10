@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_SUBAGENT_IDLE_TIMEOUT_SECONDS,
+  NAMED_ENDPOINT_PRESETS,
   MAX_SUBAGENT_PROVIDERS,
   subagentCanMutate,
   type SubagentDefinition,
@@ -182,6 +183,33 @@ describe("loadSubagentDefinitions", () => {
 });
 
 describe("resolveSubagentProviders", () => {
+  it.each(["ollama", "lmstudio"])("resolves %s without reading or forwarding a stored secret", async (id) => {
+    const preset = NAMED_ENDPOINT_PRESETS.find((entry) => entry.id === id)!;
+    const catalog = await loadSubagentDefinitions(null, {
+      userDocuments: [{
+        id: "local-scout",
+        document: `---\nname: local-scout\ndescription: Local search.\ntools: [Read, Glob, Grep]\nmodel: ${id}/qwen/model:latest\nmaxTurns: 40\n---\nSearch and report anchors.`,
+      }],
+    });
+    const getSecret = vi.fn(async () => "stale-cloud-secret");
+    const result = await resolveSubagentProviders({
+      definitions: catalog.definitions,
+      providers: [{ ...preset, id: "local-provider" }],
+      getSecret,
+    });
+    expect(catalog.diagnostics).toEqual([]);
+    expect(result.diagnostics).toEqual([]);
+    expect(getSecret).not.toHaveBeenCalled();
+    expect(result.providers[`${id}/qwen/model:latest`]).toMatchObject({
+      id: "local-provider", modelId: "qwen/model:latest", apiKey: "",
+      authKind: "none", apiStyle: "chat_completions", baseUrl: preset.baseUrl,
+    });
+    const missing = await resolveSubagentProviders({
+      definitions: catalog.definitions, providers: [], getSecret,
+    });
+    expect(missing.providers).toEqual({});
+    expect(missing.diagnostics).toHaveLength(1);
+  });
   const providers: SubagentProviderSource[] = [
     {
       id: "11111111-1111-4111-8111-111111111111",

@@ -5,6 +5,10 @@
 - Deciders: PI-Desktop core
 - Related: ADR 0038, ADR 0048, ADR 0174, ADR 0203, ADR 0207, ADR 0208, ADR 0209
 
+> ADR 0211 supersedes decision 1's patch recovery and syntax claims. Recovery
+> through definitions is removed; supported grammars require a clean result,
+> including when the original file already contains parse errors.
+
 ## Context
 
 ADR 0209 shipped the native engine behind dependency-free facades and named
