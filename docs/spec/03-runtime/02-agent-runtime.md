@@ -872,12 +872,24 @@ schemas. Providers with native deferred-tool search receive the definitions at
 that load point; other providers receive the active definitions normally.
 
 Deferred activation is reset before each new user prompt, so a previous task
-cannot make an unrelated first request carry a growing tool set. The tool
+cannot make an unrelated first request carry a growing tool set. Within a
+task, activated MCP tools additionally persist in a session LRU (K=3 turns,
+cap 12, serialized on the session row) so on-demand tools survive turn
+boundaries without recurrent TOOL_NOT_FOUND; preflight evicts cold tools
+instead of clearing the set (ADR 0208). The tool
 registry, host permission path, tool timeout, and workspace containment rules
 remain unchanged. `ToolSearch` is local to the sidecar and does not cross the
 host RPC boundary. Its activation marker is retained in the persisted tool
 result so a restored transcript remains provider-valid, although a restarted
 runtime still requires a fresh search before reusing a deferred capability.
+
+Pre-completion verification: when Agent/Goal edits carry `.rs`/`.ts`/`.py`
+changes with no matching test run in the turn, the runtime injects one
+synthetic `[SYSTEM: Verification Required]` turn naming the command before the
+final response. Mutating delegates run in `.pi/worktrees/task-<id>` and merge
+back after parent review. Prompts assemble static → semi-static → dynamic for
+cache-hit prefixes; stale Read/Bash history is deterministically pruned before
+any LLM summarizer call (ADR 0208).
 
 For user-visible HTML deliverables, the default system prompt asks the agent to
 activate `BrowserPreview` once after creating the page or making its first

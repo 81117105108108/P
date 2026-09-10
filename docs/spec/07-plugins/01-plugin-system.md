@@ -304,7 +304,10 @@ Namespace: `pi.plugin.*`
 
 Skills are contributed declaratively (`contributes.skills` + `agent.prompt.inject`),
 not invoked by the plugin: the host puts the catalog in the system prompt and the
-model loads a body through the built-in `Skill` tool (D174). Planned, not
+model loads a body through the built-in `Skill` tool (D174). Turn preflight may
+additionally inject trigger-matched skills (id/triggers/path metadata,
+similarity ≥ 0.82) into the prompt suffix; bodies still load on demand, at most
+once per task (ADR 0208). Planned, not
 currently exposed: `pi.agent.appendSystemHint(text)`.
 
 ### Background services (requires `background.service`)

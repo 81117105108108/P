@@ -10,6 +10,8 @@ Principles:
 2. Requests/responses are typed
 3. Long-running tasks use event streams, not a single oversized response
 4. Errors must have a code + message
+5. Bulk payloads (>64 KB) use chunked range reads, never one oversized
+   frame (ADR 0208: `shared/ipc-transport`, default 200-line windows)
 
 ## 2. API Groups
 
