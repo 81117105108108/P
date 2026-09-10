@@ -45,10 +45,25 @@ impl CachedFile {
     }
 }
 
-/// Thread-safe file cache. Clone shares the same backing map.
+/// Thread-safe file cache. Clone shares the same backing maps.
 #[derive(Debug, Default, Clone)]
 pub struct FsCache {
     inner: Arc<RwLock<HashMap<PathBuf, CachedFile>>>,
+    /// Parsed Tree-sitter trees keyed by path (`Tree` is `Send`, so a
+    /// `Mutex` map keeps the cache `Sync`). Entries ride the same mtime as
+    /// their file and are dropped together with it.
+    trees: Arc<std::sync::Mutex<HashMap<PathBuf, CachedTree>>>,
+}
+
+/// One cached parse tree.
+#[derive(Debug)]
+pub struct CachedTree {
+    /// Mtime of the file text this tree was parsed from.
+    pub mtime: SystemTime,
+    /// Grammar used.
+    pub language: crate::ast::treesitter::TsLanguage,
+    /// Parsed tree (borrow nodes from it while the guard lives).
+    pub tree: tree_sitter::Tree,
 }
 
 impl FsCache {
@@ -65,10 +80,13 @@ impl FsCache {
         self.len() == 0
     }
 
-    /// Drop one path from the cache.
+    /// Drop one path from the cache (file text and parse tree together).
     pub fn invalidate(&self, path: &Path) {
         if let Ok(mut map) = self.inner.write() {
             map.remove(path);
+        }
+        if let Ok(mut trees) = self.trees.lock() {
+            trees.remove(path);
         }
     }
 
@@ -76,6 +94,9 @@ impl FsCache {
     pub fn clear(&self) {
         if let Ok(mut map) = self.inner.write() {
             map.clear();
+        }
+        if let Ok(mut trees) = self.trees.lock() {
+            trees.clear();
         }
     }
 
@@ -121,6 +142,35 @@ impl FsCache {
             map.insert(path.to_path_buf(), cached.clone());
         }
         Ok(cached)
+    }
+
+    /// Parsed Tree-sitter tree for `path`, cached by mtime. Returns `None`
+    /// when the extension has no grammar. The returned guard holds the tree
+    /// lock: borrow nodes from `guard.tree` inside its scope, then drop it.
+    pub fn parse_or_load(
+        &self,
+        path: &Path,
+    ) -> Result<Option<std::sync::MutexGuard<'_, HashMap<PathBuf, CachedTree>>>> {
+        use crate::ast::treesitter::TsLanguage;
+        let Some(lang) = TsLanguage::for_path(path) else {
+            return Ok(None);
+        };
+        let file = self.get_or_load(path)?;
+        let mut trees = self.trees.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
+        let stale = trees.get(path).map(|t| t.mtime != file.mtime).unwrap_or(true);
+        if stale {
+            let tree = crate::ast::treesitter::parse(lang, &file.content)
+                .ok_or_else(|| anyhow::anyhow!("parse failed"))?;
+            trees.insert(
+                path.to_path_buf(),
+                CachedTree {
+                    mtime: file.mtime,
+                    language: lang,
+                    tree,
+                },
+            );
+        }
+        Ok(Some(trees))
     }
 }
 
@@ -173,5 +223,19 @@ mod tests {
         let file = cache.get_or_load(&path).expect("load");
         let window = file.window(1, 2);
         assert_eq!(window, vec![(1, "b"), (2, "c")]);
+    }
+
+    #[test]
+    fn parses_grammar_files_and_skips_others() {
+        let dir = tempfile::tempdir().expect("dir");
+        let rs = dir.path().join("a.rs");
+        std::fs::write(&rs, "fn a() {}\n").expect("w");
+        let md = dir.path().join("a.md");
+        std::fs::write(&md, "# hi\n").expect("w");
+        let cache = FsCache::new();
+        let guard = cache.parse_or_load(&rs).expect("parse").expect("tree");
+        assert!(crate::ast::treesitter::is_clean(&guard.get(&rs).expect("entry").tree));
+        drop(guard);
+        assert!(cache.parse_or_load(&md).expect("md").is_none());
     }
 }

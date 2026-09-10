@@ -7,6 +7,7 @@
 
 pub mod client;
 pub mod handlers;
+pub mod session;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

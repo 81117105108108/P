@@ -9141,6 +9141,29 @@ are withdrawn with ADR 0165.
 - **Status**: Unit-covered (Rust `cache`/`ast`/`lsp`/`iso`/`pty`/`rules`,
   `native-harness`, `native-core-ui`); full Electron journey deferred by policy
 
+#### E2E-236: Grammars, sessions, PTY, Monaco, SSE, OAuth, skill harness
+
+- **Preconditions**: Clean profile. Grammar fixture files (`rs`/`ts`/`py`/`go`);
+  no language server required. Loopback fixture servers for SSE/OAuth.
+- **Steps**: 1) `AstGrep` a grammar file; confirm `engine: "tree-sitter"` and
+  `nodeKinds`. 2) `AstRewrite` breaking a clean file; confirm rejection names
+  the error line; same edit on an already-broken file applies. 3) Run two
+  `LspHover` calls; confirm one pooled session serves both (multiplex). 4) Spawn a PTY echo; confirm output and
+  prompt classification. 5) Open DiffReview; confirm the Monaco target edits
+  and falls back without the bundle. 6) Connect an `sse` server; confirm
+  endpoint adoption and stream answers. 7) Configure OAuth without a grant;
+  confirm one 401, rotation, and retry success with the refresh persisted
+  encrypted. 8) Run `pi-plugin skill-test` on a tweaked skill; confirm the
+  failing golden names the missing phrase.
+- **Expected**: Real parses gate edits; sessions multiplex; terminals are
+  real; review edits in Monaco; legacy servers and OAuth endpoints work;
+  skill regressions fail the CLI.
+- **Specs linked**: `03-runtime/05-host-core-rust.md` §6a,
+  `07-plugins/02-plugin-manifest-schema.md`, ADR 0210
+- **Acceptance**: D (workspace), E (tools), G (plugins), Quality
+- **Status**: Unit-covered (tree-sitter, sessions, PTY, SSE/OAuth,
+  skill-harness, UI bindings); full Electron journey deferred by policy
+
 ## Remote Agent Control target scenarios (post-MVP)
 
 The following scenarios require the approved remote harness. They are

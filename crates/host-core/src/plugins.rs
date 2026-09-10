@@ -2648,7 +2648,7 @@ fn validate_contributions(root: &Path, manifest: &PluginManifest) -> Result<()> 
                         }
                     }
                 }
-                Some("http") => {
+                Some("http") | Some("sse") => {
                     require_permission(manifest, "mcp.server.remote", "remote mcp servers")?;
                     if obj.contains_key("command")
                         || obj.contains_key("args")
@@ -2662,7 +2662,7 @@ fn validate_contributions(root: &Path, manifest: &PluginManifest) -> Result<()> 
                         .ok_or_else(|| anyhow!("PLUGIN_INVALID: mcp server {id} requires url"))?;
                     validate_mcp_url(id, url)?;
                 }
-                _ => bail!("PLUGIN_INVALID: mcp server {id} transport must be stdio or http"),
+                _ => bail!("PLUGIN_INVALID: mcp server {id} transport must be stdio, http, or sse"),
             }
         }
     }

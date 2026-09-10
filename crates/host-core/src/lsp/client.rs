@@ -80,13 +80,16 @@ pub fn notification(method: &str, params: Value) -> Value {
     })
 }
 
-/// Read one framed message from an async reader with a byte cap.
-pub async fn read_message<R>(reader: &mut R, max_bytes: usize) -> Result<Value>
+/// Read one framed message from a persistent buffered reader with a byte cap.
+///
+/// Takes `&mut BufReader` (not a bare stream) on purpose: wrapping a new
+/// buffer per call would drop already-read bytes when consecutive frames
+/// arrive in one segment.
+pub async fn read_message<R>(reader: &mut tokio::io::BufReader<R>, max_bytes: usize) -> Result<Value>
 where
-    R: tokio::io::AsyncReadExt + Unpin,
+    R: tokio::io::AsyncRead + Unpin,
 {
     use tokio::io::AsyncBufReadExt;
-    let mut reader = tokio::io::BufReader::new(reader);
     let mut head = Vec::new();
     loop {
         let mut line = String::new();
@@ -108,7 +111,7 @@ where
         anyhow::bail!("lsp message exceeds {max_bytes} bytes");
     }
     let mut body = vec![0u8; len];
-    tokio::io::AsyncReadExt::read_exact(&mut reader, &mut body)
+    tokio::io::AsyncReadExt::read_exact(&mut *reader, &mut body)
         .await
         .context("lsp body read failed")?;
     serde_json::from_slice(&body).context("lsp body is not JSON")

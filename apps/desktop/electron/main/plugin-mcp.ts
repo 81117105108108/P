@@ -35,10 +35,13 @@ export type JsonRpcMessage = {
 /**
  * Both transports are reduced to "send a message, receive messages", which lets
  * the client speak the same JSON-RPC dialect over a pipe or over HTTP.
+ * Remote transports additionally accept per-send auth headers so an OAuth
+ * vault can rotate bearers without rebuilding the session.
  */
 export type McpTransport = {
   send: (message: JsonRpcMessage) => Promise<void>;
   close: () => void;
+  setHeaders?: (headers: Record<string, string>) => void;
 };
 
 export type McpTransportHandlers = {
@@ -226,8 +229,12 @@ function createHttpTransport(
   }
   let closed = false;
   let sessionId: string | undefined;
+  let liveHeaders: Record<string, string> = { ...options.headers };
 
   return {
+    setHeaders: (headers) => {
+      liveHeaders = { ...headers };
+    },
     send: async (message) => {
       if (closed) throw mcpError("UNAVAILABLE", "mcp session is closed");
       const controller = new AbortController();
@@ -240,7 +247,7 @@ function createHttpTransport(
           response = await fetchImpl(url, {
             method: "POST",
             headers: {
-              ...options.headers,
+              ...liveHeaders,
               "content-type": "application/json",
               accept: "application/json, text/event-stream",
               "mcp-protocol-version": MCP_PROTOCOL_VERSION,
@@ -273,7 +280,10 @@ function createHttpTransport(
       const nextSession = response.headers.get("mcp-session-id");
       if (nextSession) sessionId = nextSession;
       if (!response.ok) {
-        throw mcpError("HTTP_ERROR", `mcp server returned ${response.status}`);
+        throw Object.assign(
+          mcpError("HTTP_ERROR", `mcp server returned ${response.status}`),
+          { status: response.status },
+        );
       }
       const contentType = response.headers.get("content-type") ?? "";
       const body = await response.text();
@@ -293,6 +303,175 @@ function createHttpTransport(
   };
 }
 
+/**
+ * Legacy SSE transport: GET the endpoint with `Accept: text/event-stream`,
+ * adopt the `endpoint` event URL, then POST each JSON-RPC message there while
+ * responses stream back on the GET connection. Responses correlate by id in
+ * the shared client, so the transport only forwards frames.
+ */
+function createSseTransport(
+  options: {
+    url: string;
+    headers: Record<string, string>;
+    timeoutMs: number;
+    fetchImpl?: typeof fetch;
+    assertUrlAllowed?: (url: string) => void;
+  },
+  handlers: McpTransportHandlers,
+): McpTransport {
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  if (typeof fetchImpl !== "function") {
+    throw mcpError("UNSUPPORTED", "fetch is unavailable for remote mcp servers");
+  }
+  let closed = false;
+  let endpoint: string | undefined;
+  let liveHeaders: Record<string, string> = { ...options.headers };
+  const abort = new AbortController();
+  const ready = (async () => {
+    options.assertUrlAllowed?.(options.url);
+    const response = await fetchImpl(options.url, {
+      method: "GET",
+      headers: {
+        ...liveHeaders,
+        accept: "text/event-stream",
+        "mcp-protocol-version": MCP_PROTOCOL_VERSION,
+      },
+      signal: abort.signal,
+    });
+    if (!response.ok || !response.body) {
+      throw Object.assign(
+        mcpError("HTTP_ERROR", `mcp sse endpoint returned ${response.status}`),
+        { status: response.status },
+      );
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    // Adopt the endpoint event, then pump the stream for the session lifetime.
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let index = buffer.indexOf("\n\n");
+      while (index >= 0) {
+        const block = buffer.slice(0, index);
+        buffer = buffer.slice(index + 2);
+        const event = block
+          .split(/\n/)
+          .find((line) => line.startsWith("event:"))
+          ?.slice(6)
+          .trim();
+        const data = block
+          .split(/\n/)
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trim())
+          .join("");
+        if (event === "endpoint" && data && !endpoint) {
+          try {
+            endpoint = new URL(data, options.url).toString();
+          } catch {
+            throw mcpError("SSE_ENDPOINT", `invalid sse endpoint: ${data}`);
+          }
+        } else if (data) {
+          for (const message of parseSseMessages(`data: ${data}\n\n`)) {
+            handlers.onMessage(message);
+          }
+        }
+        if (endpoint && !closed) {
+          // Hand the open stream to a background pump; endpoint adopted.
+          void (async () => {
+            try {
+              for (;;) {
+                const next = await reader.read();
+                if (next.done) break;
+                buffer += decoder.decode(next.value, { stream: true });
+                let at = buffer.indexOf("\n\n");
+                while (at >= 0) {
+                  const frame = buffer.slice(0, at);
+                  buffer = buffer.slice(at + 2);
+                  for (const message of parseSseMessages(`${frame}\n\n`)) {
+                    handlers.onMessage(message);
+                  }
+                  at = buffer.indexOf("\n\n");
+                }
+              }
+            } catch {
+              // Aborted on close; the close path reports once.
+            } finally {
+              if (!closed) {
+                closed = true;
+                handlers.onClose("mcp sse stream ended");
+              }
+            }
+          })();
+          return;
+        }
+        index = buffer.indexOf("\n\n");
+      }
+    }
+    throw mcpError("SSE_ENDPOINT", "mcp sse stream ended before the endpoint event");
+  })();
+  ready.catch((error: Error) => {
+    if (!closed) {
+      closed = true;
+      handlers.onClose(error.message);
+    }
+  });
+
+  return {
+    setHeaders: (headers) => {
+      liveHeaders = { ...headers };
+    },
+    send: async (message) => {
+      if (closed) throw mcpError("UNAVAILABLE", "mcp session is closed");
+      await ready;
+      if (closed || !endpoint) throw mcpError("UNAVAILABLE", "mcp sse endpoint is not ready");
+      options.assertUrlAllowed?.(endpoint);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), options.timeoutMs);
+      try {
+        const response = await fetchImpl(endpoint, {
+          method: "POST",
+          headers: {
+            ...liveHeaders,
+            "content-type": "application/json",
+            accept: "application/json, text/event-stream",
+            "mcp-protocol-version": MCP_PROTOCOL_VERSION,
+          },
+          body: JSON.stringify(message),
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw Object.assign(
+            mcpError("HTTP_ERROR", `mcp server returned ${response.status}`),
+            { status: response.status },
+          );
+        }
+        // Legacy servers answer 202 Accepted and push the result on the GET
+        // stream; some also echo it inline — forward either shape.
+        const body = await response.text();
+        if (body.trim()) {
+          for (const entry of parseSseMessages(body)) handlers.onMessage(entry);
+          try {
+            const parsed = JSON.parse(body) as JsonRpcMessage | JsonRpcMessage[];
+            for (const entry of Array.isArray(parsed) ? parsed : [parsed]) {
+              if (entry && typeof entry === "object") handlers.onMessage(entry);
+            }
+          } catch {
+            // Pure SSE body already handled above.
+          }
+        }
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    close: () => {
+      closed = true;
+      abort.abort();
+    },
+  };
+}
+
 export type McpServerClientOptions = {
   /** Owning plugin, when there is one. User-configured servers have none. */
   pluginId?: string;
@@ -303,6 +482,14 @@ export type McpServerClientOptions = {
   server: PluginMcpServerContrib;
   /** Resolved env (stdio) or headers (http); never inherited from the host. */
   values: Record<string, string>;
+  /**
+   * OAuth vault for remote servers (see `mcp-oauth.ts`). Supplies bearer
+   * headers and rotates once on 401; absent means static `values` headers.
+   */
+  oauth?: {
+    headers: () => Promise<Record<string, string>>;
+    refreshForRetry: () => Promise<boolean>;
+  };
   audit?: (entry: Record<string, unknown>) => void;
   /** Audit `api` namespace: `plugin.mcp` for plugins, `mcp` for user servers. */
   auditScope?: string;
@@ -320,13 +507,13 @@ export type McpServerClientOptions = {
  * by the user in the Extensions page.
  *
  * The client speaks the slice of MCP the desktop needs — `initialize`,
- * `tools/list`, `tools/call` — over stdio or streamable HTTP. It connects on
+ * `tools/list`, `tools/call` — over stdio, streamable HTTP, or legacy SSE. It connects on
  * demand and reconnects after the peer dies, so a crashed server costs one
  * failed tool call rather than a stale tool list.
  */
 export class McpServerClient {
   readonly serverId: string;
-  readonly transportKind: "stdio" | "http";
+  readonly transportKind: "stdio" | "http" | "sse";
   private opts: McpServerClientOptions;
   private transport: McpTransport | null = null;
   private pending = new Map<
@@ -365,7 +552,7 @@ export class McpServerClient {
     await this.connect();
     const started = Date.now();
     try {
-      const result = (await this.request(
+      const result = (await this.requestWithAuth(
         "tools/call",
         { name: toolName, arguments: args ?? {} },
         this.opts.callTimeoutMs ?? MCP_CALL_TIMEOUT_MS,
@@ -393,8 +580,9 @@ export class McpServerClient {
     const timeoutMs = this.opts.connectTimeoutMs ?? MCP_CONNECT_TIMEOUT_MS;
     const transport = this.createTransport(timeoutMs);
     this.transport = transport;
+    await this.applyOAuthHeaders();
     try {
-      await this.request(
+      await this.requestWithAuth(
         "initialize",
         {
           protocolVersion: MCP_PROTOCOL_VERSION,
@@ -456,6 +644,18 @@ export class McpServerClient {
         handlers,
       );
     }
+    if (this.opts.server.transport === "sse") {
+      return createSseTransport(
+        {
+          url: String(this.opts.server.url ?? ""),
+          headers: this.opts.values,
+          timeoutMs,
+          fetchImpl: this.opts.fetchImpl,
+          assertUrlAllowed: this.opts.assertUrlAllowed,
+        },
+        handlers,
+      );
+    }
     return createHttpTransport(
       {
         url: String(this.opts.server.url ?? ""),
@@ -472,7 +672,7 @@ export class McpServerClient {
     const collected: McpTool[] = [];
     let cursor: string | undefined;
     for (let page = 0; page < MAX_TOOL_PAGES; page += 1) {
-      const result = (await this.request(
+      const result = (await this.requestWithAuth(
         "tools/list",
         cursor ? { cursor } : {},
         timeoutMs,
@@ -504,6 +704,40 @@ export class McpServerClient {
       cursor = next;
     }
     return collected;
+  }
+
+  /** Merge vault bearers over static headers on remote transports. */
+  private async applyOAuthHeaders(): Promise<void> {
+    const oauth = this.opts.oauth;
+    const transport = this.transport;
+    if (!oauth || !transport?.setHeaders) return;
+    transport.setHeaders({ ...this.opts.values, ...(await oauth.headers()) });
+  }
+
+  private isUnauthorized(error: unknown): boolean {
+    const err = error as McpError & { status?: number };
+    return err?.code === "HTTP_ERROR" && err?.status === 401;
+  }
+
+  /**
+   * One request with refresh-once 401 recovery: rotate the vault, reapply
+   * headers, and retry a single time. Static-header servers retire the same
+   * path with no vault work.
+   */
+  private async requestWithAuth(
+    method: string,
+    params: unknown,
+    timeoutMs: number,
+  ): Promise<unknown> {
+    try {
+      return await this.request(method, params, timeoutMs);
+    } catch (error) {
+      if (!this.opts.oauth || !this.isUnauthorized(error)) throw error;
+      const rotated = await this.opts.oauth.refreshForRetry().catch(() => false);
+      if (!rotated) throw error;
+      await this.applyOAuthHeaders();
+      return this.request(method, params, timeoutMs);
+    }
   }
 
   private request(method: string, params: unknown, timeoutMs: number): Promise<unknown> {

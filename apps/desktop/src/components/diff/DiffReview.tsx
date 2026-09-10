@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import { cx } from "../ui";
+import { MonacoTarget } from "./MonacoTarget";
 
 /* Interactive 3-way hunk review (ADR 0209): base vs worktree vs edited
    target. Hunks carry semantic labels from the AST layer
@@ -73,10 +74,12 @@ export const DiffReview = memo(function DiffReview({
       })}
       <label className="diff-review-target-label">
         Target buffer (editable before accept)
-        <textarea
+        <MonacoTarget
           className="diff-review-target"
+          ariaLabel="Target buffer"
+          filePath={filePath}
           value={target}
-          onChange={(event) => setTarget(event.target.value)}
+          onChange={setTarget}
           rows={8}
         />
       </label>

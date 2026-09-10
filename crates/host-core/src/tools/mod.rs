@@ -1364,9 +1364,34 @@ fn tool_ast_grep(
     }
     let truncated = files.len() > 200;
     let mut hits: Vec<Value> = Vec::new();
+    let mut engines: Vec<&str> = Vec::new();
     for file in files.iter().take(200) {
         let Ok(text) = std::fs::read_to_string(file) else {
             continue;
+        };
+        let engine = ast::grep::engine_for(file);
+        if !engines.contains(&engine) {
+            engines.push(engine);
+        }
+        // Grammar files also contribute node-kind annotations from the real
+        // parse so the model sees `function_item` instead of guessing.
+        let node_kinds: Vec<String> = if engine == "tree-sitter" {
+            pattern
+                .split_whitespace()
+                .find(|t| !t.contains('$'))
+                .and_then(|token| {
+                    crate::ast::treesitter::TsLanguage::for_path(file).and_then(|lang| {
+                        crate::ast::treesitter::parse(lang, &text).map(|tree| {
+                            crate::ast::treesitter::find_nodes(&tree, &text, token, 5)
+                                .into_iter()
+                                .map(|h| h.kind)
+                                .collect::<Vec<_>>()
+                        })
+                    })
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
         };
         for hit in ast::grep::ast_grep_text(file, &text, pattern) {
             hits.push(json!({
@@ -1374,6 +1399,7 @@ fn tool_ast_grep(
                 "line": hit.line + 1,
                 "snippet": hit.snippet,
                 "bindings": hit.bindings.iter().map(|(k, v)| json!({"slot": k, "value": v})).collect::<Vec<_>>(),
+                "nodeKinds": node_kinds,
             }));
             if hits.len() >= 100 {
                 break;
@@ -1383,7 +1409,7 @@ fn tool_ast_grep(
             break;
         }
     }
-    Ok(json!({ "hits": hits, "truncated": truncated || hits.len() >= 100 }))
+    Ok(json!({ "hits": hits, "engine": engines.join("+"), "truncated": truncated || hits.len() >= 100 }))
 }
 
 /// `AstRewrite`: hash-anchored structural edit with AST recovery + syntax guard.
@@ -1501,19 +1527,21 @@ async fn lsp_positional(
         "python" => "python",
         _ => "plaintext",
     };
-    let exchange = lsp::query_once(
-        &binary,
-        root,
-        language_id,
-        &resolved,
-        &text,
-        method,
-        params,
-        std::time::Duration::from_secs(20),
-    )
-    .await
-    .map_err(|e| ("TOOL_FAILED".into(), e.to_string()))?;
-    Ok(json!({ "result": exchange.result, "diagnostics": exchange.diagnostics }))
+    // Multiplexed pooled session: the server stays up across calls.
+    let (result, diagnostics) = lsp::session::POOL
+        .query(
+            &language,
+            root,
+            &binary,
+            language_id,
+            &resolved,
+            &text,
+            method,
+            params,
+        )
+        .await
+        .map_err(|e| ("TOOL_FAILED".into(), e.to_string()))?;
+    Ok(json!({ "result": result, "diagnostics": diagnostics }))
 }
 
 async fn tool_lsp_diagnostics(
@@ -1532,20 +1560,21 @@ async fn tool_lsp_diagnostics(
         _ => "plaintext",
     };
     // didOpen prompts the server to publish diagnostics; the hover request
-    // simply bounds the wait window.
-    let exchange = lsp::query_once(
-        &binary,
-        root,
-        language_id,
-        &resolved,
-        &text,
-        "textDocument/hover",
-        lsp::handlers::hover(&resolved, 0, 0),
-        std::time::Duration::from_secs(20),
-    )
-    .await
-    .map_err(|e| ("TOOL_FAILED".into(), e.to_string()))?;
-    Ok(json!({ "diagnostics": exchange.diagnostics }))
+    // simply bounds the wait window. Served by the pooled session.
+    let (_result, diagnostics) = lsp::session::POOL
+        .query(
+            &language,
+            root,
+            &binary,
+            language_id,
+            &resolved,
+            &text,
+            "textDocument/hover",
+            lsp::handlers::hover(&resolved, 0, 0),
+        )
+        .await
+        .map_err(|e| ("TOOL_FAILED".into(), e.to_string()))?;
+    Ok(json!({ "diagnostics": diagnostics }))
 }
 
 /// `IsoCreate`: snapshot the workspace for `taskId`.

@@ -1,12 +1,11 @@
-//! Native PTY supervision: interactive prompt detection plus a supervised
-//! piped runner (ADR 0209).
+//! Native PTY supervision: interactive prompt detection, a supervised piped
+//! runner, and true `portable-pty` terminal sessions (ADR 0209/0210).
 //!
 //! `detector` classifies output text (sudo/ssh prompts, generic REPL prompts,
 //! question suffixes) so supervisors can pause and ask instead of hanging.
-//! True PTY allocation (`portable-pty`) is the follow-up; the runner below
-//! uses piped stdio with timeouts over the existing tokio runtime.
 
 pub mod detector;
+pub mod session;
 
 use anyhow::{Context, Result};
 use std::process::Stdio;

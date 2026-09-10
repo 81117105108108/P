@@ -145,6 +145,14 @@ pub fn ast_grep_file(path: &Path, pattern: &str) -> anyhow::Result<Vec<AstHit>> 
     Ok(ast_grep_text(path, &text, pattern))
 }
 
+/// Which engine backs search for this path: real grammar or text fallback.
+pub fn engine_for(path: &Path) -> &'static str {
+    match crate::ast::treesitter::TsLanguage::for_path(path) {
+        Some(_) => "tree-sitter",
+        None => "text",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
