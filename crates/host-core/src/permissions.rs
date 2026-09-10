@@ -94,6 +94,9 @@ impl PermissionManager {
         match tool_name {
             "Read" | "Glob" | "Grep" => Risk::Low,
             "Write" | "Edit" | "Bash" => Risk::High,
+            "ReadRange" | "AstGrep" | "LspDiagnostics" | "LspGotoDef" | "LspReferences"
+            | "LspHover" | "RulesGet" | "PtyCheck" | "IsoDiff" => Risk::Low,
+            "AstRewrite" | "IsoCreate" | "IsoDiscard" => Risk::High,
             name if name.starts_with("plugin_") => match declared {
                 Some("low") => Risk::Low,
                 Some("high") => Risk::High,
@@ -115,6 +118,15 @@ impl PermissionManager {
         matches!(
             tool_name,
             "Read" | "Glob" | "Grep" | "Bash" | "BrowserPreview" | "new_context"
+                | "ReadRange"
+                | "AstGrep"
+                | "LspDiagnostics"
+                | "LspGotoDef"
+                | "LspReferences"
+                | "LspHover"
+                | "RulesGet"
+                | "PtyCheck"
+                | "IsoDiff"
         )
     }
 

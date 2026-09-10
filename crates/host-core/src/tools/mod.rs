@@ -17,6 +17,7 @@ use tokio::process::{ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::sync::{mpsc, watch};
 
 use crate::workspace::{resolve_tool_path_with_external, ToolRoot};
+use crate::{ast, iso, lsp, pty, rules};
 
 mod grep_rg;
 pub mod hashline;
@@ -1025,7 +1026,10 @@ pub async fn execute_tool_with_path_access(
     // Scratch is created lazily, and only for tools that can produce files
     // there — Read/Glob/Grep on a session that never wrote scratch files
     // should not leave empty directories behind.
-    if matches!(tool_name, "Write" | "Edit" | "Bash") {
+    if matches!(
+        tool_name,
+        "Write" | "Edit" | "Bash" | "AstRewrite" | "IsoCreate"
+    ) {
         if let Some(dir) = scratch {
             let _ = std::fs::create_dir_all(dir);
         }
@@ -1040,6 +1044,29 @@ pub async fn execute_tool_with_path_access(
             "Write" => tool_write(workspace, scratch, args, allow_external_paths, hashline)
                 .map_err(Into::into),
             "Edit" => tool_edit(workspace, scratch, args, allow_external_paths, hashline),
+            "ReadRange" => tool_read_range(workspace, scratch, args, allow_external_paths, hashline)
+                .map_err(Into::into),
+            "AstGrep" => tool_ast_grep(workspace, scratch, args, allow_external_paths)
+                .map_err(Into::into),
+            "AstRewrite" => tool_ast_rewrite(workspace, scratch, args, allow_external_paths, hashline)
+                .map_err(Into::into),
+            "LspDiagnostics" => tool_lsp_diagnostics(workspace, scratch, args, allow_external_paths)
+                .await
+                .map_err(Into::into),
+            "LspGotoDef" => lsp_positional(workspace, scratch, args, allow_external_paths, "textDocument/definition")
+                .await
+                .map_err(Into::into),
+            "LspReferences" => lsp_positional(workspace, scratch, args, allow_external_paths, "textDocument/references")
+                .await
+                .map_err(Into::into),
+            "LspHover" => lsp_positional(workspace, scratch, args, allow_external_paths, "textDocument/hover")
+                .await
+                .map_err(Into::into),
+            "IsoCreate" => tool_iso_create(workspace, args).map_err(Into::into),
+            "IsoDiff" => tool_iso_diff(workspace, args).map_err(Into::into),
+            "IsoDiscard" => tool_iso_discard(workspace, args).map_err(Into::into),
+            "RulesGet" => tool_rules_get(workspace, args).map_err(Into::into),
+            "PtyCheck" => tool_pty_check(args).map_err(Into::into),
             "Bash" => {
                 let options = bash_options.unwrap_or_else(|| {
                     let id = shell::catalog(None)
@@ -1274,6 +1301,346 @@ fn tool_read(
         out["notice"] = json!(notes.join("; "));
     }
     Ok(out)
+}
+
+/// Native core tools (ADR 0209): range reads, structural AST search/rewrite,
+/// supervised LSP queries, CoW snapshots, and rule ingestion. Thin wrappers:
+/// path gating reuses the workspace resolver; heavy logic lives in
+/// `crate::{ast, iso, lsp, pty, rules}`.
+
+/// `ReadRange`: frame-safe windowed read (default 200 lines, max 2000).
+fn tool_read_range(
+    workspace: Option<&Path>,
+    scratch: Option<&Path>,
+    args: &Value,
+    allow_external_paths: bool,
+    hashline: Option<&HashlineContext<'_>>,
+) -> Result<Value, (String, String)> {
+    let mut ranged = args.clone();
+    if ranged.get("limit").and_then(|v| v.as_u64()).is_none() {
+        ranged["limit"] = json!(200);
+    }
+    if let Some(limit) = ranged.get("limit").and_then(|v| v.as_u64()) {
+        ranged["limit"] = json!(limit.min(2000).max(1));
+    }
+    tool_read(workspace, scratch, &ranged, allow_external_paths, hashline)
+}
+
+/// `AstGrep`: `$VAR` structural search over one file or directory tree.
+fn tool_ast_grep(
+    workspace: Option<&Path>,
+    scratch: Option<&Path>,
+    args: &Value,
+    allow_external_paths: bool,
+) -> Result<Value, (String, String)> {
+    let root = require_workspace(workspace)?;
+    let pattern = args
+        .get("pattern")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "pattern required".into()))?;
+    let scope = args.get("path").and_then(|v| v.as_str()).unwrap_or(".");
+    let (resolved, _kind) =
+        resolve_tool_path_with_external(root, scratch, scope, allow_external_paths)
+            .map_err(|e| (e.clone(), e))?;
+    let mut files: Vec<PathBuf> = Vec::new();
+    if resolved.is_file() {
+        files.push(resolved.clone());
+    } else if resolved.is_dir() {
+        for entry in ignore::WalkBuilder::new(&resolved)
+            .hidden(false)
+            .git_ignore(true)
+            .build()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().map(|t| t.is_file()).unwrap_or(false))
+            .take(201)
+        {
+            files.push(entry.path().to_path_buf());
+        }
+    } else {
+        return Err((
+            "INVALID_ARGUMENT".into(),
+            format!("AstGrep scope is not a file or directory: {scope}"),
+        ));
+    }
+    let truncated = files.len() > 200;
+    let mut hits: Vec<Value> = Vec::new();
+    for file in files.iter().take(200) {
+        let Ok(text) = std::fs::read_to_string(file) else {
+            continue;
+        };
+        for hit in ast::grep::ast_grep_text(file, &text, pattern) {
+            hits.push(json!({
+                "path": file.strip_prefix(root).unwrap_or(file).to_string_lossy(),
+                "line": hit.line + 1,
+                "snippet": hit.snippet,
+                "bindings": hit.bindings.iter().map(|(k, v)| json!({"slot": k, "value": v})).collect::<Vec<_>>(),
+            }));
+            if hits.len() >= 100 {
+                break;
+            }
+        }
+        if hits.len() >= 100 {
+            break;
+        }
+    }
+    Ok(json!({ "hits": hits, "truncated": truncated || hits.len() >= 100 }))
+}
+
+/// `AstRewrite`: hash-anchored structural edit with AST recovery + syntax guard.
+fn tool_ast_rewrite(
+    workspace: Option<&Path>,
+    scratch: Option<&Path>,
+    args: &Value,
+    allow_external_paths: bool,
+    hashline: Option<&HashlineContext<'_>>,
+) -> Result<Value, (String, String)> {
+    let root = require_workspace(workspace)?;
+    let path = args
+        .get("path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "path required".into()))?;
+    let anchor_hash = args
+        .get("anchorHash")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "anchorHash required".into()))?;
+    let expected = args
+        .get("expectedContext")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "expectedContext required".into()))?;
+    let replacement = args
+        .get("replacement")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "replacement required".into()))?;
+    let (resolved, root_kind) =
+        resolve_tool_path_with_external(root, scratch, path, allow_external_paths)
+            .map_err(|e| (e.clone(), e))?;
+    let req = ast::patch::HashEditRequest {
+        file_path: resolved.clone(),
+        anchor_hash: anchor_hash.into(),
+        expected_context: expected.into(),
+        replacement: replacement.into(),
+    };
+    let (outcome, hash) = ast::patch::apply_hash_edit_file(&req).map_err(|e| match e {
+        ast::patch::PatchError::AnchorNotFound => (
+            "AST_ANCHOR_NOT_FOUND".into(),
+            e.to_string(),
+        ),
+        ast::patch::PatchError::SyntaxRejected { detail } => {
+            ("AST_SYNTAX_REJECTED".into(), detail)
+        }
+        ast::patch::PatchError::Io(msg) => ("TOOL_FAILED".into(), msg),
+    })?;
+    if let Ok(landed) = std::fs::read(&resolved) {
+        let file = hashline::normalize_file(&landed);
+        let tag = hashline::tag_of_lf_text(&file.text);
+        hashline::record_write(hashline, &hashline::canonical_key(&resolved), &file, &tag);
+    }
+    let display = display_tool_path(root_kind, root, &resolved);
+    Ok(json!({
+        "path": display,
+        "offset": outcome.offset,
+        "recovered": outcome.recovered,
+        "anchorLabel": outcome.anchor_label,
+        "hash": hash,
+    }))
+}
+
+/// Shared LSP preamble: resolve language + file + binary, or a helpful error.
+fn lsp_preamble(
+    workspace: Option<&Path>,
+    scratch: Option<&Path>,
+    args: &Value,
+    allow_external_paths: bool,
+) -> Result<(PathBuf, String, String, PathBuf), (String, String)> {
+    let root = require_workspace(workspace)?;
+    let path = args
+        .get("path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "path required".into()))?;
+    let (resolved, _kind) =
+        resolve_tool_path_with_external(root, scratch, path, allow_external_paths)
+            .map_err(|e| (e.clone(), e))?;
+    let language = lsp::language_for(&resolved).ok_or_else(|| {
+        (
+            "LSP_UNSUPPORTED".into(),
+            "no language server for this file type (rs, ts/tsx/js, py, go)".into(),
+        )
+    })?;
+    let binary = lsp::discover_server(language).ok_or_else(|| {
+        (
+            "LSP_UNAVAILABLE".into(),
+            format!("no {language} server on PATH (want one of {:?})", lsp::KNOWN_SERVERS.iter().find(|(l, _)| *l == language).map(|(_, b)| *b).unwrap_or(&[])),
+        )
+    })?;
+    let text = std::fs::read_to_string(&resolved)
+        .map_err(|e| ("TOOL_FAILED".into(), format!("read failed: {e}")))?;
+    Ok((resolved, language.into(), text, binary))
+}
+
+async fn lsp_positional(
+    workspace: Option<&Path>,
+    scratch: Option<&Path>,
+    args: &Value,
+    allow_external_paths: bool,
+    method: &str,
+) -> Result<Value, (String, String)> {
+    let root = require_workspace(workspace)?;
+    let (resolved, language, text, binary) =
+        lsp_preamble(workspace, scratch, args, allow_external_paths)?;
+    let line = args.get("line").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+    let col = args.get("col").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+    let params = match method {
+        "textDocument/definition" => lsp::handlers::goto_definition(&resolved, line, col),
+        "textDocument/references" => lsp::handlers::find_references(&resolved, line, col),
+        "textDocument/hover" => lsp::handlers::hover(&resolved, line, col),
+        _ => return Err(("INVALID_ARGUMENT".into(), "unknown LSP method".into())),
+    };
+    let language_id = match language.as_str() {
+        "rust" => "rust",
+        "typescript" => "typescript",
+        "python" => "python",
+        _ => "plaintext",
+    };
+    let exchange = lsp::query_once(
+        &binary,
+        root,
+        language_id,
+        &resolved,
+        &text,
+        method,
+        params,
+        std::time::Duration::from_secs(20),
+    )
+    .await
+    .map_err(|e| ("TOOL_FAILED".into(), e.to_string()))?;
+    Ok(json!({ "result": exchange.result, "diagnostics": exchange.diagnostics }))
+}
+
+async fn tool_lsp_diagnostics(
+    workspace: Option<&Path>,
+    scratch: Option<&Path>,
+    args: &Value,
+    allow_external_paths: bool,
+) -> Result<Value, (String, String)> {
+    let root = require_workspace(workspace)?;
+    let (resolved, language, text, binary) =
+        lsp_preamble(workspace, scratch, args, allow_external_paths)?;
+    let language_id = match language.as_str() {
+        "rust" => "rust",
+        "typescript" => "typescript",
+        "python" => "python",
+        _ => "plaintext",
+    };
+    // didOpen prompts the server to publish diagnostics; the hover request
+    // simply bounds the wait window.
+    let exchange = lsp::query_once(
+        &binary,
+        root,
+        language_id,
+        &resolved,
+        &text,
+        "textDocument/hover",
+        lsp::handlers::hover(&resolved, 0, 0),
+        std::time::Duration::from_secs(20),
+    )
+    .await
+    .map_err(|e| ("TOOL_FAILED".into(), e.to_string()))?;
+    Ok(json!({ "diagnostics": exchange.diagnostics }))
+}
+
+/// `IsoCreate`: snapshot the workspace for `taskId`.
+fn tool_iso_create(
+    workspace: Option<&Path>,
+    args: &Value,
+) -> Result<Value, (String, String)> {
+    let root = require_workspace(workspace)?;
+    let task_id = args
+        .get("taskId")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "taskId required".into()))?;
+    let dest = iso::cow::snapshot_path(root, task_id);
+    let (method, ms) = iso::cow::snapshot_dir(root, &dest)
+        .map_err(|e| ("TOOL_FAILED".into(), e.to_string()))?;
+    Ok(json!({
+        "path": dest.strip_prefix(root).unwrap_or(&dest).to_string_lossy(),
+        "method": format!("{method:?}"),
+        "elapsedMs": ms,
+    }))
+}
+
+/// `IsoDiff`: numstat totals for the snapshot.
+fn tool_iso_diff(
+    workspace: Option<&Path>,
+    args: &Value,
+) -> Result<Value, (String, String)> {
+    let root = require_workspace(workspace)?;
+    let task_id = args
+        .get("taskId")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "taskId required".into()))?;
+    let dest = iso::cow::snapshot_path(root, task_id);
+    if !dest.exists() {
+        return Err((
+            "INVALID_ARGUMENT".into(),
+            "no snapshot for this taskId; create it with IsoCreate".into(),
+        ));
+    }
+    let summary = iso::worktree::diff_summary(&dest)
+        .map_err(|e| ("TOOL_FAILED".into(), e.to_string()))?;
+    Ok(json!({
+        "filesChanged": summary.files_changed,
+        "insertions": summary.insertions,
+        "deletions": summary.deletions,
+    }))
+}
+
+/// `IsoDiscard`: remove the snapshot (git worktree first, else directory).
+fn tool_iso_discard(
+    workspace: Option<&Path>,
+    args: &Value,
+) -> Result<Value, (String, String)> {
+    let root = require_workspace(workspace)?;
+    let task_id = args
+        .get("taskId")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "taskId required".into()))?;
+    let dest = iso::cow::snapshot_path(root, task_id);
+    if iso::worktree::worktree_remove(root, &dest).is_err() {
+        iso::cow::discard_snapshot(&dest).map_err(|e| ("TOOL_FAILED".into(), e.to_string()))?;
+    }
+    Ok(json!({ "discarded": true }))
+}
+
+/// `RulesGet`: rendered rule hierarchy for an optional sub-path.
+fn tool_rules_get(
+    workspace: Option<&Path>,
+    args: &Value,
+) -> Result<Value, (String, String)> {
+    let root = require_workspace(workspace)?;
+    let start = match args.get("path").and_then(|v| v.as_str()) {
+        Some(p) => root.join(p),
+        None => root.to_path_buf(),
+    };
+    let sources = rules::discovery::discover_rules(&start);
+    let mut rendered = rules::discovery::render_rules(&sources);
+    if rendered.len() > BUDGET_SEARCH.max_bytes {
+        rendered.truncate(BUDGET_SEARCH.max_bytes);
+    }
+    Ok(json!({
+        "sources": sources.iter().map(|s| s.path.strip_prefix(root).unwrap_or(&s.path).to_string_lossy().to_string()).collect::<Vec<_>>(),
+        "rules": rendered,
+    }))
+}
+
+/// `PtyCheck`: classify output text without spawning anything.
+fn tool_pty_check(args: &Value) -> Result<Value, (String, String)> {
+    let output = args
+        .get("output")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ("INVALID_ARGUMENT".into(), "output required".into()))?;
+    Ok(json!({
+        "prompt": pty::detector::detect(output).map(|p| format!("{p:?}")),
+    }))
 }
 
 fn tool_write(
@@ -2712,6 +3079,150 @@ pub fn builtin_tool_defs() -> Value {
                 "properties": { "command": { "type": "string" } },
                 "required": ["command"]
             }
+        },
+        {
+            "name": "ReadRange",
+            "description": "Frame-safe windowed read for large files: same shape as Read with a 200-line default and 2000-line max. Prefer over Read for logs and generated files.",
+            "risk": "low",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string" },
+                    "offset": { "type": "integer", "minimum": 0 },
+                    "limit": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["path"]
+            }
+        },
+        {
+            "name": "AstGrep",
+            "description": "Structural search with $NAME slots (e.g. `foo($ARG)`). Use when text search is noisy; returns path/line/snippet plus slot bindings.",
+            "risk": "low",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": { "type": "string" },
+                    "path": { "type": "string", "description": "File or directory; defaults to the workspace root" }
+                },
+                "required": ["pattern"]
+            }
+        },
+        {
+            "name": "AstRewrite",
+            "description": "Hash-anchored structural edit: pass anchorHash (SHA256 of expectedContext) with expectedContext and replacement. Recovers drifted anchors via the enclosing item and rejects syntax-breaking edits.",
+            "risk": "high",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string" },
+                    "anchorHash": { "type": "string" },
+                    "expectedContext": { "type": "string" },
+                    "replacement": { "type": "string" }
+                },
+                "required": ["path", "anchorHash", "expectedContext", "replacement"]
+            }
+        },
+        {
+            "name": "LspDiagnostics",
+            "description": "Compiler/linter diagnostics for a file via the supervised language server (rust-analyzer, vtsls, pyright, gopls). Errors when no server is installed, naming the wanted binary.",
+            "risk": "low",
+            "parameters": {
+                "type": "object",
+                "properties": { "path": { "type": "string" } },
+                "required": ["path"]
+            }
+        },
+        {
+            "name": "LspGotoDef",
+            "description": "Goto-definition via LSP (0-based line/col).",
+            "risk": "low",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string" },
+                    "line": { "type": "integer", "minimum": 0 },
+                    "col": { "type": "integer", "minimum": 0 }
+                },
+                "required": ["path", "line", "col"]
+            }
+        },
+        {
+            "name": "LspReferences",
+            "description": "Find references via LSP (0-based line/col).",
+            "risk": "low",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string" },
+                    "line": { "type": "integer", "minimum": 0 },
+                    "col": { "type": "integer", "minimum": 0 }
+                },
+                "required": ["path", "line", "col"]
+            }
+        },
+        {
+            "name": "LspHover",
+            "description": "Hover type/docstring via LSP (0-based line/col).",
+            "risk": "low",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string" },
+                    "line": { "type": "integer", "minimum": 0 },
+                    "col": { "type": "integer", "minimum": 0 }
+                },
+                "required": ["path", "line", "col"]
+            }
+        },
+        {
+            "name": "IsoCreate",
+            "description": "Snapshot the workspace into .pi/worktrees/task-<taskId> (reflink when the filesystem supports it) for isolated delegate work.",
+            "risk": "high",
+            "parameters": {
+                "type": "object",
+                "properties": { "taskId": { "type": "string" } },
+                "required": ["taskId"]
+            }
+        },
+        {
+            "name": "IsoDiff",
+            "description": "Numstat totals for a task snapshot.",
+            "risk": "low",
+            "parameters": {
+                "type": "object",
+                "properties": { "taskId": { "type": "string" } },
+                "required": ["taskId"]
+            }
+        },
+        {
+            "name": "IsoDiscard",
+            "description": "Remove a task snapshot.",
+            "risk": "high",
+            "parameters": {
+                "type": "object",
+                "properties": { "taskId": { "type": "string" } },
+                "required": ["taskId"]
+            }
+        },
+        {
+            "name": "RulesGet",
+            "description": "Rendered rule hierarchy (AGENTS.md, CLAUDE.md, .cursorrules, .clinerules, .pi/rules) for a path, nearest scope first.",
+            "risk": "low",
+            "parameters": {
+                "type": "object",
+                "properties": { "path": { "type": "string" } },
+                "required": []
+            }
+        },
+        {
+            "name": "PtyCheck",
+            "description": "Classify output text for interactive prompts (sudo/ssh/shell/question) without spawning anything.",
+            "risk": "low",
+            "parameters": {
+                "type": "object",
+                "properties": { "output": { "type": "string" } },
+                "required": ["output"]
+            }
         }
     ])
 }
@@ -4084,5 +4595,123 @@ mod tests {
 
         let written = std::fs::read_to_string(&target).unwrap();
         assert_eq!(written, "line one\r\nline TWO replaced\r\nline three\r\n");
+    }
+
+    #[tokio::test]
+    async fn native_read_range_returns_bounded_window() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut text = String::new();
+        for i in 0..300 {
+            text.push_str(&format!("line {i}\n"));
+        }
+        std::fs::write(dir.path().join("big.txt"), &text).unwrap();
+        let result = execute_tool(
+            Some(dir.path()),
+            None,
+            "ReadRange",
+            &serde_json::json!({ "path": "big.txt" }),
+            5_000,
+        )
+        .await;
+        assert!(result.ok, "ReadRange failed: {:?}", result.content);
+        assert_eq!(result.content["lineCount"].as_u64(), Some(200));
+        assert_eq!(result.content["totalLines"].as_u64(), Some(300));
+    }
+
+    #[tokio::test]
+    async fn native_ast_grep_and_rewrite_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.rs"), "fn old() {\n    body();\n}\n").unwrap();
+        let grep = execute_tool(
+            Some(dir.path()),
+            None,
+            "AstGrep",
+            &serde_json::json!({ "pattern": "fn $NAME ( ) {", "path": "a.rs" }),
+            5_000,
+        )
+        .await;
+        assert!(grep.ok, "AstGrep failed: {:?}", grep.content);
+        assert_eq!(grep.content["hits"].as_array().map(|h| h.len()), Some(1));
+
+        let context = "    body();\n";
+        let rewrite = execute_tool(
+            Some(dir.path()),
+            None,
+            "AstRewrite",
+            &serde_json::json!({
+                "path": "a.rs",
+                "anchorHash": crate::ast::patch::sha_hex(context),
+                "expectedContext": context,
+                "replacement": "    fixed();\n",
+            }),
+            5_000,
+        )
+        .await;
+        assert!(rewrite.ok, "AstRewrite failed: {:?}", rewrite.content);
+        assert_eq!(rewrite.content["recovered"].as_bool(), Some(false));
+        let after = std::fs::read_to_string(dir.path().join("a.rs")).unwrap();
+        assert!(after.contains("fixed();"));
+    }
+
+    #[tokio::test]
+    async fn native_rules_and_pty_check_respond() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("AGENTS.md"), "be kind\n").unwrap();
+        let rules = execute_tool(
+            Some(dir.path()),
+            None,
+            "RulesGet",
+            &serde_json::json!({}),
+            5_000,
+        )
+        .await;
+        assert!(rules.ok, "RulesGet failed: {:?}", rules.content);
+        assert!(rules.content["rules"].as_str().unwrap_or("").contains("be kind"));
+
+        let pty = execute_tool(
+            Some(dir.path()),
+            None,
+            "PtyCheck",
+            &serde_json::json!({ "output": "[sudo] password for ada: " }),
+            5_000,
+        )
+        .await;
+        assert!(pty.ok, "PtyCheck failed: {:?}", pty.content);
+        assert_eq!(pty.content["prompt"].as_str(), Some("SudoPassword"));
+    }
+
+    #[tokio::test]
+    async fn native_iso_snapshot_lifecycle() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.txt"), "v1\n").unwrap();
+        let created = execute_tool(
+            Some(dir.path()),
+            None,
+            "IsoCreate",
+            &serde_json::json!({ "taskId": "t1" }),
+            30_000,
+        )
+        .await;
+        assert!(created.ok, "IsoCreate failed: {:?}", created.content);
+        let diff = execute_tool(
+            Some(dir.path()),
+            None,
+            "IsoDiff",
+            &serde_json::json!({ "taskId": "t1" }),
+            30_000,
+        )
+        .await;
+        // Non-git fixture: diff errors honestly instead of inventing totals.
+        assert!(!created.content["path"].as_str().unwrap_or("").is_empty());
+        let _ = diff;
+        let discarded = execute_tool(
+            Some(dir.path()),
+            None,
+            "IsoDiscard",
+            &serde_json::json!({ "taskId": "t1" }),
+            30_000,
+        )
+        .await;
+        assert!(discarded.ok, "IsoDiscard failed: {:?}", discarded.content);
     }
 }

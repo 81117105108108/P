@@ -9117,6 +9117,30 @@ are withdrawn with ADR 0165.
 - **Status**: Unit-covered (`mcp-suite`, `skills-agents`, `cost-policy`,
   `ipc-transport`); full Electron journey deferred by policy
 
+#### E2E-235: Native engine tools and desktop review surfaces
+
+- **Preconditions**: Clean profile, fixture repo with `rs`/`ts` sources.
+  No language server required for the negative path.
+- **Steps**: 1) `ReadRange` a 300-line file; confirm a 200-line window with
+  totals. 2) `AstGrep` a `$NAME` pattern; confirm hits with bindings.
+  3) `AstRewrite` with a correct hash, a drifted anchor, and an
+  unbalanced replacement; confirm apply, recovery flag, and
+  `AST_SYNTAX_REJECTED`. 4) `LspDiagnostics` on an `rs` file without
+  rust-analyzer; confirm `LSP_UNAVAILABLE` names the wanted binary.
+  5) `IsoCreate`/`IsoDiff`/`IsoDiscard` a task snapshot; confirm totals and
+  cleanup. 6) `RulesGet` at a nested path; confirm nearest-first sources.
+  7) Open DiffReview with two hunks; cherry-pick one, edit the target,
+  accept the file. 8) Open SubagentDag and InspectPanel fixtures; confirm
+  statuses and drift flag render.
+- **Expected**: Range reads stay frame-safe; structural edits never land
+  silently wrong; LSP gaps guide installs; snapshots clean up; review
+  surfaces match the hunk/node/inspect contracts.
+- **Specs linked**: `03-runtime/05-host-core-rust.md` §6a,
+  `03-runtime/03-tools-and-permissions.md` §2, ADR 0209
+- **Acceptance**: D (workspace), E (tools), Quality
+- **Status**: Unit-covered (Rust `cache`/`ast`/`lsp`/`iso`/`pty`/`rules`,
+  `native-harness`, `native-core-ui`); full Electron journey deferred by policy
+
 ## Remote Agent Control target scenarios (post-MVP)
 
 The following scenarios require the approved remote harness. They are
