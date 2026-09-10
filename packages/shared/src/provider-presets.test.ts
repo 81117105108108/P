@@ -82,6 +82,10 @@ describe("Zhipu endpoint presets", () => {
 });
 
 describe("named endpoint presets", () => {
+  it("only the local presets opt out of key authentication", () => {
+    expect(NAMED_ENDPOINT_PRESETS.filter((preset) => preset.authKind === "none")
+      .map((preset) => preset.id)).toEqual(["ollama", "lmstudio"]);
+  });
   it("lists first-party vendors in one flat catalog, including Xiaomi", () => {
     const ids = NAMED_ENDPOINT_PRESETS.map((item) => item.id);
     expect(ids).toEqual(

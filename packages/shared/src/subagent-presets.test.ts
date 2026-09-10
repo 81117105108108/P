@@ -14,9 +14,13 @@ import {
 } from "./subagent-presets.js";
 
 describe("SUBAGENT_PRESETS", () => {
-  it("ships the four builtin roles", () => {
+  it("ships an opt-in local template alongside the four builtin roles", () => {
     const ids = SUBAGENT_PRESETS.map((preset) => preset.id);
-    expect(ids).toEqual(["explorer", "code-reviewer", "test-runner", "fixer"]);
+    expect(ids).toEqual(["local-scout", "explorer", "code-reviewer", "test-runner", "fixer"]);
+    const local = findSubagentPreset("local-scout");
+    expect(local?.model).toBe("ollama/<model-id>");
+    expect(local?.tools).toEqual(["Read", "Glob", "Grep"]);
+    expect(local?.maxTurns).toBe(40);
   });
 
   it("never duplicates a name", () => {

@@ -637,3 +637,22 @@ Each phase is independently shippable and leaves the contract coherent.
 
 Phase 2 is the point of no return for the old contract and must ship with the
 renderer change in §13.4 and the prompt change in §13.6 in the same release.
+
+## 16. Separate AstRewrite contract (ADR 0211)
+
+This section applies to `AstRewrite`, not the line-tagged `Edit` operations.
+`anchorHash` must be the SHA256 of the exact `expectedContext` bytes. The
+context must not be blank and must occur exactly once in the current file,
+including overlapping occurrences. A moved unchanged block remains valid;
+any content or whitespace drift, empty context, bad hash, or duplicate yields
+`AST_ANCHOR_NOT_FOUND` without writing. No signature-only or first-line
+recovery is attempted. Success replaces the complete block and returns
+`recovered: false`, the byte offset, and the new whole-file SHA256.
+
+Rust, TypeScript/TSX, Python and Go edits use the available Tree-sitter grammar
+and require the entire resulting file to parse cleanly. A result that retains
+an existing syntax error is rejected with `AST_SYNTAX_REJECTED`; repairing all
+errors in one edit is allowed. Other languages retain a heuristic net-delimiter
+check only; balanced text is not proof of valid syntax. Tests must inspect
+actual written bytes and verify rejected files remain unchanged. This does not
+add a cross-process atomic-write or concurrent-writer guarantee.

@@ -18,6 +18,16 @@ is enforced by host-core before generic plugin permission evaluation and cannot
 be bypassed by a low-risk manifest, a session grant, or `auto`. Plugin tools
 remain available to the same Agent after an approved Plan → Agent transition.
 
+### Bundled writing and search skills (ADR 0211)
+
+`pi.caveman` and `pi.ponytail` are PI-Desktop-authored skill-only plugins.
+Their manifests contribute only skill documents and retain
+`agent.prompt.inject`; their lifecycle entry points register no commands,
+panels or tools. The Skill tool loads their bodies on demand. Labels must not
+claim upstream integration, persistent terse-mode toggling or an executable
+parallel search service. Ponytail's guidance may use optional search tools
+and Local-Scout only when those are actually available/configured.
+
 ## 1. Goals
 
 Give PI-Desktop extensibility similar to established desktop plugin ecosystems (e.g. VS Code extensions):

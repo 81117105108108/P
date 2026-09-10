@@ -20,6 +20,23 @@ const panelSource = read("src/components/workpanel/WorkPanel.tsx");
 const hostProcessSource = read("electron/main/host-process.ts");
 const packageJson = JSON.parse(read("package.json"));
 
+for (const id of ["pi.caveman", "pi.ponytail"]) {
+  test(`${id} contributes only an on-demand first-party skill`, async () => {
+    const root = `resources/plugins/${id}`;
+    const manifest = JSON.parse(read(`${root}/manifest.json`));
+    assert.equal(manifest.author, "PI-Desktop");
+    assert.match(manifest.description, /First-party, on-demand skill/);
+    assert.deepEqual(Object.keys(manifest.contributes), ["skills"]);
+    assert.deepEqual(manifest.permissions, ["agent.prompt.inject"]);
+    assert.equal(manifest.contributes.skills.length, 1);
+    assert.ok(read(`${root}/${manifest.contributes.skills[0]}`).trim());
+    // No pi global: even loading/unloading must not invoke undeclared APIs.
+    const entry = await import(new URL(`../${root}/${manifest.main}`, import.meta.url));
+    await entry.onLoad();
+    await entry.onUnload();
+  });
+}
+
 test("Files ships as an ordinary plugin, not a privileged one", () => {
   assert.equal(manifest.id, "pi.files");
   assert.deepEqual(manifest.contributes.views.map((v) => v.id), ["tree"]);

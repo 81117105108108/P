@@ -3,18 +3,10 @@
   "id": "pi.ponytail",
   "name": "Ponytail",
   "version": "1.0.0",
-  "description": "Fast parallel fan-out: fire several searches at once, converge on anchors. Keeps the core loop moving.",
+  "description": "First-party, on-demand skill with parallel search guidance. Not an upstream Ponytail integration or a search engine.",
   "author": "PI-Desktop",
   "main": "main.js",
   "contributes": {
-    "commands": [
-      {
-        "id": "ponytail",
-        "title": "Ponytail: parallel sweep",
-        "keywords": ["ponytail", "parallel", "sweep", "fan-out"],
-        "category": "Agent"
-      }
-    ],
     "skills": ["./skills/ponytail.md"]
   },
   "permissions": ["agent.prompt.inject"],

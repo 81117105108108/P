@@ -169,6 +169,7 @@ export function ProviderSetupDialog({
 
   const namedPreset = NAMED_ENDPOINT_PRESETS.find((preset) => preset.id === service);
   const named = Boolean(namedPreset);
+  const noAuth = namedPreset?.authKind === "none";
   const custom = service === CUSTOM_SERVICE;
   const resolvedName = namedPreset ? name.trim() || namedPreset.name : name;
   const resolvedBaseUrl = namedPreset?.baseUrl ?? baseUrl;
@@ -177,22 +178,22 @@ export function ProviderSetupDialog({
   const baseUrlError =
     baseUrlTouched && baseUrlIssue ? t("settings.baseUrlInvalid") : undefined;
   const requestBaseUrl = normalizeBaseUrlInput(resolvedBaseUrl, resolvedApiStyle);
-  // Named add-path waits for a key so picking a vendor does not 401-probe.
+  // Key-authenticated named services wait for a key to avoid a 401 probe.
   // Editing reuses the stored secret. Custom still probes a valid URL alone.
   const discoveryActive =
     Boolean(service) &&
     !baseUrlIssue &&
-    (custom || Boolean(apiKey.trim()) || Boolean(provider));
+    (custom || noAuth || Boolean(apiKey.trim()) || Boolean(provider));
   const headers = pairsToRecord(headerPairs);
   const discovery = useProviderModels(
     discoveryActive,
     {
       baseUrl: requestBaseUrl,
-      apiKey,
+      apiKey: noAuth ? "" : apiKey,
       apiStyle: resolvedApiStyle,
       headers,
     },
-    provider,
+    noAuth ? undefined : provider,
   );
   const selection = useModelSelection(discovery, models, setModels);
 
@@ -221,6 +222,7 @@ export function ProviderSetupDialog({
     const previous = namedPreset;
     setService(next);
     setBaseUrlTouched(false);
+    setApiKey("");
     const preset = NAMED_ENDPOINT_PRESETS.find((item) => item.id === next);
     if (!preset) {
       if (next === CUSTOM_SERVICE && apiStyle === OPENCODE_GO_API_STYLE) {
@@ -292,8 +294,9 @@ export function ProviderSetupDialog({
           defaultModelId: persisted[0]?.id,
           models: persisted,
           apiStyle: resolvedApiStyle,
+          authKind: noAuth ? "none" : custom && !apiKey ? provider.authKind : "api_key_and_base_url",
           headers,
-          ...(apiKey ? { secretValue: apiKey } : {}),
+          ...(!noAuth && apiKey ? { secretValue: apiKey } : {}),
         });
         onSaved(result.provider ?? provider, persisted);
       } else {
@@ -303,10 +306,10 @@ export function ProviderSetupDialog({
           type: "openai_compatible",
           protocol: "openai_compatible",
           baseUrl: providerBaseUrl,
-          authKind: "api_key_and_base_url",
+          authKind: noAuth ? "none" : "api_key_and_base_url",
           defaultModelId: persisted[0]?.id,
           models: persisted,
-          secretValue: apiKey || undefined,
+          secretValue: noAuth ? undefined : apiKey || undefined,
           apiStyle: resolvedApiStyle,
           headers,
         });
@@ -397,7 +400,7 @@ export function ProviderSetupDialog({
             >
               <div
                 className={`provider-setup-field-row provider-setup-service-row ${
-                  named ? "is-named" : "is-single"
+                  named && !noAuth ? "is-named" : "is-single"
                 }`}
               >
                 <div className="provider-setup-service">
@@ -411,7 +414,7 @@ export function ProviderSetupDialog({
                   </Field>
                 </div>
 
-                {named ? (
+                {named && !noAuth ? (
                   <Field
                     label={t("settings.apiKey")}
                     hint={editing ? t("settings.apiKeyKeepHint") : undefined}

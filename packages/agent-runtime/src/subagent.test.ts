@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AgentEventEnvelope, SubagentDefinition } from "@pi-desktop/shared";
+import { NAMED_ENDPOINT_PRESETS, type AgentEventEnvelope, type SubagentDefinition } from "@pi-desktop/shared";
+import { resolveSubagentProviders } from "./subagent-definitions.js";
 import {
   composeSubagentSystemPrompt,
   MAX_SUBAGENT_REPORT_CHARS,
@@ -108,6 +109,31 @@ describe("composeSubagentSystemPrompt", () => {
 });
 
 describe("SubagentRun event forwarding", () => {
+  it.each(["ollama", "lmstudio"])("sends a resolved %s pin through Chat Completions without a stored key", async (id) => {
+    const preset = NAMED_ENDPOINT_PRESETS.find((p) => p.id === id)!;
+    const modelId = "org/local-model:latest";
+    const def = definition({ model: { providerId: id, modelId } });
+    const resolved = await resolveSubagentProviders({
+      definitions: [def], providers: [{ ...preset, id: "local-uuid" }],
+      getSecret: async () => { throw new Error("no-auth must not read secrets"); },
+    });
+    expect(resolved.diagnostics).toEqual([]);
+    const { run } = createRun({ definition: def, provider: resolved.providers[`${id}/${modelId}`] });
+    const requests: { url: string; body: any; authorization: string | null }[] = [];
+    const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      requests.push({
+        url: String(input), body: JSON.parse(String(init?.body)),
+        authorization: new Headers(init?.headers).get("authorization"),
+      });
+      return new Response("fixture rejection", { status: 400 });
+    });
+    await run.agent.streamFunction(run.agent.state.model,
+      { systemPrompt: "Search", messages: [], tools: [] }, { fetch }).result();
+    expect(requests).toHaveLength(1);
+    expect(requests[0].url).toBe(`${preset.baseUrl}/chat/completions`);
+    expect(requests[0].body.model).toBe(modelId);
+    expect(requests[0].authorization).toBe("Bearer pi-desktop-no-auth");
+  });
   it("keeps the no-pass selection out of the agent's canonical state", () => {
     const { run } = createRun({ thinkingLevel: "omit" });
 

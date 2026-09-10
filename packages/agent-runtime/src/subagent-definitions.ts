@@ -395,7 +395,7 @@ export async function resolveSubagentProviders(input: {
       continue;
     }
     const isVendorAccount = provider.authKind === OAUTH_AUTH_KIND;
-    if (!isVendorAccount && !secrets.has(provider.id)) {
+    if (!isVendorAccount && provider.authKind !== "none" && !secrets.has(provider.id)) {
       try {
         secrets.set(provider.id, await input.getSecret(provider.id));
       } catch {

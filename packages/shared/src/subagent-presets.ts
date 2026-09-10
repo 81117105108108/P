@@ -5,9 +5,10 @@
  * The runtime ships the same definitions as inline markdown documents
  * (`BUILTIN_SUBAGENT_DOCUMENTS` in `agent-runtime/src/subagent-definitions.ts`)
  * so the sidecar can load them without filesystem fallback. The two lists
- * must agree on `name`, `description`, `tools` and `maxTurns` because they
+ * agree on the four builtin roles' description, tools and maxTurns because they
  * describe the same delegate; this module is the source of truth for the UI's
- * starter values and is exercised by `subagent-presets.test.ts`.
+ * starter values and is exercised by `subagent-presets.test.ts`. Local-Scout
+ * is an opt-in editor template, not a fifth runtime builtin.
  */
 
 import { DEFAULT_SUBAGENT_TOOLS } from "./subagent-definition.js";
@@ -20,7 +21,9 @@ import { DEFAULT_SUBAGENT_TOOLS } from "./subagent-definition.js";
  */
 export type SubagentPreset = {
   /** Stable id used for i18n keys and analytics; matches `definition.name`. */
-  id: "explorer" | "code-reviewer" | "test-runner" | "fixer";
+  id: "explorer" | "code-reviewer" | "test-runner" | "fixer" | "local-scout";
+  /** Explicit pin for opt-in templates that must not inherit a cloud model. */
+  model?: string;
   /** Display name shown on the preset chip. */
   name: string;
   /** One-line description mirroring the definition's frontmatter. */
@@ -39,6 +42,18 @@ export type SubagentPreset = {
  * the editor sees the same prompt the runtime will load.
  */
 export const SUBAGENT_PRESETS: readonly SubagentPreset[] = [
+  {
+    id: "local-scout",
+    name: "Local-Scout",
+    description: "Read-only search triage on a configured Ollama or LM Studio model.",
+    tools: ["Read", "Glob", "Grep"],
+    model: "ollama/<model-id>",
+    maxTurns: 40,
+    body: "You are Local-Scout, working on one search task.\n\n" +
+      "- Keep context small: return at most 5 hits with path:line anchors.\n" +
+      "- Prefer Grep/Glob and ranged Read. Do not change files.\n" +
+      "- Report evidence and unresolved questions; never guess beyond the hits.\n",
+  },
   {
     id: "explorer",
     name: "Explorer",

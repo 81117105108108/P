@@ -1,9 +1,9 @@
 ---
-name: Caveman terse mode
-description: Ultra-compressed replies that save tokens. Load when user says caveman, brief, terse, or save tokens.
+name: Caveman concise replies
+description: First-party writing guidance. Load when the user requests brief or terse replies; not an upstream integration or persistent mode.
 ---
 
-Speak fragments. Tech terms exact. No articles/filler/pleasantries/hedging.
+Use concise phrasing. Keep technical terms exact and uncertainty explicit.
 
 - Answers: anchors + code + next step. One fact once.
 - Lists, one line each. No decorative tables/emoji.

@@ -9493,3 +9493,64 @@ browser milestones are scheduled.
 - **Acceptance**: Security, Quality
 - **Milestone**: Post-MVP (rollout R3)
 - **Status**: Draft; integration fixture required
+
+#### E2E-233: AstRewrite rejects stale and ambiguous blocks
+
+- **Preconditions**: An isolated workspace with a Rust file and known SHA256
+  block anchors; a fixture can inspect exact bytes before and after calls.
+- **Steps**: Replace a unique multi-line block after moving it unchanged;
+  retry with whitespace drift, a changed body under the same signature,
+  duplicate blocks, overlapping text, empty context and a wrong hash. Try a
+  syntax-breaking replacement in both a clean and an already-broken file.
+- **Expected**: Only the unique unchanged whole block is replaced, exactly
+  once, with `recovered: false` and the final-file hash. Anchor failures return
+  `AST_ANCHOR_NOT_FOUND`; invalid edited parses return `AST_SYNTAX_REJECTED`.
+  Every rejection leaves the file byte-for-byte unchanged.
+- **Specs linked**: `03-runtime/18-line-anchored-edit-contract.md` §16, ADR 0211
+- **Status**: Documented, not executed as E2E; Rust file tests cover the engine.
+
+#### E2E-234: Local preset to explicit subagent pin
+
+- **Preconditions**: Ollama or LM Studio serves a tool-capable fixture model;
+  test each preset separately, without an API key. A cloud session is available.
+- **Steps**: Select the local service, fetch/select a model, enable its
+  subagent availability and save. Reopen/save an old local row with key-required
+  auth. Create Local-Scout from the template, attempt saving the placeholder,
+  then choose the real local model and save. Delegate from the cloud session.
+  Disable the local provider and attempt the delegation again.
+- **Expected**: Discovery and persistence require no key and store `authKind:
+  none`. The placeholder cannot save. The explicit pin reaches the local
+  endpoint, including model ids containing slashes. No stored secret is read
+  for the no-auth launch. A missing/disabled provider fails delegation instead
+  of spending on the parent model. Builtin roles remain four.
+- **Specs linked**: `03-runtime/11-provider-model-system.md` §20, ADR 0211
+- **Status**: Documented, not executed as E2E; preset/resolver unit coverage is
+  not proof of a live model's tool-call quality.
+
+#### E2E-235: Bundled skills do not offer broken panel commands
+
+- **Preconditions**: Fresh bundled plugin reconciliation with both skills enabled.
+- **Steps**: Search the command palette for Caveman/Ponytail; load each skill
+  through Skill; unload/reload the plugins.
+- **Expected**: No mode-toggle or parallel-sweep panel command. Skill bodies
+  remain available on demand; labels describe first-party guidance, not an
+  upstream integration. Lifecycle calls make no undeclared UI API calls.
+- **Specs linked**: `07-plugins/01-plugin-system.md`, ADR 0211
+- **Status**: Documented, not executed as E2E; manifest and lifecycle unit tests.
+
+#### E2E-236: Preview prerequisites fail without modifying Electron
+
+- **Preconditions**: A disposable checkout, dependencies installed, no app running.
+- **Steps**: Run `node scripts/check-preview.mjs` with a missing Electron
+  binary, missing JS output, and missing host binary in separate fixtures.
+  Build JS and host-core; restore Electron explicitly; rerun the check.
+- **Expected**: Each missing prerequisite is reported and exits nonzero before
+  preview starts. The check never imports Electron, downloads, uninstalls or
+  deletes it. Required outputs are `out/main/index.js`,
+  `out/main/plugin-host-process.js`, `out/preload/index.cjs`,
+  `out/preload/plugin-panel.js`, `out/renderer/index.html` under desktop,
+  `packages/agent-runtime/dist/sidecar.js`, and the host debug/release binary
+  (or `PI_DESKTOP_HOST_BIN`). Packaged `dist-bundle/sidecar.js` alone does not
+  satisfy development preview. File presence is not a desktop boot verdict.
+- **Specs linked**: ADR 0211
+- **Status**: Documented, not executed as E2E; prerequisite fixture test only.

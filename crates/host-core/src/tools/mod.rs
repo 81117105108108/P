@@ -1412,7 +1412,7 @@ fn tool_ast_grep(
     Ok(json!({ "hits": hits, "engine": engines.join("+"), "truncated": truncated || hits.len() >= 100 }))
 }
 
-/// `AstRewrite`: hash-anchored structural edit with AST recovery + syntax guard.
+/// `AstRewrite`: unique exact-block edit with a syntax guard.
 fn tool_ast_rewrite(
     workspace: Option<&Path>,
     scratch: Option<&Path>,
@@ -3138,7 +3138,7 @@ pub fn builtin_tool_defs() -> Value {
         },
         {
             "name": "AstRewrite",
-            "description": "Hash-anchored structural edit: pass anchorHash (SHA256 of expectedContext) with expectedContext and replacement. Recovers drifted anchors via the enclosing item and rejects syntax-breaking edits.",
+            "description": "Hash-anchored block edit: pass anchorHash (SHA256 of expectedContext), a nonempty unique exact expectedContext, and replacement. Content drift or ambiguity requires a fresh read; no fuzzy recovery. Supported grammars require a clean edited parse; other languages use a heuristic delimiter guard.",
             "risk": "high",
             "parameters": {
                 "type": "object",
