@@ -44,7 +44,11 @@ one workspace, and dynamic prompt prefixes destroy provider cache discounts.
     assembled bytes identical for every provider while deriving wire hints:
     Anthropic break index after the last stable segment, OpenAI
     `prompt_cache_key` passthrough, DeepSeek automatic prefix caching with
-    static-first ordering.
+    static-first ordering. `PromptCacheTracker`
+    (`shared/prompt-cache-tracker`) counts per-provider turns, static-prefix
+    stabilizations and invalidations, and accumulates provider-reported
+    input/cache-read/cache-write tokens into a cache hit rate for the
+    Cost & Cache UI.
 9. History pruning (`shared/history-pruning`): stub stale Reads (≥100 lines)
    with line count + FNV checksum; tail Bash logs to exit + last 10 lines.
    Runs before any LLM summarizer call.

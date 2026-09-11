@@ -26,6 +26,7 @@ export * from "./skill-triggers.js";
 export * from "./agent-verification.js";
 export * from "./subagent-workspace.js";
 export * from "./cache-boundaries.js";
+export * from "./prompt-cache-tracker.js";
 export * from "./history-pruning.js";
 export * from "./model-routing.js";
 export * from "./thinking-budgets.js";
