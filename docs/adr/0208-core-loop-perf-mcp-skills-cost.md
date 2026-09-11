@@ -40,7 +40,11 @@ one workspace, and dynamic prompt prefixes destroy provider cache discounts.
     byte-equality decides hit eligibility. `staticPrefixHash` reuses the
     FNV-1a checksum from history stubs so callers can validate the static
     block across turns and emit a `staticPrefixChange` diagnostic when the
-    cached prefix was silently invalidated.
+    cached prefix was silently invalidated. `providerCachePlan` keeps
+    assembled bytes identical for every provider while deriving wire hints:
+    Anthropic break index after the last stable segment, OpenAI
+    `prompt_cache_key` passthrough, DeepSeek automatic prefix caching with
+    static-first ordering.
 9. History pruning (`shared/history-pruning`): stub stale Reads (≥100 lines)
    with line count + FNV checksum; tail Bash logs to exit + last 10 lines.
    Runs before any LLM summarizer call.

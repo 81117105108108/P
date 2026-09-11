@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   assemblePrompt,
+  cacheProviderForRequest,
   isCacheHit,
+  providerCachePlan,
+  promptSegments,
   staticPrefixChange,
   staticPrefixHash,
 } from "./cache-boundaries.js";
@@ -32,6 +35,66 @@ describe("cache boundaries", () => {
     expect(changed?.previousHash).toMatch(/^[0-9a-f]{8}$/);
     expect(changed?.nextHash).toMatch(/^[0-9a-f]{8}$/);
     expect(changed?.previousHash).not.toBe(changed?.nextHash);
+  });
+});
+
+describe("provider cache plans", () => {
+  const blocks = { static: "role", semiStatic: "project", dynamic: "turn" };
+
+  it("detects providers from vendor key, wire api, or base URL", () => {
+    expect(cacheProviderForRequest({ vendorKey: "anthropic" })).toBe("anthropic");
+    expect(cacheProviderForRequest({ api: "anthropic-messages" })).toBe("anthropic");
+    expect(cacheProviderForRequest({ vendorKey: "deepseek" })).toBe("deepseek");
+    expect(cacheProviderForRequest({ baseUrl: "https://api.deepseek.com/v1" })).toBe("deepseek");
+    expect(cacheProviderForRequest({ api: "openai-completions" })).toBe("openai");
+    expect(cacheProviderForRequest({ vendorKey: "groq", api: "openai-completions" })).toBe("openai");
+    expect(cacheProviderForRequest({ vendorKey: "mistral" })).toBe("other");
+    expect(cacheProviderForRequest({ baseUrl: "not a url" })).toBe("other");
+  });
+
+  it("keeps assembled bytes identical for every provider", () => {
+    for (const target of [
+      { vendorKey: "anthropic" },
+      { vendorKey: "openai" },
+      { vendorKey: "deepseek" },
+      { vendorKey: "mistral" },
+    ]) {
+      const plan = providerCachePlan(blocks, target);
+      expect(plan.text).toBe(assemblePrompt(blocks));
+      expect(plan.text).toBe("role\n\nproject\n\nturn");
+    }
+  });
+
+  it("places the Anthropic break after the last stable segment", () => {
+    expect(providerCachePlan(blocks, { vendorKey: "anthropic" }).cacheBreakIndex).toBe(1);
+    expect(
+      providerCachePlan({ ...blocks, semiStatic: " " }, { vendorKey: "anthropic" }).cacheBreakIndex,
+    ).toBe(0);
+    expect(
+      providerCachePlan({ ...blocks, static: " ", semiStatic: " " }, { vendorKey: "anthropic" })
+        .cacheBreakIndex,
+    ).toBeUndefined();
+  });
+
+  it("forwards the OpenAI cache key and keeps DeepSeek automatic", () => {
+    const openai = providerCachePlan(blocks, { vendorKey: "openai" }, { promptCacheKey: "session-1" });
+    expect(openai.promptCacheKey).toBe("session-1");
+    expect(openai.requiresStaticFirst).toBe(true);
+
+    const deepseek = providerCachePlan(blocks, { vendorKey: "deepseek" }, { promptCacheKey: "ignored" });
+    expect(deepseek.promptCacheKey).toBeUndefined();
+    expect(deepseek.cacheBreakIndex).toBeUndefined();
+    expect(deepseek.requiresStaticFirst).toBe(true);
+
+    const other = providerCachePlan(blocks, { vendorKey: "mistral" });
+    expect(other.cacheBreakIndex).toBeUndefined();
+    expect(other.promptCacheKey).toBeUndefined();
+    expect(other.requiresStaticFirst).toBe(false);
+  });
+
+  it("keeps segments aligned with the assembled bytes", () => {
+    expect(promptSegments({ static: " a ", semiStatic: " ", dynamic: "b" })).toEqual(["a", "b"]);
+    expect(providerCachePlan({ static: "a", semiStatic: "", dynamic: "b" }, { vendorKey: "anthropic" }).segments).toEqual(["a", "b"]);
   });
 });
 

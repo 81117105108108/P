@@ -20,12 +20,16 @@ export type CacheOrderedPrompt = {
   dynamic: string;
 };
 
-/** Assemble in cache-safe order with stable separators. */
-export function assemblePrompt(blocks: CacheOrderedPrompt): string {
+/** Trimmed non-empty segments in cache-safe order (static → semi-static → dynamic). */
+export function promptSegments(blocks: CacheOrderedPrompt): string[] {
   return [blocks.static, blocks.semiStatic, blocks.dynamic]
     .map((b) => b.trim())
-    .filter(Boolean)
-    .join("\n\n");
+    .filter(Boolean);
+}
+
+/** Assemble in cache-safe order with stable separators. */
+export function assemblePrompt(blocks: CacheOrderedPrompt): string {
+  return promptSegments(blocks).join("\n\n");
 }
 
 /** Anthropic ephemeral marker for the cached prefix boundary. */
@@ -59,4 +63,116 @@ export function staticPrefixChange(
   const nextHash = staticPrefixHash(next);
   if (previousHash === nextHash) return null;
   return { cacheInvalidated: true, previousHash, nextHash };
+}
+
+/**
+ * Cache mechanics differ per provider, so the same block order needs
+ * different wire hints (ADR 0208): Anthropic caches explicit breakpoint
+ * prefixes, OpenAI matches a stable `prompt_cache_key` prefix, DeepSeek
+ * matches any repeated prefix automatically.
+ */
+export type CacheProvider = "anthropic" | "openai" | "deepseek" | "other";
+
+export type CacheRequestTarget = {
+  /** pi-ai wire API, e.g. "anthropic-messages", "openai-completions". */
+  api?: string;
+  /** models.dev provider key persisted as the provider row `vendorKey`. */
+  vendorKey?: string;
+  baseUrl?: string;
+};
+
+function requestHostname(baseUrl: string | undefined): string {
+  if (!baseUrl) return "";
+  try {
+    return new URL(baseUrl).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+/** Derive the cache provider from a resolved request target. */
+export function cacheProviderForRequest(target: CacheRequestTarget): CacheProvider {
+  const vendorKey = target.vendorKey?.trim().toLowerCase() ?? "";
+  const api = target.api?.trim().toLowerCase() ?? "";
+  if (vendorKey === "anthropic" || api === "anthropic-messages") {
+    return "anthropic";
+  }
+  if (vendorKey === "deepseek") return "deepseek";
+  const host = requestHostname(target.baseUrl);
+  if (host === "deepseek.com" || host.endsWith(".deepseek.com")) {
+    return "deepseek";
+  }
+  if (
+    vendorKey === "openai" ||
+    api === "openai-completions" ||
+    api === "openai-responses" ||
+    api === "openai-codex-responses"
+  ) {
+    return "openai";
+  }
+  return "other";
+}
+
+/**
+ * Provider-aware assembly result. `text` is byte-identical to
+ * `assemblePrompt` for every provider — only the wire hints differ, so
+ * cache-prefix equality is never at the mercy of the hint logic.
+ */
+export type ProviderCachePlan = {
+  provider: CacheProvider;
+  /** Assembled prompt bytes (same output as `assemblePrompt`). */
+  text: string;
+  /** Trimmed segments the text was joined from, in assembly order. */
+  segments: string[];
+  /**
+   * 0-based segment after which an explicit ephemeral cache break belongs
+   * (Anthropic only). Unset when no stable segment exists.
+   */
+  cacheBreakIndex?: number;
+  /** Stable per-conversation key for providers with key-scoped caching. */
+  promptCacheKey?: string;
+  /** True when the static block must sit at byte 0 of the request prompt. */
+  requiresStaticFirst: boolean;
+};
+
+/**
+ * Plan prompt assembly for one provider. The Anthropic break lands after the
+ * last stable (static/semi-static) segment; OpenAI forwards the caller's
+ * stable `promptCacheKey`; DeepSeek relies on automatic prefix caching and
+ * only requires static-first ordering.
+ */
+export function providerCachePlan(
+  blocks: CacheOrderedPrompt,
+  target: CacheRequestTarget,
+  options: { promptCacheKey?: string } = {},
+): ProviderCachePlan {
+  const provider = cacheProviderForRequest(target);
+  const segments = promptSegments(blocks);
+  const text = segments.join("\n\n");
+  const stableSegments =
+    (blocks.static.trim() ? 1 : 0) + (blocks.semiStatic.trim() ? 1 : 0);
+  const cacheBreakIndex = stableSegments > 0 ? stableSegments - 1 : undefined;
+
+  if (provider === "anthropic") {
+    return {
+      provider,
+      text,
+      segments,
+      ...(cacheBreakIndex !== undefined ? { cacheBreakIndex } : {}),
+      requiresStaticFirst: true,
+    };
+  }
+  if (provider === "openai") {
+    return {
+      provider,
+      text,
+      segments,
+      ...(options.promptCacheKey ? { promptCacheKey: options.promptCacheKey } : {}),
+      requiresStaticFirst: true,
+    };
+  }
+  if (provider === "deepseek") {
+    return { provider, text, segments, requiresStaticFirst: true };
+  }
+  return { provider, text, segments, requiresStaticFirst: false };
 }
