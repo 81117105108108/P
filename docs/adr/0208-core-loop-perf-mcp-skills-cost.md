@@ -35,9 +35,12 @@ one workspace, and dynamic prompt prefixes destroy provider cache discounts.
 7. Worktree isolation (`shared/subagent-workspace`): mutating delegates get
    `.pi/worktrees/task-<id>` on `pi-task/<id>`; parent reviews, merges,
    removes. Paths/branches/steps are pure helpers; git runs in main/host.
-8. Cache alignment (`shared/cache-boundaries`): assemble static →
-   semi-static → dynamic; Anthropic ephemeral break at the static boundary;
-   byte-equality decides hit eligibility.
+ 8. Cache alignment (`shared/cache-boundaries`): assemble static →
+    semi-static → dynamic; Anthropic ephemeral break at the static boundary;
+    byte-equality decides hit eligibility. `staticPrefixHash` reuses the
+    FNV-1a checksum from history stubs so callers can validate the static
+    block across turns and emit a `staticPrefixChange` diagnostic when the
+    cached prefix was silently invalidated.
 9. History pruning (`shared/history-pruning`): stub stale Reads (≥100 lines)
    with line count + FNV checksum; tail Bash logs to exit + last 10 lines.
    Runs before any LLM summarizer call.
