@@ -4,6 +4,10 @@
  * Anthropic/OpenAI/DeepSeek discount cache-hit prefixes up to 75–90% — but
  * only when the prefix is byte-identical across turns. Rule: static first,
  * semi-static on file change only, dynamic volatile suffix last.
+ *
+ * Wire-level markers and retention are owned by the pi-ai provider adapters
+ * (default retention "short"; PI_CACHE_RETENTION=long); this module owns
+ * byte order, prefix hashing, and invalidation diagnostics.
  */
 
 import { stubChecksum } from "./history-pruning.js";

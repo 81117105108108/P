@@ -48,7 +48,13 @@ one workspace, and dynamic prompt prefixes destroy provider cache discounts.
     (`shared/prompt-cache-tracker`) counts per-provider turns, static-prefix
     stabilizations and invalidations, and accumulates provider-reported
     input/cache-read/cache-write tokens into a cache hit rate for the
-    Cost & Cache UI.
+    Cost & Cache UI. Wire-level caching is native to the pi-ai adapters
+    (retention defaults to `short`; `PI_CACHE_RETENTION=long` opts into
+    extended TTLs), so these hints stay advisory: the app owns byte order
+    and diagnostics, not request markers. A session-level efficiency surface
+    is deferred: the context inspector is bound by D355 to last-request
+    values, and the global usage dashboard is the `pi.token-insights`
+    plugin (D335).
 9. History pruning (`shared/history-pruning`): stub stale Reads (≥100 lines)
    with line count + FNV checksum; tail Bash logs to exit + last 10 lines.
    Runs before any LLM summarizer call.
