@@ -16,6 +16,7 @@ import {
   calculateContextUsage,
   calculateTokenRate,
   contextOccupancyTokens,
+  sessionCacheEfficiency,
 } from "../lib/context-usage";
 
 function formatTokenCount(value: number): string {
@@ -61,6 +62,8 @@ export function ContextUsageInspector({
       ? state.sessionCompactions[state.activeSessionId]?.at(-1)
       : undefined,
   );
+  const messages = useAppStore((state) => state.messages);
+  const sessionEfficiency = sessionCacheEfficiency(messages);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -301,6 +304,17 @@ export function ContextUsageInspector({
             ) : null}
           </span>
         </div>
+        {sessionEfficiency.hitRate !== undefined ? (
+          <div className="context-inspector-summary-row">
+            <strong>{t("chat.usageCacheEfficiency")}</strong>
+            <span className="context-inspector-summary-values">
+              <span>
+                {sessionEfficiency.hitRate}% (
+                {formatTokenCount(sessionEfficiency.cacheReadTokens)} {t("chat.usageCacheRead")})
+              </span>
+            </span>
+          </div>
+        ) : null}
         <div className="context-inspector-summary-row">
           <strong>{t("chat.usageTools")}</strong>
           <span className="context-inspector-summary-values">

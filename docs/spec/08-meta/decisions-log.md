@@ -4181,3 +4181,16 @@ D193, and D194.
   `Retrying in 0s · attempt 9/10`. No host protocol, storage schema, provider
   configuration, or unrelated recovery policy changes. See ADR 0206 and
   E2E-096 / E2E-149.
+
+## 2026-09-12 — Session cache efficiency line in the context inspector (D379)
+
+- Provider cache markers are native to the pi-ai adapters, and the
+  per-request cache hit rate is already shown in the context usage
+  inspector (D355).
+- Decision D379 amends D355: the renderer adds one additive session-level
+  "Session cache efficiency" line aggregating provider-reported
+  usage-bearing messages with the same hit-rate formula over the summed
+  prompt tokens. It is billing-style visibility owned by the renderer,
+  distinct from last-request occupancy, which stays unchanged.
+- No host protocol, storage schema, or provider configuration changes.
+  See E2E-237.

@@ -280,6 +280,7 @@ export const zhTW = {
     usageOutput: "輸出",
     usageCacheRead: "快取讀取",
     usageCacheRate: "快取命中率",
+    usageCacheEfficiency: "工作階段快取效率",
     usageCacheWrite: "快取寫入",
     usageReasoning: "推理",
     usageTools: "工具上下文",

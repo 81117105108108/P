@@ -9,6 +9,7 @@ import {
   estimateResponseOutputTokens,
   estimateToolTokenUsage,
   resolveContextWindow,
+  sessionCacheEfficiency,
   toolTokenUsage,
   usageTokenTotal,
   settleStoppedAssistantMetrics,
@@ -243,4 +244,36 @@ test("tool usage aggregates repeated calls in first-seen order", () => {
       estimated: true,
     },
   ]);
+});
+
+test("session cache efficiency reports nothing without usage", () => {
+  const efficiency = sessionCacheEfficiency([]);
+  assert.equal(efficiency.reports, 0);
+  assert.equal(efficiency.inputTokens, 0);
+  assert.equal(efficiency.cacheReadTokens, 0);
+  assert.equal(efficiency.cacheWriteTokens, 0);
+  assert.equal(efficiency.hitRate, undefined);
+});
+
+test("session cache efficiency sums prompt tokens across reports", () => {
+  const efficiency = sessionCacheEfficiency([
+    {
+      usage: {
+        inputTokens: 100,
+        outputTokens: 10,
+        totalTokens: 110,
+        cacheReadTokens: 300,
+        cacheWriteTokens: 50,
+      },
+    },
+    { usage: { inputTokens: 200, outputTokens: 20, totalTokens: 220 } },
+    {},
+    { usage: undefined },
+    { usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } },
+  ]);
+  assert.equal(efficiency.reports, 2);
+  assert.equal(efficiency.inputTokens, 300);
+  assert.equal(efficiency.cacheReadTokens, 300);
+  assert.equal(efficiency.cacheWriteTokens, 50);
+  assert.equal(efficiency.hitRate, 50);
 });

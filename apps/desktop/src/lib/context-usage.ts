@@ -284,3 +284,45 @@ export function calculateCacheRate(
   if (promptTokens <= 0) return undefined;
   return Math.round((cacheReadTokens / promptTokens) * 100);
 }
+
+export type SessionCacheEfficiency = {
+  reports: number;
+  inputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  hitRate?: number;
+};
+
+/**
+ * Aggregate provider-reported cache efficiency across a session (D379).
+ * Only usage-bearing messages with prompt tokens (`input + cacheRead > 0`)
+ * count as reports; missing cache fields count as 0.
+ */
+export function sessionCacheEfficiency(
+  messages: readonly Pick<UiMessage, "usage">[],
+): SessionCacheEfficiency {
+  let reports = 0;
+  let inputTokens = 0;
+  let cacheReadTokens = 0;
+  let cacheWriteTokens = 0;
+
+  for (const message of messages) {
+    const usage = message.usage;
+    if (!usage) continue;
+    const input = positiveTokenCount(usage.inputTokens);
+    const cacheRead = positiveTokenCount(usage.cacheReadTokens);
+    if (input + cacheRead <= 0) continue;
+    reports += 1;
+    inputTokens += input;
+    cacheReadTokens += cacheRead;
+    cacheWriteTokens += positiveTokenCount(usage.cacheWriteTokens);
+  }
+
+  return {
+    reports,
+    inputTokens,
+    cacheReadTokens,
+    cacheWriteTokens,
+    hitRate: calculateCacheRate(inputTokens, cacheReadTokens),
+  };
+}

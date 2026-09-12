@@ -287,6 +287,7 @@ export const ko = {
     usageOutput: "출력",
     usageCacheRead: "캐시 읽기",
     usageCacheRate: "캐시 적중률",
+    usageCacheEfficiency: "세션 캐시 효율",
     usageCacheWrite: "캐시 쓰기",
     usageReasoning: "추론",
     usageTools: "도구 컨텍스트",

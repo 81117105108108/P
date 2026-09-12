@@ -1376,7 +1376,10 @@ Single message render — either user (plaintext) or assistant (markdown streami
   D244, D347). When the active session has an installed context checkpoint,
   the panel adds one muted summary line for the compaction count and newest
   summary's estimated token cost; the transcript still shows one row per
-  compaction (D203).
+  compaction (D203). The panel adds one additive session cache efficiency
+  line aggregating provider-reported usage-bearing messages with the same
+  cache hit-rate formula over the summed prompt tokens; last-request
+  occupancy and rate semantics stay unchanged (D379).
 - Gap: 12px vertical padding between consecutive message rows (denser than
   consumer chat, closer to WorkBuddy task transcript); assistant turns add a
   little extra bottom air so a completed answer separates from the next prompt

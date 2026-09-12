@@ -287,6 +287,7 @@ export const tr = {
     usageOutput: "Çıktı",
     usageCacheRead: "Önbellek okuma",
     usageCacheRate: "Önbellek isabet oranı",
+    usageCacheEfficiency: "Oturum önbellek verimliliği",
     usageCacheWrite: "Önbellek yazma",
     usageReasoning: "Akıl yürütme",
     usageTools: "Araç bağlamı",

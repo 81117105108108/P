@@ -285,6 +285,7 @@ export const en = {
     usageOutput: "Output",
     usageCacheRead: "Cache read",
     usageCacheRate: "Cache hit rate",
+    usageCacheEfficiency: "Session cache efficiency",
     usageCacheWrite: "Cache write",
     usageReasoning: "Reasoning",
     usageTools: "Tool context",

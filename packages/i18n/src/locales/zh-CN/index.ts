@@ -280,6 +280,7 @@ export const zhCN = {
     usageOutput: "输出",
     usageCacheRead: "缓存读取",
     usageCacheRate: "缓存命中率",
+    usageCacheEfficiency: "会话缓存效率",
     usageCacheWrite: "缓存写入",
     usageReasoning: "推理",
     usageTools: "工具上下文",

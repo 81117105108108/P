@@ -276,6 +276,7 @@ export const de = {
     "usageOutput": "Ausgabe",
     "usageCacheRead": "Cache-Lesen",
     "usageCacheRate": "Cache-Trefferrate",
+    "usageCacheEfficiency": "Sitzungs-Cache-Effizienz",
     "usageCacheWrite": "Cache-Schreiben",
     "usageReasoning": "Begründung",
     "usageTools": "Werkzeugkontext",

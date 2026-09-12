@@ -9554,3 +9554,16 @@ browser milestones are scheduled.
   satisfy development preview. File presence is not a desktop boot verdict.
 - **Specs linked**: ADR 0211
 - **Status**: Documented, not executed as E2E; prerequisite fixture test only.
+
+#### E2E-237: Session cache efficiency line aggregates cached turns
+
+- **Preconditions**: A session with cached assistant turns reporting usage;
+  a fresh session without cache data.
+- **Steps**: 1) Open the session with cached turns and open the context
+  usage inspector. 2) Open the fresh session without cache data and open
+  the inspector.
+- **Expected**: The cached session shows one session cache efficiency line
+  with the aggregate hit rate; the fresh session shows no session line.
+  Last-request occupancy and rate values are unchanged.
+- **Specs linked**: `04-ux/08-component-spec.md` §8, D379
+- **Status**: Documented, not executed as E2E; renderer unit tests only.

@@ -276,6 +276,7 @@ export const fr = {
     "usageOutput": "Sortie",
     "usageCacheRead": "Lecture du cache",
     "usageCacheRate": "Taux de réussite du cache",
+    "usageCacheEfficiency": "Efficacité du cache de session",
     "usageCacheWrite": "Écriture du cache",
     "usageReasoning": "Raisonnement",
     "usageTools": "Contexte de l'outil",
