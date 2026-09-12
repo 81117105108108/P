@@ -80,12 +80,17 @@ import {
   MAX_SUBAGENT_CONCURRENCY,
   normalizeSubagentName,
   proposalKindForMode,
+  PromptCacheTracker,
   subagentModelKey,
   type ProposalKind,
   type SubagentPermission,
 } from "@pi-desktop/shared";
 import type { HostClient } from "./host-client.js";
 import { classifyAgentError } from "./agent-errors.js";
+import {
+  CONTEXT_GUARD_STRIP_RATIO,
+  stripStaleToolResults,
+} from "./context-guard.js";
 import {
   assistantContent,
   isRecord,
@@ -1357,6 +1362,8 @@ export class DesktopAgentRuntime {
   private turnEpoch = 0;
   private compactionAbort?: AbortController;
   private compactionInProgress = false;
+  /** Prompt-prefix cache accounting for this session (ADR 0208). */
+  private readonly promptCacheTracker = new PromptCacheTracker();
   /** Set by the `new_context` tool, consumed at the next turn boundary. */
   private pendingModelCompaction = false;
   /** One-shot request to finish the current turn at the next boundary. */
@@ -1364,6 +1371,8 @@ export class DesktopAgentRuntime {
   /** Codex's `claim_*` flags: one of each reminder per context window. */
   private contextReminderClaimed = false;
   private contextFallbackReminderClaimed = false;
+  /** One stderr notice per runtime when the guard strips stale output. */
+  private contextGuardReported = false;
   private activeToolProgressCleanups = new Set<(flush: boolean) => void>();
   private hostCloseUnsubscribe?: () => void;
   private turnSubagentUsage?: MessageUsage;
@@ -1607,13 +1616,26 @@ Delegation rules:
   private composeSystemPrompt(): string {
     const projectPrompt = projectInstructionsPrompt(this.projectInstructions);
     const optionalToolsPrompt = this.optionalToolsPrompt();
+    const staticBlock = [this.baseSystemPrompt, optionalToolsPrompt]
+      .filter(Boolean)
+      .join("\n\n");
+    const semiStaticBlock = projectPrompt ?? "";
+    // Cache-prefix accounting (ADR 0208): the static block is role + core tool
+    // schemas. Deferred tools can rewrite it between prompts, and this
+    // diagnostic makes that silent cache invalidation visible.
+    const turn = this.promptCacheTracker.recordTurn(this.provider.id, {
+      static: staticBlock,
+      semiStatic: semiStaticBlock,
+      dynamic: "",
+    });
+    if (!turn.cacheEligible && turn.turn > 1) {
+      process.stderr.write(
+        `[agent-runtime] system prompt static prefix changed (session=${this.sessionId} turn=${turn.turn} hash=${turn.prefixHash})\n`,
+      );
+    }
     return composeModeSystemPrompt(
       this.mode,
-      [
-        this.baseSystemPrompt,
-        ...(optionalToolsPrompt ? [optionalToolsPrompt] : []),
-        ...(projectPrompt ? [projectPrompt] : []),
-      ].join("\n\n"),
+      [staticBlock, semiStaticBlock].filter(Boolean).join("\n\n"),
     );
   }
 
@@ -4428,6 +4450,32 @@ Delegation rules:
   }
 
   /**
+   * Context guard (plan 4.1 / ADR 0208): once the live context crosses 85% of
+   * the hard limit, stale large tool outputs become tombstones before the next
+   * provider request. The transcript stays durable; only this model context is
+   * compacted, and the model can re-read on demand. Runs on the budget the
+   * caller already computed, so no extra estimate is paid.
+   */
+  private guardContextMessages(
+    messages: AgentMessage[],
+    budget: ContextBudget,
+  ): AgentMessage[] {
+    if (
+      budget.tokens < Math.floor(budget.hardLimit * CONTEXT_GUARD_STRIP_RATIO)
+    ) {
+      return messages;
+    }
+    const guarded = stripStaleToolResults(messages);
+    if (guarded !== messages && !this.contextGuardReported) {
+      this.contextGuardReported = true;
+      process.stderr.write(
+        `[agent-runtime] context guard stripped stale tool output (session=${this.sessionId} tokens=${budget.tokens}/${budget.hardLimit})\n`,
+      );
+    }
+    return guarded;
+  }
+
+  /**
    * Shape the next in-run assistant turn. pi 0.84.4+ calls this only after
    * `shouldStopAfterTurn` and queued-message checks decide the loop will start
    * another assistant turn, including between a tool batch and the follow-up
@@ -4453,6 +4501,10 @@ Delegation rules:
     const modelRequested = this.pendingModelCompaction;
     this.pendingModelCompaction = false;
     if (!hardLimitReached && !modelRequested) {
+      const guardedMessages = this.guardContextMessages(context.messages, budget);
+      if (guardedMessages !== context.messages) {
+        context = { ...context, messages: guardedMessages };
+      }
       return { context: this.withContextBudgetReminder(context, budget) };
     }
 
@@ -5263,6 +5315,9 @@ Delegation rules:
             );
           }
           const usage = usageFromPi((event.message as any).usage as Usage | undefined);
+          if (usage) {
+            this.promptCacheTracker.recordUsage(this.provider.id, usage);
+          }
           const endedAt = Date.now();
           const providerWaitMs =
             this.requestStartedAt !== undefined &&
