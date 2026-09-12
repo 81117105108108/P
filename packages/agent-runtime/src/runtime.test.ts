@@ -5585,3 +5585,94 @@ describe("DesktopAgentRuntime subagents", () => {
     await runtime.dispose();
   });
 });
+
+describe("prompt cache prefix tracking", () => {
+  const bigRead = Array.from({ length: 150 }, (_, index) => `line ${index}`).join(
+    "\n",
+  );
+  const staleRead = {
+    role: "toolResult" as const,
+    toolCallId: "call-read-1",
+    toolName: "Read",
+    content: [{ type: "text" as const, text: bigRead }],
+    isError: false,
+    timestamp: 1,
+  };
+  const nextTurn = {
+    message: assistantMessage({ content: [], stopReason: "toolUse" }),
+    toolResults: [staleRead],
+    context: { systemPrompt: "base", messages: [], tools: [] },
+    newMessages: [],
+  };
+
+  it("composes a byte-stable system prompt on consecutive calls", async () => {
+    const runtime = createRuntime();
+
+    const first = (runtime as any).composeSystemPrompt() as string;
+    const second = (runtime as any).composeSystemPrompt() as string;
+
+    expect(second).toBe(first);
+    await runtime.dispose();
+  });
+
+  it("stays silent while the static prefix is stable", async () => {
+    const runtime = createRuntime();
+    const write = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    try {
+      (runtime as any).composeSystemPrompt();
+      (runtime as any).composeSystemPrompt();
+
+      const complaints = write.mock.calls.filter(([chunk]) =>
+        String(chunk).includes("system prompt static prefix changed"),
+      );
+      expect(complaints).toHaveLength(0);
+    } finally {
+      write.mockRestore();
+    }
+    await runtime.dispose();
+  });
+
+  it("tombstones a stale large Read before compaction instead of compacting", async () => {
+    const runtime = createRuntime();
+    const handleAgentEvent = (runtime as any).handleAgentEvent.bind(runtime);
+    const prepareNextTurn = (runtime as any).prepareNextTurn.bind(runtime);
+
+    await handleAgentEvent({ type: "message_end", message: staleRead });
+    for (const text of ["u1", "u2", "u3"]) {
+      await handleAgentEvent({
+        type: "message_end",
+        message: { role: "user", content: text, timestamp: 2 },
+      });
+    }
+    vi.spyOn(runtime as any, "contextBudget").mockReturnValue({
+      tokens: 200_000,
+      hardLimit: 224_000,
+      requestHeadroom: 32_000,
+    });
+    const runCompaction = vi
+      .spyOn(runtime as any, "runCompaction")
+      .mockResolvedValue(true);
+
+    const result = await prepareNextTurn(nextTurn);
+
+    const messages = result.context.messages as Array<any>;
+    const pruned = messages.find(
+      (message) =>
+        message.role === "toolResult" &&
+        message.content.some(
+          (block: any) =>
+            block.type === "text" &&
+            block.text.includes("File content pruned"),
+        ),
+    );
+    expect(pruned).toBeDefined();
+    expect(runCompaction).not.toHaveBeenCalled();
+    // The durable transcript keeps the original text; only the model context
+    // is tombstoned.
+    expect(staleRead.content[0]!.text).toBe(bigRead);
+
+    await runtime.dispose();
+  });
+});

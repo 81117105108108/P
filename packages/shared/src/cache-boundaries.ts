@@ -69,6 +69,38 @@ export function staticPrefixChange(
   return { cacheInvalidated: true, previousHash, nextHash };
 }
 
+/** Block-level cache invalidation attribution across turns. */
+export type CacheInvalidationReport = {
+  cacheInvalidated: boolean;
+  staticChanged: boolean;
+  semiStaticChanged: boolean;
+  previousHash: string;
+  nextHash: string;
+};
+
+/**
+ * Attribute invalidation to the static or semi-static block. A semi-static-only
+ * change is a partial invalidation: the static prefix still hits, so
+ * `cacheInvalidated` stays false while the flag reports the drift.
+ */
+export function describeCacheInvalidation(
+  previous: CacheOrderedPrompt,
+  next: CacheOrderedPrompt,
+): CacheInvalidationReport {
+  const previousHash = staticPrefixHash(previous);
+  const nextHash = staticPrefixHash(next);
+  const staticChanged = previousHash !== nextHash;
+  const semiStaticChanged =
+    stubChecksum(previous.semiStatic) !== stubChecksum(next.semiStatic);
+  return {
+    cacheInvalidated: staticChanged,
+    staticChanged,
+    semiStaticChanged,
+    previousHash,
+    nextHash,
+  };
+}
+
 /**
  * Cache mechanics differ per provider, so the same block order needs
  * different wire hints (ADR 0208): Anthropic caches explicit breakpoint

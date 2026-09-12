@@ -50,6 +50,7 @@ import type {
   AskToolQuestion,
   AskToolRequest,
   AskToolResolution,
+  CacheOrderedPrompt,
   ContextCompactionFallback,
   CommandShellOption,
   ContextCompactionReason,
@@ -74,6 +75,7 @@ import {
   checkpointGeneration,
   contextCompactionMark,
   DEFAULT_SUBAGENT_PERMISSION,
+  describeCacheInvalidation,
   formatAskToolOutput,
   isCommandShellOption,
   isToolsOutputParams,
@@ -1364,6 +1366,8 @@ export class DesktopAgentRuntime {
   private compactionInProgress = false;
   /** Prompt-prefix cache accounting for this session (ADR 0208). */
   private readonly promptCacheTracker = new PromptCacheTracker();
+  /** Blocks from the previous compose, for cache invalidation attribution. */
+  private lastPromptBlocks?: CacheOrderedPrompt;
   /** Set by the `new_context` tool, consumed at the next turn boundary. */
   private pendingModelCompaction = false;
   /** One-shot request to finish the current turn at the next boundary. */
@@ -1620,17 +1624,26 @@ Delegation rules:
       .filter(Boolean)
       .join("\n\n");
     const semiStaticBlock = projectPrompt ?? "";
-    // Cache-prefix accounting (ADR 0208): the static block is role + core tool
-    // schemas. Deferred tools can rewrite it between prompts, and this
-    // diagnostic makes that silent cache invalidation visible.
-    const turn = this.promptCacheTracker.recordTurn(this.provider.id, {
+    const blocks: CacheOrderedPrompt = {
       static: staticBlock,
       semiStatic: semiStaticBlock,
       dynamic: "",
-    });
+    };
+    // Cache-prefix accounting (ADR 0208): the static block is role + core tool
+    // schemas. Deferred tools can rewrite it between prompts, and this
+    // diagnostic makes that silent cache invalidation visible.
+    const previousBlocks = this.lastPromptBlocks;
+    const turn = this.promptCacheTracker.recordTurn(this.provider.id, blocks);
+    this.lastPromptBlocks = blocks;
     if (!turn.cacheEligible && turn.turn > 1) {
+      const report = previousBlocks
+        ? describeCacheInvalidation(previousBlocks, blocks)
+        : undefined;
+      const attribution = report
+        ? ` staticChanged=${report.staticChanged} semiStaticChanged=${report.semiStaticChanged}`
+        : "";
       process.stderr.write(
-        `[agent-runtime] system prompt static prefix changed (session=${this.sessionId} turn=${turn.turn} hash=${turn.prefixHash})\n`,
+        `[agent-runtime] system prompt static prefix changed (session=${this.sessionId} turn=${turn.turn} hash=${turn.prefixHash})${attribution}\n`,
       );
     }
     return composeModeSystemPrompt(

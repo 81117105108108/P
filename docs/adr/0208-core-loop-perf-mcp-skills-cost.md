@@ -54,7 +54,11 @@ one workspace, and dynamic prompt prefixes destroy provider cache discounts.
     and diagnostics, not request markers. A session-level efficiency surface
     is deferred: the context inspector is bound by D355 to last-request
     values, and the global usage dashboard is the `pi.token-insights`
-    plugin (D335).
+    plugin (D335). Block-level attribution via `describeCacheInvalidation`
+    distinguishes tool-schema from project-instruction invalidations.
+    Session-start prefix warming was considered and rejected: turn 1 creates
+    the provider cache, so a warm-up request would cost a full call for at
+    most one turn of discount.
 9. History pruning (`shared/history-pruning`): stub stale Reads (≥100 lines)
    with line count + FNV checksum; tail Bash logs to exit + last 10 lines.
    Runs before any LLM summarizer call.

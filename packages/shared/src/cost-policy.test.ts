@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assemblePrompt,
   cacheProviderForRequest,
+  describeCacheInvalidation,
   isCacheHit,
   providerCachePlan,
   promptSegments,
@@ -35,6 +36,33 @@ describe("cache boundaries", () => {
     expect(changed?.previousHash).toMatch(/^[0-9a-f]{8}$/);
     expect(changed?.nextHash).toMatch(/^[0-9a-f]{8}$/);
     expect(changed?.previousHash).not.toBe(changed?.nextHash);
+  });
+
+  it("reports identical blocks as a full cache hit", () => {
+    const blocks = { static: "role", semiStatic: "project", dynamic: "turn 1" };
+    const report = describeCacheInvalidation(blocks, { ...blocks, dynamic: "turn 2" });
+    expect(report.staticChanged).toBe(false);
+    expect(report.semiStaticChanged).toBe(false);
+    expect(report.cacheInvalidated).toBe(false);
+    expect(report.previousHash).toBe(report.nextHash);
+  });
+
+  it("attributes a static-only change to the static block", () => {
+    const previous = { static: "role", semiStatic: "project", dynamic: "" };
+    const report = describeCacheInvalidation(previous, { ...previous, static: "role v2" });
+    expect(report.staticChanged).toBe(true);
+    expect(report.semiStaticChanged).toBe(false);
+    expect(report.cacheInvalidated).toBe(true);
+    expect(report.previousHash).not.toBe(report.nextHash);
+  });
+
+  it("treats a semi-static-only change as a partial invalidation", () => {
+    const previous = { static: "role", semiStatic: "project", dynamic: "" };
+    const report = describeCacheInvalidation(previous, { ...previous, semiStatic: "project v2" });
+    expect(report.staticChanged).toBe(false);
+    expect(report.semiStaticChanged).toBe(true);
+    expect(report.cacheInvalidated).toBe(false);
+    expect(report.previousHash).toBe(report.nextHash);
   });
 });
 
